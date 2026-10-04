@@ -893,6 +893,205 @@ export const defs2d = [
       fx.moveTo(0, hh); fx.lineTo(w, hh);
       fx.stroke();
     }
+  },
+  {
+    id: 'cyberpunk', name: 'Cyberpunk Neon', icon: '🌆', category: 'Art', perf: 'low',
+    render(fx, { src, width: w, height: h, time: t }) {
+      fx.save();
+      fx.filter = 'contrast(1.35) saturate(1.8) hue-rotate(-20deg)';
+      fx.drawImage(src, 0, 0, w, h);
+      fx.restore();
+
+      fx.save();
+      fx.globalCompositeOperation = 'screen';
+      fx.globalAlpha = 0.45;
+      const shift = 4 + Math.sin(t * 3) * 2;
+      fx.fillStyle = '#06b6d4';
+      fx.fillRect(0, 0, w, h);
+      fx.globalCompositeOperation = 'overlay';
+      fx.drawImage(src, -shift, 0, w, h);
+      fx.fillStyle = '#f43f5e';
+      fx.fillRect(0, 0, w, h);
+      fx.drawImage(src, shift, 0, w, h);
+
+      fx.globalAlpha = 0.18;
+      fx.fillStyle = '#000000';
+      for (let y = 0; y < h; y += 4) {
+        fx.fillRect(0, y, w, 1.5);
+      }
+      fx.restore();
+    }
+  },
+  {
+    id: 'matrix', name: 'Matrix Rain', icon: '💻', category: 'Art', perf: 'medium',
+    render(fx, { src, width: w, height: h, time: t }) {
+      fx.save();
+      fx.filter = 'contrast(1.4) brightness(0.7) hue-rotate(90deg) saturate(2)';
+      fx.drawImage(src, 0, 0, w, h);
+      fx.restore();
+
+      fx.save();
+      fx.font = 'bold 15px monospace';
+      const chars = '0123456789ABCDEFｦｱｳｴｵｶｷｹｺｻｼｽｾｿﾀﾂﾃﾅﾆﾇﾈﾊﾋﾎﾏﾐﾑﾒﾓﾔﾕﾗﾘﾜ';
+      const cols = Math.floor(w / 18);
+
+      for (let c = 0; c < cols; c++) {
+        const speed = 120 + ((c * 17) % 80);
+        const yHead = ((t * speed + c * 47) % (h + 100)) - 50;
+        const x = c * 18 + 4;
+        for (let row = 0; row < 10; row++) {
+          const y = yHead - row * 16;
+          if (y > 0 && y < h) {
+            const charIdx = (c * 7 + row + Math.floor(t * 5)) % chars.length;
+            const alpha = row === 0 ? 0.95 : (1 - row / 10) * 0.7;
+            fx.fillStyle = row === 0 ? '#ffffff' : `rgba(34, 197, 94, ${alpha})`;
+            fx.fillText(chars[charIdx], x, y);
+          }
+        }
+      }
+      fx.restore();
+    }
+  },
+  {
+    id: 'goldenhour', name: 'Golden Hour', icon: '🌅', category: 'Vintage', perf: 'low',
+    render(fx, { src, width: w, height: h }) {
+      fx.save();
+      fx.filter = 'sepia(0.35) saturate(1.45) contrast(1.1) brightness(1.06)';
+      fx.drawImage(src, 0, 0, w, h);
+
+      const flare = fx.createRadialGradient(w * 0.15, h * 0.15, 20, w * 0.25, h * 0.25, w * 0.75);
+      flare.addColorStop(0, 'rgba(255, 223, 128, 0.55)');
+      flare.addColorStop(0.3, 'rgba(251, 146, 60, 0.28)');
+      flare.addColorStop(0.7, 'rgba(236, 72, 153, 0.12)');
+      flare.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      fx.globalCompositeOperation = 'screen';
+      fx.fillStyle = flare;
+      fx.fillRect(0, 0, w, h);
+      fx.restore();
+    }
+  },
+  {
+    id: 'vaporwave', name: 'Vaporwave 90s', icon: '🌴', category: 'Art', perf: 'low',
+    render(fx, { src, width: w, height: h }) {
+      fx.save();
+      fx.filter = 'saturate(1.7) contrast(1.18)';
+      fx.drawImage(src, 0, 0, w, h);
+
+      const grad = fx.createLinearGradient(0, 0, w, h);
+      grad.addColorStop(0, 'rgba(192, 132, 252, 0.35)');
+      grad.addColorStop(0.5, 'rgba(244, 114, 182, 0.25)');
+      grad.addColorStop(1, 'rgba(56, 189, 248, 0.3)');
+
+      fx.globalCompositeOperation = 'color';
+      fx.fillStyle = grad;
+      fx.fillRect(0, 0, w, h);
+
+      fx.globalCompositeOperation = 'overlay';
+      fx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+      for (let y = 0; y < h; y += 4) {
+        fx.fillRect(0, y, w, 2);
+      }
+      fx.restore();
+    }
+  },
+  {
+    id: 'anime', name: 'Anime Sparkles', icon: '✨', category: 'Fun', perf: 'low',
+    render(fx, { src, width: w, height: h, time: t }) {
+      fx.save();
+      fx.filter = 'saturate(1.35) brightness(1.08) contrast(1.05)';
+      fx.drawImage(src, 0, 0, w, h);
+
+      const starCount = 14;
+      for (let i = 0; i < starCount; i++) {
+        const seed = i * 137.5;
+        const speed = 0.6 + (i % 4) * 0.25;
+        const x = ((seed * 7 + t * 40 * speed) % (w + 60)) - 30;
+        const y = ((seed * 11 + Math.sin(t * 1.5 + i) * 60) % (h + 60)) - 30;
+        const size = 6 + (Math.sin(t * 4 + i) + 1) * 6;
+        const rot = t * 2 + i;
+
+        fx.save();
+        fx.translate(x, y);
+        fx.rotate(rot);
+        fx.fillStyle = i % 2 === 0 ? '#fbcfe8' : '#ffffff';
+        fx.shadowColor = '#ec4899';
+        fx.shadowBlur = 8;
+
+        fx.beginPath();
+        fx.moveTo(0, -size);
+        fx.quadraticCurveTo(0, 0, size, 0);
+        fx.quadraticCurveTo(0, 0, 0, size);
+        fx.quadraticCurveTo(0, 0, -size, 0);
+        fx.quadraticCurveTo(0, 0, 0, -size);
+        fx.fill();
+        fx.restore();
+      }
+      fx.restore();
+    }
+  },
+  {
+    id: 'disco', name: 'Disco Lasers', icon: '🪩', category: 'Fun', perf: 'low',
+    render(fx, { src, width: w, height: h, time: t }) {
+      fx.drawImage(src, 0, 0, w, h);
+
+      fx.save();
+      fx.globalCompositeOperation = 'screen';
+      const colors = ['#f43f5e', '#06b6d4', '#eab308', '#a855f7'];
+      for (let i = 0; i < 4; i++) {
+        const angle = t * (0.8 + i * 0.2) + (i * Math.PI) / 2;
+        const lx = w / 2 + Math.cos(angle) * (w * 0.55);
+        const ly = h / 2 + Math.sin(angle) * (h * 0.55);
+
+        const beam = fx.createRadialGradient(lx, ly, 10, w / 2, h / 2, w * 0.7);
+        beam.addColorStop(0, colors[i % colors.length]);
+        beam.addColorStop(0.5, 'rgba(0,0,0,0)');
+
+        fx.globalAlpha = 0.5;
+        fx.fillStyle = beam;
+        fx.fillRect(0, 0, w, h);
+      }
+      fx.restore();
+    }
+  },
+  {
+    id: 'arcade8bit', name: '8-Bit Arcade', icon: '👾', category: 'Classic', perf: 'low',
+    render(fx, { src, width: w, height: h }) {
+      const pixelSize = 7;
+      const smallW = Math.max(2, Math.floor(w / pixelSize));
+      const smallH = Math.max(2, Math.floor(h / pixelSize));
+
+      fx.save();
+      fx.imageSmoothingEnabled = false;
+      fx.drawImage(src, 0, 0, smallW, smallH);
+      fx.filter = 'contrast(1.3) saturate(1.4)';
+      fx.drawImage(fx.canvas, 0, 0, smallW, smallH, 0, 0, w, h);
+      fx.restore();
+    }
+  },
+  {
+    id: 'prism', name: 'Prism Flare', icon: '💎', category: 'Art', perf: 'low',
+    render(fx, { src, width: w, height: h, time: t }) {
+      fx.drawImage(src, 0, 0, w, h);
+
+      fx.save();
+      fx.globalCompositeOperation = 'screen';
+      fx.globalAlpha = 0.55;
+
+      const sweepX = (Math.sin(t * 0.8) * 0.3 + 0.5) * w;
+      const rainbow = fx.createLinearGradient(sweepX - 120, 0, sweepX + 120, h);
+      rainbow.addColorStop(0, 'rgba(239, 68, 68, 0)');
+      rainbow.addColorStop(0.15, 'rgba(239, 68, 68, 0.45)');
+      rainbow.addColorStop(0.35, 'rgba(245, 158, 11, 0.45)');
+      rainbow.addColorStop(0.5, 'rgba(16, 185, 129, 0.45)');
+      rainbow.addColorStop(0.7, 'rgba(59, 130, 246, 0.45)');
+      rainbow.addColorStop(0.85, 'rgba(168, 85, 247, 0.45)');
+      rainbow.addColorStop(1, 'rgba(168, 85, 247, 0)');
+
+      fx.fillStyle = rainbow;
+      fx.fillRect(0, 0, w, h);
+      fx.restore();
+    }
   }
 ];
 

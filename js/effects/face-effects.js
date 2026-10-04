@@ -490,6 +490,127 @@ export const defsFace = [
       fx.globalAlpha = 1;
       if (this._p.length > 400) this._p.splice(0, this._p.length - 400);
     }
+  },
+  {
+    id: 'catears', name: 'Cat Ears & Whiskers', icon: '🐱', category: 'Face', perf: 'low', requiresFace: true,
+    render(fx, frame) {
+      passthrough(fx, frame);
+      const g = geo(frame);
+      if (!g) return;
+      const { eyeDist } = g;
+      fx.save();
+      // Draw ears attached to head
+      fx.translate(g.midEye.x, g.midEye.y);
+      fx.rotate(g.angle);
+      for (const s of [-1, 1]) {
+        fx.save();
+        fx.translate(s * eyeDist * 0.82, -eyeDist * 1.15);
+        fx.rotate(s * 0.28);
+        // Outer ear
+        fx.beginPath();
+        fx.moveTo(-eyeDist * 0.35, eyeDist * 0.2);
+        fx.lineTo(0, -eyeDist * 0.65);
+        fx.lineTo(eyeDist * 0.35, eyeDist * 0.2);
+        fx.closePath();
+        fx.fillStyle = '#ff758c';
+        fx.fill();
+        fx.strokeStyle = '#e11d48';
+        fx.lineWidth = Math.max(2, eyeDist * 0.04);
+        fx.stroke();
+        // Inner ear
+        fx.beginPath();
+        fx.moveTo(-eyeDist * 0.2, eyeDist * 0.15);
+        fx.lineTo(0, -eyeDist * 0.45);
+        fx.lineTo(eyeDist * 0.2, eyeDist * 0.15);
+        fx.closePath();
+        fx.fillStyle = '#fed7e2';
+        fx.fill();
+        fx.restore();
+      }
+      // Cheeks blush
+      fx.fillStyle = 'rgba(244, 63, 94, 0.35)';
+      fx.beginPath();
+      fx.ellipse(-eyeDist * 0.9, eyeDist * 0.35, eyeDist * 0.3, eyeDist * 0.18, -0.1, 0, Math.PI * 2);
+      fx.ellipse(eyeDist * 0.9, eyeDist * 0.35, eyeDist * 0.3, eyeDist * 0.18, 0.1, 0, Math.PI * 2);
+      fx.fill();
+
+      // Cute nose
+      const noseY = eyeDist * 0.42;
+      fx.fillStyle = '#ec4899';
+      fx.beginPath();
+      fx.moveTo(-eyeDist * 0.14, noseY - eyeDist * 0.05);
+      fx.lineTo(eyeDist * 0.14, noseY - eyeDist * 0.05);
+      fx.lineTo(0, noseY + eyeDist * 0.08);
+      fx.closePath();
+      fx.fill();
+
+      // Whiskers
+      fx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      fx.lineWidth = Math.max(2, eyeDist * 0.035);
+      fx.lineCap = 'round';
+      for (const s of [-1, 1]) {
+        const startX = s * eyeDist * 0.25;
+        const wy = noseY + eyeDist * 0.02;
+        for (const angleOffset of [-0.18, 0, 0.18]) {
+          fx.beginPath();
+          fx.moveTo(startX, wy + angleOffset * eyeDist * 0.5);
+          fx.lineTo(startX + s * eyeDist * 0.85, wy + angleOffset * eyeDist * 1.2);
+          fx.stroke();
+        }
+      }
+      fx.restore();
+    }
+  },
+  {
+    id: 'angel', name: 'Golden Halo', icon: '😇', category: 'Face', perf: 'low', requiresFace: true,
+    render(fx, frame) {
+      passthrough(fx, frame);
+      const g = geo(frame);
+      if (!g) return;
+      const t = frame.time || performance.now();
+      const bob = Math.sin(t * 0.0035) * (g.eyeDist * 0.08);
+      fx.save();
+      // Position above forehead / box top
+      const topY = Math.min(g.box.y, g.midEye.y - g.eyeDist * 1.35) + bob;
+      fx.translate(g.midEye.x, topY);
+      fx.rotate(g.angle * 0.6);
+
+      const hw = g.eyeDist * 0.95;
+      const hh = g.eyeDist * 0.26;
+
+      // Glow halo
+      fx.shadowColor = 'rgba(255, 215, 0, 0.85)';
+      fx.shadowBlur = 18;
+      fx.strokeStyle = '#ffd700';
+      fx.lineWidth = Math.max(3.5, g.eyeDist * 0.08);
+      fx.beginPath();
+      fx.ellipse(0, 0, hw, hh, 0, 0, Math.PI * 2);
+      fx.stroke();
+
+      // Inner bright ring
+      fx.shadowColor = '#ffffff';
+      fx.shadowBlur = 8;
+      fx.strokeStyle = '#fffbeb';
+      fx.lineWidth = Math.max(1.5, g.eyeDist * 0.03);
+      fx.beginPath();
+      fx.ellipse(0, 0, hw, hh, 0, 0, Math.PI * 2);
+      fx.stroke();
+
+      // Twinkling stars around halo
+      fx.shadowBlur = 0;
+      fx.fillStyle = '#ffffff';
+      for (let i = 0; i < 4; i++) {
+        const starAngle = (t * 0.002 + (i * Math.PI) / 2) % (Math.PI * 2);
+        const sx = Math.cos(starAngle) * (hw + 10);
+        const sy = Math.sin(starAngle) * (hh + 6);
+        const sparkSize = 2 + Math.sin(t * 0.006 + i) * 1.5;
+        fx.beginPath();
+        fx.arc(sx, sy, Math.max(1, sparkSize), 0, Math.PI * 2);
+        fx.fill();
+      }
+
+      fx.restore();
+    }
   }
 ];
 

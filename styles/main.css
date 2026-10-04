@@ -677,6 +677,51 @@ h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 0.5em; color: var(--text); font-
   .legal { padding: 22px 18px; margin: 20px 12px; }
 }
 
+/* ---------- Mic & Compare Specific Styles ---------- */
+.app-chip {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.88rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+.app-chip span { color: var(--text-secondary); font-weight: 600; }
+.app-chip strong { color: var(--brand-2); font-weight: 800; }
+
+.tool-select {
+  font-family: var(--font);
+  background: #ffffff;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  outline: none;
+  transition: border-color .15s;
+}
+.tool-select:focus { border-color: var(--brand); }
+
+/* Print styling for Diagnostic Report */
+@media print {
+  .site-header, .site-footer, .ad-slot, .hero, .hero-badges,
+  #btn-print-report, #btn-copy-report, #btn-download-report,
+  .content-section, .faq {
+    display: none !important;
+  }
+  body, .legal-page { background: #ffffff !important; }
+  #diagnostic-report {
+    display: block !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

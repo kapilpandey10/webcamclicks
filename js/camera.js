@@ -84,6 +84,23 @@ export class CameraManager {
     return true;
   }
 
+  async switchDevice(deviceId) {
+    this.deviceId = deviceId;
+    await this.start();
+    return true;
+  }
+
+  getCurrentDeviceId() {
+    if (this.stream) {
+      const track = this.stream.getVideoTracks()[0];
+      if (track) {
+        const s = track.getSettings ? track.getSettings() : {};
+        if (s && s.deviceId) return s.deviceId;
+      }
+    }
+    return this.deviceId;
+  }
+
   stop() {
     this.stopTracks();
     this.active = false;

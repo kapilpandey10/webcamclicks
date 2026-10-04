@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Compare Two Webcams Side-by-Side — Dual Camera Test | WebcamClicks</title>
+<meta name="description" content="Test and compare two webcams side-by-side on a single screen. Compare live resolution, FPS, color balance, low-light details, and capture comparison snapshots. 100% private.">
+<meta name="keywords" content="compare two webcams, dual webcam test, compare webcams side by side, test two cameras online, laptop camera vs usb webcam, webcam comparison tool">
+<link rel="canonical" href="https://webcamclicks.com/compare-webcams.html">
+<link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#ec4899">
+<meta name="google-adsense-account" content="ca-pub-9887409333966239">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="WebcamClicks">
+<meta property="og:url" content="https://webcamclicks.com/compare-webcams.html">
+<meta property="og:title" content="Compare Two Webcams Side-by-Side — WebcamClicks">
+<meta property="og:description" content="Run two cameras simultaneously on one screen. Compare live resolution, FPS, low-light quality, and capture side-by-side comparison photos.">
+<meta property="og:image" content="https://webcamclicks.com/assets/img/og-image.png">
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/styles/main.css">
+
+<!-- Google AdSense -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9887409333966239" crossorigin="anonymous"></script>
+
+<!-- Structured data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "WebcamClicks Dual Webcam Comparator",
+  "url": "https://webcamclicks.com/compare-webcams.html",
+  "applicationCategory": "MultimediaApplication",
+  "operatingSystem": "Any",
+  "description": "Compare two webcams simultaneously in split-screen: real-time resolution, live FPS counter, and side-by-side photo capture."
+}
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Can I test two webcams at the same time in my browser?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes! Modern web browsers support multiple concurrent MediaStream instances. WebcamClicks requests access to both selected cameras and displays them side-by-side in real time." }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I compare an external USB webcam with my laptop camera?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Select your built-in laptop camera for Camera 1, and your external USB camera (e.g. Logitech, Anker, Razer) for Camera 2. Click Start Dual Comparison to view both live feeds side-by-side." }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I save a side-by-side photo comparison?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Click Capture Comparison Snapshot to download a synchronized high-resolution image showing both camera views stamped with their device labels and resolutions." }
+    }
+  ]
+}
+</script>
+</head>
+<body class="legal-page">
+
+<header class="site-header">
+  <a class="logo" href="/">📷 <span>Webcam<em>Clicks</em></span></a>
+  <nav class="site-nav">
+    <a href="/" class="keep">Webcam Studio</a>
+    <a href="/mic-test.html">🎙️ Mic Test</a>
+    <a href="/compare-webcams.html" class="keep" style="color:var(--brand-2); font-weight:800;">Dual Compare</a>
+    <a href="/languages.html" class="keep lang-pill">🌐 Languages</a>
+  </nav>
+</header>
+
+<main style="max-width:1200px; margin: 24px auto 60px; padding: 0 16px;">
+  <!-- Hero -->
+  <section class="hero" style="padding-top:10px;">
+    <h1>Compare Two Webcams <span>Side-by-Side</span></h1>
+    <p>Test and compare two cameras on a single screen. Compare your laptop's built-in webcam against an external USB camera, check field-of-view, color balance, low-light performance, and live FPS.</p>
+    <div class="hero-badges">
+      <span>🪟 Live Split-Screen</span>
+      <span>⚡ Real-Time FPS Counters</span>
+      <span>📐 Live Resolution Inspector</span>
+      <span>📸 Side-by-Side Snapshot</span>
+      <span>🔒 100% Private (No Uploads)</span>
+    </div>
+  </section>
+
+  <!-- Ad slot top -->
+  <div class="ad-slot" aria-label="Advertisement">
+    <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-9887409333966239" data-ad-slot="1111111111" data-ad-format="auto" data-full-width-responsive="true"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+  </div>
+
+  <!-- Dual Stream Console -->
+  <div style="background:#ffffff; border:2px solid var(--border); border-radius:var(--radius); padding:24px; box-shadow:var(--shadow); margin-top:20px;">
+    <!-- Controls Bar -->
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--border);">
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <button class="btn btn-primary" id="btn-start-both" type="button">🎥 Start Dual Comparison</button>
+        <button class="btn" id="btn-stop-both" type="button" style="display:none; background:#ef4444; color:#fff; border-color:#ef4444;">⏹️ Stop Cameras</button>
+        <button class="btn" id="btn-capture-compare" type="button" disabled>📸 Capture Comparison Snapshot</button>
+      </div>
+      <span class="muted" style="font-size:0.86rem; font-weight:600;">Switch devices below to compare in real time</span>
+    </div>
+
+    <!-- Dual Video Feeds Grid -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:20px;">
+      <!-- Camera A (Left) -->
+      <div style="background:#f8fafc; border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h3 style="margin:0; font-size:1.05rem; color:#0f172a;">Camera 1 (Left)</h3>
+          <button class="tool" id="btn-mirror-a" type="button" style="padding:4px 10px; font-size:0.75rem;">🪞 Mirror</button>
+        </div>
+        <select id="select-cam-a" style="width:100%; padding:8px 12px; font-family:var(--font); font-size:0.88rem; font-weight:600; border:1.5px solid var(--border); border-radius:8px; background:#fff; margin-bottom:12px;">
+          <option value="">Camera 1</option>
+        </select>
+        <div style="position:relative; aspect-ratio:16/9; background:#0f172a; border-radius:var(--radius-sm); overflow:hidden;">
+          <video id="compare-video-a" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; display:block;"></video>
+          <div style="position:absolute; top:10px; left:10px; display:flex; gap:6px;">
+            <span class="badge" id="badge-res-a">1280 × 720</span>
+            <span class="badge ok" id="badge-fps-a">30 fps</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Camera B (Right) -->
+      <div style="background:#f8fafc; border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h3 style="margin:0; font-size:1.05rem; color:#0f172a;">Camera 2 (Right)</h3>
+          <button class="tool" id="btn-mirror-b" type="button" style="padding:4px 10px; font-size:0.75rem;">🪞 Mirror</button>
+        </div>
+        <select id="select-cam-b" style="width:100%; padding:8px 12px; font-family:var(--font); font-size:0.88rem; font-weight:600; border:1.5px solid var(--border); border-radius:8px; background:#fff; margin-bottom:12px;">
+          <option value="">Camera 2</option>
+        </select>
+        <div style="position:relative; aspect-ratio:16/9; background:#0f172a; border-radius:var(--radius-sm); overflow:hidden;">
+          <video id="compare-video-b" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; display:block;"></video>
+          <div style="position:absolute; top:10px; left:10px; display:flex; gap:6px;">
+            <span class="badge" id="badge-res-b">1920 × 1080</span>
+            <span class="badge ok" id="badge-fps-b">30 fps</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Specs Comparison Table -->
+    <div style="margin-top:28px; padding-top:20px; border-top:1.5px solid var(--border);">
+      <h3 style="font-size:1.2rem; color:#0f172a; margin-bottom:12px;">📊 Live Hardware Comparison Matrix</h3>
+      <table class="shortcut-table" style="width:100%;">
+        <thead>
+          <tr style="text-align:left; border-bottom:2px solid var(--border);">
+            <th style="padding:8px 10px; color:#0f172a;">Specification</th>
+            <th style="padding:8px 10px; color:var(--brand-2);">Camera 1 Feed</th>
+            <th style="padding:8px 10px; color:var(--brand-2);">Camera 2 Feed</th>
+          </tr>
+        </thead>
+        <tbody id="compare-specs-body">
+          <tr><td colspan="3" style="text-align:center; padding:16px;" class="muted">Click "Start Dual Comparison" to benchmark specifications</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Educational & SEO Content Section -->
+  <section class="content-section" style="margin-top:48px;">
+    <h2 class="section-title">Why Compare Two Webcams on One Screen?</h2>
+    <div class="feature-grid">
+      <article class="feature-card">
+        <span class="fc-icon">💻</span>
+        <h3>Built-in vs. External USB Cam</h3>
+        <p>Built-in laptop webcams are often limited to 720p with heavy sensor noise. Compare your laptop's camera directly against an external 1080p or 4K USB webcam under identical lighting conditions.</p>
+      </article>
+      <article class="feature-card">
+        <span class="fc-icon">💡</span>
+        <h3>Low-Light &amp; Color Balance</h3>
+        <p>Test exposure handling, white balance, dynamic range, and lens distortion side-by-side. See which camera preserves skin tones accurately without grainy digital noise.</p>
+      </article>
+      <article class="feature-card">
+        <span class="fc-icon">⚡</span>
+        <h3>True Frame Rate (FPS) Check</h3>
+        <p>Many webcams drop from 30 FPS or 60 FPS down to 15 FPS in low light due to auto-exposure. Our live FPS counter reveals the real-time frame rate delivered by each camera.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section class="content-section faq" style="margin-top:36px;">
+    <h2 class="section-title">Frequently Asked Questions</h2>
+    <details>
+      <summary>Can I compare a phone camera (like iPhone Continuity Camera) against my webcam?</summary>
+      <p>Yes! On macOS and Windows, wireless cameras (such as Apple Continuity Camera, DroidCam, or Camo) register as standard system video devices and appear right in the camera dropdowns.</p>
+    </details>
+    <details>
+      <summary>What if I only have one webcam connected?</summary>
+      <p>You can still test and benchmark your single webcam. If you have a virtual camera (like OBS Virtual Camera) or connect an external USB webcam or phone, both feeds will appear simultaneously.</p>
+    </details>
+    <details>
+      <summary>Are my comparison streams or captured photos uploaded anywhere?</summary>
+      <p>No. Both camera streams run entirely in your local browser memory via HTML5 WebRTC. Zero images, video frames, or hardware identifiers are ever uploaded to any server.</p>
+    </details>
+  </section>
+
+  <!-- Ad slot bottom -->
+  <div class="ad-slot" aria-label="Advertisement" style="margin-top:36px;">
+    <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-9887409333966239" data-ad-slot="4444444444" data-ad-format="auto" data-full-width-responsive="true"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+  </div>
+</main>
+
+<!-- Footer -->
+<footer class="site-footer">
+  <div class="footer-cols">
+    <div>
+      <h4>📷 WebcamClicks</h4>
+      <p>Online camera booth, live video recorder, microphone diagnostics &amp; dual webcam comparison.</p>
+    </div>
+    <div>
+      <h4>Tools</h4>
+      <ul>
+        <li><a href="/">Webcam Effects Studio</a></li>
+        <li><a href="/mic-test.html">Microphone Diagnostic Test</a></li>
+        <li><a href="/compare-webcams.html">Compare Two Webcams</a></li>
+        <li><a href="/languages.html">Languages Directory</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Languages</h4>
+      <ul>
+        <li><a href="/">English</a></li>
+        <li><a href="/es/">Español</a></li>
+        <li><a href="/fr/">Français</a></li>
+        <li><a href="/de/">Deutsch</a></li>
+        <li><a href="/pt/">Português</a></li>
+        <li><a href="/hi/">हिन्दी</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Legal</h4>
+      <ul>
+        <li><a href="/privacy.html">Privacy Policy</a></li>
+        <li><a href="/terms.html">Terms of Service</a></li>
+      </ul>
+    </div>
+  </div>
+  <p class="fineprint">
+    © 2026 WebcamClicks.com — 100% on-device audio &amp; video privacy. No data is uploaded.
+  </p>
+</footer>
+
+<script type="module" src="/js/compare-ui.js"></script>
+</body>
+</html>

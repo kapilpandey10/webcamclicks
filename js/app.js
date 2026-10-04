@@ -101,6 +101,7 @@ function init() {
   el.fpsBadge = $('#fps-badge');
   el.recBadge = $('#rec-badge');
   el.btnRecord = $('#btn-record');
+  el.cameraSelect = $('#camera-select');
   el.faceBadge = $('#face-badge');
   el.flash = $('#flash');
   el.categoryTabs = $('#category-tabs');
@@ -176,6 +177,7 @@ async function startCamera() {
     el.startOverlay.style.display = 'none';
     el.stageError.style.display = 'none';
     if (el.fpsBadge) el.fpsBadge.style.display = '';
+    await updateCameraSelectUI();
     setEffect(settings.effect || 'normal', { save: false });
     if (pendingGame) { startGame(pendingGame); pendingGame = null; }
     Sound.pop();
@@ -184,6 +186,25 @@ async function startCamera() {
     el.startBtn.textContent = '🎥 Enable my camera';
     el.stageError.style.display = 'flex';
     el.stageErrorMsg.textContent = friendlyCameraError(err);
+  }
+}
+
+async function updateCameraSelectUI() {
+  if (!el.cameraSelect) return;
+  const devices = await camera.listDevices();
+  if (devices && devices.length > 1) {
+    el.cameraSelect.innerHTML = '';
+    const currentId = camera.getCurrentDeviceId();
+    devices.forEach((d, idx) => {
+      const opt = document.createElement('option');
+      opt.value = d.deviceId;
+      opt.textContent = d.label || `Camera ${idx + 1}`;
+      if (d.deviceId === currentId) opt.selected = true;
+      el.cameraSelect.appendChild(opt);
+    });
+    el.cameraSelect.style.display = 'inline-block';
+  } else {
+    el.cameraSelect.style.display = 'none';
   }
 }
 
@@ -750,9 +771,28 @@ function wireEvents() {
   on('#btn-flip', 'click', async () => {
     try {
       const ok = await camera.flip();
+      display.width = camera.width;
+      display.height = camera.height;
+      await updateCameraSelectUI();
       toast(ok ? '🔄 Switched camera' : '🔄 Only one camera found');
     } catch { toast('⚠️ Could not switch camera'); }
   });
+  on('#camera-select', 'change', async (e) => {
+    const devId = e.target.value;
+    if (devId && camera.active) {
+      try {
+        await camera.switchDevice(devId);
+        display.width = camera.width;
+        display.height = camera.height;
+        toast('🔄 Switched camera');
+      } catch {
+        toast('⚠️ Could not switch to selected camera');
+      }
+    }
+  });
+  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+    navigator.mediaDevices.addEventListener('devicechange', updateCameraSelectUI);
+  }
   on('#btn-fullscreen', 'click', toggleFullscreen);
 
   on('#intensity', 'input', (e) => {

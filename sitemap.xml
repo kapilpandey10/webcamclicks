@@ -91,6 +91,22 @@
     <xhtml:link rel="alternate" hreflang="hi" href="https://webcamclicks.com/hi/" />
   </url>
 
+  <!-- Microphone Test & Diagnostic Report -->
+  <url>
+    <loc>https://webcamclicks.com/mic-test.html</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Dual Webcam Side-by-Side Comparison -->
+  <url>
+    <loc>https://webcamclicks.com/compare-webcams.html</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
   <!-- Languages Hub Page -->
   <url>
     <loc>https://webcamclicks.com/languages.html</loc>

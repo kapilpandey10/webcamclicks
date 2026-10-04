@@ -44,9 +44,12 @@ export class Recorder {
     return 'webm';
   }
 
-  start(fps = 30) {
+  start(fps = 30, audioTrack = null) {
     if (this.recording || !this.supported) return false;
-    const stream = this.canvas.captureStream(fps);
+    const canvasStream = this.canvas.captureStream(fps);
+    const tracks = [...canvasStream.getVideoTracks()];
+    if (audioTrack) tracks.push(audioTrack);
+    const stream = new MediaStream(tracks);
     const options = this.mimeType ? { mimeType: this.mimeType, videoBitsPerSecond: 4000000 } : undefined;
     try {
       this.recorder = new MediaRecorder(stream, options);

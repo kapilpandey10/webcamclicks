@@ -103,20 +103,16 @@
 
   <!-- Main Tester Card -->
   <div class="feature-card" style="margin-top:20px; padding:28px; border:2px solid var(--border); box-shadow:var(--shadow);">
-    <!-- Device Selection & Toolbar -->
+    <!-- Top Action Header -->
     <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:14px; margin-bottom:20px;">
-      <div style="flex:1; min-width:240px;">
-        <label for="mic-select" style="font-weight:700; font-size:0.9rem; color:var(--text); display:block; margin-bottom:6px;">
-          Select Microphone Hardware:
-        </label>
-        <select id="mic-select" class="tool-select" style="width:100%; max-width:420px; padding:10px 14px; font-family:var(--font); font-size:0.92rem; font-weight:600; border:1.5px solid var(--border); border-radius:var(--radius-sm); background:#fff; color:var(--text); cursor:pointer;">
-          <option value="">Default Microphone</option>
-        </select>
+      <div>
+        <h2 style="margin:0; font-size:1.35rem; color:#0f172a;">🎙️ Live Microphone Audio Monitor</h2>
+        <p class="muted" style="margin:2px 0 0; font-size:0.88rem;">Speak clearly into your microphone to monitor real-time levels and waveform</p>
       </div>
 
       <div style="display:flex; gap:10px; align-items:center;">
-        <button class="btn btn-primary" id="btn-mic-start" type="button">🎙️ Start Test</button>
-        <button class="btn" id="btn-mic-stop" type="button" style="display:none; background:#ef4444; color:#fff; border-color:#ef4444;">⏹️ Stop Test</button>
+        <button class="btn btn-primary" id="btn-mic-start" type="button" style="font-size:1.05rem; padding:10px 24px;">🎙️ Start Test</button>
+        <button class="btn" id="btn-mic-stop" type="button" style="display:none; background:#ef4444; color:#fff; border-color:#ef4444; font-size:1.05rem; padding:10px 24px;">⏹️ Stop Test</button>
       </div>
     </div>
 
@@ -163,6 +159,49 @@
     <div style="margin-top:14px;">
       <audio id="sample-playback" controls style="display:none; width:100%; max-width:400px; margin-top:10px;"></audio>
     </div>
+
+    <!-- Microphone Configuration & Hardware Form -->
+    <form id="mic-settings-form" class="form-panel" style="margin-top:24px;">
+      <h3 class="form-title">⚙️ Microphone Configuration &amp; Audio Processing</h3>
+      <p class="form-desc">Select your input device and configure digital signal processing filters. Click <strong>Save Microphone Settings</strong> to confirm and lock in your details.</p>
+      
+      <div class="form-grid">
+        <div class="form-group" style="grid-column: 1 / -1;">
+          <label class="form-label" for="mic-select">Microphone Input Hardware</label>
+          <select id="mic-select" class="form-control">
+            <option value="">Default Microphone</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="mic-pref-echo">Echo Cancellation</label>
+          <select id="mic-pref-echo" class="form-control">
+            <option value="true" selected>Enabled (Acoustic Filter)</option>
+            <option value="false">Disabled (Raw Audio)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="mic-pref-noise">Noise Suppression</label>
+          <select id="mic-pref-noise" class="form-control">
+            <option value="true" selected>Enabled (Background Fan / AC Filter)</option>
+            <option value="false">Disabled (Full Fidelity)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="mic-pref-gain">Auto Gain Control (AGC)</label>
+          <select id="mic-pref-gain" class="form-control">
+            <option value="true" selected>Enabled (Normalize Volume)</option>
+            <option value="false">Disabled (Manual Levels)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-save" id="btn-save-mic-settings">💾 Save Microphone Settings</button>
+        <div id="mic-save-confirm" class="save-toast" style="display:none;" role="status">
+          ✅ Details Saved Successfully!
+        </div>
+      </div>
+    </form>
   </div>
 
   <!-- Comprehensive Diagnostic Report (Initially Hidden, appears when generated) -->
@@ -192,7 +231,41 @@
 
     <!-- Actionable Recommendations -->
     <h3 style="font-size:1.1rem; margin-bottom:8px;">Optimization Recommendations</h3>
-    <ul id="report-recs-list" style="margin-bottom:28px; line-height:1.7;"></ul>
+    <ul id="report-recs-list" style="margin-bottom:24px; line-height:1.7;"></ul>
+
+    <!-- Report Customization Form -->
+    <form id="report-details-form" class="form-panel" style="margin: 20px 0 24px;">
+      <h3 class="form-title">📝 Report Details &amp; Tester Notes</h3>
+      <p class="form-desc">Personalize this diagnostic certificate with your name, test room environment, and setup notes. Click <strong>Save Report Details</strong> to confirm.</p>
+      
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="report-tester-input">Tester / Presenter Name</label>
+          <input type="text" id="report-tester-input" class="form-control" placeholder="e.g. Kapil Pandey">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="report-env-input">Room Acoustic Environment</label>
+          <select id="report-env-input" class="form-control">
+            <option>Quiet Home Office</option>
+            <option>Corporate Meeting Room</option>
+            <option>Open Office Workspace</option>
+            <option>Acoustically Treated Studio</option>
+            <option>Mobile / Outdoor Environment</option>
+          </select>
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1;">
+          <label class="form-label" for="report-notes-input">Hardware &amp; Connection Notes</label>
+          <input type="text" id="report-notes-input" class="form-control" placeholder="e.g. USB Headset with pop filter connected to laptop dock">
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-save" id="btn-save-report-details">💾 Save Report Details</button>
+        <div id="report-details-save-confirm" class="save-toast" style="display:none;" role="status">
+          ✅ Details Saved Successfully!
+        </div>
+      </div>
+    </form>
 
     <!-- Report Actions -->
     <div style="display:flex; gap:12px; flex-wrap:wrap; padding-top:18px; border-top:1px solid var(--border);">

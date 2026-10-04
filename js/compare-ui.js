@@ -25,8 +25,29 @@ const el = {
   resBadgeB: document.getElementById('badge-res-b'),
   fpsBadgeB: document.getElementById('badge-fps-b'),
 
-  tableBody: document.getElementById('compare-specs-body')
+  tableBody: document.getElementById('compare-specs-body'),
+
+  /* Config Form */
+  compareConfigForm: document.getElementById('compare-config-form'),
+  comparePrefRes: document.getElementById('compare-pref-res'),
+  comparePrefStamp: document.getElementById('compare-pref-stamp'),
+  comparePrefMirrorA: document.getElementById('compare-pref-mirror-a'),
+  comparePrefMirrorB: document.getElementById('compare-pref-mirror-b'),
+  compareSaveConfirm: document.getElementById('compare-save-confirm')
 };
+
+let comparePrefs = {
+  devA: '',
+  devB: '',
+  resolution: 'max',
+  stamp: 'specs',
+  mirrorA: false,
+  mirrorB: false
+};
+try {
+  const saved = localStorage.getItem('wc_compare_prefs');
+  if (saved) Object.assign(comparePrefs, JSON.parse(saved));
+} catch {}
 
 async function init() {
   comparator = new DualWebcamComparator({
@@ -36,6 +57,17 @@ async function init() {
     onMetricsB: (specs) => updateMetricsB(specs)
   });
 
+  // Restore saved form choices
+  if (el.comparePrefRes) el.comparePrefRes.value = comparePrefs.resolution || 'max';
+  if (el.comparePrefStamp) el.comparePrefStamp.value = comparePrefs.stamp || 'specs';
+  if (el.comparePrefMirrorA) el.comparePrefMirrorA.value = String(comparePrefs.mirrorA === true);
+  if (el.comparePrefMirrorB) el.comparePrefMirrorB.value = String(comparePrefs.mirrorB === true);
+
+  comparator.mirrorA = comparePrefs.mirrorA === true;
+  el.videoA.style.transform = comparator.mirrorA ? 'scaleX(-1)' : 'none';
+  comparator.mirrorB = comparePrefs.mirrorB === true;
+  el.videoB.style.transform = comparator.mirrorB ? 'scaleX(-1)' : 'none';
+
   await populateCameraDropdowns();
 
   el.btnStartBoth.addEventListener('click', onStartBoth);
@@ -43,15 +75,21 @@ async function init() {
   el.selectA.addEventListener('change', () => onSwitchCamera('A'));
   el.selectB.addEventListener('change', () => onSwitchCamera('B'));
 
+  if (el.compareConfigForm) {
+    el.compareConfigForm.addEventListener('submit', onSaveComparePrefs);
+  }
+
   el.btnMirrorA.addEventListener('click', () => {
     comparator.mirrorA = !comparator.mirrorA;
     el.videoA.style.transform = comparator.mirrorA ? 'scaleX(-1)' : 'none';
+    if (el.comparePrefMirrorA) el.comparePrefMirrorA.value = String(comparator.mirrorA);
     toast(comparator.mirrorA ? '🪞 Camera A Mirrored' : 'Camera A Unmirrored');
   });
 
   el.btnMirrorB.addEventListener('click', () => {
     comparator.mirrorB = !comparator.mirrorB;
     el.videoB.style.transform = comparator.mirrorB ? 'scaleX(-1)' : 'none';
+    if (el.comparePrefMirrorB) el.comparePrefMirrorB.value = String(comparator.mirrorB);
     toast(comparator.mirrorB ? '🪞 Camera B Mirrored' : 'Camera B Unmirrored');
   });
 
@@ -61,6 +99,35 @@ async function init() {
     comparator.captureSideBySide(labelA, labelB);
     toast('📸 Comparison snapshot captured & downloaded!');
   });
+}
+
+function onSaveComparePrefs(e) {
+  if (e) e.preventDefault();
+  comparePrefs.devA = el.selectA.value;
+  comparePrefs.devB = el.selectB.value;
+  comparePrefs.resolution = el.comparePrefRes ? el.comparePrefRes.value : 'max';
+  comparePrefs.stamp = el.comparePrefStamp ? el.comparePrefStamp.value : 'specs';
+  comparePrefs.mirrorA = el.comparePrefMirrorA ? el.comparePrefMirrorA.value === 'true' : false;
+  comparePrefs.mirrorB = el.comparePrefMirrorB ? el.comparePrefMirrorB.value === 'true' : false;
+
+  comparator.mirrorA = comparePrefs.mirrorA;
+  el.videoA.style.transform = comparator.mirrorA ? 'scaleX(-1)' : 'none';
+  comparator.mirrorB = comparePrefs.mirrorB;
+  el.videoB.style.transform = comparator.mirrorB ? 'scaleX(-1)' : 'none';
+
+  try {
+    localStorage.setItem('wc_compare_prefs', JSON.stringify(comparePrefs));
+  } catch {}
+
+  if (el.compareSaveConfirm) {
+    const timeStr = new Date().toLocaleTimeString();
+    el.compareSaveConfirm.textContent = `✅ Details Saved Successfully! (${timeStr})`;
+    el.compareSaveConfirm.style.display = 'inline-flex';
+    setTimeout(() => {
+      if (el.compareSaveConfirm) el.compareSaveConfirm.style.display = 'none';
+    }, 4000);
+  }
+  toast('💾 Dual camera configuration saved and confirmed!');
 }
 
 async function populateCameraDropdowns() {

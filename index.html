@@ -217,6 +217,7 @@
       <button class="tool" id="btn-gallery" type="button">🖼️ <span class="tool-label">Gallery</span></button>
       <button class="tool" id="btn-fullscreen" type="button">⛶ <span class="tool-label">Full</span></button>
       <button class="tool active" id="btn-sound" type="button"><span class="tool-icon">🔊</span> <span class="tool-label">Sound</span></button>
+      <button class="tool" id="btn-settings" type="button">⚙️ <span class="tool-label">Settings</span></button>
       <div class="spacer"></div>
       <label class="intensity" for="intensity">Effect strength
         <input type="range" id="intensity" min="0" max="100" value="100" step="5">
@@ -482,6 +483,72 @@
       <li><strong>Face effects slow?</strong> Lower effect strength or close other tabs; face detection loads once and is cached.</li>
     </ul>
     <p class="panel-hint">Your privacy: the camera feed, photos and videos never leave your device.</p>
+  </div>
+</div>
+
+<!-- ================= Settings & Preferences Modal ================= -->
+<div class="modal" id="settings-modal" role="dialog" aria-modal="true" aria-label="Camera Settings and Preferences">
+  <div class="modal-card">
+    <button class="modal-close" id="btn-settings-close" type="button" aria-label="Close settings">✕</button>
+    <h2>⚙️ Camera Settings &amp; Preferences</h2>
+    <p class="panel-hint" style="margin-bottom:18px;">Configure your camera hardware, capture timer, resolution, and recording formats. Click <strong>Save Preferences</strong> to confirm and remember your choices.</p>
+    
+    <form id="camera-settings-form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="pref-camera-select">Camera Device</label>
+          <select id="pref-camera-select" class="form-control">
+            <option value="">Default Camera</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="pref-resolution">Target Resolution</label>
+          <select id="pref-resolution" class="form-control">
+            <option value="1920x1080">1080p Full HD (1920 × 1080)</option>
+            <option value="1280x720" selected>720p HD (1280 × 720)</option>
+            <option value="640x480">480p SD (640 × 480)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="pref-timer">Photo Countdown Timer</label>
+          <select id="pref-timer" class="form-control">
+            <option value="0">Off (Instant Capture)</option>
+            <option value="3">3 Seconds</option>
+            <option value="5">5 Seconds</option>
+            <option value="10">10 Seconds</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="pref-photo-format">Snapshot Image Format</label>
+          <select id="pref-photo-format" class="form-control">
+            <option value="image/jpeg">JPEG (.jpg) - High Quality</option>
+            <option value="image/png">PNG (.png) - Lossless</option>
+            <option value="image/webp">WebP (.webp) - Modern</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="pref-mirror">Default Mirror Mode</label>
+          <select id="pref-mirror" class="form-control">
+            <option value="true">Mirrored (Selfie View)</option>
+            <option value="false">Normal (True View)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="pref-sound">Sound Effects &amp; Shutter</label>
+          <select id="pref-sound" class="form-control">
+            <option value="true">Enabled (Sound ON)</option>
+            <option value="false">Muted (Sound OFF)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-save" id="btn-save-camera-settings">💾 Save Preferences</button>
+        <div id="camera-save-confirm" class="save-toast" style="display:none;" role="status">
+          ✅ Details Saved Successfully!
+        </div>
+      </div>
+    </form>
   </div>
 </div>
 

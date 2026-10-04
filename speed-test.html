@@ -159,6 +159,47 @@
         <div id="stat-jitter" style="font-size:1.9rem; font-weight:800; color:#0f172a; margin-top:6px;">—</div>
       </div>
     </div>
+
+    <!-- Speed Test Configuration & Preferences Form -->
+    <form id="speed-pref-form" class="form-panel" style="margin-top:24px;">
+      <h3 class="form-title">⚙️ Speed Test Preferences &amp; Network Profile</h3>
+      <p class="form-desc">Customize your preferred bandwidth units, connection medium, and ping sample depth. Click <strong>Save Test Preferences</strong> to confirm.</p>
+      
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="speed-pref-units">Display Units</label>
+          <select id="speed-pref-units" class="form-control">
+            <option value="mbps" selected>Mbps (Megabits / sec - Recommended)</option>
+            <option value="mBps">MB/s (Megabytes / sec)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="speed-pref-conn">Connection Type</label>
+          <select id="speed-pref-conn" class="form-control">
+            <option>Home WiFi (5GHz / WiFi 6)</option>
+            <option>Ethernet LAN Cable</option>
+            <option>Mobile 5G / 4G LTE</option>
+            <option>Office / Public WiFi</option>
+            <option>Fiber Broadband</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="speed-pref-pings">Latency Accuracy</label>
+          <select id="speed-pref-pings" class="form-control">
+            <option value="5" selected>5 Probes (Standard Balance)</option>
+            <option value="3">3 Probes (Fast Test)</option>
+            <option value="8">8 Probes (High Precision)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-save" id="btn-save-speed-prefs">💾 Save Test Preferences</button>
+        <div id="speed-pref-save-confirm" class="save-toast" style="display:none;" role="status">
+          ✅ Details Saved Successfully!
+        </div>
+      </div>
+    </form>
   </div>
 
   <!-- Results Diagnostic Card (Shows after test) -->
@@ -178,6 +219,30 @@
     <!-- Application Suitability Grid -->
     <h3 style="font-size:1.1rem; margin-bottom:12px;">Real-World Application Readiness</h3>
     <div id="speed-apps-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:26px;"></div>
+
+    <!-- Save Test Benchmark Form -->
+    <form id="speed-record-form" class="form-panel" style="margin: 20px 0 24px;">
+      <h3 class="form-title">📝 Save Speed Test Result &amp; Benchmark</h3>
+      <p class="form-desc">Tag this diagnostic benchmark with your ISP and test location. Click <strong>Save Test Record</strong> to confirm and store in your local device history.</p>
+      
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="speed-record-tag">Test Label / Location</label>
+          <input type="text" id="speed-record-tag" class="form-control" placeholder="e.g. Home Office Desk WiFi">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="speed-record-isp">Internet Service Provider (ISP)</label>
+          <input type="text" id="speed-record-isp" class="form-control" placeholder="e.g. Comcast, Spectrum, Verizon, AT&T">
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-save" id="btn-save-speed-record">💾 Save Test Record</button>
+        <div id="speed-record-save-confirm" class="save-toast" style="display:none;" role="status">
+          ✅ Details Saved Successfully!
+        </div>
+      </div>
+    </form>
 
     <!-- Action buttons -->
     <div style="display:flex; gap:12px; flex-wrap:wrap; padding-top:18px; border-top:1px solid var(--border);">

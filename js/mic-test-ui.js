@@ -37,8 +37,42 @@ const el = {
   reportRecs: document.getElementById('report-recs-list'),
   btnPrintReport: document.getElementById('btn-print-report'),
   btnCopyReport: document.getElementById('btn-copy-report'),
-  btnDownloadReport: document.getElementById('btn-download-report')
+  btnDownloadReport: document.getElementById('btn-download-report'),
+
+  /* Form Elements */
+  micSettingsForm: document.getElementById('mic-settings-form'),
+  micPrefEcho: document.getElementById('mic-pref-echo'),
+  micPrefNoise: document.getElementById('mic-pref-noise'),
+  micPrefGain: document.getElementById('mic-pref-gain'),
+  micSaveConfirm: document.getElementById('mic-save-confirm'),
+
+  reportDetailsForm: document.getElementById('report-details-form'),
+  reportTesterInput: document.getElementById('report-tester-input'),
+  reportEnvInput: document.getElementById('report-env-input'),
+  reportNotesInput: document.getElementById('report-notes-input'),
+  reportDetailsSaveConfirm: document.getElementById('report-details-save-confirm')
 };
+
+let micPrefs = {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
+  deviceId: ''
+};
+try {
+  const saved = localStorage.getItem('wc_mic_prefs');
+  if (saved) Object.assign(micPrefs, JSON.parse(saved));
+} catch {}
+
+let reportDetails = {
+  testerName: '',
+  environment: 'Quiet Home Office',
+  notes: ''
+};
+try {
+  const savedReport = localStorage.getItem('wc_mic_report_details');
+  if (savedReport) Object.assign(reportDetails, JSON.parse(savedReport));
+} catch {}
 
 function init() {
   tester = new MicrophoneTester({
@@ -46,6 +80,15 @@ function init() {
     onMetrics: handleMetrics,
     onStateChange: handleStateChange
   });
+
+  // Restore saved form values
+  if (el.micPrefEcho) el.micPrefEcho.value = String(micPrefs.echoCancellation !== false);
+  if (el.micPrefNoise) el.micPrefNoise.value = String(micPrefs.noiseSuppression !== false);
+  if (el.micPrefGain) el.micPrefGain.value = String(micPrefs.autoGainControl !== false);
+
+  if (el.reportTesterInput) el.reportTesterInput.value = reportDetails.testerName || '';
+  if (el.reportEnvInput) el.reportEnvInput.value = reportDetails.environment || 'Quiet Home Office';
+  if (el.reportNotesInput) el.reportNotesInput.value = reportDetails.notes || '';
 
   populateDevices();
 
@@ -61,6 +104,62 @@ function init() {
   el.btnPrintReport.addEventListener('click', () => window.print());
   el.btnCopyReport.addEventListener('click', copyReport);
   el.btnDownloadReport.addEventListener('click', downloadReport);
+
+  if (el.micSettingsForm) {
+    el.micSettingsForm.addEventListener('submit', onSaveMicSettings);
+  }
+  if (el.reportDetailsForm) {
+    el.reportDetailsForm.addEventListener('submit', onSaveReportDetails);
+  }
+}
+
+function onSaveMicSettings(e) {
+  if (e) e.preventDefault();
+  micPrefs.deviceId = el.micSelect.value;
+  micPrefs.echoCancellation = el.micPrefEcho.value === 'true';
+  micPrefs.noiseSuppression = el.micPrefNoise.value === 'true';
+  micPrefs.autoGainControl = el.micPrefGain.value === 'true';
+  try {
+    localStorage.setItem('wc_mic_prefs', JSON.stringify(micPrefs));
+  } catch {}
+
+  if (tester && tester.active) {
+    tester.start(micPrefs.deviceId, {
+      echoCancellation: micPrefs.echoCancellation,
+      noiseSuppression: micPrefs.noiseSuppression,
+      autoGainControl: micPrefs.autoGainControl
+    });
+  }
+
+  if (el.micSaveConfirm) {
+    const timeStr = new Date().toLocaleTimeString();
+    el.micSaveConfirm.textContent = `✅ Details Saved Successfully! (${timeStr})`;
+    el.micSaveConfirm.style.display = 'inline-flex';
+    setTimeout(() => {
+      if (el.micSaveConfirm) el.micSaveConfirm.style.display = 'none';
+    }, 4000);
+  }
+  toast('💾 Microphone settings saved and confirmed!');
+}
+
+function onSaveReportDetails(e) {
+  if (e) e.preventDefault();
+  reportDetails.testerName = el.reportTesterInput ? el.reportTesterInput.value.trim() : '';
+  reportDetails.environment = el.reportEnvInput ? el.reportEnvInput.value : '';
+  reportDetails.notes = el.reportNotesInput ? el.reportNotesInput.value.trim() : '';
+  try {
+    localStorage.setItem('wc_mic_report_details', JSON.stringify(reportDetails));
+  } catch {}
+
+  if (el.reportDetailsSaveConfirm) {
+    const timeStr = new Date().toLocaleTimeString();
+    el.reportDetailsSaveConfirm.textContent = `✅ Details Saved Successfully! (${timeStr})`;
+    el.reportDetailsSaveConfirm.style.display = 'inline-flex';
+    setTimeout(() => {
+      if (el.reportDetailsSaveConfirm) el.reportDetailsSaveConfirm.style.display = 'none';
+    }, 4000);
+  }
+  toast('💾 Report details saved to certificate!');
 }
 
 async function populateDevices() {
@@ -83,15 +182,23 @@ async function populateDevices() {
     el.micSelect.appendChild(opt);
   });
 
-  if (currentVal) el.micSelect.value = currentVal;
+  if (currentVal) {
+    el.micSelect.value = currentVal;
+  } else if (micPrefs.deviceId) {
+    el.micSelect.value = micPrefs.deviceId;
+  }
 }
 
 async function startTest() {
   try {
     el.btnStart.disabled = true;
     el.btnStart.textContent = 'Connecting…';
-    const deviceId = el.micSelect.value || null;
-    await tester.start(deviceId);
+    const deviceId = el.micSelect.value || micPrefs.deviceId || null;
+    await tester.start(deviceId, {
+      echoCancellation: micPrefs.echoCancellation,
+      noiseSuppression: micPrefs.noiseSuppression,
+      autoGainControl: micPrefs.autoGainControl
+    });
     await populateDevices();
     toast('🎙️ Microphone active! Speak to test volume & clarity.');
   } catch (err) {
@@ -234,9 +341,13 @@ function renderReport() {
 function getReportText() {
   if (!currentReport) return '';
   const r = currentReport;
+  const testerInfo = reportDetails.testerName ? `\nTester: ${reportDetails.testerName}` : '';
+  const envInfo = reportDetails.environment ? `\nEnvironment: ${reportDetails.environment}` : '';
+  const notesInfo = reportDetails.notes ? `\nHardware Notes: ${reportDetails.notes}` : '';
+
   return `=== WEBCAMCLICKS MICROPHONE DIAGNOSTIC REPORT ===
 Date: ${r.formattedDate}
-Device: ${r.device ? r.device.label : 'Microphone'}
+Device: ${r.device ? r.device.label : 'Microphone'}${testerInfo}${envInfo}${notesInfo}
 Overall Score: ${r.score} / 100 (${r.status})
 Summary: ${r.summaryText}
 

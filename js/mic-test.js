@@ -52,15 +52,15 @@ export class MicrophoneTester {
     }
   }
 
-  async start(deviceId = null) {
+  async start(deviceId = null, options = {}) {
     this.stop();
 
     if (deviceId) this.selectedDeviceId = deviceId;
 
     const audioConstraints = {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true
+      echoCancellation: options.echoCancellation !== false,
+      noiseSuppression: options.noiseSuppression !== false,
+      autoGainControl: options.autoGainControl !== false
     };
     if (this.selectedDeviceId) {
       audioConstraints.deviceId = { exact: this.selectedDeviceId };

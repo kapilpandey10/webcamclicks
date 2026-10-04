@@ -118,6 +118,15 @@ function init() {
   el.galleryDrawer = $('#gallery-drawer');
   el.galleryGrid = $('#gallery-grid');
   el.helpModal = $('#help-modal');
+  el.settingsModal = $('#settings-modal');
+  el.settingsForm = $('#camera-settings-form');
+  el.cameraSaveConfirm = $('#camera-save-confirm');
+  el.prefCameraSelect = $('#pref-camera-select');
+  el.prefResolution = $('#pref-resolution');
+  el.prefTimer = $('#pref-timer');
+  el.prefPhotoFormat = $('#pref-photo-format');
+  el.prefMirror = $('#pref-mirror');
+  el.prefSound = $('#pref-sound');
 
   camera.attach(el.stage);
   camera.mirror = settings.mirror !== false;
@@ -502,8 +511,22 @@ async function stopRecording() {
   }
 }
 
-function capture() {
+let countdownActive = false;
+async function capture() {
   if (!camera.active) { toast('🎥 Enable the camera first'); return; }
+  if (countdownActive) return;
+
+  const timerSecs = settings.timer ? parseInt(settings.timer, 10) : 0;
+  if (timerSecs > 0) {
+    countdownActive = true;
+    for (let i = timerSecs; i > 0; i--) {
+      toast(`⏳ ${i}…`, 1000);
+      Sound.pop();
+      await new Promise(r => setTimeout(r, 1000));
+    }
+    countdownActive = false;
+  }
+
   Sound.shutter();
   if (el.flash) {
     el.flash.classList.remove('go');
@@ -512,6 +535,74 @@ function capture() {
   }
   const item = gallery.captureFrom(display, manager.currentName || 'Normal');
   if (item) toast('📸 Saved to your gallery — it never leaves this device');
+}
+
+async function openSettingsModal() {
+  if (!el.settingsModal) return;
+  if (el.prefCameraSelect) {
+    const devices = await camera.listDevices();
+    el.prefCameraSelect.innerHTML = '<option value="">Default Camera</option>';
+    const currentId = camera.getCurrentDeviceId() || settings.deviceId || '';
+    devices.forEach((d, idx) => {
+      const opt = document.createElement('option');
+      opt.value = d.deviceId;
+      opt.textContent = d.label || `Camera ${idx + 1}`;
+      if (d.deviceId === currentId) opt.selected = true;
+      el.prefCameraSelect.appendChild(opt);
+    });
+  }
+  if (el.prefResolution) el.prefResolution.value = settings.resolution || '1280x720';
+  if (el.prefTimer) el.prefTimer.value = String(settings.timer || 0);
+  if (el.prefPhotoFormat) el.prefPhotoFormat.value = settings.photoFormat || 'image/jpeg';
+  if (el.prefMirror) el.prefMirror.value = String(camera.mirror !== false);
+  if (el.prefSound) el.prefSound.value = String(Sound.enabled !== false);
+  el.settingsModal.classList.add('on');
+}
+
+function closeSettingsModal() {
+  if (el.settingsModal) el.settingsModal.classList.remove('on');
+}
+
+async function onSaveCameraSettings(e) {
+  if (e) e.preventDefault();
+  if (el.prefCameraSelect) {
+    const chosenDev = el.prefCameraSelect.value;
+    settings.deviceId = chosenDev;
+    if (chosenDev && camera.active && chosenDev !== camera.getCurrentDeviceId()) {
+      try {
+        await camera.switchDevice(chosenDev);
+        display.width = camera.width;
+        display.height = camera.height;
+        await updateCameraSelectUI();
+      } catch (err) {
+        console.warn('Switch device err:', err);
+      }
+    }
+  }
+  if (el.prefResolution) settings.resolution = el.prefResolution.value;
+  if (el.prefTimer) settings.timer = parseInt(el.prefTimer.value, 10) || 0;
+  if (el.prefPhotoFormat) settings.photoFormat = el.prefPhotoFormat.value;
+  if (el.prefMirror) {
+    settings.mirror = el.prefMirror.value === 'true';
+    camera.mirror = settings.mirror;
+    setToolActive('#btn-mirror', camera.mirror);
+  }
+  if (el.prefSound) {
+    settings.sound = el.prefSound.value === 'true';
+    Sound.enabled = settings.sound;
+    setToolActive('#btn-sound', Sound.enabled);
+    updateSoundBtn();
+  }
+  saveSettings();
+  if (el.cameraSaveConfirm) {
+    const timeStr = new Date().toLocaleTimeString();
+    el.cameraSaveConfirm.textContent = `✅ Details Saved Successfully! (${timeStr})`;
+    el.cameraSaveConfirm.style.display = 'inline-flex';
+    setTimeout(() => {
+      if (el.cameraSaveConfirm) el.cameraSaveConfirm.style.display = 'none';
+    }, 4000);
+  }
+  Sound.pop();
 }
 
 function renderGallery(items) {
@@ -732,6 +823,7 @@ function onKeyDown(e) {
   if (k === 'escape') {
     if (gameMgr.active) { exitGame(); return; }
     if (el.helpModal) el.helpModal.classList.remove('on');
+    if (el.settingsModal) el.settingsModal.classList.remove('on');
     closeGallery();
   }
 }
@@ -754,6 +846,13 @@ function wireEvents() {
   on('#help-modal', 'click', (e) => {
     if (e.target === el.helpModal && el.helpModal) el.helpModal.classList.remove('on');
   });
+
+  on('#btn-settings', 'click', openSettingsModal);
+  on('#btn-settings-close', 'click', closeSettingsModal);
+  on('#settings-modal', 'click', (e) => {
+    if (e.target === el.settingsModal && el.settingsModal) closeSettingsModal();
+  });
+  on('#camera-settings-form', 'submit', onSaveCameraSettings);
 
   on('#btn-mirror', 'click', () => {
     camera.toggleMirror();

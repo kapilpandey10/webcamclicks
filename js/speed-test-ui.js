@@ -34,8 +34,36 @@ const el = {
   summaryText: document.getElementById('speed-summary-text'),
   appsGrid: document.getElementById('speed-apps-grid'),
   btnCopy: document.getElementById('btn-copy-speed'),
-  btnTestAgain: document.getElementById('btn-test-again')
+  btnTestAgain: document.getElementById('btn-test-again'),
+
+  // Form Elements
+  speedPrefForm: document.getElementById('speed-pref-form'),
+  speedPrefUnits: document.getElementById('speed-pref-units'),
+  speedPrefConn: document.getElementById('speed-pref-conn'),
+  speedPrefPings: document.getElementById('speed-pref-pings'),
+  speedPrefSaveConfirm: document.getElementById('speed-pref-save-confirm'),
+
+  speedRecordForm: document.getElementById('speed-record-form'),
+  speedRecordTag: document.getElementById('speed-record-tag'),
+  speedRecordIsp: document.getElementById('speed-record-isp'),
+  speedRecordSaveConfirm: document.getElementById('speed-record-save-confirm')
 };
+
+let speedPrefs = {
+  units: 'mbps',
+  conn: 'Home WiFi (5GHz / WiFi 6)',
+  pings: 5
+};
+try {
+  const saved = localStorage.getItem('wc_speed_prefs');
+  if (saved) Object.assign(speedPrefs, JSON.parse(saved));
+} catch {}
+
+let speedHistory = [];
+try {
+  const savedHist = localStorage.getItem('wc_speed_history');
+  if (savedHist) speedHistory = JSON.parse(savedHist);
+} catch {}
 
 function init() {
   tester = new SpeedTester({
@@ -44,6 +72,11 @@ function init() {
     onComplete: handleComplete
   });
 
+  // Restore saved form choices
+  if (el.speedPrefUnits) el.speedPrefUnits.value = speedPrefs.units || 'mbps';
+  if (el.speedPrefConn) el.speedPrefConn.value = speedPrefs.conn || 'Home WiFi (5GHz / WiFi 6)';
+  if (el.speedPrefPings) el.speedPrefPings.value = String(speedPrefs.pings || 5);
+
   initParticles();
   startGaugeRenderLoop();
 
@@ -51,6 +84,65 @@ function init() {
   el.btnStop.addEventListener('click', stopTest);
   if (el.btnTestAgain) el.btnTestAgain.addEventListener('click', startTest);
   if (el.btnCopy) el.btnCopy.addEventListener('click', copyResults);
+
+  if (el.speedPrefForm) {
+    el.speedPrefForm.addEventListener('submit', onSaveSpeedPrefs);
+  }
+  if (el.speedRecordForm) {
+    el.speedRecordForm.addEventListener('submit', onSaveSpeedRecord);
+  }
+}
+
+function onSaveSpeedPrefs(e) {
+  if (e) e.preventDefault();
+  speedPrefs.units = el.speedPrefUnits ? el.speedPrefUnits.value : 'mbps';
+  speedPrefs.conn = el.speedPrefConn ? el.speedPrefConn.value : 'Home WiFi (5GHz / WiFi 6)';
+  speedPrefs.pings = el.speedPrefPings ? parseInt(el.speedPrefPings.value, 10) : 5;
+
+  try {
+    localStorage.setItem('wc_speed_prefs', JSON.stringify(speedPrefs));
+  } catch {}
+
+  if (el.speedPrefSaveConfirm) {
+    const timeStr = new Date().toLocaleTimeString();
+    el.speedPrefSaveConfirm.textContent = `✅ Details Saved Successfully! (${timeStr})`;
+    el.speedPrefSaveConfirm.style.display = 'inline-flex';
+    setTimeout(() => {
+      if (el.speedPrefSaveConfirm) el.speedPrefSaveConfirm.style.display = 'none';
+    }, 4000);
+  }
+  toast('💾 Speed test preferences saved and confirmed!');
+}
+
+function onSaveSpeedRecord(e) {
+  if (e) e.preventDefault();
+  const record = {
+    tag: el.speedRecordTag ? el.speedRecordTag.value.trim() : '',
+    isp: el.speedRecordIsp ? el.speedRecordIsp.value.trim() : '',
+    downloadMbps: currentResults ? currentResults.downloadMbps : 0,
+    uploadMbps: currentResults ? currentResults.uploadMbps : 0,
+    ping: currentResults ? currentResults.ping : 0,
+    jitter: currentResults ? currentResults.jitter : 0,
+    grade: currentResults ? currentResults.grade : '',
+    timestamp: new Date().toISOString()
+  };
+
+  speedHistory.unshift(record);
+  if (speedHistory.length > 50) speedHistory.pop();
+
+  try {
+    localStorage.setItem('wc_speed_history', JSON.stringify(speedHistory));
+  } catch {}
+
+  if (el.speedRecordSaveConfirm) {
+    const timeStr = new Date().toLocaleTimeString();
+    el.speedRecordSaveConfirm.textContent = `✅ Benchmark Saved Successfully! (${timeStr})`;
+    el.speedRecordSaveConfirm.style.display = 'inline-flex';
+    setTimeout(() => {
+      if (el.speedRecordSaveConfirm) el.speedRecordSaveConfirm.style.display = 'none';
+    }, 4000);
+  }
+  toast('💾 Benchmark record saved to device history!');
 }
 
 function initParticles() {

@@ -3,20 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>WebcamClicks — Free Webcam Filters, Camera Effects &amp; Online Camera Games</title>
-<meta name="description" content="Take photos and play games with your webcam: 50+ free camera filters, face effects and motion-controlled mini games. No signup needed — everything runs in your browser and nothing is uploaded.">
-<meta name="keywords" content="webcam filters, camera effects, webcam games, face filters, online camera, photo booth online, webcam effects, funny webcam filters, camera games for kids">
+<title>WebcamClicks — Free Webcam Filters, Video Recording &amp; Online Camera Games</title>
+<meta name="description" content="Take photos, record videos, and play games with your webcam: 50+ free camera filters, face effects, and motion mini games. 100% on-device and private in your browser.">
+<meta name="keywords" content="webcam filters, record webcam video, camera effects, webcam games, face filters, online camera, photo booth online, webcam recorder free, funny webcam filters">
 <link rel="canonical" href="https://webcamclicks.com/">
 <meta name="robots" content="index, follow, max-image-preview:large">
-<meta name="theme-color" content="#f5f3f6">
+<meta name="theme-color" content="#ec4899">
 <meta name="google-adsense-account" content="ca-pub-XXXXXXXXXXXXXXXX">
+
+<!-- Alternate language annotations (hreflang) -->
+<link rel="alternate" hreflang="x-default" href="https://webcamclicks.com/">
+<link rel="alternate" hreflang="en" href="https://webcamclicks.com/">
+<link rel="alternate" hreflang="es" href="https://webcamclicks.com/es/">
+<link rel="alternate" hreflang="fr" href="https://webcamclicks.com/fr/">
+<link rel="alternate" hreflang="de" href="https://webcamclicks.com/de/">
+<link rel="alternate" hreflang="pt" href="https://webcamclicks.com/pt/">
+<link rel="alternate" hreflang="hi" href="https://webcamclicks.com/hi/">
 
 <!-- Open Graph -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="WebcamClicks">
 <meta property="og:url" content="https://webcamclicks.com/">
-<meta property="og:title" content="WebcamClicks — Free Webcam Filters, Camera Effects &amp; Camera Games">
-<meta property="og:description" content="50+ free webcam filters, face effects and motion-controlled camera games. Instant fun, no signup, 100% private.">
+<meta property="og:title" content="WebcamClicks — Free Webcam Filters, Video Recording &amp; Camera Games">
+<meta property="og:description" content="50+ free webcam filters, live video recording, face effects, and motion-controlled camera games. Instant fun, no signup, 100% private.">
 <meta property="og:image" content="https://webcamclicks.com/assets/img/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -25,7 +34,7 @@
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="WebcamClicks — Free Webcam Filters &amp; Camera Games">
-<meta name="twitter:description" content="50+ webcam filters, face effects and motion games. Free, instant, private.">
+<meta name="twitter:description" content="50+ webcam filters, video recording, face effects and motion games. Free, instant, private.">
 <meta name="twitter:image" content="https://webcamclicks.com/assets/img/og-image.png">
 
 <!-- Icons & PWA -->
@@ -33,14 +42,18 @@
 <link rel="apple-touch-icon" href="/assets/icons/icon.svg">
 <link rel="manifest" href="/manifest.json">
 
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
 <!-- Performance hints -->
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://pagead2.googlesyndication.com">
 
 <link rel="stylesheet" href="/styles/main.css">
 
-<!-- Google AdSense (auto ads). BEFORE GOING LIVE replace ca-pub-XXXXXXXXXXXXXXXX with your
-     real publisher ID here, in ads.txt, privacy.html and terms.html. -->
+<!-- Google AdSense -->
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
 
 <!-- Structured data: WebApplication -->
@@ -53,10 +66,11 @@
   "applicationCategory": "MultimediaApplication",
   "operatingSystem": "Any (browser-based)",
   "browserRequirements": "Requires a modern browser with camera access (getUserMedia)",
-  "description": "Free online webcam effects studio: 50+ live camera filters, on-device face effects and motion-controlled camera games. Take photos, download and share — nothing is uploaded.",
+  "description": "Free online webcam effects studio: 50+ live camera filters, video recording, on-device face effects and motion-controlled camera games. Take photos, record clips, download and share — nothing is uploaded.",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
   "featureList": [
     "50+ live webcam filters and camera effects",
+    "Live video recording with WebM/MP4 export",
     "Face-detection effects: sunglasses, crown, dog ears, big eyes",
     "Motion-controlled camera games: Motion Catch, Face Pong, Freeze Pose",
     "Instant photo capture with on-device gallery",
@@ -76,12 +90,17 @@
     {
       "@type": "Question",
       "name": "How do I use WebcamClicks with my webcam?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Click the Enable my camera button and allow camera access in your browser. Your live video appears instantly, and you can pick any of the 50+ filters, face effects or games from the panel next to the camera." }
+      "acceptedAnswer": { "@type": "Answer", "text": "Click the Enable my camera button and allow camera access in your browser. Your live video appears instantly, and you can pick any of the 50+ filters, face effects, video recording, or games from the panel." }
     },
     {
       "@type": "Question",
-      "name": "Are my photos or camera feed stored online?",
-      "acceptedAnswer": { "@type": "Answer", "text": "No. Everything runs locally in your browser. Your camera feed is never recorded, uploaded or transmitted. Photos you take stay in your browser's local gallery until you delete them, and downloads go straight to your device." }
+      "name": "Can I record video clips with filters applied?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes! Click the Record button (or press V on your keyboard) to record video clips up to 60 seconds with your active visual effects. When finished, you can play back, download, or share the video right from your gallery." }
+    },
+    {
+      "@type": "Question",
+      "name": "Are my photos, videos, or camera feed stored online?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. Everything runs locally in your browser. Your camera feed is never recorded, uploaded or transmitted. Photos and videos you create stay in your browser's local session until you delete them, and downloads go straight to your device." }
     },
     {
       "@type": "Question",
@@ -97,11 +116,6 @@
       "@type": "Question",
       "name": "Does it work on phones and tablets?",
       "acceptedAnswer": { "@type": "Answer", "text": "Yes. WebcamClicks works on modern phones, tablets and desktops with Chrome, Safari, Edge, Firefox or Samsung Internet. You can even switch between front and rear cameras on mobile using the flip button." }
-    },
-    {
-      "@type": "Question",
-      "name": "Why can't my browser access the camera?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Camera access requires a secure HTTPS connection (or localhost) and your permission. If the camera doesn't start: allow access in the browser prompt, check the camera icon in your address bar, close other apps that may be using the camera, and reload the page." }
     }
   ]
 }
@@ -112,21 +126,23 @@
 <header class="site-header">
   <a class="logo" href="/">📷 <span>Webcam<em>Clicks</em></span></a>
   <nav class="site-nav" aria-label="Main navigation">
-    <a href="#camera" class="keep">Try it</a>
+    <a href="#camera" class="keep">Camera</a>
     <a href="#games">Games</a>
     <a href="#how">How it works</a>
     <a href="#faq">FAQ</a>
     <a href="/privacy.html" class="keep">Privacy</a>
+    <a href="/languages.html" class="keep lang-pill">🌐 Languages</a>
   </nav>
 </header>
 
 <main>
 <!-- ================= Hero ================= -->
 <section class="hero">
-  <h1>Free Webcam Filters, <span>Camera Effects &amp; Games</span></h1>
-  <p>Turn your webcam into a photo booth and an arcade. 50+ live filters, on-device face effects and motion-controlled mini games — right in your browser. No signup, no uploads.</p>
+  <h1>Free Webcam Filters, <span>Video Recording &amp; Games</span></h1>
+  <p>Turn your webcam into a photo booth and video studio. 50+ live filters, video recording, on-device face effects, and motion mini games — right in your browser. No signup, no uploads.</p>
   <div class="hero-badges">
     <span>🎨 50+ filters</span>
+    <span>📹 Video Recording</span>
     <span>🧠 Face effects</span>
     <span>🕹️ 3 camera games</span>
     <span>📸 Instant photos</span>
@@ -134,7 +150,7 @@
   </div>
 </section>
 
-<!-- Ad: top leaderboard (replace data-ad-slot with your unit ID) -->
+<!-- Ad: top leaderboard -->
 <div class="ad-slot" aria-label="Advertisement">
   <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="1111111111" data-ad-format="auto" data-full-width-responsive="true"></ins>
   <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
@@ -163,18 +179,21 @@
         <h3 id="game-msg-title"></h3>
         <p id="game-msg-sub"></p>
         <div id="game-msg-actions" style="display:none; gap:8px; flex-wrap:wrap; justify-content:center;">
-          <button class="btn btn-primary" id="btn-play-again" type="button">▶ Play again</button>
+          <button class="btn btn-primary" id="btn-play-again" type="button">🔁 Play again</button>
           <button class="btn" id="btn-close-msg" type="button">Close</button>
         </div>
       </div>
 
       <div class="stage-overlay" id="stage-overlay">
-        <h2>Ready to click? 📸</h2>
-        <p>Allow camera access to try 50+ live effects, face filters and motion games. Everything is processed on your device — nothing is ever uploaded.</p>
-        <button class="btn btn-primary" id="start-btn" type="button">🎥 Enable my camera</button>
+        <h2>📷 Webcam clicks &amp; live effects</h2>
+        <p>No downloads, no installations, no uploads. Everything runs privately on your device.</p>
         <div class="features-row">
-          <span>🎨 50+ filters</span><span>😎 Face effects</span><span>🕹️ Camera games</span>
+          <span>50+ filters</span>
+          <span>Video recorder</span>
+          <span>Face stickers</span>
+          <span>Motion games</span>
         </div>
+        <button class="btn btn-primary" id="start-btn" type="button">🎥 Enable my camera</button>
       </div>
 
       <div class="stage-overlay" id="stage-error" style="display:none">
@@ -224,7 +243,6 @@
   <p class="muted">No controller needed — your face and body are the joystick. Games use on-device
   face tracking and motion detection, and they work for kids and grown-ups alike.</p>
   <div class="games-grid" id="games-grid">
-    <!-- Game cards are rendered by app.js so they always match the loaded game list -->
     <noscript>
       <p>Enable JavaScript to play Motion Catch, Face Pong and Freeze Pose with your camera.</p>
     </noscript>
@@ -249,6 +267,11 @@
       Night Vision, Glitch, Kaleidoscope and Emoji Rain — all live on your camera feed.</p>
     </article>
     <article class="feature-card">
+      <span class="fc-icon">📹</span>
+      <h3>Live video recording</h3>
+      <p>Record short video clips (up to 60 seconds) directly in your browser with real-time filters and effects applied. Preview, download as WebM/MP4, or share with friends without any watermark.</p>
+    </article>
+    <article class="feature-card">
       <span class="fc-icon">🧠</span>
       <h3>Smart face effects</h3>
       <p>On-device face detection powers 12+ playful effects: virtual sunglasses, a royal crown,
@@ -271,13 +294,7 @@
       <span class="fc-icon">🔒</span>
       <h3>Private by design</h3>
       <p>Your camera feed is processed 100% in your browser. Nothing is recorded, uploaded or stored
-      on any server. Photos live only on your device — delete them whenever you like.</p>
-    </article>
-    <article class="feature-card">
-      <span class="fc-icon">⚡</span>
-      <h3>No apps, no signup</h3>
-      <p>WebcamClicks runs in any modern browser on desktop, tablet and phone. No download, no account,
-      no installation. Load the page, allow the camera, and you are ready in seconds.</p>
+      on any server. Photos and clips live only on your device — delete them whenever you like.</p>
     </article>
   </div>
 </section>
@@ -297,9 +314,8 @@
       Adjust the effect strength with the slider.</p>
     </div>
     <div class="step">
-      <h3>Capture &amp; share</h3>
-      <p>Hit Capture (or press C) to save a photo to your on-device gallery. Download it, copy it,
-      or share it with friends in one tap.</p>
+      <h3>Capture photos or record video</h3>
+      <p>Hit Capture (or press C) for photos, or Record (or press V) for video clips. Download or share with friends in one tap.</p>
     </div>
   </div>
 </section>
@@ -311,72 +327,50 @@
   <details>
     <summary>How do I use WebcamClicks with my webcam?</summary>
     <p>Click the “Enable my camera” button and allow camera access in your browser. Your live video
-    appears instantly, and you can pick any of the 50+ filters, face effects or games from the panel
+    appears instantly, and you can pick any of the 50+ filters, face effects, video recording, or games from the panel
     next to the camera.</p>
+  </details>
+
+  <details>
+    <summary>Can I record videos with filters and face stickers?</summary>
+    <p>Yes! Simply press the <strong>⏺️ Record</strong> button on the toolbar or press <strong>V</strong> on your keyboard. Your video recording captures whatever filter and face effects are on screen. Click Stop when finished to save it to your gallery or download it to your device.</p>
   </details>
 
   <details>
     <summary>Are my photos or camera feed stored online?</summary>
     <p>No. Everything runs locally in your browser. Your camera feed is never recorded, uploaded or
-    transmitted. Photos you take stay in your browser's local gallery until you delete them, and
-    downloads go straight to your device.</p>
+    transmitted to any server. Photos and video clips stay in your browser's local storage until you delete them, and downloads go straight to your device.</p>
   </details>
 
   <details>
-    <summary>Is WebcamClicks free?</summary>
-    <p>Yes, WebcamClicks is completely free and requires no account or signup. It is supported by
-    advertising.</p>
+    <summary>Is WebcamClicks free to use?</summary>
+    <p>Yes, WebcamClicks is 100% free with unlimited photo captures, video recordings, and games. No account or payment required.</p>
   </details>
 
   <details>
     <summary>Which camera games can I play?</summary>
-    <p><strong>Motion Catch</strong> — steer a basket with your head to catch falling fruit.
-    <strong>Face Pong</strong> — your face is the paddle in a brick-smashing ball game.
-    <strong>Freeze Pose</strong> — hold perfectly still like a statue for 10 seconds. All games are
-    controlled by your face or body movement detected through the webcam.</p>
+    <p>Motion Catch (steer a basket with your head to catch fruit), Face Pong (bounce a ball with your face), and Freeze Pose (hold perfectly still like a statue). All games are controlled purely by your camera.</p>
   </details>
 
   <details>
-    <summary>Does it work on phones and tablets?</summary>
-    <p>Yes. WebcamClicks works on modern phones, tablets and desktops with Chrome, Safari, Edge,
-    Firefox or Samsung Internet. You can even switch between front and rear cameras on mobile using
-    the flip button.</p>
-  </details>
-
-  <details>
-    <summary>Why can't my browser access the camera?</summary>
-    <p>Camera access requires a secure HTTPS connection (or localhost) and your permission. If the
-    camera doesn't start: allow access in the browser prompt, check the camera icon in your address
-    bar, close other apps that may be using the camera, and reload the page.</p>
-  </details>
-
-  <details>
-    <summary>Do I need to install anything?</summary>
-    <p>No installation is required. WebcamClicks is a website — it uses your browser's built-in
-    camera and graphics capabilities. The face-detection models are loaded on demand and cached by
-    your browser after the first use.</p>
+    <summary>Does it work on mobile phones and tablets?</summary>
+    <p>Yes. WebcamClicks works seamlessly on iPhone, iPad, Android smartphones, and tablets across Safari, Chrome, Samsung Internet, and Firefox. You can switch between front and rear cameras using the "Flip cam" button.</p>
   </details>
 </section>
 
-<!-- Ad: pre-footer banner -->
+<!-- Ad: bottom banner -->
 <div class="ad-slot" aria-label="Advertisement">
   <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="4444444444" data-ad-format="auto" data-full-width-responsive="true"></ins>
   <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
 </div>
-
 </main>
 
 <!-- ================= Footer ================= -->
 <footer class="site-footer">
   <div class="footer-cols">
     <div>
-      <h4>Explore</h4>
-      <ul>
-        <li><a href="#camera">Try the camera</a></li>
-        <li><a href="#games">Camera games</a></li>
-        <li><a href="#how">How it works</a></li>
-        <li><a href="#faq">FAQ</a></li>
-      </ul>
+      <h4>📷 WebcamClicks</h4>
+      <p>Free online webcam booth, live video recorder, face filters &amp; interactive browser games.</p>
     </div>
     <div>
       <h4>Popular effects</h4>
@@ -398,15 +392,28 @@
       </ul>
     </div>
     <div>
-      <h4>Legal</h4>
+      <h4>Languages</h4>
+      <ul>
+        <li><a href="/">English (Default)</a></li>
+        <li><a href="/es/">Español</a></li>
+        <li><a href="/fr/">Français</a></li>
+        <li><a href="/de/">Deutsch</a></li>
+        <li><a href="/pt/">Português</a></li>
+        <li><a href="/hi/">हिन्दी</a></li>
+        <li><a href="/languages.html" style="font-weight:700; color:var(--brand-2);">🌐 All Languages</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Legal &amp; Privacy</h4>
       <ul>
         <li><a href="/privacy.html">Privacy Policy</a></li>
         <li><a href="/terms.html">Terms of Service</a></li>
+        <li><a href="/languages.html">Languages Directory</a></li>
       </ul>
     </div>
   </div>
   <p class="fineprint">
-    © 2026 WebcamClicks.com — Free webcam filters, camera effects and motion games.
+    © 2026 WebcamClicks.com — Free webcam filters, video recording, camera effects and motion games.
     WebcamClicks is an independent website and is not affiliated with, endorsed by or connected to
     any other webcam or photo-booth website. AI-powered estimates (emotion, age, gender) are
     approximate and provided for entertainment only. Your camera feed is processed entirely in your
@@ -415,17 +422,17 @@
 </footer>
 
 <!-- ================= Gallery drawer ================= -->
-<div class="gallery-drawer" id="gallery-drawer" role="dialog" aria-modal="true" aria-label="Photo gallery">
+<div class="gallery-drawer" id="gallery-drawer" role="dialog" aria-modal="true" aria-label="Photo and video gallery">
   <div class="gallery-inner">
     <div class="gallery-head">
-      <h3>🖼️ Your photos</h3>
+      <h3>🖼️ Your photos &amp; videos</h3>
       <div style="display:flex; gap:8px;">
         <button class="tool" id="btn-gallery-clear" type="button">🗑️ Clear all</button>
         <button class="tool" id="btn-gallery-close" type="button">✕ Close</button>
       </div>
     </div>
     <p class="panel-hint" style="margin-bottom:12px">
-      Photos are stored only in this browser on this device. Nothing is uploaded.
+      Photos and videos are stored only in this browser on this device. Nothing is uploaded.
     </p>
     <div class="gallery-grid" id="gallery-grid"></div>
   </div>
@@ -440,15 +447,16 @@
     <ul>
       <li>Click <strong>🎥 Enable my camera</strong> and allow access when your browser asks.</li>
       <li>Pick any of the 50+ effects on the right (or below on mobile). Use the slider to mix the effect in.</li>
-      <li>Press <strong>📸 Capture</strong> to save a photo — it goes to your on-device gallery, never to a server.</li>
+      <li>Press <strong>📸 Capture</strong> to save a photo, or <strong>⏺️ Record</strong> to record a video clip.</li>
     </ul>
     <h3>Keyboard shortcuts</h3>
     <table class="shortcut-table">
       <tbody>
         <tr><td>C</td><td>Capture a photo</td></tr>
+        <tr><td>V</td><td>Record video (start / stop)</td></tr>
         <tr><td>R</td><td>Random effect</td></tr>
         <tr><td>F</td><td>Favorite the current effect</td></tr>
-        <tr><td>M</td><td>Toggle mirror</td></tr>
+        <tr><td>M</td><td>Toggle mirror mode</td></tr>
         <tr><td>G</td><td>Start a random game</td></tr>
         <tr><td>Esc</td><td>Exit game / close dialogs</td></tr>
       </tbody>
@@ -460,7 +468,7 @@
       <li><strong>No HTTPS?</strong> Camera needs a secure connection — always use https://webcamclicks.com.</li>
       <li><strong>Face effects slow?</strong> Lower effect strength or close other tabs; face detection loads once and is cached.</li>
     </ul>
-    <p class="panel-hint">Your privacy: the camera feed and photos never leave your device.</p>
+    <p class="panel-hint">Your privacy: the camera feed, photos and videos never leave your device.</p>
   </div>
 </div>
 
@@ -468,4 +476,3 @@
 <script type="module" src="/js/app.js"></script>
 </body>
 </html>
-

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WebcamClicks — मुफ़्त वेबकैम फ़िल्टर, वीडियो रिकॉर्डिंग और ऑनलाइन कैमरा गेम्स</title>
+<meta name="description" content="अपने वेबकैम से फ़ोटो लें, वीडियो रिकॉर्ड करें और खेलें: 50+ मुफ़्त कैमरा फ़िल्टर, फेस इफ़ेक्ट्स और मोशन मिनी गेम्स। आपके ब्राउज़र में 100% सुरक्षित और निजी।">
+<meta name="keywords" content="वेबकैम फ़िल्टर, वीडियो रिकॉर्ड करें, वेबकैम प्रभाव, कैमरा गेम्स ऑनलाइन, फोटो बूथ">
+<link rel="canonical" href="https://webcamclicks.com/hi/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#ec4899">
+<meta name="google-adsense-account" content="ca-pub-XXXXXXXXXXXXXXXX">
+
+<!-- Alternate language annotations (hreflang) -->
+<link rel="alternate" hreflang="x-default" href="https://webcamclicks.com/">
+<link rel="alternate" hreflang="en" href="https://webcamclicks.com/">
+<link rel="alternate" hreflang="es" href="https://webcamclicks.com/es/">
+<link rel="alternate" hreflang="fr" href="https://webcamclicks.com/fr/">
+<link rel="alternate" hreflang="de" href="https://webcamclicks.com/de/">
+<link rel="alternate" hreflang="pt" href="https://webcamclicks.com/pt/">
+<link rel="alternate" hreflang="hi" href="https://webcamclicks.com/hi/">
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/styles/main.css">
+
+<!-- Google AdSense -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
+
+<!-- Structured data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "WebcamClicks हिन्दी",
+  "url": "https://webcamclicks.com/hi/",
+  "inLanguage": "hi",
+  "applicationCategory": "MultimediaApplication",
+  "operatingSystem": "Any",
+  "description": "मुफ़्त ऑनलाइन वेबकैम प्रभाव, वीडियो रिकॉर्डिंग, फेस स्टिकर और कैमरा गेम्स।"
+}
+</script>
+</head>
+<body>
+
+<header class="site-header">
+  <a class="logo" href="/hi/">📷 <span>Webcam<em>Clicks</em></span></a>
+  <nav class="site-nav" aria-label="मुख्य नेविगेशन">
+    <a href="#camera" class="keep">कैमरा</a>
+    <a href="#games">गेम्स</a>
+    <a href="#how">कैसे काम करता है</a>
+    <a href="#faq">सामान्य प्रश्न</a>
+    <a href="/privacy.html" class="keep">गोपनीयता</a>
+    <a href="/languages.html" class="keep lang-pill">🌐 भाषाएं</a>
+  </nav>
+</header>
+
+<main>
+<!-- Hero -->
+<section class="hero">
+  <h1>मुफ़्त वेबकैम फ़िल्टर, <span>वीडियो रिकॉर्डिंग और गेम्स</span></h1>
+  <p>अपने वेबकैम को फोटो बूथ और वीडियो स्टूडियो बनाएं। 50+ लाइव फ़िल्टर, वीडियो रिकॉर्डिंग, फेस स्टिकर्स और मोशन गेम्स सीधे अपने ब्राउज़र में खेलें। कोई ऐप डाउनलोड नहीं, कोई अपलोड नहीं।</p>
+  <div class="hero-badges">
+    <span>🎨 50+ फ़िल्टर</span>
+    <span>📹 वीडियो रिकॉर्डिंग</span>
+    <span>🧠 फेस स्टिकर्स</span>
+    <span>🕹️ 3 कैमरा गेम्स</span>
+    <span>📸 त्वरित फ़ोटो</span>
+    <span>🔒 100% निजी</span>
+  </div>
+</section>
+
+<!-- Ad -->
+<div class="ad-slot" aria-label="विज्ञापन">
+  <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="1111111111" data-ad-format="auto" data-full-width-responsive="true"></ins>
+  <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+</div>
+
+<!-- Camera app -->
+<section id="camera" class="app">
+  <div class="stage-column">
+    <div class="camera-stage" id="camera-stage">
+      <canvas id="stage-canvas" width="960" height="540" aria-label="लाइव वेबकैम दृश्य"></canvas>
+      <div id="flash" aria-hidden="true"></div>
+
+      <div class="badges">
+        <span class="badge" id="fps-badge" style="display:none">60 fps</span>
+        <span class="badge rec" id="rec-badge" style="display:none">REC 0:00</span>
+        <span class="badge" id="face-badge" style="display:none"></span>
+      </div>
+
+      <div class="game-hud" id="game-hud">
+        <span class="score" id="hud-score"></span>
+        <button class="tool" id="btn-exit-game" type="button">✕ बाहर निकलें <span class="kbd">Esc</span></button>
+      </div>
+
+      <div class="game-msg" id="game-msg" role="dialog" aria-live="polite">
+        <h3 id="game-msg-title"></h3>
+        <p id="game-msg-sub"></p>
+        <div id="game-msg-actions" style="display:none; gap:8px; flex-wrap:wrap; justify-content:center;">
+          <button class="btn btn-primary" id="btn-play-again" type="button">🔁 फिर से खेलें</button>
+          <button class="btn" id="btn-close-msg" type="button">बंद करें</button>
+        </div>
+      </div>
+
+      <div class="stage-overlay" id="stage-overlay">
+        <h2>📷 लाइव वेबकैम प्रभाव और फ़िल्टर</h2>
+        <p>कोई डाउनलोड नहीं, कोई लॉगिन नहीं। सब कुछ आपके डिवाइस पर पूरी तरह सुरक्षित और निजी चलता है।</p>
+        <div class="features-row">
+          <span>50+ फ़िल्टर</span>
+          <span>वीडियो रिकॉर्डर</span>
+          <span>फेस स्टिकर्स</span>
+          <span>मोशन गेम्स</span>
+        </div>
+        <button class="btn btn-primary" id="start-btn" type="button">🎥 मेरा कैमरा चालू करें</button>
+      </div>
+
+      <div class="stage-overlay" id="stage-error" style="display:none">
+        <h2>😕 कैमरा उपलब्ध नहीं है</h2>
+        <p id="stage-error-msg"></p>
+        <button class="btn btn-primary" id="stage-retry" type="button">🔄 पुनः प्रयास करें</button>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar" role="toolbar" aria-label="कैमरा टूल्स">
+      <button class="tool" id="btn-capture" type="button">📸 <span class="tool-label">फ़ोटो</span> <span class="kbd">C</span></button>
+      <button class="tool" id="btn-record" type="button">⏺️ <span class="tool-label">रिकॉर्ड</span> <span class="kbd">V</span></button>
+      <button class="tool" id="btn-random" type="button">🎲 <span class="tool-label">यादृच्छिक</span> <span class="kbd">R</span></button>
+      <button class="tool" id="btn-fav" type="button">⭐ <span class="tool-label">पसंदीदा</span> <span class="kbd">F</span></button>
+      <button class="tool" id="btn-mirror" type="button">🪞 <span class="tool-label">आईना</span> <span class="kbd">M</span></button>
+      <button class="tool" id="btn-flip" type="button">🔄 <span class="tool-label">कैमरा बदलें</span></button>
+      <button class="tool" id="btn-gallery" type="button">🖼️ <span class="tool-label">गैलरी</span></button>
+      <button class="tool" id="btn-fullscreen" type="button">⛶ <span class="tool-label">फुलस्क्रीन</span></button>
+      <button class="tool active" id="btn-sound" type="button"><span class="tool-icon">🔊</span> <span class="tool-label">ध्वनि</span></button>
+      <div class="spacer"></div>
+      <label class="intensity" for="intensity">प्रभाव शक्ति
+        <input type="range" id="intensity" min="0" max="100" value="100" step="5">
+      </label>
+      <button class="tool" id="btn-help" type="button">❓ <span class="tool-label">मदद</span></button>
+    </div>
+  </div>
+
+  <!-- Effects panel -->
+  <aside class="effects-panel" aria-label="इफ़ेक्ट पैनल">
+    <div class="panel-head">
+      <h3>🎨 प्रभाव और फ़िल्टर</h3>
+      <span class="panel-hint" id="panel-hint">लागू करने के लिए टैप करें</span>
+    </div>
+    <div class="category-tabs" id="category-tabs"></div>
+    <div class="filter-grid" id="filter-grid"></div>
+    <div class="ad-slot ad-slot-side" aria-label="विज्ञापन" style="margin-top:12px">
+      <ins class="adsbygoogle" style="display:inline-block;width:300px;height:250px" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="3333333333"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+  </aside>
+</section>
+
+<!-- Games -->
+<section id="games" class="games-section">
+  <h2 class="section-title">🕹️ सभी उम्र के लिए कैमरा गेम्स</h2>
+  <p class="muted">किसी रिमोट या कंट्रोलर की आवश्यकता नहीं: आपका चेहरा और शरीर ही खेल को नियंत्रित करते हैं।</p>
+  <div class="games-grid" id="games-grid">
+    <noscript><p>मोशन कैच, फेस पोंग और फ्रीज पोज खेलने के लिए कृपया जावास्क्रिप्ट सक्षम करें।</p></noscript>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="content-section">
+  <h2 class="section-title">WebcamClicks की विशेषताएं</h2>
+  <div class="feature-grid">
+    <article class="feature-card">
+      <span class="fc-icon">🎨</span>
+      <h3>50+ लाइव फ़िल्टर</h3>
+      <p>क्लासिक ब्लैक एंड व्हाइट, रेट्रो वीएचएस लुक, वॉटरकलर, थर्मल और कैलिडोस्कोप इफ़ेक्ट्स।</p>
+    </article>
+    <article class="feature-card">
+      <span class="fc-icon">📹</span>
+      <h3>लाइव वीडियो रिकॉर्डिंग</h3>
+      <p>फ़िल्टर के साथ 60 सेकंड तक के वीडियो क्लिप रिकॉर्ड करें और सीधे अपने डिवाइस में सेव करें।</p>
+    </article>
+    <article class="feature-card">
+      <span class="fc-icon">🧠</span>
+      <h3>स्मार्ट फेस स्टिकर्स</h3>
+      <p>वर्चुअल सनग्लासेस, शाही मुकुट, पिल्ला कान, मूंछें और लाइव इमोशन डिटेक्शन।</p>
+    </article>
+    <article class="feature-card">
+      <span class="fc-icon">🔒</span>
+      <h3>100% निजी और सुरक्षित</h3>
+      <p>कैमरा का सारा डेटा केवल आपके ब्राउज़र में संसाधित होता है। कभी भी सर्वर पर अपलोड नहीं होता।</p>
+    </article>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" class="content-section faq">
+  <h2 class="section-title">सामान्य प्रश्न</h2>
+  <details>
+    <summary>वेबकैम कैसे चालू करें?</summary>
+    <p>"मेरा कैमरा चालू करें" बटन पर क्लिक करें और ब्राउज़र पॉपअप में अनुमति दें।</p>
+  </details>
+  <details>
+    <summary>क्या मैं फ़िल्टर के साथ वीडियो रिकॉर्ड कर सकता हूँ?</summary>
+    <p>हाँ! "रिकॉर्ड" बटन दबाएं (या कीबोर्ड पर V दबाएं)। रिकॉर्डिंग समाप्त होने पर इसे सीधे डाउनलोड करें।</p>
+  </details>
+</section>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-cols">
+    <div>
+      <h4>📷 WebcamClicks</h4>
+      <p>मुफ़्त ऑनलाइन वेबकैम स्टूडियो, लाइव वीडियो रिकॉर्डर और गेम्स।</p>
+    </div>
+    <div>
+      <h4>भाषाएं</h4>
+      <ul>
+        <li><a href="/">English</a></li>
+        <li><a href="/es/">Español</a></li>
+        <li><a href="/fr/">Français</a></li>
+        <li><a href="/de/">Deutsch</a></li>
+        <li><a href="/pt/">Português</a></li>
+        <li><a href="/hi/">हिन्दी</a></li>
+        <li><a href="/languages.html" style="font-weight:700; color:var(--brand-2);">🌐 सभी भाषाएं</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>कानूनी</h4>
+      <ul>
+        <li><a href="/privacy.html">गोपनीयता नीति</a></li>
+        <li><a href="/terms.html">नियम और शर्तें</a></li>
+        <li><a href="/languages.html">भाषा निर्देशिका</a></li>
+      </ul>
+    </div>
+  </div>
+  <p class="fineprint">
+    © 2026 WebcamClicks.com — सर्वाधिकार सुरक्षित। 100% ऑन-डिवाइस गोपनीयता।
+  </p>
+</footer>
+
+<div class="gallery-drawer" id="gallery-drawer" role="dialog" aria-modal="true" aria-label="फोटो और वीडियो गैलरी">
+  <div class="gallery-inner">
+    <div class="gallery-head">
+      <h3>🖼️ आपकी फ़ोटो और वीडियो</h3>
+      <div style="display:flex; gap:8px;">
+        <button class="tool" id="btn-gallery-clear" type="button">🗑️ सभी हटाएं</button>
+        <button class="tool" id="btn-gallery-close" type="button">✕ बंद करें</button>
+      </div>
+    </div>
+    <div class="gallery-grid" id="gallery-grid"></div>
+  </div>
+</div>
+
+<div class="modal" id="help-modal" role="dialog" aria-modal="true" aria-label="मदद">
+  <div class="modal-card">
+    <button class="modal-close" id="btn-help-close" type="button" aria-label="बंद करें">✕</button>
+    <h2>❓ कीबोर्ड शॉर्टकट</h2>
+    <table class="shortcut-table">
+      <tbody>
+        <tr><td>C</td><td>फ़ोटो लें</td></tr>
+        <tr><td>V</td><td>वीडियो रिकॉर्ड करें (शुरू / बंद)</td></tr>
+        <tr><td>R</td><td>यादृच्छिक प्रभाव</td></tr>
+        <tr><td>F</td><td>पसंदीदा बनाएं</td></tr>
+        <tr><td>M</td><td>आईना मोड चालू/बंद</td></tr>
+        <tr><td>G</td><td>रैंडम गेम खेलें</td></tr>
+        <tr><td>Esc</td><td>गेम से बाहर निकलें</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>

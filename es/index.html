@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WebcamClicks — Filtros de Cámara Web, Grabación de Video y Juegos Online Gratis</title>
+<meta name="description" content="Toma fotos, graba videos y juega con tu cámara web: más de 50 filtros gratuitos, efectos faciales y mini juegos por movimiento. 100% privado en tu navegador.">
+<meta name="keywords" content="filtros camara web, grabar video webcam, efectos webcam gratis, juegos con camara web, photo booth online gratis">
+<link rel="canonical" href="https://webcamclicks.com/es/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#ec4899">
+<meta name="google-adsense-account" content="ca-pub-XXXXXXXXXXXXXXXX">
+
+<!-- Alternate language annotations (hreflang) -->
+<link rel="alternate" hreflang="x-default" href="https://webcamclicks.com/">
+<link rel="alternate" hreflang="en" href="https://webcamclicks.com/">
+<link rel="alternate" hreflang="es" href="https://webcamclicks.com/es/">
+<link rel="alternate" hreflang="fr" href="https://webcamclicks.com/fr/">
+<link rel="alternate" hreflang="de" href="https://webcamclicks.com/de/">
+<link rel="alternate" hreflang="pt" href="https://webcamclicks.com/pt/">
+<link rel="alternate" hreflang="hi" href="https://webcamclicks.com/hi/">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="WebcamClicks">
+<meta property="og:url" content="https://webcamclicks.com/es/">
+<meta property="og:title" content="WebcamClicks en Español — Filtros de Webcam y Grabación de Video">
+<meta property="og:description" content="50+ filtros gratis, grabación de video en vivo, efectos de rostro y juegos de cámara interactivos sin descargas.">
+<meta property="og:image" content="https://webcamclicks.com/assets/img/og-image.png">
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/styles/main.css">
+
+<!-- Google AdSense -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
+
+<!-- Structured data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "WebcamClicks Español",
+  "url": "https://webcamclicks.com/es/",
+  "inLanguage": "es",
+  "applicationCategory": "MultimediaApplication",
+  "operatingSystem": "Any",
+  "description": "Herramienta gratuita de cámara web online: filtros en vivo, grabación de video, efectos faciales y juegos por movimiento."
+}
+</script>
+</head>
+<body>
+
+<header class="site-header">
+  <a class="logo" href="/es/">📷 <span>Webcam<em>Clicks</em></span></a>
+  <nav class="site-nav" aria-label="Navegación principal">
+    <a href="#camera" class="keep">Cámara</a>
+    <a href="#games">Juegos</a>
+    <a href="#how">Cómo funciona</a>
+    <a href="#faq">Preguntas</a>
+    <a href="/privacy.html" class="keep">Privacidad</a>
+    <a href="/languages.html" class="keep lang-pill">🌐 Idiomas</a>
+  </nav>
+</header>
+
+<main>
+<!-- ================= Hero ================= -->
+<section class="hero">
+  <h1>Filtros de Cámara Web Gratis, <span>Grabación de Video y Juegos</span></h1>
+  <p>Convierte tu cámara web en una cabina de fotos y estudio de video. Más de 50 filtros en vivo, grabación de clips, efectos faciales y mini juegos controlados por movimiento en tu navegador.</p>
+  <div class="hero-badges">
+    <span>🎨 50+ filtros</span>
+    <span>📹 Grabación de Video</span>
+    <span>🧠 Efectos faciales</span>
+    <span>🕹️ 3 juegos con cámara</span>
+    <span>📸 Fotos instantáneas</span>
+    <span>🔒 100% privado</span>
+  </div>
+</section>
+
+<!-- Ad: banner -->
+<div class="ad-slot" aria-label="Publicidad">
+  <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="1111111111" data-ad-format="auto" data-full-width-responsive="true"></ins>
+  <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+</div>
+
+<!-- ================= Camera app ================= -->
+<section id="camera" class="app">
+  <div class="stage-column">
+    <div class="camera-stage" id="camera-stage">
+      <canvas id="stage-canvas" width="960" height="540" aria-label="Vista previa de cámara web con efecto"></canvas>
+      <div id="flash" aria-hidden="true"></div>
+
+      <div class="badges">
+        <span class="badge" id="fps-badge" style="display:none">60 fps</span>
+        <span class="badge rec" id="rec-badge" style="display:none">REC 0:00</span>
+        <span class="badge" id="face-badge" style="display:none"></span>
+      </div>
+
+      <div class="game-hud" id="game-hud">
+        <span class="score" id="hud-score"></span>
+        <button class="tool" id="btn-exit-game" type="button">✕ Salir <span class="kbd">Esc</span></button>
+      </div>
+
+      <div class="game-msg" id="game-msg" role="dialog" aria-live="polite">
+        <h3 id="game-msg-title"></h3>
+        <p id="game-msg-sub"></p>
+        <div id="game-msg-actions" style="display:none; gap:8px; flex-wrap:wrap; justify-content:center;">
+          <button class="btn btn-primary" id="btn-play-again" type="button">🔁 Jugar de nuevo</button>
+          <button class="btn" id="btn-close-msg" type="button">Cerrar</button>
+        </div>
+      </div>
+
+      <div class="stage-overlay" id="stage-overlay">
+        <h2>📷 Efectos de cámara web en vivo</h2>
+        <p>Sin descargas, sin registros y sin subir nada a internet. Todo se ejecuta de forma privada en tu dispositivo.</p>
+        <div class="features-row">
+          <span>50+ filtros</span>
+          <span>Grabador de video</span>
+          <span>Stickers de cara</span>
+          <span>Juegos interactivos</span>
+        </div>
+        <button class="btn btn-primary" id="start-btn" type="button">🎥 Activar mi cámara</button>
+      </div>
+
+      <div class="stage-overlay" id="stage-error" style="display:none">
+        <h2>😕 Cámara no disponible</h2>
+        <p id="stage-error-msg"></p>
+        <button class="btn btn-primary" id="stage-retry" type="button">🔄 Reintentar</button>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar" role="toolbar" aria-label="Herramientas de cámara">
+      <button class="tool" id="btn-capture" type="button">📸 <span class="tool-label">Foto</span> <span class="kbd">C</span></button>
+      <button class="tool" id="btn-record" type="button">⏺️ <span class="tool-label">Grabar</span> <span class="kbd">V</span></button>
+      <button class="tool" id="btn-random" type="button">🎲 <span class="tool-label">Aleatorio</span> <span class="kbd">R</span></button>
+      <button class="tool" id="btn-fav" type="button">⭐ <span class="tool-label">Favorito</span> <span class="kbd">F</span></button>
+      <button class="tool" id="btn-mirror" type="button">🪞 <span class="tool-label">Espejo</span> <span class="kbd">M</span></button>
+      <button class="tool" id="btn-flip" type="button">🔄 <span class="tool-label">Girar</span></button>
+      <button class="tool" id="btn-gallery" type="button">🖼️ <span class="tool-label">Galería</span></button>
+      <button class="tool" id="btn-fullscreen" type="button">⛶ <span class="tool-label">Completa</span></button>
+      <button class="tool active" id="btn-sound" type="button"><span class="tool-icon">🔊</span> <span class="tool-label">Sonido</span></button>
+      <div class="spacer"></div>
+      <label class="intensity" for="intensity">Intensidad
+        <input type="range" id="intensity" min="0" max="100" value="100" step="5">
+      </label>
+      <button class="tool" id="btn-help" type="button">❓ <span class="tool-label">Ayuda</span></button>
+    </div>
+  </div>
+
+  <!-- Effects panel -->
+  <aside class="effects-panel" aria-label="Panel de efectos">
+    <div class="panel-head">
+      <h3>🎨 Efectos y filtros</h3>
+      <span class="panel-hint" id="panel-hint">Toca para aplicar</span>
+    </div>
+    <div class="category-tabs" id="category-tabs"></div>
+    <div class="filter-grid" id="filter-grid"></div>
+    <div class="ad-slot ad-slot-side" aria-label="Publicidad" style="margin-top:12px">
+      <ins class="adsbygoogle" style="display:inline-block;width:300px;height:250px" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="3333333333"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+  </aside>
+</section>
+
+<!-- ================= Camera games ================= -->
+<section id="games" class="games-section">
+  <h2 class="section-title">🕹️ Juegos con tu cámara para todas las edades</h2>
+  <p class="muted">Sin mandos ni controles: tu rostro y cuerpo son el control. Funcionan con detección facial inteligente y movimiento.</p>
+  <div class="games-grid" id="games-grid">
+    <noscript>
+      <p>Habilita JavaScript para jugar Motion Catch, Face Pong y Freeze Pose.</p>
+    </noscript>
+  </div>
+</section>
+
+<!-- ================= Features ================= -->
+<section class="content-section">
+  <h2 class="section-title">¿Por qué elegir WebcamClicks?</h2>
+  <div class="feature-grid">
+    <article class="feature-card">
+      <span class="fc-icon">🎨</span>
+      <h3>Más de 50 filtros en vivo</h3>
+      <p>Estilos clásicos en blanco y negro, sepia, vintage tipo cinta VHS, arte pop, acuarela, visión nocturna y caleidoscopio.</p>
+    </article>
+    <article class="feature-card">
+      <span class="fc-icon">📹</span>
+      <h3>Grabación de video en tiempo real</h3>
+      <p>Graba clips de video de hasta 60 segundos con tus efectos y filtros aplicados. Descárgalos al instante en formato WebM o MP4.</p>
+    </article>
+    <article class="feature-card">
+      <span class="fc-icon">🧠</span>
+      <h3>Efectos faciales inteligentes</h3>
+      <p>Gafas de sol virtuales, corona real, orejitas de perro, bigote, ojos gigantes, fondo borroso y llamas de fuego al abrir la boca.</p>
+    </article>
+    <article class="feature-card">
+      <span class="fc-icon">🔒</span>
+      <h3>Privacidad garantizada al 100%</h3>
+      <p>El procesamiento de la cámara ocurre exclusivamente en tu navegador. Tus fotos y videos nunca se envían a ningún servidor externo.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ================= How it works ================= -->
+<section id="how" class="content-section">
+  <h2 class="section-title">Cómo funciona</h2>
+  <div class="steps">
+    <div class="step">
+      <h3>Permite el acceso a tu cámara</h3>
+      <p>Haz clic en "Activar mi cámara" y autoriza el permiso en tu navegador. Puedes revocarlo cuando quieras.</p>
+    </div>
+    <div class="step">
+      <h3>Elige un filtro o juego</h3>
+      <p>Explora más de 50 efectos organizados por categoría o comienza una divertida partida interactiva.</p>
+    </div>
+    <div class="step">
+      <h3>Captura fotos o graba videos</h3>
+      <p>Pulsa Foto (C) para imágenes o Grabar (V) para videos. Descarga o comparte con un solo toque.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section id="faq" class="content-section faq">
+  <h2 class="section-title">Preguntas Frecuentes</h2>
+
+  <details>
+    <summary>¿Cómo activo la cámara web?</summary>
+    <p>Haz clic en el botón "Activar mi cámara" y permite el permiso en la ventana emergente de tu navegador.</p>
+  </details>
+
+  <details>
+    <summary>¿Puedo grabar videos con filtros?</summary>
+    <p>¡Sí! Pulsa el botón "Grabar" o presiona la tecla "V". Puedes grabar hasta 60 segundos de video con el filtro activo y descargarlo directamente.</p>
+  </details>
+
+  <details>
+    <summary>¿Mis fotos y videos se suben a internet?</summary>
+    <p>No. Todo funciona de forma estrictamente local en tu navegador. Ninguna imagen o video se sube a internet.</p>
+  </details>
+</section>
+</main>
+
+<!-- ================= Footer ================= -->
+<footer class="site-footer">
+  <div class="footer-cols">
+    <div>
+      <h4>📷 WebcamClicks</h4>
+      <p>Cabina de cámara web online gratuita, grabación de videos, filtros en vivo y juegos.</p>
+    </div>
+    <div>
+      <h4>Idiomas</h4>
+      <ul>
+        <li><a href="/">English</a></li>
+        <li><a href="/es/">Español</a></li>
+        <li><a href="/fr/">Français</a></li>
+        <li><a href="/de/">Deutsch</a></li>
+        <li><a href="/pt/">Português</a></li>
+        <li><a href="/hi/">हिन्दी</a></li>
+        <li><a href="/languages.html" style="font-weight:700; color:var(--brand-2);">🌐 Todos los idiomas</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Legal</h4>
+      <ul>
+        <li><a href="/privacy.html">Política de Privacidad</a></li>
+        <li><a href="/terms.html">Términos de Servicio</a></li>
+        <li><a href="/languages.html">Directorio de Idiomas</a></li>
+      </ul>
+    </div>
+  </div>
+  <p class="fineprint">
+    © 2026 WebcamClicks.com — Todos los derechos reservados. Procesamiento local 100% privado en tu navegador.
+  </p>
+</footer>
+
+<!-- Gallery drawer -->
+<div class="gallery-drawer" id="gallery-drawer" role="dialog" aria-modal="true" aria-label="Galería de fotos y videos">
+  <div class="gallery-inner">
+    <div class="gallery-head">
+      <h3>🖼️ Tus fotos y videos</h3>
+      <div style="display:flex; gap:8px;">
+        <button class="tool" id="btn-gallery-clear" type="button">🗑️ Borrar todo</button>
+        <button class="tool" id="btn-gallery-close" type="button">✕ Cerrar</button>
+      </div>
+    </div>
+    <p class="panel-hint" style="margin-bottom:12px">
+      Las fotos y videos se guardan solo en este navegador. Nada se sube a internet.
+    </p>
+    <div class="gallery-grid" id="gallery-grid"></div>
+  </div>
+</div>
+
+<!-- Help modal -->
+<div class="modal" id="help-modal" role="dialog" aria-modal="true" aria-label="Ayuda">
+  <div class="modal-card">
+    <button class="modal-close" id="btn-help-close" type="button" aria-label="Cerrar ayuda">✕</button>
+    <h2>❓ Ayuda y atajos</h2>
+    <h3>Atajos de teclado</h3>
+    <table class="shortcut-table">
+      <tbody>
+        <tr><td>C</td><td>Tomar foto</td></tr>
+        <tr><td>V</td><td>Grabar video (iniciar / detener)</td></tr>
+        <tr><td>R</td><td>Filtro aleatorio</td></tr>
+        <tr><td>F</td><td>Marcar como favorito</td></tr>
+        <tr><td>M</td><td>Modo espejo</td></tr>
+        <tr><td>G</td><td>Juego aleatorio</td></tr>
+        <tr><td>Esc</td><td>Salir del juego / cerrar</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>

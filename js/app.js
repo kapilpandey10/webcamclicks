@@ -14,7 +14,8 @@ import { motionCatch } from './games/motion-game.js';
 import { facePong } from './games/pong-game.js';
 import { freezePose } from './games/freeze-game.js';
 import { Gallery } from './gallery.js';
-import { shareImage, copyImage } from './share.js';
+import { shareImage, copyImage, shareVideoBlob } from './share.js';
+import { Recorder, downloadClip } from './recorder.js';
 
 /* ============================ state ============================ */
 const settings = storage.get('wc_settings', { mirror: true, sound: true, intensity: 100, effect: 'normal' });
@@ -28,6 +29,9 @@ registerFaceEffects(manager);
 
 const tracker = new FaceTracker(onFaceStatus);
 const gallery = new Gallery(renderGallery);
+
+let recorder = null;
+let isRecording = false;
 
 let display = null;
 let dctx = null;
@@ -95,6 +99,8 @@ function init() {
   el.stageErrorMsg = $('#stage-error-msg');
   el.stageRetry = $('#stage-retry');
   el.fpsBadge = $('#fps-badge');
+  el.recBadge = $('#rec-badge');
+  el.btnRecord = $('#btn-record');
   el.faceBadge = $('#face-badge');
   el.flash = $('#flash');
   el.categoryTabs = $('#category-tabs');
@@ -382,7 +388,99 @@ function randomEffect() {
   }
 }
 
-/* ============================ capture & gallery ============================ */
+/* ============================ capture, recording & gallery ============================ */
+function formatTime(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const mins = Math.floor(totalSec / 60);
+  const secs = totalSec % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function updateRecordUI(recording, elapsedMs = 0) {
+  const btn = el.btnRecord || $('#btn-record');
+  const badge = el.recBadge || $('#rec-badge');
+  if (!btn) return;
+  if (recording) {
+    btn.classList.add('recording');
+    btn.innerHTML = `⏹️ <span class="tool-label">Stop (${formatTime(elapsedMs)})</span> <span class="kbd">V</span>`;
+    if (badge) {
+      badge.style.display = 'inline-block';
+      badge.textContent = `REC ${formatTime(elapsedMs)}`;
+    }
+  } else {
+    btn.classList.remove('recording');
+    btn.innerHTML = `⏺️ <span class="tool-label">Record</span> <span class="kbd">V</span>`;
+    if (badge) badge.style.display = 'none';
+  }
+}
+
+async function toggleRecord() {
+  if (!camera.active) {
+    toast('🎥 Enable the camera first to record video');
+    return;
+  }
+  if (isRecording) {
+    await stopRecording();
+  } else {
+    await startRecording();
+  }
+}
+
+async function startRecording() {
+  if (isRecording) return;
+  if (!display) display = el.canvas || $('#stage-canvas');
+  if (!recorder) {
+    recorder = new Recorder(display);
+  }
+  if (!recorder.supported) {
+    toast('⚠️ Video recording is not supported in this browser');
+    return;
+  }
+
+  recorder.onTick = (elapsedMs) => {
+    updateRecordUI(true, elapsedMs);
+  };
+
+  const started = recorder.start(30);
+  if (!started) {
+    toast('⚠️ Could not start video recording');
+    return;
+  }
+
+  isRecording = true;
+  updateRecordUI(true, 0);
+  Sound.pop();
+  toast('⏺️ Recording started (max 60 seconds)');
+}
+
+async function stopRecording() {
+  if (!isRecording || !recorder) return;
+  isRecording = false;
+  updateRecordUI(false);
+  toast('⏳ Processing video...');
+
+  try {
+    const clip = await recorder.stop();
+    if (clip && clip.blob) {
+      Sound.pop();
+      gallery.addVideo({
+        id: `${Date.now()}-${Math.round(Math.random() * 1e5)}`,
+        url: clip.url,
+        blob: clip.blob,
+        filename: clip.filename,
+        ts: Date.now(),
+        effect: manager.currentName || 'Normal'
+      });
+      toast('🎬 Video recorded! Saved to Gallery.');
+    } else {
+      toast('⚠️ Recording was empty or cancelled');
+    }
+  } catch (err) {
+    console.error('Record stop error:', err);
+    toast('⚠️ Could not save video');
+  }
+}
+
 function capture() {
   if (!camera.active) { toast('🎥 Enable the camera first'); return; }
   Sound.shutter();
@@ -599,6 +697,7 @@ function onKeyDown(e) {
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
   const k = e.key.toLowerCase();
   if (k === 'c') { capture(); return; }
+  if (k === 'v') { toggleRecord(); return; }
   if (k === 'r') { randomEffect(); return; }
   if (k === 'f') { favCurrent(); return; }
   if (k === 'm') {
@@ -626,6 +725,7 @@ function wireEvents() {
   on('#stage-retry', 'click', startCamera);
 
   on('#btn-capture', 'click', capture);
+  on('#btn-record', 'click', toggleRecord);
   on('#btn-random', 'click', randomEffect);
   on('#btn-gallery', 'click', openGallery);
   on('#btn-help', 'click', () => el.helpModal && el.helpModal.classList.add('on'));

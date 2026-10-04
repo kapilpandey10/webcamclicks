@@ -1,21 +1,117 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <!-- Main English Homepage -->
   <url>
     <loc>https://webcamclicks.com/</loc>
-    <lastmod>2026-04-10</lastmod>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://webcamclicks.com/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://webcamclicks.com/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://webcamclicks.com/es/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://webcamclicks.com/fr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://webcamclicks.com/de/" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://webcamclicks.com/pt/" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://webcamclicks.com/hi/" />
   </url>
+
+  <!-- Spanish Portal -->
+  <url>
+    <loc>https://webcamclicks.com/es/</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://webcamclicks.com/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://webcamclicks.com/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://webcamclicks.com/es/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://webcamclicks.com/fr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://webcamclicks.com/de/" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://webcamclicks.com/pt/" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://webcamclicks.com/hi/" />
+  </url>
+
+  <!-- French Portal -->
+  <url>
+    <loc>https://webcamclicks.com/fr/</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://webcamclicks.com/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://webcamclicks.com/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://webcamclicks.com/es/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://webcamclicks.com/fr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://webcamclicks.com/de/" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://webcamclicks.com/pt/" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://webcamclicks.com/hi/" />
+  </url>
+
+  <!-- German Portal -->
+  <url>
+    <loc>https://webcamclicks.com/de/</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://webcamclicks.com/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://webcamclicks.com/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://webcamclicks.com/es/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://webcamclicks.com/fr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://webcamclicks.com/de/" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://webcamclicks.com/pt/" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://webcamclicks.com/hi/" />
+  </url>
+
+  <!-- Portuguese Portal -->
+  <url>
+    <loc>https://webcamclicks.com/pt/</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://webcamclicks.com/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://webcamclicks.com/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://webcamclicks.com/es/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://webcamclicks.com/fr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://webcamclicks.com/de/" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://webcamclicks.com/pt/" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://webcamclicks.com/hi/" />
+  </url>
+
+  <!-- Hindi Portal -->
+  <url>
+    <loc>https://webcamclicks.com/hi/</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://webcamclicks.com/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://webcamclicks.com/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://webcamclicks.com/es/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://webcamclicks.com/fr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://webcamclicks.com/de/" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://webcamclicks.com/pt/" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://webcamclicks.com/hi/" />
+  </url>
+
+  <!-- Languages Hub Page -->
+  <url>
+    <loc>https://webcamclicks.com/languages.html</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Privacy Policy -->
   <url>
     <loc>https://webcamclicks.com/privacy.html</loc>
-    <lastmod>2026-04-10</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.3</priority>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
   </url>
+
+  <!-- Terms of Service -->
   <url>
     <loc>https://webcamclicks.com/terms.html</loc>
-    <lastmod>2026-04-10</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.3</priority>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
   </url>
 </urlset>

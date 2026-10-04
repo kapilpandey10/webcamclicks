@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /_headers
+Disallow: /netlify.toml
+
+Sitemap: https://webcamclicks.com/sitemap.xml

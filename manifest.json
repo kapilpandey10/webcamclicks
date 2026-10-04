@@ -1,0 +1,19 @@
+{
+  "name": "WebcamClicks — Free Webcam Effects, Filters & Camera Games",
+  "short_name": "WebcamClicks",
+  "description": "Take photos and play games with your webcam. 45+ free camera filters, face effects and motion games — right in your browser.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f3f6",
+  "theme_color": "#e0448c",
+  "orientation": "any",
+  "categories": ["entertainment", "photo", "games"],
+  "icons": [
+    {
+      "src": "/assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

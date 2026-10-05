@@ -288,31 +288,125 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
     </div>
 
-    <!-- Desktop Toolbar -->
-    <div class="toolbar" role="toolbar" aria-label="Camera tools">
-      <button class="tool" id="btn-capture" type="button">📸 <span class="tool-label">Capture</span> <span class="kbd">C</span></button>
-      <button class="tool" id="btn-collage" type="button">🎞️ <span class="tool-label">Collage</span></button>
-      <select class="tool" id="select-collage-poses" aria-label="Collage layout" title="Select collage layout">
-        <option value="2">2 Poses (Duo)</option>
-        <option value="3">3 Poses (Strip)</option>
-        <option value="4" selected>4 Poses (Quad)</option>
-        <option value="6">6 Poses (Studio)</option>
-      </select>
-      <button class="tool" id="btn-record" type="button">⏺️ <span class="tool-label">Record</span> <span class="kbd">V</span></button>
-      <button class="tool" id="btn-random" type="button">🎲 <span class="tool-label">Random</span> <span class="kbd">R</span></button>
-      <button class="tool" id="btn-fav" type="button">⭐ <span class="tool-label">Favorite</span> <span class="kbd">F</span></button>
-      <button class="tool" id="btn-mirror" type="button">🪞 <span class="tool-label">Mirror</span> <span class="kbd">M</span></button>
-      <button class="tool" id="btn-flip" type="button">🔄 <span class="tool-label">Flip cam</span></button>
-      <select class="tool" id="camera-select" aria-label="Select camera device" style="display:none; padding:7px 10px; cursor:pointer; font-weight:700; font-size:0.84rem; max-width:170px;"></select>
-      <button class="tool" id="btn-gallery" type="button">🖼️ <span class="tool-label">Gallery</span></button>
-      <button class="tool" id="btn-fullscreen" type="button">⛶ <span class="tool-label">Full</span></button>
-      <button class="tool active" id="btn-sound" type="button"><span class="tool-icon">🔊</span> <span class="tool-label">Sound</span></button>
-      <button class="tool" id="btn-settings" type="button">⚙️ <span class="tool-label">Settings</span></button>
-      <div class="spacer"></div>
-      <label class="intensity" for="intensity">Effect strength
-        <input type="range" id="intensity" min="0" max="100" value="100" step="5">
-      </label>
-      <button class="tool" id="btn-help" type="button">❓ <span class="tool-label">Help</span></button>
+    <!-- Pro Camera Studio Console -->
+    <div class="camera-pro-console toolbar" id="camera-console" role="toolbar" aria-label="Camera controls">
+      
+      <!-- Tier 1: Mode Switcher & Filter Refinements -->
+      <div class="console-subbar">
+        <!-- Quick Creative Actions -->
+        <div class="console-sub-group left">
+          <button class="tool-sub" id="btn-random" type="button" title="Shuffle Random Effect (R)">
+            🎲 <span class="sub-label">Random</span> <span class="kbd">R</span>
+          </button>
+          <button class="tool-sub" id="btn-fav" type="button" title="Add to Favorites (F)">
+            ⭐ <span class="sub-label">Favorite</span> <span class="kbd">F</span>
+          </button>
+        </div>
+
+        <!-- Center: Camera Mode Selector -->
+        <div class="console-mode-switcher" role="tablist" aria-label="Camera mode">
+          <button class="mode-tab active" id="mode-seg-photo" type="button" role="tab" aria-selected="true">
+            📸 Photo
+          </button>
+          <div class="mode-tab-collage-wrap">
+            <button class="mode-tab" id="mode-seg-collage" type="button" role="tab" aria-selected="false">
+              🎞️ Collage
+            </button>
+            <select class="collage-poses-select" id="select-collage-poses" aria-label="Collage layout" title="Select collage layout">
+              <option value="2">2 Duo</option>
+              <option value="3">3 Strip</option>
+              <option value="4" selected>4 Quad</option>
+              <option value="6">6 Studio</option>
+            </select>
+          </div>
+          <button class="mode-tab" id="mode-seg-video" type="button" role="tab" aria-selected="false">
+            ⏺️ Video
+          </button>
+        </div>
+
+        <!-- Right: Effect Intensity & Help -->
+        <div class="console-sub-group right">
+          <div class="intensity-wrap" title="Adjust effect strength">
+            <span class="intensity-label">✨ Strength</span>
+            <input type="range" id="intensity" min="0" max="100" value="100" step="5" aria-label="Effect strength">
+            <span class="intensity-val" id="intensity-val">100%</span>
+          </div>
+          <button class="tool-sub" id="btn-help" type="button" title="Shortcuts & Help">
+            ❓ <span class="sub-label">Help</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tier 2: The Master Shutter Deck -->
+      <div class="console-main-deck">
+        <!-- Left Wing: Gallery Access & Quick Mirrors -->
+        <div class="deck-wing left">
+          <button class="deck-gallery-btn" id="btn-gallery" type="button" title="View Saved Photos & Videos">
+            <div class="gallery-icon-frame" id="deck-gallery-thumb">
+              <span class="gallery-icon">🖼️</span>
+            </div>
+            <div class="gallery-btn-text">
+              <span class="gallery-title">Gallery</span>
+              <span class="gallery-sub" id="deck-gallery-count">0 items</span>
+            </div>
+          </button>
+
+          <div class="deck-quick-toggles">
+            <button class="deck-toggle-btn" id="btn-mirror" type="button" title="Toggle Mirror Mode (M)">
+              🪞 <span class="kbd">M</span>
+            </button>
+            <button class="deck-toggle-btn active" id="btn-sound" type="button" title="Toggle Sound FX">
+              <span class="tool-icon">🔊</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Center Hero: The Master Shutter & Action Trio -->
+        <div class="deck-hero-center">
+          <!-- Quick Collage Burst Trigger (Secondary) -->
+          <button class="action-secondary-btn" id="btn-collage" type="button" title="Shoot Photo Booth Multi-Shot">
+            <span class="action-sec-icon">🎞️</span>
+            <span class="action-sec-label">Booth</span>
+          </button>
+
+          <!-- Master Camera Shutter (Primary 74px tactile button) -->
+          <div class="master-shutter-container">
+            <button class="camera-shutter-master" id="btn-capture" type="button" aria-label="Take Photo (C)">
+              <div class="shutter-halo"></div>
+              <div class="shutter-rim">
+                <div class="shutter-disc">
+                  <span class="shutter-glyph">📷</span>
+                </div>
+              </div>
+            </button>
+            <span class="shutter-hint">Press <kbd>C</kbd></span>
+          </div>
+
+          <!-- Video Record Trigger (Secondary) -->
+          <button class="action-secondary-btn rec-btn" id="btn-record" type="button" title="Record Video Clip (V)">
+            <span class="action-sec-icon">⏺️</span>
+            <span class="action-sec-label">Record</span>
+            <span class="kbd">V</span>
+          </button>
+        </div>
+
+        <!-- Right Wing: Hardware & Camera Preferences -->
+        <div class="deck-wing right">
+          <div class="deck-quick-toggles">
+            <button class="deck-toggle-btn" id="btn-flip" type="button" title="Flip Camera Front/Back">
+              🔄
+            </button>
+            <button class="deck-toggle-btn" id="btn-fullscreen" type="button" title="Toggle Fullscreen">
+              ⛶
+            </button>
+            <button class="deck-toggle-btn" id="btn-settings" type="button" title="Camera Settings & Preferences">
+              ⚙️
+            </button>
+          </div>
+
+          <select class="camera-device-select" id="camera-select" aria-label="Select camera device" style="display:none;"></select>
+        </div>
+      </div>
     </div>
 
     <!-- Mobile Native App Shutter Deck & Filter Wheel -->

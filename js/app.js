@@ -46,6 +46,7 @@ let lastGameId = null;
 let pendingGame = null;
 let badgeTick = 0;
 let mobileMode = 'photo'; /* 'photo' | 'collage' | 'video' */
+let desktopMode = 'photo'; /* 'photo' | 'collage' | 'video' */
 let collagePoseCount = 4;
 let collageActive = false;
 let collagePoses = [];
@@ -111,6 +112,7 @@ function init() {
   el.stageRetry = $('#stage-retry');
   el.fpsBadge = $('#fps-badge');
   el.recBadge = $('#rec-badge');
+  el.btnCapture = $('#btn-capture');
   el.btnRecord = $('#btn-record');
   el.cameraSelect = $('#camera-select');
   el.faceBadge = $('#face-badge');
@@ -211,6 +213,8 @@ function init() {
   if (el.intensity) {
     el.intensity.value = settings.intensity ?? 100;
     manager.intensity = (settings.intensity ?? 100) / 100;
+    const valEl = $('#intensity-val');
+    if (valEl) valEl.textContent = `${el.intensity.value}%`;
   }
 
   buildCategoryTabs();
@@ -544,20 +548,41 @@ function updateRecordUI(recording, elapsedMs = 0) {
   const btn = el.btnRecord || $('#btn-record');
   const badge = el.recBadge || $('#rec-badge');
   const mobShutter = el.btnMobileShutter || $('#btn-mobile-shutter');
+  const masterShutter = el.btnCapture || $('#btn-capture');
+
   if (btn) {
     if (recording) {
       btn.classList.add('recording');
-      btn.innerHTML = `⏹️ <span class="tool-label">Stop (${formatTime(elapsedMs)})</span> <span class="kbd">V</span>`;
+      if (btn.classList.contains('action-secondary-btn')) {
+        btn.innerHTML = `<span class="action-sec-icon">⏹️</span><span class="action-sec-label">${formatTime(elapsedMs)}</span><span class="kbd">V</span>`;
+      } else {
+        btn.innerHTML = `⏹️ <span class="tool-label">Stop (${formatTime(elapsedMs)})</span> <span class="kbd">V</span>`;
+      }
       if (badge) {
         badge.style.display = 'inline-block';
         badge.textContent = `REC ${formatTime(elapsedMs)}`;
       }
     } else {
       btn.classList.remove('recording');
-      btn.innerHTML = `⏺️ <span class="tool-label">Record</span> <span class="kbd">V</span>`;
+      if (btn.classList.contains('action-secondary-btn')) {
+        btn.innerHTML = `<span class="action-sec-icon">⏺️</span><span class="action-sec-label">Record</span><span class="kbd">V</span>`;
+      } else {
+        btn.innerHTML = `⏺️ <span class="tool-label">Record</span> <span class="kbd">V</span>`;
+      }
       if (badge) badge.style.display = 'none';
     }
   }
+
+  if (masterShutter && (desktopMode === 'video' || recording)) {
+    masterShutter.classList.toggle('recording', recording);
+    const glyph = masterShutter.querySelector('.shutter-glyph');
+    if (glyph) glyph.textContent = recording ? '⏹️' : (desktopMode === 'video' ? '⏺️' : '📷');
+    const hint = masterShutter.parentElement ? masterShutter.parentElement.querySelector('.shutter-hint') : null;
+    if (hint) {
+      hint.innerHTML = recording ? `REC <kbd>${formatTime(elapsedMs)}</kbd>` : 'Press <kbd>C</kbd> or <kbd>V</kbd>';
+    }
+  }
+
   if (mobShutter) {
     mobShutter.classList.toggle('is-recording', recording);
     mobShutter.classList.toggle('video-mode', mobileMode === 'video' || recording);
@@ -997,6 +1022,7 @@ async function onSaveCameraSettings(e) {
 
 function renderGallery(items) {
   updateMobileGalleryPreview(items);
+  updateDesktopGalleryConsole(items);
   if (!el.galleryGrid) return;
   el.galleryGrid.innerHTML = '';
   if (!items.length) {
@@ -1187,6 +1213,22 @@ function updateMobileGalleryPreview(items) {
   preview.innerHTML = '🖼️';
 }
 
+function updateDesktopGalleryConsole(items) {
+  const thumb = $('#deck-gallery-thumb');
+  const count = $('#deck-gallery-count');
+  const total = items ? items.length : 0;
+  if (count) {
+    count.textContent = total === 1 ? '1 item' : `${total} items`;
+  }
+  if (thumb) {
+    if (total > 0 && items[0].dataUrl) {
+      thumb.innerHTML = `<img src="${items[0].dataUrl}" alt="Latest photo">`;
+    } else {
+      thumb.innerHTML = '<span class="gallery-icon">🖼️</span>';
+    }
+  }
+}
+
 function openEffectsSheet() {
   if (el.effectsPanel) el.effectsPanel.classList.add('open-sheet');
   if (el.sheetBackdrop) el.sheetBackdrop.classList.add('on');
@@ -1238,6 +1280,55 @@ async function onMobileShutter() {
   }
 }
 
+function setDesktopMode(mode) {
+  desktopMode = mode;
+  const segPhoto = $('#mode-seg-photo');
+  const segCollage = $('#mode-seg-collage');
+  const segVideo = $('#mode-seg-video');
+  if (segPhoto) {
+    segPhoto.classList.toggle('active', mode === 'photo');
+    segPhoto.setAttribute('aria-selected', mode === 'photo');
+  }
+  if (segCollage) {
+    segCollage.classList.toggle('active', mode === 'collage');
+    segCollage.setAttribute('aria-selected', mode === 'collage');
+  }
+  if (segVideo) {
+    segVideo.classList.toggle('active', mode === 'video');
+    segVideo.setAttribute('aria-selected', mode === 'video');
+  }
+  const shutter = el.btnCapture || $('#btn-capture');
+  if (shutter) {
+    shutter.classList.toggle('is-video', mode === 'video');
+    shutter.classList.toggle('is-collage', mode === 'collage');
+    shutter.setAttribute('aria-label',
+      mode === 'video' ? 'Record video (C or V)' :
+      mode === 'collage' ? `Photo booth multi-shot (${collagePoseCount} poses)` :
+      'Take photo (C)'
+    );
+    const glyph = shutter.querySelector('.shutter-glyph');
+    if (glyph) {
+      glyph.textContent = mode === 'video' ? '⏺️' : mode === 'collage' ? '🎞️' : '📷';
+    }
+    const hint = shutter.parentElement ? shutter.parentElement.querySelector('.shutter-hint') : null;
+    if (hint) {
+      hint.innerHTML = mode === 'video' ? 'Press <kbd>C</kbd> or <kbd>V</kbd>' : 'Press <kbd>C</kbd>';
+    }
+  }
+  Sound.click();
+}
+
+async function onMasterCapture() {
+  if (desktopMode === 'video') {
+    await toggleRecord();
+  } else if (desktopMode === 'collage') {
+    const poses = el.selectCollagePoses ? parseInt(el.selectCollagePoses.value, 10) : collagePoseCount;
+    await startCollageShoot(poses);
+  } else {
+    await capture();
+  }
+}
+
 function favCurrent() {
   if (!manager.current) return;
   toggleFav(manager.current.id);
@@ -1275,7 +1366,7 @@ function onKeyDown(e) {
   const t = e.target;
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
   const k = e.key.toLowerCase();
-  if (k === 'c') { capture(); return; }
+  if (k === 'c') { onMasterCapture(); return; }
   if (k === 'v') { toggleRecord(); return; }
   if (k === 'r') { randomEffect(); return; }
   if (k === 'f') { favCurrent(); return; }
@@ -1308,10 +1399,13 @@ function wireEvents() {
   on('#start-btn', 'click', startCamera);
   on('#stage-retry', 'click', startCamera);
 
-  /* Desktop Toolbar */
-  on('#btn-capture', 'click', capture);
+  /* Desktop Pro Camera Console */
+  on('#btn-capture', 'click', onMasterCapture);
+  on('#mode-seg-photo', 'click', () => setDesktopMode('photo'));
+  on('#mode-seg-collage', 'click', () => setDesktopMode('collage'));
+  on('#mode-seg-video', 'click', () => setDesktopMode('video'));
   on('#btn-collage', 'click', () => {
-    const poses = el.selectCollagePoses ? parseInt(el.selectCollagePoses.value, 10) : 4;
+    const poses = el.selectCollagePoses ? parseInt(el.selectCollagePoses.value, 10) : collagePoseCount;
     startCollageShoot(poses);
   });
   on('#select-collage-poses', 'change', (e) => {
@@ -1438,7 +1532,10 @@ function wireEvents() {
   on('#btn-fullscreen', 'click', toggleFullscreen);
 
   on('#intensity', 'input', (e) => {
-    manager.intensity = clamp(parseInt(e.target.value, 10) / 100, 0, 1);
+    const val = parseInt(e.target.value, 10);
+    manager.intensity = clamp(val / 100, 0, 1);
+    const valEl = $('#intensity-val');
+    if (valEl) valEl.textContent = `${val}%`;
   });
   on('#intensity', 'change', saveSettings);
 

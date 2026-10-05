@@ -260,8 +260,466 @@ h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 0.5em; color: var(--text); font-
 }
 .btn:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: none; }
 
-/* ---------- Toolbar ---------- */
-.toolbar {
+/* ---------- Pro Camera Studio Console ---------- */
+.camera-pro-console {
+  display: flex;
+  flex-direction: column;
+  margin-top: 14px;
+  padding: 14px 18px 16px;
+  background: #ffffff;
+  border: 1.5px solid var(--border);
+  border-radius: 22px;
+  box-shadow: 0 10px 30px -5px rgba(236, 72, 153, 0.12), 0 4px 12px -2px rgba(0, 0, 0, 0.04);
+  gap: 12px;
+}
+
+/* Tier 1: Subbar (Modes, Random/Fav, and Intensity) */
+.console-subbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(236, 72, 153, 0.12);
+  padding-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.console-sub-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+.console-sub-group.right {
+  justify-content: flex-end;
+}
+
+.tool-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font);
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: #f8fafc;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.tool-sub:hover {
+  background: var(--bg-3);
+  color: var(--brand-2);
+  border-color: var(--brand);
+  transform: translateY(-1px);
+}
+.tool-sub .kbd {
+  font-size: 0.65rem;
+  color: var(--muted);
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+/* Segmented Mode Switcher (Photo / Collage / Video) */
+.console-mode-switcher {
+  display: inline-flex;
+  align-items: center;
+  background: #f1f5f9;
+  border: 1px solid rgba(236, 72, 153, 0.15);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.mode-tab {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+}
+.mode-tab:hover {
+  color: var(--brand-2);
+}
+.mode-tab.active {
+  background: #ffffff;
+  color: var(--brand-2);
+  box-shadow: 0 2px 8px rgba(236, 72, 153, 0.22);
+}
+
+.mode-tab-collage-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+
+.collage-poses-select {
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--brand-2);
+  font-family: var(--font);
+  font-size: 0.74rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 4px 8px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.collage-poses-select:hover {
+  border-color: var(--brand);
+}
+
+/* Intensity Control */
+.intensity-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+.intensity-wrap input[type="range"] {
+  accent-color: var(--brand);
+  width: 75px;
+  height: 4px;
+  cursor: pointer;
+}
+.intensity-val {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--brand-2);
+  min-width: 34px;
+  text-align: right;
+}
+
+/* Tier 2: The Main Shutter Deck (Symmetrical 3-Column Studio Layout) */
+.console-main-deck {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 2px 0;
+}
+
+/* Left Wing: Gallery & Quick Mirrors */
+.deck-wing.left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+.deck-gallery-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: #f8fafc;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+.deck-gallery-btn:hover {
+  background: var(--bg-3);
+  border-color: var(--brand);
+  transform: translateY(-1px);
+}
+.gallery-icon-frame {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: #ffffff;
+  border: 1.5px solid rgba(236, 72, 153, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 1.1rem;
+}
+.gallery-icon-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.gallery-btn-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.gallery-title {
+  font-family: var(--font);
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+.gallery-sub {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--brand-2);
+}
+
+.deck-quick-toggles {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.deck-toggle-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  user-select: none;
+}
+.deck-toggle-btn:hover {
+  background: var(--bg-3);
+  border-color: var(--brand);
+  color: var(--brand-2);
+  transform: translateY(-1px);
+}
+.deck-toggle-btn.active {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(236, 72, 153, 0.35);
+}
+.deck-toggle-btn .kbd {
+  display: none;
+}
+
+/* Center Hero Shutter & Action Trio */
+.deck-hero-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+.master-shutter-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.camera-shutter-master {
+  position: relative;
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+.camera-shutter-master:hover {
+  transform: scale(1.06);
+}
+.camera-shutter-master:active {
+  transform: scale(0.92);
+}
+
+.shutter-rim {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 3.5px solid #ffffff;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 3px var(--brand), 0 8px 24px rgba(236, 72, 153, 0.42);
+  transition: all 0.2s ease;
+}
+.camera-shutter-master:hover .shutter-rim {
+  box-shadow: 0 0 0 4px var(--brand-2), 0 12px 28px rgba(236, 72, 153, 0.55);
+}
+.camera-shutter-master.is-video .shutter-rim {
+  box-shadow: 0 0 0 3px var(--danger), 0 8px 24px rgba(239, 68, 68, 0.45);
+}
+.camera-shutter-master.is-video .shutter-disc {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+.camera-shutter-master.is-collage .shutter-rim {
+  box-shadow: 0 0 0 3px #8b5cf6, 0 8px 24px rgba(139, 92, 246, 0.45);
+}
+.camera-shutter-master.is-collage .shutter-disc {
+  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+}
+.camera-shutter-master.recording .shutter-rim {
+  box-shadow: 0 0 0 4px var(--danger), 0 0 24px rgba(239, 68, 68, 0.65);
+  animation: recPulse 1.2s infinite ease-in-out;
+}
+.camera-shutter-master.recording .shutter-disc {
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  background: #ef4444;
+}
+
+.shutter-disc {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--brand-grad);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s ease;
+}
+.shutter-glyph {
+  font-size: 1.55rem;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+.shutter-hint {
+  font-family: var(--font);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  user-select: none;
+}
+.shutter-hint kbd {
+  font-family: var(--font);
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--brand-2);
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+/* Secondary Actions beside Shutter */
+.action-secondary-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1.5px solid var(--border);
+  color: var(--text-secondary);
+  font-family: var(--font);
+  font-size: 0.7rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  user-select: none;
+}
+.action-secondary-btn:hover {
+  background: var(--bg-3);
+  border-color: var(--brand);
+  color: var(--brand-2);
+  transform: translateY(-1px);
+}
+.action-secondary-btn .action-sec-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+.action-secondary-btn .kbd {
+  display: none;
+}
+
+.action-secondary-btn.rec-btn.recording {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #ffffff;
+  animation: recPulse 1.2s infinite ease-in-out;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+}
+
+/* Right Wing: Hardware & Preferences */
+.deck-wing.right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.camera-device-select {
+  font-family: var(--font);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 6px 12px;
+  cursor: pointer;
+  outline: none;
+}
+
+/* Pro Console Responsive Adaptations (861px - 1100px) */
+@media (max-width: 1100px) {
+  .console-subbar {
+    justify-content: center;
+    gap: 8px;
+  }
+  .console-sub-group {
+    flex: initial;
+  }
+  .console-main-deck {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 950px) {
+  .gallery-btn-text {
+    display: none;
+  }
+  .deck-gallery-btn {
+    padding: 6px;
+    border-radius: 50%;
+  }
+}
+
+/* Legacy Toolbar Compatibility */
+.toolbar:not(.camera-pro-console) {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   margin-top: 14px; padding: 12px 14px;
   background: #ffffff;

@@ -53,6 +53,7 @@ let currentCollageResult = null;
 let collageTheme = 'white';
 let countdownActive = false;
 let cancelCollageRequested = false;
+let currentReviewItem = null;
 
 /* DOM refs (filled in init) */
 const el = {};
@@ -187,6 +188,18 @@ function init() {
   el.btnShareCollage = $('#btn-share-collage');
   el.btnCopyCollage = $('#btn-copy-collage');
   el.btnRetakeCollage = $('#btn-retake-collage');
+
+  /* Single Photo Review Modal Elements */
+  el.photoReviewModal = $('#photo-review-modal');
+  el.btnClosePhotoReview = $('#btn-close-photo-review');
+  el.btnResumeCamera = $('#btn-resume-camera');
+  el.photoReviewImg = $('#photo-review-img');
+  el.photoReviewMeta = $('#photo-review-meta');
+  el.btnDownloadPhoto = $('#btn-download-photo');
+  el.btnGdrivePhoto = $('#btn-gdrive-photo');
+  el.btnSharePhoto = $('#btn-share-photo');
+  el.btnCopyPhoto = $('#btn-copy-photo');
+  el.btnRetakePhoto = $('#btn-retake-photo');
 
   camera.attach(el.stage);
   camera.mirror = settings.mirror !== false;
@@ -689,7 +702,10 @@ async function capture() {
     el.flash.classList.add('go');
   }
   const item = gallery.captureFrom(display, manager.currentName || 'Normal');
-  if (item) toast('📸 Saved to your gallery — it never leaves this device');
+  if (item) {
+    openPhotoReviewModal(item);
+    toast('📸 Photo saved to gallery! Review what you look like below.', 3500);
+  }
 }
 
 async function startCollageShoot(poseCount = 4) {
@@ -873,6 +889,42 @@ async function copyCollageToClipboard() {
   Sound.pop();
   const ok = await copyImage(currentCollageResult.dataUrl);
   toast(ok ? '📋 Collage copied to clipboard!' : '📋 Copying not supported on this device');
+}
+
+function openPhotoReviewModal(item) {
+  if (!item || !el.photoReviewModal) return;
+  currentReviewItem = item;
+  if (el.photoReviewImg) el.photoReviewImg.src = item.dataUrl;
+  if (el.photoReviewMeta) el.photoReviewMeta.textContent = `Effect: ${item.effect || 'Normal'} · Saved to your Gallery`;
+  el.photoReviewModal.classList.add('on');
+}
+
+function closePhotoReviewModal() {
+  if (el.photoReviewModal) el.photoReviewModal.classList.remove('on');
+}
+
+async function savePhotoToGoogleDrive(item) {
+  if (!item) return;
+  Sound.pop();
+  const filename = `webcamclicks-${item.id || timestamp()}.jpg`;
+  const file = dataUrlToFile(item.dataUrl, filename);
+
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: 'My WebcamClicks Photo',
+        text: 'Captured with WebcamClicks!'
+      });
+      return;
+    } catch (err) {
+      if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) {}
+    }
+  }
+
+  downloadDataUrl(item.dataUrl, filename);
+  window.open('https://drive.google.com/drive/u/0/my-drive', '_blank', 'noopener,noreferrer');
+  toast('☁️ Photo downloaded! Drag it into Google Drive to save permanently.', 6000);
 }
 
 async function openSettingsModal() {
@@ -1236,6 +1288,7 @@ function onKeyDown(e) {
   }
   if (k === 'g') { randomGame(); return; }
   if (k === 'escape') {
+    if (el.photoReviewModal && el.photoReviewModal.classList.contains('on')) { closePhotoReviewModal(); return; }
     if (collageActive) { abortCollageShoot(); return; }
     if (el.collageModal && el.collageModal.classList.contains('on')) { closeCollageModal(); return; }
     if (gameMgr.active) { exitGame(); return; }
@@ -1279,6 +1332,41 @@ function wireEvents() {
     if (e.target === el.settingsModal && el.settingsModal) closeSettingsModal();
   });
   on('#camera-settings-form', 'submit', onSaveCameraSettings);
+
+  /* Single Photo Review Modal */
+  on('#btn-close-photo-review', 'click', closePhotoReviewModal);
+  on('#btn-resume-camera', 'click', closePhotoReviewModal);
+  on('#photo-review-modal', 'click', (e) => {
+    if (e.target === el.photoReviewModal) closePhotoReviewModal();
+  });
+  on('#btn-download-photo', 'click', () => {
+    if (currentReviewItem) {
+      gallery.download(currentReviewItem);
+      toast('⬇️ Photo downloaded!');
+    }
+  });
+  on('#btn-gdrive-photo', 'click', () => {
+    if (currentReviewItem) savePhotoToGoogleDrive(currentReviewItem);
+  });
+  on('#btn-share-photo', 'click', async () => {
+    if (currentReviewItem) {
+      Sound.pop();
+      const res = await shareImage(currentReviewItem.dataUrl);
+      if (res === 'downloaded') toast('📤 Native sharing not available — downloaded instead');
+      else if (res === 'shared') toast('🎉 Shared successfully!');
+    }
+  });
+  on('#btn-copy-photo', 'click', async () => {
+    if (currentReviewItem) {
+      Sound.pop();
+      const ok = await copyImage(currentReviewItem.dataUrl);
+      toast(ok ? '📋 Photo copied to clipboard!' : '📋 Copying not supported on this device');
+    }
+  });
+  on('#btn-retake-photo', 'click', () => {
+    closePhotoReviewModal();
+    setTimeout(() => capture(), 350);
+  });
 
   /* Collage HUD & Modal */
   on('#btn-cancel-collage', 'click', abortCollageShoot);

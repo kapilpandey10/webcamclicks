@@ -312,6 +312,49 @@
   </div>
 </div>
 
+<!-- ================= Single Photo Instant Review Modal ================= -->
+<div class="modal" id="photo-review-modal" role="dialog" aria-modal="true" aria-label="Photo Preview Studio">
+  <div class="modal-card photo-review-card">
+    <div class="photo-review-header">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span class="photo-review-icon">📸</span>
+        <div>
+          <h2 style="margin:0; font-size:1.35rem; color:#0f172a;">Photo Preview</h2>
+          <span id="photo-review-meta" style="font-size:0.84rem; color:var(--muted); font-weight:600;">Effect: Normal</span>
+        </div>
+      </div>
+      <button class="modal-close" id="btn-close-photo-review" type="button" aria-label="Close preview and resume camera">✕</button>
+    </div>
+
+    <!-- Full-Size Image Preview -->
+    <div class="photo-review-preview">
+      <img id="photo-review-img" src="" alt="Captured webcam snapshot">
+    </div>
+
+    <!-- Action Bar -->
+    <div class="photo-review-actions">
+      <button class="btn btn-primary" id="btn-download-photo" type="button">
+        ⬇️ Download to Device
+      </button>
+      <button class="btn btn-gdrive" id="btn-gdrive-photo" type="button">
+        ☁️ Save to Google Drive
+      </button>
+      <button class="btn btn-share-web" id="btn-share-photo" type="button">
+        📤 Share Online
+      </button>
+      <button class="btn" id="btn-copy-photo" type="button">
+        📋 Copy
+      </button>
+      <button class="btn" id="btn-retake-photo" type="button">
+        🔁 Retake Photo
+      </button>
+      <button class="btn" id="btn-resume-camera" type="button">
+        ▶️ Resume Camera
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="collage-modal" role="dialog" aria-modal="true" aria-label="Photo Booth Collage Studio">
   <div class="modal-card collage-modal-card">
     <div class="collage-modal-header">

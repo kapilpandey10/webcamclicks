@@ -139,6 +139,7 @@ export class FaceTracker {
     if (this.loadedAge) task = task.withFaceAgeGender();
 
     task.then((res) => {
+      const now = performance.now();
       if (res) {
         this.result = {
           box: res.detection ? res.detection.box : res.box,
@@ -146,10 +147,14 @@ export class FaceTracker {
           expressions: res.expressions || null,
           age: typeof res.age === 'number' ? res.age : null,
           gender: res.gender || null,
-          at: performance.now()
+          at: now
         };
+        this._lastSeenAt = now;
       } else {
-        this.result = null;
+        // Keep last known face for a grace period (~380ms) to prevent flickering or freezing during quick head turns
+        if (!this._lastSeenAt || (now - this._lastSeenAt > 380)) {
+          this.result = null;
+        }
       }
     }).catch(() => { /* transient detection errors are fine */ })
       .finally(() => { this._pending = false; });
@@ -158,5 +163,6 @@ export class FaceTracker {
   reset() {
     this.result = null;
     this._frame = 0;
+    this._lastSeenAt = 0;
   }
 }

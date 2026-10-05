@@ -13,6 +13,7 @@ import { GameManager } from './games/GameManager.js';
 import { motionCatch } from './games/motion-game.js';
 import { facePong } from './games/pong-game.js';
 import { freezePose } from './games/freeze-game.js';
+import { balloonPop } from './games/balloon-pop.js';
 import { Gallery } from './gallery.js';
 import { shareImage, copyImage, shareVideoBlob } from './share.js';
 import { Recorder, downloadClip } from './recorder.js';
@@ -84,7 +85,7 @@ const gameEngine = {
 };
 
 const gameMgr = new GameManager(gameEngine);
-gameMgr.registerAll([motionCatch, facePong, freezePose]);
+gameMgr.registerAll([balloonPop, motionCatch, facePong, freezePose]);
 
 /* ============================ init ============================ */
 function init() {

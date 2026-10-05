@@ -1,7 +1,7 @@
 /* WebcamClicks — app.js
    Wires together camera, effects, face tracking, games, gallery and UI. */
 
-import { $, clamp, rand, storage, toast, FpsMeter, friendlyCameraError } from './utils.js';
+import { $, clamp, rand, storage, toast, FpsMeter, friendlyCameraError, makeCanvas, downloadDataUrl, dataUrlToFile, timestamp } from './utils.js';
 import { Sound } from './sound.js';
 import { CameraManager } from './camera.js';
 import { MotionDetector } from './motion.js';
@@ -17,6 +17,7 @@ import { balloonPop } from './games/balloon-pop.js';
 import { Gallery } from './gallery.js';
 import { shareImage, copyImage, shareVideoBlob } from './share.js';
 import { Recorder, downloadClip } from './recorder.js';
+import { generateCollage, COLLAGE_THEMES } from './collage.js';
 
 /* ============================ state ============================ */
 const settings = storage.get('wc_settings', { mirror: true, sound: true, intensity: 100, effect: 'normal' });
@@ -44,7 +45,14 @@ let gameMsgTimer = 0;
 let lastGameId = null;
 let pendingGame = null;
 let badgeTick = 0;
-let mobileMode = 'photo'; /* 'photo' | 'video' */
+let mobileMode = 'photo'; /* 'photo' | 'collage' | 'video' */
+let collagePoseCount = 4;
+let collageActive = false;
+let collagePoses = [];
+let currentCollageResult = null;
+let collageTheme = 'white';
+let countdownActive = false;
+let cancelCollageRequested = false;
 
 /* DOM refs (filled in init) */
 const el = {};
@@ -153,6 +161,32 @@ function init() {
   el.mbNavCamera = $('#mb-nav-camera');
   el.mbNavGames = $('#mb-nav-games');
   el.mbNavGallery = $('#mb-nav-gallery');
+
+  /* On-Camera Countdown & Photo Booth Collage Elements */
+  el.cameraCountdown = $('#camera-countdown');
+  el.countdownNum = $('#countdown-num');
+  el.countdownCaption = $('#countdown-caption');
+  el.cdMeter = $('#cd-meter');
+
+  el.collageHud = $('#collage-hud');
+  el.collageHudStep = $('#collage-hud-step');
+  el.collageHudThumbs = $('#collage-hud-thumbs');
+  el.btnCancelCollage = $('#btn-cancel-collage');
+
+  el.btnCollage = $('#btn-collage');
+  el.selectCollagePoses = $('#select-collage-poses');
+  el.modeCollage = $('#mode-collage');
+  el.mobileCollageSelector = $('#mobile-collage-selector');
+
+  el.collageModal = $('#collage-modal');
+  el.btnCloseCollageModal = $('#btn-close-collage-modal');
+  el.collagePreviewImg = $('#collage-preview-img');
+  el.collageThemeButtons = $('#collage-theme-buttons');
+  el.btnDownloadCollage = $('#btn-download-collage');
+  el.btnGdriveCollage = $('#btn-gdrive-collage');
+  el.btnShareCollage = $('#btn-share-collage');
+  el.btnCopyCollage = $('#btn-copy-collage');
+  el.btnRetakeCollage = $('#btn-retake-collage');
 
   camera.attach(el.stage);
   camera.mirror = settings.mirror !== false;
@@ -584,20 +618,68 @@ async function stopRecording() {
   }
 }
 
-let countdownActive = false;
+/**
+ * Performs a cinematic on-camera countdown overlay directly inside #camera-stage.
+ * @param {number} seconds - Number of seconds (e.g. 3, 5, 10).
+ * @param {string} caption - Optional text caption (e.g. "POSE 1 OF 4", "GET READY").
+ * @returns {Promise<boolean>} Resolves true when finished, false if aborted.
+ */
+async function runCameraCountdown(seconds = 3, caption = 'GET READY') {
+  const overlay = el.cameraCountdown || $('#camera-countdown');
+  const numEl = el.countdownNum || $('#countdown-num');
+  const captionEl = el.countdownCaption || $('#countdown-caption');
+  const meterEl = el.cdMeter || $('#cd-meter');
+  if (!overlay || !numEl) return true;
+
+  overlay.style.display = 'flex';
+  if (captionEl) captionEl.textContent = caption;
+
+  const circumference = 427.26;
+  countdownActive = true;
+
+  for (let i = seconds; i > 0; i--) {
+    if (cancelCollageRequested) {
+      overlay.style.display = 'none';
+      countdownActive = false;
+      return false;
+    }
+    numEl.classList.remove('smile');
+    numEl.textContent = String(i);
+    if (meterEl) {
+      meterEl.style.transition = 'none';
+      meterEl.style.strokeDashoffset = '0';
+      void meterEl.offsetWidth;
+      meterEl.style.transition = 'stroke-dashoffset 0.95s linear';
+      meterEl.style.strokeDashoffset = String(circumference);
+    }
+    Sound.countdownTick(i);
+    await new Promise(r => setTimeout(r, 1000));
+  }
+
+  if (cancelCollageRequested) {
+    overlay.style.display = 'none';
+    countdownActive = false;
+    return false;
+  }
+
+  numEl.classList.add('smile');
+  numEl.textContent = 'SMILE! 😄';
+  Sound.countdownGo();
+  await new Promise(r => setTimeout(r, 380));
+
+  overlay.style.display = 'none';
+  countdownActive = false;
+  return true;
+}
+
 async function capture() {
   if (!camera.active) { toast('🎥 Enable the camera first'); return; }
-  if (countdownActive) return;
+  if (countdownActive || collageActive) return;
 
   const timerSecs = settings.timer ? parseInt(settings.timer, 10) : 0;
   if (timerSecs > 0) {
-    countdownActive = true;
-    for (let i = timerSecs; i > 0; i--) {
-      toast(`⏳ ${i}…`, 1000);
-      Sound.pop();
-      await new Promise(r => setTimeout(r, 1000));
-    }
-    countdownActive = false;
+    const ok = await runCameraCountdown(timerSecs, 'SMILE FOR THE CAMERA');
+    if (!ok) return;
   }
 
   Sound.shutter();
@@ -608,6 +690,189 @@ async function capture() {
   }
   const item = gallery.captureFrom(display, manager.currentName || 'Normal');
   if (item) toast('📸 Saved to your gallery — it never leaves this device');
+}
+
+async function startCollageShoot(poseCount = 4) {
+  if (!camera.active) {
+    toast('🎥 Enable the camera first');
+    return;
+  }
+  if (countdownActive || collageActive || isRecording) return;
+
+  collageActive = true;
+  cancelCollageRequested = false;
+  collagePoses = [];
+  collagePoseCount = parseInt(poseCount, 10) || 4;
+
+  // Setup Collage HUD
+  if (el.collageHud) {
+    el.collageHud.style.display = 'flex';
+    if (el.collageHudStep) el.collageHudStep.textContent = `Pose 1 of ${collagePoseCount}`;
+    if (el.collageHudThumbs) {
+      el.collageHudThumbs.innerHTML = '';
+      for (let i = 0; i < collagePoseCount; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'hud-thumb-slot';
+        slot.id = `hud-slot-${i}`;
+        slot.textContent = `#${i + 1}`;
+        el.collageHudThumbs.appendChild(slot);
+      }
+    }
+  }
+
+  toast(`🎞️ Photo Booth Started: ${collagePoseCount} Poses! Strike your first pose!`, 3200);
+
+  for (let p = 0; p < collagePoseCount; p++) {
+    if (cancelCollageRequested) break;
+
+    if (el.collageHudStep) {
+      el.collageHudStep.textContent = `Pose ${p + 1} of ${collagePoseCount}`;
+    }
+
+    // 3-second on-camera countdown for each pose
+    const ok = await runCameraCountdown(3, `POSE ${p + 1} OF ${collagePoseCount}`);
+    if (!ok || cancelCollageRequested) break;
+
+    // Flash + Shutter sound
+    Sound.shutter();
+    if (el.flash) {
+      el.flash.classList.remove('go');
+      void el.flash.offsetWidth;
+      el.flash.classList.add('go');
+    }
+
+    // Capture high-res snapshot of current display canvas
+    const snap = makeCanvas(display.width, display.height);
+    const sctx = snap.getContext('2d');
+    sctx.drawImage(display, 0, 0);
+    collagePoses.push(snap);
+
+    // Fill thumb slot
+    const slotEl = $(`#hud-slot-${p}`);
+    if (slotEl) {
+      slotEl.classList.add('filled');
+      slotEl.innerHTML = `<img src="${snap.toDataURL('image/jpeg', 0.8)}" alt="Pose ${p + 1}">`;
+    }
+
+    // If not the final pose, give user a brief 1.2s break to see their snapshot & prepare next pose
+    if (p < collagePoseCount - 1) {
+      await new Promise(r => setTimeout(r, 1200));
+    }
+  }
+
+  if (cancelCollageRequested || collagePoses.length < collagePoseCount) {
+    abortCollageShoot();
+    return;
+  }
+
+  // Final celebration & assembly
+  Sound.motorPrint();
+  Sound.win();
+  if (el.collageHud) el.collageHud.style.display = 'none';
+  collageActive = false;
+
+  finishCollageShoot();
+}
+
+function abortCollageShoot() {
+  cancelCollageRequested = true;
+  collageActive = false;
+  if (el.cameraCountdown) el.cameraCountdown.style.display = 'none';
+  if (el.collageHud) el.collageHud.style.display = 'none';
+  collagePoses = [];
+  toast('✕ Photo Booth cancelled');
+}
+
+function finishCollageShoot() {
+  currentCollageResult = generateCollage(collagePoses, {
+    theme: collageTheme,
+    title: 'WEBCAMCLICKS PHOTO BOOTH'
+  });
+
+  // Add to gallery
+  gallery.addPhoto(currentCollageResult.dataUrl, `Photo Booth (${collagePoses.length} Poses)`);
+
+  // Display in Modal
+  openCollageModal();
+  toast('🎉 Photo Booth Collage Complete! Saved to your gallery.', 4000);
+}
+
+function openCollageModal() {
+  if (!el.collageModal || !currentCollageResult) return;
+  if (el.collagePreviewImg) el.collagePreviewImg.src = currentCollageResult.dataUrl;
+
+  // Sync theme buttons
+  if (el.collageThemeButtons) {
+    const pills = el.collageThemeButtons.querySelectorAll('.theme-pill');
+    pills.forEach(p => p.classList.toggle('active', p.dataset.theme === collageTheme));
+  }
+
+  el.collageModal.classList.add('on');
+}
+
+function closeCollageModal() {
+  if (el.collageModal) el.collageModal.classList.remove('on');
+}
+
+function setCollageTheme(themeKey) {
+  if (!COLLAGE_THEMES[themeKey] || !collagePoses.length) return;
+  collageTheme = themeKey;
+  currentCollageResult = generateCollage(collagePoses, {
+    theme: collageTheme,
+    title: 'WEBCAMCLICKS PHOTO BOOTH'
+  });
+  if (el.collagePreviewImg) el.collagePreviewImg.src = currentCollageResult.dataUrl;
+  if (el.collageThemeButtons) {
+    const pills = el.collageThemeButtons.querySelectorAll('.theme-pill');
+    pills.forEach(p => p.classList.toggle('active', p.dataset.theme === collageTheme));
+  }
+  Sound.click();
+}
+
+async function saveCollageToGoogleDrive() {
+  if (!currentCollageResult) return;
+  Sound.pop();
+  const filename = `webcamclicks-photobooth-${timestamp()}.jpg`;
+  const file = dataUrlToFile(currentCollageResult.dataUrl, filename);
+
+  // Try native Web Share (Android & iOS show Google Drive directly)
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: 'My WebcamClicks Photo Booth Collage',
+        text: 'Created with WebcamClicks Photo Booth! Save to Google Drive or share with friends.'
+      });
+      return;
+    } catch (err) {
+      if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) {
+        /* User dismissed share sheet - continue to web fallback */
+      }
+    }
+  }
+
+  // Desktop / Web Fallback: download file and open Google Drive in new tab
+  downloadDataUrl(currentCollageResult.dataUrl, filename);
+  window.open('https://drive.google.com/drive/u/0/my-drive', '_blank', 'noopener,noreferrer');
+  toast('☁️ Collage downloaded! Drag it into Google Drive to save permanently.', 6000);
+}
+
+async function shareCollageOnline() {
+  if (!currentCollageResult) return;
+  Sound.pop();
+  const res = await shareImage(currentCollageResult.dataUrl);
+  if (res === 'downloaded') {
+    toast('📤 Native sharing not available — downloaded instead');
+  } else if (res === 'shared') {
+    toast('🎉 Shared successfully!');
+  }
+}
+
+async function copyCollageToClipboard() {
+  if (!currentCollageResult) return;
+  Sound.pop();
+  const ok = await copyImage(currentCollageResult.dataUrl);
+  toast(ok ? '📋 Collage copied to clipboard!' : '📋 Copying not supported on this device');
 }
 
 async function openSettingsModal() {
@@ -886,14 +1151,26 @@ function setMobileMode(mode) {
     el.modePhoto.classList.toggle('active', mode === 'photo');
     el.modePhoto.setAttribute('aria-selected', mode === 'photo');
   }
+  if (el.modeCollage) {
+    el.modeCollage.classList.toggle('active', mode === 'collage');
+    el.modeCollage.setAttribute('aria-selected', mode === 'collage');
+  }
   if (el.modeVideo) {
     el.modeVideo.classList.toggle('active', mode === 'video');
     el.modeVideo.setAttribute('aria-selected', mode === 'video');
   }
+  if (el.mobileCollageSelector) {
+    el.mobileCollageSelector.style.display = mode === 'collage' ? 'flex' : 'none';
+  }
   const mobShutter = el.btnMobileShutter || $('#btn-mobile-shutter');
   if (mobShutter) {
     mobShutter.classList.toggle('video-mode', mode === 'video');
-    mobShutter.setAttribute('aria-label', mode === 'video' ? 'Record video' : 'Take photo');
+    mobShutter.classList.toggle('collage-mode', mode === 'collage');
+    mobShutter.setAttribute('aria-label',
+      mode === 'video' ? 'Record video' :
+      mode === 'collage' ? `Start ${collagePoseCount}-pose photo booth collage` :
+      'Take photo'
+    );
   }
   Sound.click();
 }
@@ -902,6 +1179,8 @@ async function onMobileShutter() {
   if (navigator.vibrate) try { navigator.vibrate(25); } catch {}
   if (mobileMode === 'video') {
     await toggleRecord();
+  } else if (mobileMode === 'collage') {
+    await startCollageShoot(collagePoseCount);
   } else {
     await capture();
   }
@@ -957,6 +1236,8 @@ function onKeyDown(e) {
   }
   if (k === 'g') { randomGame(); return; }
   if (k === 'escape') {
+    if (collageActive) { abortCollageShoot(); return; }
+    if (el.collageModal && el.collageModal.classList.contains('on')) { closeCollageModal(); return; }
     if (gameMgr.active) { exitGame(); return; }
     if (el.helpModal) el.helpModal.classList.remove('on');
     if (el.settingsModal) el.settingsModal.classList.remove('on');
@@ -976,6 +1257,13 @@ function wireEvents() {
 
   /* Desktop Toolbar */
   on('#btn-capture', 'click', capture);
+  on('#btn-collage', 'click', () => {
+    const poses = el.selectCollagePoses ? parseInt(el.selectCollagePoses.value, 10) : 4;
+    startCollageShoot(poses);
+  });
+  on('#select-collage-poses', 'change', (e) => {
+    collagePoseCount = parseInt(e.target.value, 10) || 4;
+  });
   on('#btn-record', 'click', toggleRecord);
   on('#btn-random', 'click', randomEffect);
   on('#btn-gallery', 'click', openGallery);
@@ -991,6 +1279,35 @@ function wireEvents() {
     if (e.target === el.settingsModal && el.settingsModal) closeSettingsModal();
   });
   on('#camera-settings-form', 'submit', onSaveCameraSettings);
+
+  /* Collage HUD & Modal */
+  on('#btn-cancel-collage', 'click', abortCollageShoot);
+  on('#btn-close-collage-modal', 'click', closeCollageModal);
+  on('#collage-modal', 'click', (e) => {
+    if (e.target === el.collageModal) closeCollageModal();
+  });
+  if (el.collageThemeButtons) {
+    const themePills = el.collageThemeButtons.querySelectorAll('.theme-pill');
+    themePills.forEach(tp => {
+      tp.addEventListener('click', () => {
+        const theme = tp.dataset.theme;
+        if (theme) setCollageTheme(theme);
+      });
+    });
+  }
+  on('#btn-download-collage', 'click', () => {
+    if (currentCollageResult) {
+      downloadDataUrl(currentCollageResult.dataUrl, `webcamclicks-photobooth-${timestamp()}.jpg`);
+      toast('⬇️ Collage downloaded!');
+    }
+  });
+  on('#btn-gdrive-collage', 'click', saveCollageToGoogleDrive);
+  on('#btn-share-collage', 'click', shareCollageOnline);
+  on('#btn-copy-collage', 'click', copyCollageToClipboard);
+  on('#btn-retake-collage', 'click', () => {
+    closeCollageModal();
+    startCollageShoot(collagePoseCount);
+  });
 
   on('#btn-mirror', 'click', () => {
     camera.toggleMirror();
@@ -1057,7 +1374,20 @@ function wireEvents() {
 
   /* Mobile App Deck Wiring */
   on('#mode-photo', 'click', () => setMobileMode('photo'));
+  on('#mode-collage', 'click', () => setMobileMode('collage'));
   on('#mode-video', 'click', () => setMobileMode('video'));
+  if (el.mobileCollageSelector) {
+    const pills = el.mobileCollageSelector.querySelectorAll('.collage-pill');
+    pills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        pills.forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        collagePoseCount = parseInt(pill.dataset.poses, 10) || 4;
+        if (el.selectCollagePoses) el.selectCollagePoses.value = String(collagePoseCount);
+        Sound.click();
+      });
+    });
+  }
   on('#btn-mobile-shutter', 'click', onMobileShutter);
   on('#btn-mobile-gallery', 'click', openGallery);
   on('#btn-mobile-effects', 'click', openEffectsSheet);

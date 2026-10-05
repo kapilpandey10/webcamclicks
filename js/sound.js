@@ -44,5 +44,16 @@ export const Sound = {
     this.tone(180, 0.3, 'sawtooth', 0.14, 0.16);
   },
   win() { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.16, 'triangle', 0.16, i * 0.12)); },
-  tick() { this.tone(900, 0.03, 'sine', 0.06); }
+  tick() { this.tone(900, 0.03, 'sine', 0.06); },
+  countdownTick(num = 1) {
+    const freq = num <= 1 ? 1200 : num === 2 ? 960 : 800;
+    this.tone(freq, 0.06, 'sine', 0.15);
+  },
+  countdownGo() {
+    this.tone(1400, 0.08, 'sine', 0.2);
+    this.tone(1800, 0.12, 'sine', 0.22, 0.06);
+  },
+  motorPrint() {
+    [180, 220, 260, 240, 200].forEach((f, i) => this.tone(f, 0.05, 'sawtooth', 0.08, i * 0.04));
+  }
 };

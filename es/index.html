@@ -140,11 +140,42 @@
         <p id="stage-error-msg"></p>
         <button class="btn btn-primary" id="stage-retry" type="button">🔄 Reintentar</button>
       </div>
+
+      <!-- On-Camera Countdown Overlay -->
+      <div class="camera-countdown" id="camera-countdown" style="display:none;" aria-live="assertive">
+        <div class="countdown-circle-box">
+          <svg class="countdown-svg" viewBox="0 0 150 150">
+            <circle class="cd-bg" cx="75" cy="75" r="68"></circle>
+            <circle class="cd-meter" id="cd-meter" cx="75" cy="75" r="68"></circle>
+          </svg>
+          <div class="countdown-num" id="countdown-num">3</div>
+        </div>
+        <div class="countdown-caption" id="countdown-caption">GET READY</div>
+      </div>
+
+      <!-- Photo Booth Collage HUD -->
+      <div class="collage-hud" id="collage-hud" style="display:none;">
+        <div class="collage-hud-info">
+          <span class="hud-tag">🎞️ PHOTO BOOTH</span>
+          <span class="hud-step" id="collage-hud-step">Pose 1 of 4</span>
+        </div>
+        <div class="collage-hud-thumbs" id="collage-hud-thumbs"></div>
+        <button class="hud-btn-cancel" id="btn-cancel-collage" type="button" aria-label="Cancel Photo Booth">✕ Cancel</button>
+      </div>
     </div>
 
     <!-- Toolbar -->
     <div class="toolbar" role="toolbar" aria-label="Herramientas de cámara">
       <button class="tool" id="btn-capture" type="button">📸 <span class="tool-label">Foto</span> <span class="kbd">C</span></button>
+      <div class="collage-tool-group">
+        <button class="tool" id="btn-collage" type="button">🎞️ <span class="tool-label">Collage</span></button>
+        <select class="collage-select" id="select-collage-poses" title="Number of Poses">
+          <option value="2">2 Poses (Duo)</option>
+          <option value="3">3 Poses (Strip)</option>
+          <option value="4" selected>4 Poses (Quad)</option>
+          <option value="6">6 Poses (Studio)</option>
+        </select>
+      </div>
       <button class="tool" id="btn-record" type="button">⏺️ <span class="tool-label">Grabar</span> <span class="kbd">V</span></button>
       <button class="tool" id="btn-random" type="button">🎲 <span class="tool-label">Aleatorio</span> <span class="kbd">R</span></button>
       <button class="tool" id="btn-fav" type="button">⭐ <span class="tool-label">Favorito</span> <span class="kbd">F</span></button>
@@ -321,6 +352,58 @@
         <tr><td>Esc</td><td>Salir del juego / cerrar</td></tr>
       </tbody>
     </table>
+  </div>
+</div>
+
+<div class="modal" id="collage-modal" role="dialog" aria-modal="true" aria-label="Photo Booth Collage Studio">
+  <div class="modal-card collage-modal-card">
+    <div class="collage-modal-header">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span class="collage-badge-icon">🎞️</span>
+        <div>
+          <h2 style="margin:0; font-size:1.35rem; color:#0f172a;">Photo Booth Collage</h2>
+          <span style="font-size:0.84rem; color:var(--muted); font-weight:600;">Custom frames · High-resolution export · Instant sharing</span>
+        </div>
+      </div>
+      <button class="modal-close" id="btn-close-collage-modal" type="button" aria-label="Close collage modal">✕</button>
+    </div>
+
+    <!-- Live Assembled Preview -->
+    <div class="collage-preview-wrapper">
+      <div class="collage-preview-container" id="collage-preview-container">
+        <img id="collage-preview-img" src="" alt="WebcamClicks Photo Booth Collage">
+      </div>
+    </div>
+
+    <!-- Theme / Frame Selector -->
+    <div class="collage-theme-picker">
+      <span class="theme-label">Frame Style:</span>
+      <div class="theme-buttons" id="collage-theme-buttons">
+        <button class="theme-pill active" data-theme="white" type="button">⚪ Classic White</button>
+        <button class="theme-pill" data-theme="vintage" type="button">🎞️ Vintage Film</button>
+        <button class="theme-pill" data-theme="pink" type="button">🌸 Blush Rose</button>
+        <button class="theme-pill" data-theme="noir" type="button">🖤 Studio Noir</button>
+      </div>
+    </div>
+
+    <!-- Export Actions: Download, Google Drive, Share Online, Copy, Retake -->
+    <div class="collage-actions">
+      <button class="btn btn-primary" id="btn-download-collage" type="button">
+        ⬇️ Download to Device
+      </button>
+      <button class="btn btn-gdrive" id="btn-gdrive-collage" type="button">
+        ☁️ Save to Google Drive
+      </button>
+      <button class="btn btn-share-web" id="btn-share-collage" type="button">
+        📤 Share Online
+      </button>
+      <button class="btn" id="btn-copy-collage" type="button">
+        📋 Copy
+      </button>
+      <button class="btn" id="btn-retake-collage" type="button">
+        🔁 Retake
+      </button>
+    </div>
   </div>
 </div>
 

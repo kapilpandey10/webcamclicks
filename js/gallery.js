@@ -38,6 +38,20 @@ export class Gallery {
     return item;
   }
 
+  /** Add an already generated image dataUrl (such as a collage) to the gallery. */
+  addPhoto(dataUrl, effectName = 'Photo Booth Collage') {
+    const item = {
+      id: `${Date.now()}-${Math.round(Math.random() * 1e5)}`,
+      dataUrl,
+      ts: Date.now(),
+      effect: effectName
+    };
+    this.items.unshift(item);
+    while (this.items.length > MAX_ITEMS) this.items.pop();
+    this._save();
+    return item;
+  }
+
   allItems() {
     return [...this.sessionVideos, ...this.items];
   }

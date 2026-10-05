@@ -44,6 +44,7 @@ let gameMsgTimer = 0;
 let lastGameId = null;
 let pendingGame = null;
 let badgeTick = 0;
+let mobileMode = 'photo'; /* 'photo' | 'video' */
 
 /* DOM refs (filled in init) */
 const el = {};
@@ -129,12 +130,36 @@ function init() {
   el.prefMirror = $('#pref-mirror');
   el.prefSound = $('#pref-sound');
 
+  /* Mobile native app controls & HUD elements */
+  el.cameraHudTop = $('#camera-hud-top');
+  el.hudBtnFlip = $('#hud-btn-flip');
+  el.hudBtnMirror = $('#hud-btn-mirror');
+  el.hudBtnSound = $('#hud-btn-sound');
+  el.hudBtnSettings = $('#hud-btn-settings');
+  el.hudBtnFullscreen = $('#hud-btn-fullscreen');
+  el.mobileControlsDeck = $('#mobile-controls-deck');
+  el.modePhoto = $('#mode-photo');
+  el.modeVideo = $('#mode-video');
+  el.mobileFilterCarousel = $('#mobile-filter-carousel');
+  el.btnMobileGallery = $('#btn-mobile-gallery');
+  el.mobileGalleryPreview = $('#mobile-gallery-preview');
+  el.btnMobileShutter = $('#btn-mobile-shutter');
+  el.btnMobileEffects = $('#btn-mobile-effects');
+  el.btnMobileFlip = $('#btn-mobile-flip');
+  el.effectsPanel = $('#effects-panel');
+  el.sheetBackdrop = $('#sheet-backdrop');
+  el.btnCloseEffectsSheet = $('#btn-close-effects-sheet');
+  el.mobileBottomNav = $('#mobile-bottom-nav');
+  el.mbNavCamera = $('#mb-nav-camera');
+  el.mbNavGames = $('#mb-nav-games');
+  el.mbNavGallery = $('#mb-nav-gallery');
+
   camera.attach(el.stage);
   camera.mirror = settings.mirror !== false;
 
   Sound.enabled = settings.sound !== false;
-  setToolActive('#btn-mirror', camera.mirror);
-  setToolActive('#btn-sound', Sound.enabled);
+  updateMirrorUI();
+  updateSoundBtn();
 
   if (el.intensity) {
     el.intensity.value = settings.intensity ?? 100;
@@ -143,6 +168,7 @@ function init() {
 
   buildCategoryTabs();
   buildFilterGrid();
+  buildMobileCarousel();
   buildGameCards();
   renderGallery(gallery.items);
   wireEvents();
@@ -380,12 +406,52 @@ function buildFilterGrid() {
   }
 }
 
+function buildMobileCarousel() {
+  if (!el.mobileFilterCarousel) return;
+  el.mobileFilterCarousel.innerHTML = '';
+  const list = manager.list();
+  for (const eff of list) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'carousel-item';
+    btn.dataset.id = eff.id;
+    btn.setAttribute('aria-label', `${eff.name} effect`);
+    if (manager.current && manager.current.id === eff.id) btn.classList.add('active');
+
+    const iconDiv = document.createElement('div');
+    iconDiv.className = 'carousel-icon';
+    iconDiv.textContent = eff.icon || '✨';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'carousel-name';
+    nameSpan.textContent = eff.name;
+
+    btn.append(iconDiv, nameSpan);
+    btn.addEventListener('click', () => {
+      setEffect(eff.id, { scrollCarousel: true });
+      Sound.click();
+      if (navigator.vibrate) try { navigator.vibrate(20); } catch {}
+    });
+    el.mobileFilterCarousel.appendChild(btn);
+  }
+}
+
 function setEffect(id, opts = {}) {
   const effect = manager.get(id);
   if (!effect) return;
   manager.set(id);
   const tiles = el.filterGrid ? el.filterGrid.querySelectorAll('.filter-tile') : [];
   tiles.forEach((t) => t.classList.toggle('selected', t.dataset.id === id));
+
+  /* Sync mobile horizontal carousel */
+  const carouselItems = el.mobileFilterCarousel ? el.mobileFilterCarousel.querySelectorAll('.carousel-item') : [];
+  carouselItems.forEach((ci) => {
+    const isCur = ci.dataset.id === id;
+    ci.classList.toggle('active', isCur);
+    if (isCur && opts.scrollCarousel !== false) {
+      ci.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+  });
 
   /* load ML models on demand for face effects */
   if (effect.requiresFace) {
@@ -430,18 +496,24 @@ function formatTime(ms) {
 function updateRecordUI(recording, elapsedMs = 0) {
   const btn = el.btnRecord || $('#btn-record');
   const badge = el.recBadge || $('#rec-badge');
-  if (!btn) return;
-  if (recording) {
-    btn.classList.add('recording');
-    btn.innerHTML = `⏹️ <span class="tool-label">Stop (${formatTime(elapsedMs)})</span> <span class="kbd">V</span>`;
-    if (badge) {
-      badge.style.display = 'inline-block';
-      badge.textContent = `REC ${formatTime(elapsedMs)}`;
+  const mobShutter = el.btnMobileShutter || $('#btn-mobile-shutter');
+  if (btn) {
+    if (recording) {
+      btn.classList.add('recording');
+      btn.innerHTML = `⏹️ <span class="tool-label">Stop (${formatTime(elapsedMs)})</span> <span class="kbd">V</span>`;
+      if (badge) {
+        badge.style.display = 'inline-block';
+        badge.textContent = `REC ${formatTime(elapsedMs)}`;
+      }
+    } else {
+      btn.classList.remove('recording');
+      btn.innerHTML = `⏺️ <span class="tool-label">Record</span> <span class="kbd">V</span>`;
+      if (badge) badge.style.display = 'none';
     }
-  } else {
-    btn.classList.remove('recording');
-    btn.innerHTML = `⏺️ <span class="tool-label">Record</span> <span class="kbd">V</span>`;
-    if (badge) badge.style.display = 'none';
+  }
+  if (mobShutter) {
+    mobShutter.classList.toggle('is-recording', recording);
+    mobShutter.classList.toggle('video-mode', mobileMode === 'video' || recording);
   }
 }
 
@@ -607,6 +679,7 @@ async function onSaveCameraSettings(e) {
 }
 
 function renderGallery(items) {
+  updateMobileGalleryPreview(items);
   if (!el.galleryGrid) return;
   el.galleryGrid.innerHTML = '';
   if (!items.length) {
@@ -764,12 +837,74 @@ function setToolActive(sel, on) {
   if (n) n.classList.toggle('active', !!on);
 }
 
+function updateMirrorUI() {
+  setToolActive('#btn-mirror', camera.mirror);
+  const hudMirror = $('#hud-btn-mirror');
+  if (hudMirror) hudMirror.classList.toggle('active', camera.mirror);
+}
+
 function updateSoundBtn() {
   const b = $('#btn-sound');
-  if (!b) return;
-  b.classList.toggle('active', Sound.enabled);
-  const icon = b.querySelector('.tool-icon');
-  if (icon) icon.textContent = Sound.enabled ? '🔊' : '🔇';
+  if (b) {
+    b.classList.toggle('active', Sound.enabled);
+    const icon = b.querySelector('.tool-icon');
+    if (icon) icon.textContent = Sound.enabled ? '🔊' : '🔇';
+  }
+  const hudSound = $('#hud-btn-sound');
+  if (hudSound) {
+    hudSound.textContent = Sound.enabled ? '🔊' : '🔇';
+    hudSound.classList.toggle('active', Sound.enabled);
+  }
+}
+
+function updateMobileGalleryPreview(items) {
+  const preview = el.mobileGalleryPreview || $('#mobile-gallery-preview');
+  if (!preview) return;
+  if (items && items.length > 0) {
+    const latest = items[0];
+    if (latest.dataUrl) {
+      preview.innerHTML = `<img src="${latest.dataUrl}" alt="Latest snap">`;
+      return;
+    }
+  }
+  preview.innerHTML = '🖼️';
+}
+
+function openEffectsSheet() {
+  if (el.effectsPanel) el.effectsPanel.classList.add('open-sheet');
+  if (el.sheetBackdrop) el.sheetBackdrop.classList.add('on');
+}
+
+function closeEffectsSheet() {
+  if (el.effectsPanel) el.effectsPanel.classList.remove('open-sheet');
+  if (el.sheetBackdrop) el.sheetBackdrop.classList.remove('on');
+}
+
+function setMobileMode(mode) {
+  mobileMode = mode;
+  if (el.modePhoto) {
+    el.modePhoto.classList.toggle('active', mode === 'photo');
+    el.modePhoto.setAttribute('aria-selected', mode === 'photo');
+  }
+  if (el.modeVideo) {
+    el.modeVideo.classList.toggle('active', mode === 'video');
+    el.modeVideo.setAttribute('aria-selected', mode === 'video');
+  }
+  const mobShutter = el.btnMobileShutter || $('#btn-mobile-shutter');
+  if (mobShutter) {
+    mobShutter.classList.toggle('video-mode', mode === 'video');
+    mobShutter.setAttribute('aria-label', mode === 'video' ? 'Record video' : 'Take photo');
+  }
+  Sound.click();
+}
+
+async function onMobileShutter() {
+  if (navigator.vibrate) try { navigator.vibrate(25); } catch {}
+  if (mobileMode === 'video') {
+    await toggleRecord();
+  } else {
+    await capture();
+  }
 }
 
 function favCurrent() {
@@ -815,7 +950,7 @@ function onKeyDown(e) {
   if (k === 'f') { favCurrent(); return; }
   if (k === 'm') {
     camera.toggleMirror();
-    setToolActive('#btn-mirror', camera.mirror);
+    updateMirrorUI();
     saveSettings();
     toast(camera.mirror ? '🪞 Mirror on' : '🪞 Mirror off');
     return;
@@ -826,6 +961,7 @@ function onKeyDown(e) {
     if (el.helpModal) el.helpModal.classList.remove('on');
     if (el.settingsModal) el.settingsModal.classList.remove('on');
     closeGallery();
+    closeEffectsSheet();
   }
 }
 
@@ -838,6 +974,7 @@ function wireEvents() {
   on('#start-btn', 'click', startCamera);
   on('#stage-retry', 'click', startCamera);
 
+  /* Desktop Toolbar */
   on('#btn-capture', 'click', capture);
   on('#btn-record', 'click', toggleRecord);
   on('#btn-random', 'click', randomEffect);
@@ -857,7 +994,7 @@ function wireEvents() {
 
   on('#btn-mirror', 'click', () => {
     camera.toggleMirror();
-    setToolActive('#btn-mirror', camera.mirror);
+    updateMirrorUI();
     saveSettings();
     toast(camera.mirror ? '🪞 Mirror on' : '🪞 Mirror off');
   });
@@ -918,9 +1055,79 @@ function wireEvents() {
     }
   });
 
+  /* Mobile App Deck Wiring */
+  on('#mode-photo', 'click', () => setMobileMode('photo'));
+  on('#mode-video', 'click', () => setMobileMode('video'));
+  on('#btn-mobile-shutter', 'click', onMobileShutter);
+  on('#btn-mobile-gallery', 'click', openGallery);
+  on('#btn-mobile-effects', 'click', openEffectsSheet);
+  on('#btn-close-effects-sheet', 'click', closeEffectsSheet);
+  on('#sheet-backdrop', 'click', closeEffectsSheet);
+
+  on('#btn-mobile-flip', 'click', async () => {
+    try {
+      const ok = await camera.flip();
+      display.width = camera.width;
+      display.height = camera.height;
+      await updateCameraSelectUI();
+      toast(ok ? '🔄 Switched camera' : '🔄 Only one camera found');
+    } catch { toast('⚠️ Could not switch camera'); }
+  });
+
+  /* Floating Camera HUD (Top Overlay) */
+  on('#hud-btn-flip', 'click', async () => {
+    try {
+      const ok = await camera.flip();
+      display.width = camera.width;
+      display.height = camera.height;
+      await updateCameraSelectUI();
+      toast(ok ? '🔄 Switched camera' : '🔄 Only one camera found');
+    } catch { toast('⚠️ Could not switch camera'); }
+  });
+
+  on('#hud-btn-mirror', 'click', () => {
+    camera.toggleMirror();
+    updateMirrorUI();
+    saveSettings();
+    toast(camera.mirror ? '🪞 Mirror on' : '🪞 Mirror off');
+  });
+
+  on('#hud-btn-sound', 'click', () => {
+    Sound.enabled = !Sound.enabled;
+    updateSoundBtn();
+    saveSettings();
+    if (Sound.enabled) Sound.pop();
+  });
+
+  on('#hud-btn-settings', 'click', openSettingsModal);
+  on('#hud-btn-fullscreen', 'click', toggleFullscreen);
+
+  /* Mobile Bottom App Navigation */
+  on('#mb-nav-camera', 'click', (e) => {
+    e.preventDefault();
+    const stg = $('#camera');
+    if (stg && stg.scrollIntoView) stg.scrollIntoView({ behavior: 'smooth' });
+    closeEffectsSheet();
+    closeGallery();
+  });
+
+  on('#mb-nav-games', 'click', (e) => {
+    e.preventDefault();
+    const gms = $('#games');
+    if (gms && gms.scrollIntoView) gms.scrollIntoView({ behavior: 'smooth' });
+    closeEffectsSheet();
+    closeGallery();
+  });
+
+  on('#mb-nav-gallery', 'click', (e) => {
+    e.preventDefault();
+    openGallery();
+  });
+
   document.addEventListener('keydown', onKeyDown);
   window.addEventListener('hashchange', readHash);
 
+  updateMirrorUI();
   updateSoundBtn();
 }
 

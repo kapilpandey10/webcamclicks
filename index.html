@@ -204,6 +204,15 @@
         </div>
       </div>
 
+      <!-- Floating Top HUD (Mobile & Quick Controls) -->
+      <div class="camera-hud-top" id="camera-hud-top" aria-label="Camera quick tools">
+        <button class="hud-btn" id="hud-btn-flip" type="button" aria-label="Flip camera" title="Flip camera">🔄</button>
+        <button class="hud-btn" id="hud-btn-mirror" type="button" aria-label="Toggle mirror mode" title="Mirror">🪞</button>
+        <button class="hud-btn" id="hud-btn-sound" type="button" aria-label="Toggle sound" title="Sound">🔊</button>
+        <button class="hud-btn" id="hud-btn-settings" type="button" aria-label="Camera settings" title="Settings">⚙️</button>
+        <button class="hud-btn" id="hud-btn-fullscreen" type="button" aria-label="Toggle fullscreen" title="Fullscreen">⛶</button>
+      </div>
+
       <div class="stage-overlay" id="stage-overlay">
         <h2>📷 Webcam clicks &amp; live effects</h2>
         <p>No downloads, no installations, no uploads. Everything runs privately on your device.</p>
@@ -223,7 +232,7 @@
       </div>
     </div>
 
-    <!-- Toolbar -->
+    <!-- Desktop Toolbar -->
     <div class="toolbar" role="toolbar" aria-label="Camera tools">
       <button class="tool" id="btn-capture" type="button">📸 <span class="tool-label">Capture</span> <span class="kbd">C</span></button>
       <button class="tool" id="btn-record" type="button">⏺️ <span class="tool-label">Record</span> <span class="kbd">V</span></button>
@@ -242,10 +251,56 @@
       </label>
       <button class="tool" id="btn-help" type="button">❓ <span class="tool-label">Help</span></button>
     </div>
+
+    <!-- Mobile Native App Shutter Deck & Filter Wheel -->
+    <div class="mobile-controls-deck" id="mobile-controls-deck" aria-label="Mobile camera controls">
+      <!-- Mode Switcher: Photo vs Video -->
+      <div class="mobile-mode-switcher" role="tablist" aria-label="Camera mode">
+        <button class="mode-pill active" id="mode-photo" type="button" role="tab" aria-selected="true">📸 PHOTO</button>
+        <button class="mode-pill" id="mode-video" type="button" role="tab" aria-selected="false">📹 VIDEO</button>
+      </div>
+
+      <!-- Horizontal Thumb-Scroll Lens / Effect Carousel -->
+      <div class="mobile-carousel-container" aria-label="Filters carousel">
+        <div class="mobile-filter-carousel" id="mobile-filter-carousel" role="radiogroup" aria-label="Select effect"></div>
+      </div>
+
+      <!-- Native Shutter Action Bar -->
+      <div class="mobile-shutter-bar">
+        <!-- Gallery button with thumbnail preview -->
+        <button class="mobile-action-btn" id="btn-mobile-gallery" type="button" aria-label="Open gallery">
+          <div class="gallery-thumb-slot" id="mobile-gallery-preview">🖼️</div>
+          <span class="action-caption">Gallery</span>
+        </button>
+
+        <!-- Two-Stage Shutter Trigger -->
+        <div class="shutter-wrapper">
+          <button class="shutter-btn" id="btn-mobile-shutter" type="button" aria-label="Take photo">
+            <span class="shutter-inner"></span>
+          </button>
+        </div>
+
+        <!-- Filters Bottom Sheet Trigger -->
+        <button class="mobile-action-btn" id="btn-mobile-effects" type="button" aria-label="Browse all effects">
+          <div class="action-icon-circle">✨</div>
+          <span class="action-caption">Filters</span>
+        </button>
+
+        <!-- Quick Camera Flip -->
+        <button class="mobile-action-btn" id="btn-mobile-flip" type="button" aria-label="Flip camera">
+          <div class="action-icon-circle">🔄</div>
+          <span class="action-caption">Flip</span>
+        </button>
+      </div>
+    </div>
   </div>
 
-  <!-- Effects panel -->
-  <aside class="effects-panel" aria-label="Effects panel">
+  <!-- Effects panel (acts as bottom-sheet modal on mobile) -->
+  <aside class="effects-panel" id="effects-panel" aria-label="Effects panel">
+    <div class="sheet-handle-bar">
+      <div class="sheet-handle"></div>
+      <button class="sheet-close-btn" id="btn-close-effects-sheet" type="button" aria-label="Close filters">✕</button>
+    </div>
     <div class="panel-head">
       <h3>🎨 Effects &amp; filters</h3>
       <span class="panel-hint" id="panel-hint">Tap a tile to apply</span>
@@ -257,6 +312,7 @@
       <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
     </div>
   </aside>
+  <div class="sheet-backdrop" id="sheet-backdrop" aria-hidden="true"></div>
 </section>
 
 <!-- ================= Camera games ================= -->
@@ -570,6 +626,30 @@
     </form>
   </div>
 </div>
+
+<!-- Mobile Bottom App Navigation Bar (Persistent Native Feel) -->
+<nav class="mobile-bottom-nav" id="mobile-bottom-nav" aria-label="Mobile app navigation">
+  <a href="#camera" class="mb-nav-item active" id="mb-nav-camera">
+    <span class="mb-nav-icon">📷</span>
+    <span class="mb-nav-label">Camera</span>
+  </a>
+  <a href="#games" class="mb-nav-item" id="mb-nav-games">
+    <span class="mb-nav-icon">🎈</span>
+    <span class="mb-nav-label">Games</span>
+  </a>
+  <a href="/mic-test.html" class="mb-nav-item" id="mb-nav-mic">
+    <span class="mb-nav-icon">🎙️</span>
+    <span class="mb-nav-label">Mic Test</span>
+  </a>
+  <a href="/speed-test.html" class="mb-nav-item" id="mb-nav-speed">
+    <span class="mb-nav-icon">⚡</span>
+    <span class="mb-nav-label">Speed</span>
+  </a>
+  <button type="button" class="mb-nav-item" id="mb-nav-gallery">
+    <span class="mb-nav-icon">🖼️</span>
+    <span class="mb-nav-label">Gallery</span>
+  </button>
+</nav>
 
 <!-- App (ES modules — served via HTTPS or localhost) -->
 <script type="module" src="/js/app.js"></script>

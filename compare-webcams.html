@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Compare Two Webcams Side-by-Side — Dual Camera Test | WebcamClicks</title>
-<meta name="description" content="Test and compare two webcams side-by-side on a single screen. Compare live resolution, FPS, color balance, low-light details, and capture comparison snapshots. 100% private.">
+<meta name="description" content="Compare two webcams side-by-side in real time. Test live resolution, FPS, color balance, and capture dual comparison photos — 100% private in your browser.">
 <meta name="keywords" content="compare two webcams, dual webcam test, compare webcams side by side, test two cameras online, laptop camera vs usb webcam, webcam comparison tool">
-<link rel="canonical" href="https://webcamclicks.com/compare-webcams.html">
+<link rel="canonical" href="https://webcamclicks.com/compare-webcams">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="48x48" href="/assets/icons/favicon-48x48.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32x32.png">
@@ -20,15 +20,19 @@
 <!-- Open Graph -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="WebcamClicks">
-<meta property="og:url" content="https://webcamclicks.com/compare-webcams.html">
+<meta property="og:url" content="https://webcamclicks.com/compare-webcams">
 <meta property="og:title" content="Compare Two Webcams Side-by-Side — WebcamClicks">
 <meta property="og:description" content="Run two cameras simultaneously on one screen. Compare live resolution, FPS, low-light quality, and capture side-by-side comparison photos.">
 <meta property="og:image" content="https://webcamclicks.com/assets/img/og-image.png">
 
-<!-- Google Fonts -->
+<!-- Google Fonts (Non-render-blocking with swap) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
+<noscript>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
+</noscript>
 
 <link rel="stylesheet" href="/styles/main.css">
 
@@ -41,7 +45,7 @@
   "@context": "https://schema.org",
   "@type": "WebApplication",
   "name": "WebcamClicks Dual Webcam Comparator",
-  "url": "https://webcamclicks.com/compare-webcams.html",
+  "url": "https://webcamclicks.com/compare-webcams",
   "applicationCategory": "MultimediaApplication",
   "operatingSystem": "Any",
   "description": "Compare two webcams simultaneously in split-screen: real-time resolution, live FPS counter, and side-by-side photo capture."
@@ -78,10 +82,10 @@
   <a class="logo" href="/">📷 <span>Webcam<em>Clicks</em></span></a>
   <nav class="site-nav">
     <a href="/" class="keep">Webcam Studio</a>
-    <a href="/mic-test.html">🎙️ Mic Test</a>
-    <a href="/compare-webcams.html" class="keep" style="color:var(--brand-2); font-weight:800;">Dual Compare</a>
-    <a href="/speed-test.html">⚡ Speed Test</a>
-    <a href="/languages.html" class="keep lang-pill">🌐 Languages</a>
+    <a href="/mic-test">🎙️ Mic Test</a>
+    <a href="/compare-webcams" class="keep" style="color:var(--brand-2); font-weight:800;">Dual Compare</a>
+    <a href="/speed-test">⚡ Speed Test</a>
+    <a href="/languages" class="keep lang-pill">🌐 Languages</a>
   </nav>
 </header>
 
@@ -269,21 +273,21 @@
 <footer class="site-footer">
   <div class="footer-cols">
     <div>
-      <h4>📷 WebcamClicks</h4>
+      <h3>📷 WebcamClicks</h3>
       <p>Online camera booth, live video recorder, microphone diagnostics &amp; dual webcam comparison.</p>
     </div>
     <div>
-      <h4>Tools</h4>
+      <h3>Tools</h3>
       <ul>
         <li><a href="/">Webcam Effects Studio</a></li>
-        <li><a href="/mic-test.html">Microphone Diagnostic Test</a></li>
-        <li><a href="/compare-webcams.html">Compare Two Webcams</a></li>
-        <li><a href="/speed-test.html">⚡ Internet Speed Test</a></li>
-        <li><a href="/languages.html">Languages Directory</a></li>
+        <li><a href="/mic-test">Microphone Diagnostic Test</a></li>
+        <li><a href="/compare-webcams">Compare Two Webcams</a></li>
+        <li><a href="/speed-test">⚡ Internet Speed Test</a></li>
+        <li><a href="/languages">Languages Directory</a></li>
       </ul>
     </div>
     <div>
-      <h4>Languages</h4>
+      <h3>Languages</h3>
       <ul>
         <li><a href="/">English</a></li>
         <li><a href="/es/">Español</a></li>
@@ -294,10 +298,10 @@
       </ul>
     </div>
     <div>
-      <h4>Legal</h4>
+      <h3>Legal</h3>
       <ul>
-        <li><a href="/privacy.html">Privacy Policy</a></li>
-        <li><a href="/terms.html">Terms of Service</a></li>
+        <li><a href="/privacy">Privacy Policy</a></li>
+        <li><a href="/terms">Terms of Service</a></li>
       </ul>
     </div>
   </div>
@@ -316,15 +320,15 @@
     <span class="mb-nav-icon">🎈</span>
     <span class="mb-nav-label">Games</span>
   </a>
-  <a href="/mic-test.html" class="mb-nav-item">
+  <a href="/mic-test" class="mb-nav-item">
     <span class="mb-nav-icon">🎙️</span>
     <span class="mb-nav-label">Mic Test</span>
   </a>
-  <a href="/speed-test.html" class="mb-nav-item">
+  <a href="/speed-test" class="mb-nav-item">
     <span class="mb-nav-icon">⚡</span>
     <span class="mb-nav-label">Speed</span>
   </a>
-  <a href="/languages.html" class="mb-nav-item">
+  <a href="/languages" class="mb-nav-item">
     <span class="mb-nav-icon">🌐</span>
     <span class="mb-nav-label">Langs</span>
   </a>

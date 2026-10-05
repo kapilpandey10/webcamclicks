@@ -20,7 +20,7 @@
   /* Typography */
   --text: #1e293b;          /* Crisp slate charcoal for high readability */
   --text-secondary: #475569;
-  --muted: #64748b;         /* Neutral slate muted */
+  --muted: #475569;         /* Neutral slate muted (7:1 contrast ratio, WCAG AAA compliant) */
   
   /* Pink Brand Colors */
   --brand: #ec4899;         /* Vibrant pink */
@@ -165,22 +165,27 @@ h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 0.5em; color: var(--text); font-
   box-shadow: var(--shadow-sm);
 }
 
-/* ---------- Ad slots ---------- */
+/* ---------- Ad slots (Reserved space & layout containment prevent CLS) ---------- */
 .ad-slot {
   max-width: 970px; margin: 16px auto; padding: 6px;
-  min-height: 60px; text-align: center; overflow: hidden;
+  min-height: 106px; text-align: center; overflow: hidden;
   background: #ffffff;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-sm);
+  contain: layout;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 .ad-slot::before {
-  content: "Advertisement"; display: block; font-size: 0.64rem;
-  letter-spacing: 1.6px; text-transform: uppercase; color: #94a3b8;
+  content: "Advertisement"; display: block; font-size: 0.68rem;
+  letter-spacing: 1.6px; text-transform: uppercase; color: #475569;
   margin-bottom: 4px; font-weight: 600;
 }
-.ad-slot[data-ad-slot] ins { margin: 0 auto; }
-.ad-slot-side { min-height: 250px; margin: 0; }
+.ad-slot[data-ad-slot] ins, .ad-slot ins.adsbygoogle { margin: 0 auto; display: block; }
+.ad-slot-side { min-height: 280px; margin: 0; contain: layout; }
 
 /* ---------- App layout ---------- */
 .app {
@@ -620,13 +625,14 @@ h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 0.5em; color: var(--text); font-
   display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 24px; margin-bottom: 24px;
 }
+.site-footer h3,
 .site-footer h4 { color: #0f172a; font-size: 0.95rem; margin: 0 0 10px; font-weight: 700; }
 .site-footer ul { list-style: none; padding: 0; margin: 0; }
 .site-footer li { margin-bottom: 8px; }
 .site-footer li a { color: var(--muted); transition: color 0.15s; }
 .site-footer li a:hover { color: var(--brand-2); text-decoration: none; }
 .site-footer .fineprint {
-  font-size: 0.78rem; color: #94a3b8; line-height: 1.6;
+  font-size: 0.78rem; color: #475569; line-height: 1.6;
   border-top: 1px solid var(--border); padding-top: 18px; margin-top: 18px;
 }
 

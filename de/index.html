@@ -4,11 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>WebcamClicks — Kostenlose Webcam-Filter, Videoaufnahme &amp; Kamera-Spiele</title>
-<meta name="description" content="Fotos aufnehmen, Videos aufzeichnen und spielen mit deiner Webcam: Über 50 kostenlose Filter, Gesichtsmasken und bewegungsgesteuerte Mini-Spiele. 100% privat im Browser.">
+<meta name="description" content="Fotos aufnehmen, Videos aufzeichnen und spielen mit deiner Webcam: 50+ kostenlose Live-Filter, Gesichtsmasken und Minispiele — 100% privat im Browser.">
 <meta name="keywords" content="webcam filter, webcam video aufnehmen, webcam effekte kostenlos, kamera spiele online, online fotobox">
 <link rel="canonical" href="https://webcamclicks.com/de/">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#ec4899">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://webcamclicks.com/de/">
+<meta property="og:title" content="WebcamClicks — Kostenlose Webcam-Filter, Videoaufnahme &amp; Kamera-Spiele">
+<meta property="og:site_name" content="WebcamClicks">
 <meta name="google-adsense-account" content="ca-pub-9887409333966239">
 
 <!-- Alternate language annotations (hreflang) -->
@@ -29,10 +33,12 @@
 <link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
 <link rel="manifest" href="/manifest.json">
 
-<!-- Google Fonts -->
+<!-- Google Fonts (Non-render-blocking) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap"></noscript>
 
 <link rel="stylesheet" href="/styles/main.css">
 
@@ -62,8 +68,8 @@
     <a href="#games">Spiele</a>
     <a href="#how">Funktionsweise</a>
     <a href="#faq">FAQ</a>
-    <a href="/privacy.html" class="keep">Datenschutz</a>
-    <a href="/languages.html" class="keep lang-pill">🌐 Sprachen</a>
+    <a href="/privacy" class="keep">Datenschutz</a>
+    <a href="/languages" class="keep lang-pill">🌐 Sprachen</a>
   </nav>
 </header>
 
@@ -252,11 +258,11 @@
 <footer class="site-footer">
   <div class="footer-cols">
     <div>
-      <h4>📷 WebcamClicks</h4>
+      <h3>📷 WebcamClicks</h3>
       <p>Kostenlose Online-Fotobox, Videorecorder und bewegungsgesteuerte Kamera-Spiele.</p>
     </div>
     <div>
-      <h4>Sprachen</h4>
+      <h3>Sprachen</h3>
       <ul>
         <li><a href="/">English</a></li>
         <li><a href="/es/">Español</a></li>
@@ -264,15 +270,15 @@
         <li><a href="/de/">Deutsch</a></li>
         <li><a href="/pt/">Português</a></li>
         <li><a href="/hi/">हिन्दी</a></li>
-        <li><a href="/languages.html" style="font-weight:700; color:var(--brand-2);">🌐 Alle Sprachen</a></li>
+        <li><a href="/languages" style="font-weight:700; color:var(--brand-2);">🌐 Alle Sprachen</a></li>
       </ul>
     </div>
     <div>
-      <h4>Rechtliches</h4>
+      <h3>Rechtliches</h3>
       <ul>
-        <li><a href="/privacy.html">Datenschutz</a></li>
-        <li><a href="/terms.html">Nutzungsbedingungen</a></li>
-        <li><a href="/languages.html">Sprachübersicht</a></li>
+        <li><a href="/privacy">Datenschutz</a></li>
+        <li><a href="/terms">Nutzungsbedingungen</a></li>
+        <li><a href="/languages">Sprachübersicht</a></li>
       </ul>
     </div>
   </div>

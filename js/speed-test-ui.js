@@ -435,7 +435,7 @@ function copyResults() {
 • Upload: ${r.uploadMbps} Mbps
 • Ping Latency: ${r.ping} ms (Jitter: ${r.jitter} ms)
 • Connection Rating: ${r.grade}
-Tested at https://webcamclicks.com/speed-test.html`;
+Tested at https://webcamclicks.com/speed-test`;
 
   navigator.clipboard.writeText(text).then(() => {
     toast('📋 Speed test results copied to clipboard!');

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>WebcamClicks — Filtros de Cámara Web, Grabación de Video y Juegos Online Gratis</title>
-<meta name="description" content="Toma fotos, graba videos y juega con tu cámara web: más de 50 filtros gratuitos, efectos faciales y mini juegos por movimiento. 100% privado en tu navegador.">
+<meta name="description" content="Toma fotos, graba videos y juega con tu cámara web: 50+ filtros gratuitos, efectos faciales y mini juegos por movimiento — 100% privado en tu navegador.">
 <meta name="keywords" content="filtros camara web, grabar video webcam, efectos webcam gratis, juegos con camara web, photo booth online gratis">
 <link rel="canonical" href="https://webcamclicks.com/es/">
 <meta name="robots" content="index, follow, max-image-preview:large">
@@ -37,10 +37,12 @@
 <link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
 <link rel="manifest" href="/manifest.json">
 
-<!-- Google Fonts -->
+<!-- Google Fonts (Non-render-blocking) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap"></noscript>
 
 <link rel="stylesheet" href="/styles/main.css">
 
@@ -70,8 +72,8 @@
     <a href="#games">Juegos</a>
     <a href="#how">Cómo funciona</a>
     <a href="#faq">Preguntas</a>
-    <a href="/privacy.html" class="keep">Privacidad</a>
-    <a href="/languages.html" class="keep lang-pill">🌐 Idiomas</a>
+    <a href="/privacy" class="keep">Privacidad</a>
+    <a href="/languages" class="keep lang-pill">🌐 Idiomas</a>
   </nav>
 </header>
 
@@ -289,11 +291,11 @@
 <footer class="site-footer">
   <div class="footer-cols">
     <div>
-      <h4>📷 WebcamClicks</h4>
+      <h3>📷 WebcamClicks</h3>
       <p>Cabina de cámara web online gratuita, grabación de videos, filtros en vivo y juegos.</p>
     </div>
     <div>
-      <h4>Idiomas</h4>
+      <h3>Idiomas</h3>
       <ul>
         <li><a href="/">English</a></li>
         <li><a href="/es/">Español</a></li>
@@ -301,15 +303,15 @@
         <li><a href="/de/">Deutsch</a></li>
         <li><a href="/pt/">Português</a></li>
         <li><a href="/hi/">हिन्दी</a></li>
-        <li><a href="/languages.html" style="font-weight:700; color:var(--brand-2);">🌐 Todos los idiomas</a></li>
+        <li><a href="/languages" style="font-weight:700; color:var(--brand-2);">🌐 Todos los idiomas</a></li>
       </ul>
     </div>
     <div>
-      <h4>Legal</h4>
+      <h3>Legal</h3>
       <ul>
-        <li><a href="/privacy.html">Política de Privacidad</a></li>
-        <li><a href="/terms.html">Términos de Servicio</a></li>
-        <li><a href="/languages.html">Directorio de Idiomas</a></li>
+        <li><a href="/privacy">Política de Privacidad</a></li>
+        <li><a href="/terms">Términos de Servicio</a></li>
+        <li><a href="/languages">Directorio de Idiomas</a></li>
       </ul>
     </div>
   </div>

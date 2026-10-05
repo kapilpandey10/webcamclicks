@@ -369,7 +369,7 @@ Summary: ${r.summaryText}
 --- RECOMMENDATIONS ---
 ${r.recommendations.map((rec) => `• ${rec}`).join('\n')}
 
-Generated at https://webcamclicks.com/mic-test.html
+Generated at https://webcamclicks.com/mic-test
 100% on-device private audio diagnostics.`;
 }
 

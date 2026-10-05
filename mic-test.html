@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Online Mic Test — Test Microphone &amp; Diagnostic Report | WebcamClicks</title>
-<meta name="description" content="Test your microphone online with live decibel (dB) volume meter, audio waveform visualizer, 5-second playback test, and comprehensive diagnostic report. 100% free and private.">
+<meta name="description" content="Test your microphone online with live volume dB meter, audio visualizer, playback check, and instant diagnostic report. 100% free and private.">
 <meta name="keywords" content="mic test, test microphone online, microphone test with report, mic test free, check my mic, zoom mic test, mic volume test, online audio test">
-<link rel="canonical" href="https://webcamclicks.com/mic-test.html">
+<link rel="canonical" href="https://webcamclicks.com/mic-test">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="48x48" href="/assets/icons/favicon-48x48.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32x32.png">
@@ -20,15 +20,19 @@
 <!-- Open Graph -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="WebcamClicks">
-<meta property="og:url" content="https://webcamclicks.com/mic-test.html">
+<meta property="og:url" content="https://webcamclicks.com/mic-test">
 <meta property="og:title" content="Online Mic Test &amp; Diagnostic Report Generator — WebcamClicks">
 <meta property="og:description" content="Check your microphone volume, audio clarity, and background noise. Get an instant, comprehensive diagnostic report for Zoom, Teams &amp; Meet.">
 <meta property="og:image" content="https://webcamclicks.com/assets/img/og-image.png">
 
-<!-- Google Fonts -->
+<!-- Google Fonts (Non-render-blocking with swap) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
+<noscript>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
+</noscript>
 
 <link rel="stylesheet" href="/styles/main.css">
 
@@ -41,7 +45,7 @@
   "@context": "https://schema.org",
   "@type": "WebApplication",
   "name": "WebcamClicks Microphone Tester",
-  "url": "https://webcamclicks.com/mic-test.html",
+  "url": "https://webcamclicks.com/mic-test",
   "applicationCategory": "MultimediaApplication",
   "operatingSystem": "Any (browser-based)",
   "description": "Comprehensive browser-based microphone diagnostic test with live decibel volume metering, audio waveform visualizer, playback verification, and detailed report generator."
@@ -79,10 +83,10 @@
   <a class="logo" href="/">📷 <span>Webcam<em>Clicks</em></span></a>
   <nav class="site-nav">
     <a href="/" class="keep">Webcam Studio</a>
-    <a href="/mic-test.html" class="keep" style="color:var(--brand-2); font-weight:800;">🎙️ Mic Test</a>
-    <a href="/compare-webcams.html">Dual Compare</a>
-    <a href="/speed-test.html">⚡ Speed Test</a>
-    <a href="/languages.html" class="keep lang-pill">🌐 Languages</a>
+    <a href="/mic-test" class="keep" style="color:var(--brand-2); font-weight:800;">🎙️ Mic Test</a>
+    <a href="/compare-webcams">Dual Compare</a>
+    <a href="/speed-test">⚡ Speed Test</a>
+    <a href="/languages" class="keep lang-pill">🌐 Languages</a>
   </nav>
 </header>
 
@@ -330,21 +334,21 @@
 <footer class="site-footer">
   <div class="footer-cols">
     <div>
-      <h4>📷 WebcamClicks</h4>
+      <h3>📷 WebcamClicks</h3>
       <p>Online camera booth, live video recorder, microphone diagnostics &amp; dual webcam comparison.</p>
     </div>
     <div>
-      <h4>Tools</h4>
+      <h3>Tools</h3>
       <ul>
         <li><a href="/">Webcam Effects Studio</a></li>
-        <li><a href="/mic-test.html">Microphone Diagnostic Test</a></li>
-        <li><a href="/compare-webcams.html">Compare Two Webcams</a></li>
-        <li><a href="/speed-test.html">⚡ Internet Speed Test</a></li>
-        <li><a href="/languages.html">Languages Directory</a></li>
+        <li><a href="/mic-test">Microphone Diagnostic Test</a></li>
+        <li><a href="/compare-webcams">Compare Two Webcams</a></li>
+        <li><a href="/speed-test">⚡ Internet Speed Test</a></li>
+        <li><a href="/languages">Languages Directory</a></li>
       </ul>
     </div>
     <div>
-      <h4>Languages</h4>
+      <h3>Languages</h3>
       <ul>
         <li><a href="/">English</a></li>
         <li><a href="/es/">Español</a></li>
@@ -355,10 +359,10 @@
       </ul>
     </div>
     <div>
-      <h4>Legal</h4>
+      <h3>Legal</h3>
       <ul>
-        <li><a href="/privacy.html">Privacy Policy</a></li>
-        <li><a href="/terms.html">Terms of Service</a></li>
+        <li><a href="/privacy">Privacy Policy</a></li>
+        <li><a href="/terms">Terms of Service</a></li>
       </ul>
     </div>
   </div>
@@ -377,15 +381,15 @@
     <span class="mb-nav-icon">🎈</span>
     <span class="mb-nav-label">Games</span>
   </a>
-  <a href="/mic-test.html" class="mb-nav-item active">
+  <a href="/mic-test" class="mb-nav-item active">
     <span class="mb-nav-icon">🎙️</span>
     <span class="mb-nav-label">Mic Test</span>
   </a>
-  <a href="/speed-test.html" class="mb-nav-item">
+  <a href="/speed-test" class="mb-nav-item">
     <span class="mb-nav-icon">⚡</span>
     <span class="mb-nav-label">Speed</span>
   </a>
-  <a href="/languages.html" class="mb-nav-item">
+  <a href="/languages" class="mb-nav-item">
     <span class="mb-nav-icon">🌐</span>
     <span class="mb-nav-label">Langs</span>
   </a>

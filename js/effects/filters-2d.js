@@ -58,7 +58,590 @@ function addNoise(data, amount, mono = true) {
   }
 }
 
+/* ---------- 35mm film grain pattern (pre-rendered seamless texture, 60 FPS) ---------- */
+let GRAIN_CANVAS = null;
+let GRAIN_PATTERN = null;
+function getGrainPattern(ctx) {
+  if (GRAIN_PATTERN) return GRAIN_PATTERN;
+  GRAIN_CANVAS = makeCanvas(200, 200);
+  const gctx = GRAIN_CANVAS.getContext('2d');
+  const imgData = gctx.createImageData(200, 200);
+  const d = imgData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const val = (Math.random() * 255) | 0;
+    d[i] = val;
+    d[i + 1] = val;
+    d[i + 2] = val;
+    d[i + 3] = (Math.random() * 50 + 20) | 0;
+  }
+  gctx.putImageData(imgData, 0, 0);
+  GRAIN_PATTERN = ctx.createPattern(GRAIN_CANVAS, 'repeat');
+  return GRAIN_PATTERN;
+}
+
+function applyFilmGrain(fx, w, h, opacity = 0.18) {
+  const pat = getGrainPattern(fx);
+  if (!pat) return;
+  fx.save();
+  fx.globalCompositeOperation = 'overlay';
+  fx.globalAlpha = opacity;
+  fx.fillStyle = pat;
+  const ox = (Math.random() * 200) | 0;
+  const oy = (Math.random() * 200) | 0;
+  fx.translate(ox, oy);
+  fx.fillRect(-200, -200, w + 400, h + 400);
+  fx.restore();
+}
+
+/* ---------- optical bloom & halation (downscaled glow buffer) ---------- */
+let BLOOM_CANVAS = null;
+function getBloomCanvas(w, h) {
+  const bw = Math.max(2, Math.floor(w / 3));
+  const bh = Math.max(2, Math.floor(h / 3));
+  if (!BLOOM_CANVAS) {
+    BLOOM_CANVAS = makeCanvas(bw, bh);
+  }
+  if (BLOOM_CANVAS.width !== bw || BLOOM_CANVAS.height !== bh) {
+    BLOOM_CANVAS.width = bw;
+    BLOOM_CANVAS.height = bh;
+  }
+  return BLOOM_CANVAS;
+}
+
+function renderHalationBloom(fx, src, w, h, strength = 0.38, tint = 'warm') {
+  const bc = getBloomCanvas(w, h);
+  const bx = bc.getContext('2d');
+  bx.setTransform(1, 0, 0, 1, 0, 0);
+  bx.clearRect(0, 0, bc.width, bc.height);
+
+  if (tint === 'warm') {
+    bx.filter = 'brightness(1.22) contrast(1.3) blur(6px) sepia(0.55)';
+  } else if (tint === 'hollywood') {
+    bx.filter = 'brightness(1.25) contrast(1.35) blur(7px) saturate(1.4)';
+  } else if (tint === 'bw') {
+    bx.filter = 'grayscale(1) brightness(1.25) contrast(1.3) blur(6px)';
+  } else {
+    bx.filter = 'brightness(1.25) contrast(1.25) blur(6px)';
+  }
+  bx.drawImage(src, 0, 0, bc.width, bc.height);
+  bx.filter = 'none';
+
+  fx.save();
+  fx.globalCompositeOperation = 'screen';
+  fx.globalAlpha = strength;
+  fx.drawImage(bc, 0, 0, bc.width, bc.height, 0, 0, w, h);
+  fx.restore();
+}
+
+/* ---------- 90s vintage date stamp imprint ---------- */
+function drawDateStamp(fx, w, h) {
+  fx.save();
+  const d = new Date();
+  const yr = String(d.getFullYear()).slice(-2);
+  const mo = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const str = `'${yr} ${mo} ${day}`;
+
+  const fontSize = Math.max(14, Math.round(w * 0.026));
+  fx.font = `bold ${fontSize}px "Courier New", Courier, monospace`;
+  fx.textAlign = 'right';
+  fx.textBaseline = 'bottom';
+
+  const x = w - Math.round(w * 0.04);
+  const y = h - Math.round(h * 0.04);
+
+  fx.shadowColor = '#f97316';
+  fx.shadowBlur = 8;
+  fx.fillStyle = '#ffb300';
+  fx.fillText(str, x, y);
+  fx.fillStyle = '#fffbeb';
+  fx.fillText(str, x, y);
+  fx.restore();
+}
+
+/* ---------- anamorphic horizontal lens flare streak ---------- */
+function drawAnamorphicStreak(fx, src, w, h, t) {
+  fx.save();
+  fx.globalCompositeOperation = 'screen';
+  fx.globalAlpha = 0.42;
+
+  const flareY = h * 0.46 + Math.sin(t * 0.8) * (h * 0.08);
+  const streak = fx.createLinearGradient(0, flareY, w, flareY);
+  streak.addColorStop(0, 'rgba(0, 180, 255, 0)');
+  streak.addColorStop(0.3, 'rgba(0, 220, 255, 0.35)');
+  streak.addColorStop(0.5, 'rgba(255, 255, 255, 0.7)');
+  streak.addColorStop(0.7, 'rgba(0, 220, 255, 0.35)');
+  streak.addColorStop(1, 'rgba(0, 180, 255, 0)');
+
+  fx.fillStyle = streak;
+  fx.fillRect(0, flareY - 1.5, w, 3);
+  fx.restore();
+}
+
+/* ---------- optical bokeh circular discs ---------- */
+function drawBackgroundBokehDiscs(fx, w, h, t) {
+  fx.save();
+  fx.globalCompositeOperation = 'screen';
+  const discs = [
+    { x: 0.12, y: 0.22, r: 38, col: 'rgba(255, 220, 150, 0.16)' },
+    { x: 0.88, y: 0.18, r: 46, col: 'rgba(180, 240, 255, 0.18)' },
+    { x: 0.22, y: 0.78, r: 32, col: 'rgba(255, 180, 200, 0.15)' },
+    { x: 0.82, y: 0.72, r: 42, col: 'rgba(255, 230, 160, 0.16)' },
+    { x: 0.08, y: 0.52, r: 28, col: 'rgba(200, 255, 220, 0.14)' },
+    { x: 0.94, y: 0.44, r: 34, col: 'rgba(240, 200, 255, 0.15)' }
+  ];
+  for (let i = 0; i < discs.length; i++) {
+    const d = discs[i];
+    const dx = d.x * w + Math.sin(t * 0.6 + i) * 8;
+    const dy = d.y * h + Math.cos(t * 0.7 + i) * 8;
+    fx.fillStyle = d.col;
+    fx.beginPath();
+    fx.arc(dx, dy, d.r, 0, Math.PI * 2);
+    fx.fill();
+    fx.strokeStyle = d.col;
+    fx.lineWidth = 2.5;
+    fx.stroke();
+  }
+  fx.restore();
+}
+
+/* ---------- shutter drag motion blur accumulation buffer ---------- */
+let MOTION_ACCUM = null;
+function renderShutterMotion(fx, src, w, h, decay = 0.74) {
+  if (!MOTION_ACCUM || MOTION_ACCUM.width !== w || MOTION_ACCUM.height !== h) {
+    MOTION_ACCUM = makeCanvas(w, h);
+    const mx = MOTION_ACCUM.getContext('2d');
+    mx.drawImage(src, 0, 0, w, h);
+  }
+  const mx = MOTION_ACCUM.getContext('2d');
+  mx.globalCompositeOperation = 'source-over';
+  mx.globalAlpha = 1 - decay;
+  mx.drawImage(src, 0, 0, w, h);
+  mx.globalAlpha = 1;
+
+  fx.drawImage(MOTION_ACCUM, 0, 0, w, h);
+}
+
+/* ---------- chromatic dream trails (temporal ghost echo) ---------- */
+const TRAIL_FRAMES = [];
+function renderDreamTrails(fx, src, w, h) {
+  if (TRAIL_FRAMES.length < 3 || TRAIL_FRAMES[0].width !== w || TRAIL_FRAMES[0].height !== h) {
+    TRAIL_FRAMES.length = 0;
+    for (let i = 0; i < 3; i++) {
+      const c = makeCanvas(w, h);
+      c.getContext('2d').drawImage(src, 0, 0, w, h);
+      TRAIL_FRAMES.push(c);
+    }
+  }
+
+  const oldest = TRAIL_FRAMES.pop();
+  const ox = oldest.getContext('2d');
+  ox.drawImage(src, 0, 0, w, h);
+  TRAIL_FRAMES.unshift(oldest);
+
+  fx.drawImage(src, 0, 0, w, h);
+
+  fx.save();
+  fx.globalCompositeOperation = 'screen';
+  fx.globalAlpha = 0.45;
+  fx.filter = 'drop-shadow(0 0 10px rgba(255, 50, 100, 0.8)) hue-rotate(330deg)';
+  fx.drawImage(TRAIL_FRAMES[1], 0, 0, w, h);
+
+  fx.globalAlpha = 0.38;
+  fx.filter = 'drop-shadow(0 0 12px rgba(0, 220, 255, 0.8)) hue-rotate(180deg)';
+  fx.drawImage(TRAIL_FRAMES[2], 0, 0, w, h);
+  fx.restore();
+}
+
+/* ---------- face-aware & radial depth portrait bokeh ---------- */
+let portraitState = null;
+let portraitScratch = null;
+function renderPortraitBokeh(fx, frame, isSpotlight = false) {
+  const { src, width: w, height: h, face } = frame;
+
+  let targetCx = w / 2;
+  let targetCy = h * 0.46;
+  let targetRx = w * 0.27;
+  let targetRy = h * 0.44;
+
+  const box = face && face.box;
+  if (box && box.width > 20) {
+    targetCx = box.x + box.width / 2;
+    targetCy = box.y + box.height * 0.68;
+    targetRx = Math.max(w * 0.2, box.width * 1.05);
+    targetRy = Math.max(h * 0.34, box.height * 1.68);
+  }
+
+  if (!portraitState) {
+    portraitState = { cx: targetCx, cy: targetCy, rx: targetRx, ry: targetRy };
+  } else {
+    const alpha = 0.18;
+    portraitState.cx += (targetCx - portraitState.cx) * alpha;
+    portraitState.cy += (targetCy - portraitState.cy) * alpha;
+    portraitState.rx += (targetRx - portraitState.rx) * alpha;
+    portraitState.ry += (targetRy - portraitState.ry) * alpha;
+  }
+
+  const { cx, cy, rx, ry } = portraitState;
+
+  fx.save();
+  fx.filter = isSpotlight ? 'blur(16px) brightness(0.65) saturate(1.1)' : 'blur(15px) brightness(0.96) saturate(1.06)';
+  fx.drawImage(src, 0, 0, w, h);
+  fx.restore();
+
+  drawBackgroundBokehDiscs(fx, w, h, frame.time || 0);
+
+  if (!portraitScratch || portraitScratch.width !== w || portraitScratch.height !== h) {
+    portraitScratch = makeCanvas(w, h);
+  }
+  const px = portraitScratch.getContext('2d');
+  px.setTransform(1, 0, 0, 1, 0, 0);
+  px.clearRect(0, 0, w, h);
+  px.drawImage(src, 0, 0, w, h);
+
+  px.globalCompositeOperation = 'destination-in';
+  const grad = px.createRadialGradient(cx, cy, Math.min(rx, ry) * 0.45, cx, cy, Math.max(rx, ry));
+  grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+  grad.addColorStop(0.72, 'rgba(0, 0, 0, 0.96)');
+  grad.addColorStop(0.94, 'rgba(0, 0, 0, 0.35)');
+  grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  px.fillStyle = grad;
+  px.beginPath();
+  px.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+  px.fill();
+  px.globalCompositeOperation = 'source-over';
+
+  fx.drawImage(portraitScratch, 0, 0);
+
+  fx.save();
+  fx.globalCompositeOperation = 'soft-light';
+  const light = fx.createRadialGradient(cx, cy, 10, cx, cy, rx * 1.25);
+  light.addColorStop(0, isSpotlight ? 'rgba(255, 250, 240, 0.65)' : 'rgba(255, 248, 235, 0.32)');
+  light.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  fx.fillStyle = light;
+  fx.fillRect(0, 0, w, h);
+  fx.restore();
+}
+
+/* ---------- Y2K skate fisheye deathlens ---------- */
+function renderFisheye(fx, src, w, h) {
+  fx.save();
+  fx.filter = 'contrast(1.3) saturate(1.45) brightness(1.05)';
+  fx.drawImage(src, 0, 0, w, h);
+  fx.filter = 'none';
+
+  const cx = w / 2;
+  const cy = h / 2;
+  const maxR = Math.min(w, h) * 0.48;
+
+  fx.save();
+  fx.beginPath();
+  fx.arc(cx, cy, maxR * 0.65, 0, Math.PI * 2);
+  fx.clip();
+  fx.drawImage(src, cx - maxR * 0.65, cy - maxR * 0.65, maxR * 1.3, maxR * 1.3,
+                   cx - maxR * 0.76, cy - maxR * 0.76, maxR * 1.52, maxR * 1.52);
+  fx.restore();
+
+  fx.save();
+  const vig = fx.createRadialGradient(cx, cy, maxR * 0.8, cx, cy, maxR * 1.15);
+  vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  vig.addColorStop(0.85, 'rgba(0, 0, 0, 0.85)');
+  vig.addColorStop(1, 'rgba(0, 0, 0, 1)');
+  fx.fillStyle = vig;
+  fx.fillRect(0, 0, w, h);
+
+  fx.beginPath();
+  fx.rect(0, 0, w, h);
+  fx.arc(cx, cy, maxR, 0, Math.PI * 2, true);
+  fx.fillStyle = '#000000';
+  fx.fill();
+  fx.restore();
+}
+
 export const defs2d = [
+  /* ============================ VINTAGE ============================ */
+  {
+    id: 'portra400', name: 'Kodak Portra 400', icon: '🎞️', category: 'Vintage', perf: 'low',
+    render(fx, { src, width: w, height: h }) {
+      fx.filter = 'contrast(1.14) brightness(1.06) saturate(1.26)';
+      fx.drawImage(src, 0, 0, w, h);
+      fx.filter = 'none';
+
+      renderHalationBloom(fx, src, w, h, 0.38, 'warm');
+
+      fx.save();
+      const filmGrad = fx.createLinearGradient(0, 0, w, h);
+      filmGrad.addColorStop(0, 'rgba(255, 215, 110, 0.24)');
+      filmGrad.addColorStop(0.5, 'rgba(255, 185, 90, 0.14)');
+      filmGrad.addColorStop(1, 'rgba(0, 175, 185, 0.16)');
+      fx.globalCompositeOperation = 'soft-light';
+      fx.fillStyle = filmGrad;
+      fx.fillRect(0, 0, w, h);
+      fx.restore();
+
+      fx.save();
+      const vig = fx.createRadialGradient(w * 0.48, h * 0.44, Math.min(w, h) * 0.35, w * 0.5, h * 0.5, Math.max(w, h) * 0.76);
+      vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      vig.addColorStop(0.68, 'rgba(130, 70, 10, 0.14)');
+      vig.addColorStop(1, 'rgba(40, 20, 0, 0.48)');
+      fx.globalCompositeOperation = 'multiply';
+      fx.fillStyle = vig;
+      fx.fillRect(0, 0, w, h);
+      fx.restore();
+
+      applyFilmGrain(fx, w, h, 0.2);
+    }
+  },
+  {
+    id: 'vintage70s', name: '1970s Film', icon: '📽️', category: 'Vintage', perf: 'low',
+    render(fx, { src, width: w, height: h, time: t }) {
+      fx.filter = 'sepia(0.24) contrast(1.2) saturate(1.3) brightness(1.04)';
+      fx.drawImage(src, 0, 0, w, h);
+      fx.filter = 'none';
+
+      fx.save();
+      fx.globalCompositeOperation = 'screen';
+      const leak = fx.createLinearGradient(0, 0, w * 0.55, h * 0.6);
+      leak.addColorStop(0, 'rgba(255, 120, 40, 0.35)');
+      leak.addColorStop(0.35, 'rgba(255, 200, 70, 0.22)');
+      leak.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      fx.fillStyle = leak;
+      fx.fillRect(0, 0, w, h);
+      fx.restore();
+
+      fx.save();
+      const vig = fx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.3, w / 2, h / 2, Math.max(w, h) * 0.72);
+      vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      vig.addColorStop(1, 'rgba(50, 25, 0, 0.55)');
+      fx.globalCompositeOperation = 'multiply';
+      fx.fillStyle = vig;
+      fx.fillRect(0, 0, w, h);
+      fx.restore();
+
+      applyFilmGrain(fx, w, h, 0.25);
+    }
+  },
+  {
+    id: 'disposable90s', name: '90s Disposable', icon: '📸', category: 'Vintage', perf: 'low',
+    render(fx, { src, width: w, height: h }) {
+      fx.filter = 'contrast(1.28) saturate(1.35) brightness(1.08)';
+      fx.drawImage(src, 0, 0, w, h);
+      fx.filter = 'none';
+
+      fx.save();
+      const flashGrad = fx.createRadialGradient(w / 2, h * 0.45, Math.min(w, h) * 0.25, w / 2, h * 0.45, Math.max(w, h) * 0.7);
+      flashGrad.addColorStop(0, 'rgba(255, 255, 240, 0.16)');
+      flashGrad.addColorStop(0.65, 'rgba(0, 20, 10, 0.1)');
+      flashGrad.addColorStop(1, 'rgba(0, 30, 20, 0.6)');
+      fx.globalCompositeOperation = 'multiply';
+      fx.fillStyle = flashGrad;
+      fx.fillRect(0, 0, w, h);
+      fx.restore();
+
+      fx.save();
+      fx.globalCompositeOperation = 'color';
+      fx.globalAlpha = 0.14;
+      fx.fillStyle = '#065f46';
+      fx.fillRect(0, 0, w, h);
+      fx.restore();
+
+      applyFilmGrain(fx, w, h, 0.22);
+      drawDateStamp(fx, w, h);
+    }
+  },
+  {
+    id: 'polaroid', name: 'Polaroid 600', icon: '📷', category: 'Vintage', perf: 'low',
+    render(fx, { src, width: w, height: h }) {
+      fx.filter = 'contrast(1.1) brightness(1.08) saturate(1.18) sepia(0.12)';
+      fx.drawImage(src, 0, 0, w, h);
+      fx.filter = 'none';
+
+      fx.save();
+      const chemGrad = fx.createLinearGradient(0, 0, 0, h);
+      chemGrad.addColorStop(0, 'rgba(255, 240, 200, 0.14)');
+      chemGrad.addColorStop(0.7, 'rgba(100, 200, 220, 0.08)');
+      chemGrad.addColorStop(1, 'rgba(50, 80, 120, 0.18)');
+      fx.globalCompositeOperation = 'soft-light';
+      fx.fillStyle = chemGrad;
+      fx.fillRect(0, 0, w, h);
+      fx.restore();
+
+      const frameW = Math.round(w * 0.035);
+      const frameBot = Math.round(h * 0.09);
+      fx.fillStyle = '#f8fafc';
+      fx.fillRect(0, 0, w, frameW);
+      fx.fillRect(0, 0, frameW, h);
+      fx.fillRect(w - frameW, 0, frameW, h);
+      fx.fillRect(0, h - frameBot, w, frameBot);
+
+      applyFilmGrain(fx, w, h, 0.16);
+    }
+  },
+  {
+    id: 'goldenhour', name: 'Golden Hour', icon: '🌅', category: 'Vintage', perf: 'low',
+    render(fx, { src, width: w, height: h }) {
+      fx.save();
+      fx.filter = 'sepia(0.35) saturate(1.45) contrast(1.1) brightness(1.06)';
+      fx.drawImage(src, 0, 0, w, h);
+
+      const flare = fx.createRadialGradient(w * 0.15, h * 0.15, 20, w * 0.25, h * 0.25, w * 0.75);
+      flare.addColorStop(0, 'rgba(255, 223, 128, 0.55)');
+      flare.addColorStop(0.3, 'rgba(251, 146, 60, 0.28)');
+      flare.addColorStop(0.7, 'rgba(236, 72, 153, 0.12)');
+      flare.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      fx.globalCompositeOperation = 'screen';
+      fx.fillStyle = flare;
+      fx.fillRect(0, 0, w, h);
+      fx.restore();
+    }
+  },
+
+  /* ============================ CINEMA ============================ */
+  {
+    id: 'hollywood', name: 'Hollywood Cinema', icon: '🎬', category: 'Cinema', perf: 'low',
+    render(fx, { src, width: w, height: h, time: t }) {
+      fx.filter = 'contrast(1.22) saturate(1.26) brightness(0.98)';
+      fx.drawImage(src, 0, 0, w, h);
+      fx.filter = 'none';
+
+      renderHalationBloom(fx, src, w, h, 0.28, 'hollywood');
+
+      fx.save();
+      const toGrad = fx.createLinearGradient(0, 0, 0, h);
+      toGrad.addColorStop(0, 'rgba(255, 140, 40, 0.16)');
+      toGrad.addColorStop(0.65, 'rgba(255, 110, 20, 0.12)');
+      toGrad.addColorStop(1, 'rgba(0, 160, 190, 0.24)');
+      fx.globalCompositeOperation = 'color-dodge';
+      fx.globalAlpha = 0.42;
+      fx.fillStyle = toGrad;
+      fx.fillRect(0, 0, w, h);
+      fx.restore();
+
+      drawAnamorphicStreak(fx, src, w, h, t);
+
+      const barH = Math.round(h * 0.11);
+      fx.fillStyle = '#05070a';
+      fx.fillRect(0, 0, w, barH);
+      fx.fillRect(0, h - barH, w, barH);
+
+      applyFilmGrain(fx, w, h, 0.14);
+    }
+  },
+  {
+    id: 'silverscreen', name: 'Silver Screen', icon: '📽️', category: 'Cinema', perf: 'low',
+    render(fx, { src, width: w, height: h }) {
+      fx.filter = 'grayscale(1) contrast(1.36) brightness(1.04)';
+      fx.drawImage(src, 0, 0, w, h);
+      fx.filter = 'none';
+
+      renderHalationBloom(fx, src, w, h, 0.42, 'bw');
+
+      fx.save();
+      const vig = fx.createRadialGradient(w / 2, h * 0.45, Math.min(w, h) * 0.28, w / 2, h * 0.45, Math.max(w, h) * 0.72);
+      vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      vig.addColorStop(0.8, 'rgba(0, 0, 0, 0.4)');
+      vig.addColorStop(1, 'rgba(0, 0, 0, 0.85)');
+      fx.fillStyle = vig;
+      fx.fillRect(0, 0, w, h);
+      fx.restore();
+
+      applyFilmGrain(fx, w, h, 0.28);
+    }
+  },
+  {
+    id: 'motionblur', name: 'Motion Blur', icon: '💫', category: 'Cinema', perf: 'low',
+    render(fx, { src, width: w, height: h }) {
+      renderShutterMotion(fx, src, w, h, 0.74);
+    }
+  },
+  {
+    id: 'promist', name: 'Dream Pro-Mist', icon: '✨', category: 'Cinema', perf: 'low',
+    render(fx, { src, width: w, height: h }) {
+      fx.filter = 'contrast(1.08) brightness(1.04) saturate(1.15)';
+      fx.drawImage(src, 0, 0, w, h);
+      fx.filter = 'none';
+
+      renderHalationBloom(fx, src, w, h, 0.52, 'warm');
+
+      fx.save();
+      fx.globalCompositeOperation = 'soft-light';
+      fx.fillStyle = 'rgba(255, 235, 210, 0.2)';
+      fx.fillRect(0, 0, w, h);
+      fx.restore();
+
+      applyFilmGrain(fx, w, h, 0.12);
+    }
+  },
+  {
+    id: 'neonnoir', name: 'Neon Noir', icon: '🌆', category: 'Cinema', perf: 'low',
+    render(fx, { src, width: w, height: h, time: t }) {
+      fx.filter = 'contrast(1.35) saturate(1.5) brightness(0.92)';
+      fx.drawImage(src, 0, 0, w, h);
+      fx.filter = 'none';
+
+      fx.save();
+      const neonGrad = fx.createLinearGradient(0, 0, w, 0);
+      neonGrad.addColorStop(0, 'rgba(236, 72, 153, 0.28)');
+      neonGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0)');
+      neonGrad.addColorStop(1, 'rgba(6, 182, 212, 0.32)');
+      fx.globalCompositeOperation = 'color-dodge';
+      fx.fillStyle = neonGrad;
+      fx.fillRect(0, 0, w, h);
+      fx.restore();
+
+      drawAnamorphicStreak(fx, src, w, h, t);
+
+      const barH = Math.round(h * 0.09);
+      fx.fillStyle = '#06080d';
+      fx.fillRect(0, 0, w, barH);
+      fx.fillRect(0, h - barH, w, barH);
+
+      applyFilmGrain(fx, w, h, 0.18);
+    }
+  },
+
+  /* ============================ PORTRAIT ============================ */
+  {
+    id: 'portraitbokeh', name: 'Portrait Bokeh', icon: '👤', category: 'Portrait', perf: 'low', requiresFace: true,
+    render(fx, frame) {
+      renderPortraitBokeh(fx, frame, false);
+    }
+  },
+  {
+    id: 'studioportrait', name: 'Studio Spotlight', icon: '🎭', category: 'Portrait', perf: 'low', requiresFace: true,
+    render(fx, frame) {
+      renderPortraitBokeh(fx, frame, true);
+    }
+  },
+  {
+    id: 'bright', name: 'Soft Glow', icon: '💡', category: 'Portrait', perf: 'low',
+    render(fx, { src, width, height }) {
+      fx.filter = 'brightness(1.25) contrast(1.06) saturate(1.1)';
+      fx.drawImage(src, 0, 0, width, height);
+      fx.filter = 'none';
+    }
+  },
+  {
+    id: 'pastel', name: 'Pastel', icon: '🎀', category: 'Portrait', perf: 'low',
+    render(fx, { src, width, height }) {
+      fx.filter = 'blur(0.6px) saturate(1.35) brightness(1.16) contrast(0.92)';
+      fx.drawImage(src, 0, 0, width, height);
+      fx.filter = 'none';
+    }
+  },
+  {
+    id: 'softblur', name: 'Soft Focus', icon: '🌫️', category: 'Portrait', perf: 'low',
+    render(fx, { src, width, height }) {
+      fx.filter = 'blur(5px) brightness(1.08)';
+      fx.drawImage(src, 0, 0, width, height);
+      fx.filter = 'none';
+      fx.globalAlpha = 0.55;
+      fx.drawImage(src, 0, 0, width, height);
+      fx.globalAlpha = 1;
+    }
+  },
+
   /* ============================ CLASSIC ============================ */
   {
     id: 'normal', name: 'Normal', icon: '🎥', category: 'Classic', perf: 'low',
@@ -91,38 +674,11 @@ export const defs2d = [
     }
   },
   {
-    id: 'bright', name: 'Soft Glow', icon: '💡', category: 'Classic', perf: 'low',
-    render(fx, { src, width, height }) {
-      fx.filter = 'brightness(1.25) contrast(1.06) saturate(1.1)';
-      fx.drawImage(src, 0, 0, width, height);
-      fx.filter = 'none';
-    }
-  },
-  {
     id: 'contrast', name: 'Punchy', icon: '🎚️', category: 'Classic', perf: 'low',
     render(fx, { src, width, height }) {
       fx.filter = 'contrast(1.45) saturate(1.25)';
       fx.drawImage(src, 0, 0, width, height);
       fx.filter = 'none';
-    }
-  },
-  {
-    id: 'pastel', name: 'Pastel', icon: '🎀', category: 'Classic', perf: 'low',
-    render(fx, { src, width, height }) {
-      fx.filter = 'blur(0.6px) saturate(1.35) brightness(1.16) contrast(0.92)';
-      fx.drawImage(src, 0, 0, width, height);
-      fx.filter = 'none';
-    }
-  },
-  {
-    id: 'softblur', name: 'Soft Focus', icon: '🌫️', category: 'Classic', perf: 'low',
-    render(fx, { src, width, height }) {
-      fx.filter = 'blur(5px) brightness(1.08)';
-      fx.drawImage(src, 0, 0, width, height);
-      fx.filter = 'none';
-      fx.globalAlpha = 0.55;
-      fx.drawImage(src, 0, 0, width, height);
-      fx.globalAlpha = 1;
     }
   },
   {
@@ -137,7 +693,7 @@ export const defs2d = [
     }
   },
 
-  /* ============================ VINTAGE ============================ */
+  /* ============================ VINTAGE CLASSICS ============================ */
   {
     id: 'vintage', name: 'Vintage', icon: '📻', category: 'Vintage', perf: 'medium',
     render(fx, { src, width: w, height: h }) {
@@ -244,6 +800,31 @@ export const defs2d = [
   },
 
   /* ============================ ART ============================ */
+  {
+    id: 'dreamtrails', name: 'Dream Trails', icon: '🌀', category: 'Art', perf: 'low',
+    render(fx, { src, width: w, height: h }) {
+      renderDreamTrails(fx, src, w, h);
+    }
+  },
+  {
+    id: 'chromatic', name: 'Prism Glitch', icon: '💎', category: 'Art', perf: 'low',
+    render(fx, { src, width: w, height: h, time: t }) {
+      const shift = 4 + Math.sin(t * 2) * 2;
+      fx.save();
+      fx.filter = 'hue-rotate(340deg) saturate(1.4)';
+      fx.drawImage(src, -shift, 0, w, h);
+
+      fx.globalCompositeOperation = 'screen';
+      fx.filter = 'hue-rotate(180deg) saturate(1.4)';
+      fx.drawImage(src, shift, 0, w, h);
+
+      fx.globalCompositeOperation = 'overlay';
+      fx.filter = 'contrast(1.1)';
+      fx.globalAlpha = 0.6;
+      fx.drawImage(src, 0, 0, w, h);
+      fx.restore();
+    }
+  },
   {
     id: 'popart', name: 'Pop Art', icon: '🎨', category: 'Art', perf: 'high',
     render(fx, { src }) {
@@ -429,6 +1010,13 @@ export const defs2d = [
     }
   },
 
+  /* ============================ FUN ============================ */
+  {
+    id: 'fisheye', name: 'Y2K Fisheye', icon: '🛹', category: 'Fun', perf: 'medium',
+    render(fx, { src, width: w, height: h }) {
+      renderFisheye(fx, src, w, h);
+    }
+  },
   {
     id: 'thermal', name: 'Thermal', icon: '🌡️', category: 'Fun', perf: 'high',
     render(fx, { src }) {

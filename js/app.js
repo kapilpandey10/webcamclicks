@@ -1,7 +1,7 @@
 /* WebcamClicks — app.js
    Wires together camera, effects, face tracking, games, gallery and UI. */
 
-import { $, clamp, rand, storage, toast, FpsMeter, friendlyCameraError, makeCanvas, downloadDataUrl, dataUrlToFile, timestamp } from './utils.js';
+import { $, $$, clamp, rand, storage, toast, FpsMeter, friendlyCameraError, makeCanvas, downloadDataUrl, dataUrlToFile, timestamp } from './utils.js';
 import { Sound } from './sound.js';
 import { CameraManager } from './camera.js';
 import { MotionDetector } from './motion.js';
@@ -265,6 +265,7 @@ async function startCamera() {
     display.height = camera.height;
     running = true;
     lastNow = 0;
+    requestAnimationFrame(loop);
     el.startOverlay.style.display = 'none';
     el.stageError.style.display = 'none';
     if (el.fpsBadge) el.fpsBadge.style.display = '';

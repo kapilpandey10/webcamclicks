@@ -259,7 +259,7 @@ async function startCamera() {
   el.startBtn.disabled = true;
   el.startBtn.textContent = '⏳ Starting camera…';
   try {
-    const targetRes = settings.resolution || 'max';
+    const targetRes = settings.resolution || '1920x1080';
     await camera.start(targetRes);
     display.width = camera.width;
     display.height = camera.height;
@@ -319,51 +319,55 @@ function loop(now) {
   requestAnimationFrame(loop);
   if (!camera.active) return;
 
-  const dt = clamp(lastNow ? now - lastNow : 16.7, 0, 80);
-  lastNow = now;
+  try {
+    const dt = clamp(lastNow ? now - lastNow : 16.7, 0, 80);
+    lastNow = now;
 
-  const src = camera.grabFrame();
-  if (!src) return;
+    const src = camera.grabFrame();
+    if (!src) return;
 
-  if (display.width !== camera.width || display.height !== camera.height) {
-    display.width = camera.width;
-    display.height = camera.height;
+    if (display.width !== camera.width || display.height !== camera.height) {
+      display.width = camera.width;
+      display.height = camera.height;
+    }
+
+    motion.update(src);
+
+    const faceWanted = manager.requiresFace || gameMgr.needsFace;
+    if (faceWanted) {
+      ensureTrackerBase();
+      tracker.detect(src);
+    }
+
+    const frame = {
+      src,
+      width: camera.width,
+      height: camera.height,
+      time: now,
+      dt,
+      face: tracker,
+      motion,
+      camera
+    };
+
+    if (gameMgr.active) {
+      dctx.drawImage(src, 0, 0);
+      gameMgr.update(dt, frame);
+      gameMgr.render(dctx, frame);
+    } else {
+      manager.render(dctx, frame);
+    }
+
+    /* FPS badge (throttled by the meter itself) */
+    const fps = fpsMeter.tick(now);
+    if (fps && el.fpsBadge) el.fpsBadge.textContent = `${fps} fps`;
+
+    /* face badge ~4x/second */
+    badgeTick = (badgeTick + 1) % 15;
+    if (badgeTick === 0) updateFaceBadge();
+  } catch (loopErr) {
+    console.warn('[WebcamClicks] render loop err:', loopErr);
   }
-
-  motion.update(src);
-
-  const faceWanted = manager.requiresFace || gameMgr.needsFace;
-  if (faceWanted) {
-    ensureTrackerBase();
-    tracker.detect(src);
-  }
-
-  const frame = {
-    src,
-    width: camera.width,
-    height: camera.height,
-    time: now,
-    dt,
-    face: tracker,
-    motion,
-    camera
-  };
-
-  if (gameMgr.active) {
-    dctx.drawImage(src, 0, 0);
-    gameMgr.update(dt, frame);
-    gameMgr.render(dctx, frame);
-  } else {
-    manager.render(dctx, frame);
-  }
-
-  /* FPS badge (throttled by the meter itself) */
-  const fps = fpsMeter.tick(now);
-  if (fps && el.fpsBadge) el.fpsBadge.textContent = `${fps} fps`;
-
-  /* face badge ~4x/second */
-  badgeTick = (badgeTick + 1) % 15;
-  if (badgeTick === 0) updateFaceBadge();
 }
 
 function ensureTrackerBase() {
@@ -985,7 +989,7 @@ async function openSettingsModal() {
       el.prefCameraSelect.appendChild(opt);
     });
   }
-  if (el.prefResolution) el.prefResolution.value = settings.resolution || '1280x720';
+  if (el.prefResolution) el.prefResolution.value = settings.resolution || '1920x1080';
   if (el.prefTimer) el.prefTimer.value = String(settings.timer || 0);
   if (el.prefPhotoFormat) el.prefPhotoFormat.value = settings.photoFormat || 'image/jpeg';
   if (el.prefMirror) el.prefMirror.value = String(camera.mirror !== false);

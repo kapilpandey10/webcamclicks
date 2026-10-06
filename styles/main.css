@@ -813,6 +813,87 @@ h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 0.5em; color: var(--text); font-
 }
 @keyframes blink { 50% { opacity: 0.3; } }
 
+.badge.res {
+  color: #0284c7;
+  background: #f0f9ff;
+  border-color: #bae6fd;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.badge.res:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+
+/* Viewfinder Zoom Widget (1X, 2X, 3X, 5X, 8X) */
+.camera-zoom-widget {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 3px;
+  z-index: 15;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  user-select: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.zoom-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  font-family: var(--font);
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+}
+.zoom-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  transform: scale(1.06);
+}
+.zoom-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  transform: scale(1.08);
+  font-weight: 900;
+}
+
+.camera-res-select {
+  font-family: var(--font);
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--brand-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 6px 10px;
+  cursor: pointer;
+  outline: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: all 0.15s ease;
+}
+.camera-res-select:hover {
+  border-color: var(--brand);
+}
+
 /* ---------- Flash + toast ---------- */
 #flash { position: absolute; inset: 0; background: #ffffff; opacity: 0; pointer-events: none; z-index: 30; }
 #flash.go { animation: flash 0.28s ease-out; }
@@ -2136,6 +2217,16 @@ h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 0.5em; color: var(--text); font-
   }
   .form-grid {
     grid-template-columns: 1fr;
+  }
+  .camera-zoom-widget {
+    bottom: 12px;
+    padding: 2px;
+    gap: 2px;
+  }
+  .zoom-btn {
+    width: 30px;
+    height: 30px;
+    font-size: 0.68rem;
   }
 }
 

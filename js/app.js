@@ -111,7 +111,10 @@ function init() {
   el.stageErrorMsg = $('#stage-error-msg');
   el.stageRetry = $('#stage-retry');
   el.fpsBadge = $('#fps-badge');
+  el.resBadge = $('#res-badge');
   el.recBadge = $('#rec-badge');
+  el.cameraZoomWidget = $('#camera-zoom-widget');
+  el.quickResSelect = $('#quick-res-select');
   el.btnCapture = $('#btn-capture');
   el.btnRecord = $('#btn-record');
   el.cameraSelect = $('#camera-select');
@@ -256,7 +259,8 @@ async function startCamera() {
   el.startBtn.disabled = true;
   el.startBtn.textContent = '⏳ Starting camera…';
   try {
-    await camera.start();
+    const targetRes = settings.resolution || 'max';
+    await camera.start(targetRes);
     display.width = camera.width;
     display.height = camera.height;
     running = true;
@@ -264,6 +268,8 @@ async function startCamera() {
     el.startOverlay.style.display = 'none';
     el.stageError.style.display = 'none';
     if (el.fpsBadge) el.fpsBadge.style.display = '';
+    if (el.cameraZoomWidget) el.cameraZoomWidget.style.display = 'inline-flex';
+    updateResolutionUI();
     await updateCameraSelectUI();
     setEffect(settings.effect || 'normal', { save: false });
     if (pendingGame) { startGame(pendingGame); pendingGame = null; }
@@ -273,6 +279,19 @@ async function startCamera() {
     el.startBtn.textContent = '🎥 Enable my camera';
     el.stageError.style.display = 'flex';
     el.stageErrorMsg.textContent = friendlyCameraError(err);
+  }
+}
+
+function updateResolutionUI() {
+  if (el.resBadge) {
+    el.resBadge.textContent = camera.getResolutionLabel();
+    el.resBadge.style.display = 'inline-block';
+  }
+  if (el.quickResSelect) {
+    el.quickResSelect.value = camera.resolution || 'max';
+  }
+  if (el.prefResolution) {
+    el.prefResolution.value = camera.resolution || 'max';
   }
 }
 
@@ -994,7 +1013,21 @@ async function onSaveCameraSettings(e) {
       }
     }
   }
-  if (el.prefResolution) settings.resolution = el.prefResolution.value;
+  if (el.prefResolution) {
+    const chosenRes = el.prefResolution.value;
+    const oldRes = settings.resolution;
+    settings.resolution = chosenRes;
+    if (chosenRes !== oldRes && camera.active) {
+      try {
+        await camera.setResolution(chosenRes);
+        display.width = camera.width;
+        display.height = camera.height;
+        updateResolutionUI();
+      } catch (err) {
+        console.warn('Resolution change err:', err);
+      }
+    }
+  }
   if (el.prefTimer) settings.timer = parseInt(el.prefTimer.value, 10) || 0;
   if (el.prefPhotoFormat) settings.photoFormat = el.prefPhotoFormat.value;
   if (el.prefMirror) {
@@ -1530,6 +1563,60 @@ function wireEvents() {
     navigator.mediaDevices.addEventListener('devicechange', updateCameraSelectUI);
   }
   on('#btn-fullscreen', 'click', toggleFullscreen);
+
+  /* Quick Resolution select in pro console */
+  on('#quick-res-select', 'change', async (e) => {
+    const res = e.target.value;
+    settings.resolution = res;
+    if (el.prefResolution) el.prefResolution.value = res;
+    saveSettings();
+    if (camera.active) {
+      try {
+        toast('🔄 Setting resolution...');
+        await camera.setResolution(res);
+        display.width = camera.width;
+        display.height = camera.height;
+        updateResolutionUI();
+        toast(`📐 Resolution set to ${camera.getResolutionLabel()}`);
+      } catch (err) {
+        toast('⚠️ Could not switch to requested resolution');
+      }
+    }
+  });
+
+  /* Click Resolution badge to open settings */
+  on('#res-badge', 'click', openSettingsModal);
+
+  /* Viewfinder Zoom buttons (1X, 2X, 3X, 5X, 8X) */
+  const zoomBtns = $$('.zoom-btn');
+  zoomBtns.forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const z = Number(btn.dataset.zoom) || 1;
+      await camera.setZoom(z);
+      zoomBtns.forEach((b) => b.classList.toggle('active', b === btn));
+      Sound.click();
+      toast(`🔍 Zoom: ${z}X`);
+    });
+  });
+
+  /* Mouse wheel / touchpad pinch zoom over viewfinder */
+  if (el.stage) {
+    el.stage.addEventListener('wheel', async (e) => {
+      if (!camera.active) return;
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 1 : -1;
+      const levels = [1, 2, 3, 5, 8];
+      let idx = levels.indexOf(camera.zoom);
+      if (idx === -1) idx = 0;
+      const nextIdx = clamp(idx + delta, 0, levels.length - 1);
+      const nextZoom = levels[nextIdx];
+      if (nextZoom !== camera.zoom) {
+        await camera.setZoom(nextZoom);
+        $$('.zoom-btn').forEach((b) => b.classList.toggle('active', Number(b.dataset.zoom) === nextZoom));
+        toast(`🔍 Zoom: ${nextZoom}X`);
+      }
+    }, { passive: false });
+  }
 
   on('#intensity', 'input', (e) => {
     const val = parseInt(e.target.value, 10);

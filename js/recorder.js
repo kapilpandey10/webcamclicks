@@ -49,8 +49,12 @@ export class Recorder {
     const canvasStream = this.canvas.captureStream(fps);
     const tracks = [...canvasStream.getVideoTracks()];
     if (audioTrack) tracks.push(audioTrack);
-    const stream = new MediaStream(tracks);
-    const options = this.mimeType ? { mimeType: this.mimeType, videoBitsPerSecond: 4000000 } : undefined;
+    const pixels = this.canvas.width * this.canvas.height;
+    let bps = 4000000;
+    if (pixels >= 7680 * 4320 * 0.7) bps = 24000000;
+    else if (pixels >= 3840 * 2160 * 0.7) bps = 16000000;
+    else if (pixels >= 1920 * 1080 * 0.7) bps = 8000000;
+    const options = this.mimeType ? { mimeType: this.mimeType, videoBitsPerSecond: bps } : undefined;
     try {
       this.recorder = new MediaRecorder(stream, options);
     } catch {

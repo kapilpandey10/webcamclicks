@@ -220,6 +220,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
       <div class="badges">
         <span class="badge" id="fps-badge" style="display:none">60 fps</span>
+        <span class="badge res" id="res-badge" style="display:none" title="Current Camera Sensor Resolution (Click to configure)">1080p FHD</span>
         <span class="badge rec" id="rec-badge" style="display:none">REC 0:00</span>
         <span class="badge" id="face-badge" style="display:none"></span>
       </div>
@@ -236,6 +237,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <button class="btn btn-primary" id="btn-play-again" type="button">🔁 Play again</button>
           <button class="btn" id="btn-close-msg" type="button">Close</button>
         </div>
+      </div>
+
+      <!-- Camera App Viewfinder Zoom Selector (1X, 2X, 3X, 5X, 8X) -->
+      <div class="camera-zoom-widget" id="camera-zoom-widget" role="group" aria-label="Camera Zoom" style="display:none;">
+        <button class="zoom-btn active" data-zoom="1" type="button" title="1X Standard View">1X</button>
+        <button class="zoom-btn" data-zoom="2" type="button" title="2X Close-up">2X</button>
+        <button class="zoom-btn" data-zoom="3" type="button" title="3X Telephoto">3X</button>
+        <button class="zoom-btn" data-zoom="5" type="button" title="5X High Zoom">5X</button>
+        <button class="zoom-btn" data-zoom="8" type="button" title="8X Ultra Zoom">8X</button>
       </div>
 
       <!-- Floating Top HUD (Mobile & Quick Controls) -->
@@ -392,6 +402,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
         <!-- Right Wing: Hardware & Camera Preferences -->
         <div class="deck-wing right">
+          <select class="camera-res-select" id="quick-res-select" aria-label="Select camera resolution" title="Camera Sensor Resolution">
+            <option value="max">✨ Max (Auto)</option>
+            <option value="7680x4320">8K (7680×4320)</option>
+            <option value="3840x2160">4K (3840×2160)</option>
+            <option value="2560x1440">2K (2560×1440)</option>
+            <option value="1920x1080" selected>1080p FHD</option>
+            <option value="1280x720">720p HD</option>
+            <option value="640x480">480p SD</option>
+          </select>
           <div class="deck-quick-toggles">
             <button class="deck-toggle-btn" id="btn-flip" type="button" title="Flip Camera Front/Back">
               🔄
@@ -745,9 +764,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <div class="form-group">
           <label class="form-label" for="pref-resolution">Target Resolution</label>
           <select id="pref-resolution" class="form-control">
-            <option value="1920x1080">1080p Full HD (1920 × 1080)</option>
-            <option value="1280x720" selected>720p HD (1280 × 720)</option>
-            <option value="640x480">480p SD (640 × 480)</option>
+            <option value="max">✨ Max Sensor (Auto-Detect Highest Available)</option>
+            <option value="7680x4320">8K Ultra HD (7680 × 4320) - Extreme</option>
+            <option value="3840x2160">4K Ultra HD (3840 × 2160) - Cinema</option>
+            <option value="2560x1440">2K Quad HD (2560 × 1440) - 1440p</option>
+            <option value="1920x1080" selected>1080p Full HD (1920 × 1080)</option>
+            <option value="1280x720">720p HD (1280 × 720)</option>
+            <option value="640x480">480p SD (640 × 480) - Lightweight</option>
           </select>
         </div>
         <div class="form-group">

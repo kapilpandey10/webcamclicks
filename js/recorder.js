@@ -5,11 +5,19 @@
 import { timestamp } from './utils.js';
 
 function pickMimeType() {
-  const candidates = [
+  const isApple = /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent) && !/Chrome|Chromium/i.test(navigator.userAgent);
+  const candidates = isApple ? [
+    'video/mp4;codecs=avc1,mp4a.40.2',
+    'video/mp4',
     'video/webm;codecs=vp9,opus',
     'video/webm;codecs=vp8,opus',
-    'video/webm',
-    'video/mp4'
+    'video/webm'
+  ] : [
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/mp4;codecs=avc1,mp4a.40.2',
+    'video/mp4',
+    'video/webm'
   ];
   if (typeof MediaRecorder === 'undefined') return '';
   for (const type of candidates) {
@@ -46,7 +54,7 @@ export class Recorder {
     return 'webm';
   }
 
-  start(fps = 30, audioTrack = null) {
+  start(fps = 60, audioTrack = null) {
     if (this.recording || !this.supported) return false;
 
     const captureFn = this.canvas.captureStream || this.canvas.webkitCaptureStream;

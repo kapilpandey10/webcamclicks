@@ -62,11 +62,15 @@ export const RATIOS = {
   }
 };
 
-/* Color Grading Profiles (LUTs) */
+/* Color Grading Profiles (LUTs) & Premium Cinema Effects */
 const LUTS = {
   'rec709': { name: 'REC.709', filter: 'none' },
   'tealorange': { name: 'SCOPEX', filter: 'contrast(1.15) saturate(1.2) hue-rotate(-12deg)' },
+  'glitch': { name: 'GLITCH', filter: 'contrast(1.25) saturate(1.4)', custom: 'glitch' },
+  'anamorphic': { name: 'FLARE', filter: 'contrast(1.18) saturate(1.25) hue-rotate(-10deg)', custom: 'anamorphic' },
   'portra400': { name: 'PORTRA 35mm', filter: 'sepia(0.2) contrast(1.08) brightness(1.04) saturate(1.1)' },
+  'super8': { name: 'SUPER 8', filter: 'sepia(0.35) contrast(1.2) brightness(1.05) saturate(1.25)', custom: 'super8' },
+  'retrowave': { name: 'RETROWAVE', filter: 'contrast(1.25) saturate(1.45) hue-rotate(280deg)', custom: 'retrowave' },
   'trixnoir': { name: 'TRI-X NOIR', filter: 'grayscale(1) contrast(1.4) brightness(0.96)' },
   'goldenhour': { name: '3200K WARM', filter: 'sepia(0.35) saturate(1.25) contrast(1.05)' },
   'cyberpunk': { name: 'CYBERPUNK', filter: 'contrast(1.25) saturate(1.4) hue-rotate(185deg)' }
@@ -100,6 +104,9 @@ export class ProCameraApp {
     this.matteStyle = 'solid'; // 'solid' | 'translucent'
     this.flashMode = 'auto'; // 'auto' | 'off' | 'on'
     this.zoomLevel = 1;
+    this.targetFps = 60; // 60 | 30 | 24
+    this.fpsModes = [60, 30, 24];
+    this.fpsModeIndex = 0;
 
     // Gallery session
     this.gallery = [];
@@ -120,6 +127,7 @@ export class ProCameraApp {
       modePhoto: document.getElementById('mode-photo'),
       modeVideo: document.getElementById('mode-video'),
       btnFlip: document.getElementById('deck-flip-btn'),
+      btnMirror: document.getElementById('btn-mirror-toggle'),
       btnThumb: document.getElementById('deck-thumb-btn'),
       thumbImg: document.getElementById('deck-thumb-img'),
       thumbBadge: document.getElementById('deck-thumb-badge'),
@@ -149,7 +157,7 @@ export class ProCameraApp {
 
     this.running = false;
     this.lastFrameTime = performance.now();
-    this.fpsCounter = 30;
+    this.fpsCounter = 60;
     this.frameCount = 0;
   }
 
@@ -179,6 +187,9 @@ export class ProCameraApp {
       }
       if (this.dom.startOverlay) {
         this.dom.startOverlay.classList.add('hidden');
+      }
+      if (this.dom.btnMirror) {
+        this.dom.btnMirror.classList.toggle('active', this.camera.mirror);
       }
       this.initAudioVU();
       this.updateMatte();
@@ -283,6 +294,11 @@ export class ProCameraApp {
         ctx.drawImage(frame, dx, dy, nw, nh);
         ctx.restore();
 
+        // Render live premium effects (Glitch, Anamorphic Flare, Super 8, Retrowave)
+        if (lut.custom) {
+          this.renderCustomEffect(ctx, lut.custom, vw, vh, time);
+        }
+
         // If recording video, draw cropped cinema frame to recCanvas
         if (this.isRecording && this.recCtx) {
           const crop = this.getCropCoordinates(vw, vh);
@@ -298,6 +314,86 @@ export class ProCameraApp {
     }
 
     requestAnimationFrame((t) => this.renderLoop(t));
+  }
+
+  /* Render live cinema effects directly onto the frame */
+  renderCustomEffect(ctx, type, vw, vh, time) {
+    if (type === 'glitch') {
+      // 1. Chromatic RGB channel split with dynamic sine jitter
+      const shift = 6 + Math.sin(time * 0.02) * 8;
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = 0.55;
+      ctx.filter = 'hue-rotate(300deg) saturate(2.2)';
+      ctx.drawImage(this.displayCanvas, shift, 0);
+      ctx.filter = 'hue-rotate(150deg) saturate(2.2)';
+      ctx.drawImage(this.displayCanvas, -shift, 0);
+      ctx.restore();
+
+      // 2. Horizontal slice tear jitter
+      const sliceCount = 3 + Math.floor(Math.random() * 4);
+      for (let i = 0; i < sliceCount; i++) {
+        const sy = Math.random() * vh;
+        const sh = 4 + Math.random() * 24;
+        const dx = (Math.random() * 28 - 14) * (Math.random() < 0.5 ? 1 : -1);
+        ctx.drawImage(this.displayCanvas, 0, sy, vw, sh, dx, sy, vw, sh);
+      }
+
+      // 3. Digital scanlines
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+      for (let y = 0; y < vh; y += 4) {
+        ctx.fillRect(0, y, vw, 1.5);
+      }
+    } else if (type === 'anamorphic') {
+      // Hollywood Anamorphic Cyan Flare Streaks
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      const streakY = vh * (0.42 + Math.sin(time * 0.001) * 0.08);
+      const grad = ctx.createLinearGradient(0, streakY - 14, 0, streakY + 14);
+      grad.addColorStop(0, 'rgba(6, 182, 212, 0)');
+      grad.addColorStop(0.5, 'rgba(56, 189, 248, 0.65)');
+      grad.addColorStop(1, 'rgba(6, 182, 212, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, streakY - 14, vw, 28);
+
+      // Bright center core
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+      ctx.fillRect(vw * 0.12, streakY - 1.5, vw * 0.76, 3);
+      ctx.restore();
+    } else if (type === 'super8') {
+      // Film grain & dynamic vertical hair/scratches
+      ctx.save();
+      if (Math.random() < 0.75) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+        ctx.lineWidth = 1;
+        const sx = Math.random() * vw;
+        ctx.beginPath();
+        ctx.moveTo(sx, 0);
+        ctx.lineTo(sx + (Math.random() * 4 - 2), vh);
+        ctx.stroke();
+      }
+      // Dust specks
+      ctx.fillStyle = 'rgba(20, 20, 20, 0.45)';
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.arc(Math.random() * vw, Math.random() * vh, 1 + Math.random() * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    } else if (type === 'retrowave') {
+      // 80s scanline overlay and magenta glow
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+      for (let y = 0; y < vh; y += 3) {
+        ctx.fillRect(0, y, vw, 1);
+      }
+      const sunset = ctx.createLinearGradient(0, vh * 0.65, 0, vh);
+      sunset.addColorStop(0, 'rgba(236, 72, 153, 0)');
+      sunset.addColorStop(1, 'rgba(168, 85, 247, 0.28)');
+      ctx.fillStyle = sunset;
+      ctx.fillRect(0, vh * 0.65, vw, vh * 0.35);
+      ctx.restore();
+    }
   }
 
   /* Compute aspect ratio letterbox/pillarbox crop */
@@ -522,7 +618,7 @@ export class ProCameraApp {
       }
     };
 
-    const ok = this.recorder.start(30, audioTrack);
+    const ok = this.recorder.start(this.targetFps || 60, audioTrack);
     if (!ok) {
       if (this.recAudioStream) {
         this.recAudioStream.getTracks().forEach((t) => t.stop());
@@ -753,6 +849,17 @@ export class ProCameraApp {
     Sound.click();
   }
 
+  cycleFpsMode() {
+    this.fpsModeIndex = (this.fpsModeIndex + 1) % this.fpsModes.length;
+    this.targetFps = this.fpsModes[this.fpsModeIndex];
+    Sound.click();
+    if (navigator.vibrate) try { navigator.vibrate(15); } catch {}
+    if (this.dom.fpsBadge) {
+      this.dom.fpsBadge.textContent = `${this.targetFps} FPS`;
+    }
+  }
+
+
   closeSheets() {
     if (this.dom.backdrop) this.dom.backdrop.classList.remove('on');
     if (this.dom.ratioSheet) this.dom.ratioSheet.classList.remove('on');
@@ -774,8 +881,24 @@ export class ProCameraApp {
         Sound.pop();
         if (navigator.vibrate) try { navigator.vibrate(20); } catch {}
         await this.camera.flip();
+        if (this.dom.btnMirror) this.dom.btnMirror.classList.toggle('active', this.camera.mirror);
         this.updateMatte();
       });
+    }
+
+    // Mirror Toggle (Selfie Reflection)
+    if (this.dom.btnMirror) {
+      this.dom.btnMirror.addEventListener('click', () => {
+        this.camera.toggleMirror();
+        Sound.pop();
+        if (navigator.vibrate) try { navigator.vibrate(15); } catch {}
+        this.dom.btnMirror.classList.toggle('active', this.camera.mirror);
+      });
+    }
+
+    // Interactive FPS Mode Cycler (60 FPS -> 30 FPS -> 24 FPS)
+    if (this.dom.fpsBadge) {
+      this.dom.fpsBadge.addEventListener('click', () => this.cycleFpsMode());
     }
 
     // Ratio picker button

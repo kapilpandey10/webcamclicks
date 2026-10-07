@@ -25,9 +25,11 @@ export class CameraManager {
     this.zoom = 1;
     this._digitalZoom = 1;
 
-    /* Work canvas: the frame all effects/games read from. */
+    /* Work canvas: the frame all effects/games read from.
+       NOTE: willReadFrequently is intentionally NOT set here so Mobile Safari
+       uses GPU hardware acceleration (Metal pipeline) at full 60 FPS. */
     this.work = makeCanvas(1280, 720);
-    this.workCtx = this.work.getContext('2d', { willReadFrequently: true });
+    this.workCtx = this.work.getContext('2d');
     this.width = 1280;
     this.height = 720;
     this.nativeWidth = 1280;
@@ -71,9 +73,18 @@ export class CameraManager {
       idealW = 640; idealH = 480;
     }
 
+    // On mobile devices (iPhone 14 Pro Max, iOS Safari), clamp stream to 1080p max.
+    // Querying raw sensor resolution (e.g. 4032x3024 12MP) forces iOS AVFoundation into
+    // still photo capture mode which throttles video frames down to 10 FPS.
+    if (isMobile()) {
+      idealW = Math.min(idealW, 1920);
+      idealH = Math.min(idealH, 1080);
+    }
+
     const videoConstraints = {
       width: { ideal: idealW },
-      height: { ideal: idealH }
+      height: { ideal: idealH },
+      frameRate: { ideal: 60, min: 30 }
     };
     if (this.deviceId) videoConstraints.deviceId = { exact: this.deviceId };
     else videoConstraints.facingMode = { ideal: this.facing };
@@ -81,16 +92,17 @@ export class CameraManager {
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: videoConstraints });
     } catch (err) {
-      // If higher resolution requested failed, try standard 720p fallback
-      if (idealW > 1280) {
+      // If 60 FPS / 1080p requested failed, try standard 30fps 720p fallback
+      try {
         const fallback = {
           width: { ideal: 1280 },
-          height: { ideal: 720 }
+          height: { ideal: 720 },
+          frameRate: { ideal: 30, min: 15 }
         };
         if (this.deviceId) fallback.deviceId = { exact: this.deviceId };
         else fallback.facingMode = { ideal: this.facing };
         this.stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: fallback });
-      } else {
+      } catch {
         throw err;
       }
     }
@@ -103,20 +115,33 @@ export class CameraManager {
     }
     await this._waitForMetadata();
 
+    // Natural mirroring: Front/selfie camera is mirrored by default (true).
+    // Rear/environment camera is unmirrored by default (false).
+    const currentTrack = this.stream && this.stream.getVideoTracks()[0];
+    if (currentTrack && currentTrack.getSettings) {
+      const s = currentTrack.getSettings();
+      if (s.facingMode) this.facing = s.facingMode;
+    }
+    this.mirror = (this.facing !== 'environment');
+
     this._computeWorkSize();
     this.active = true;
     await this.listDevices();
 
-    // If max was requested, safely check if hardware supports higher resolution
-    if (this.resolution === 'max' && this.stream) {
+    // For desktop ONLY with ultra-high-res 4K webcams (Logitech Brio etc.):
+    if (this.resolution === 'max' && this.stream && !isMobile()) {
       const track = this.stream.getVideoTracks()[0];
       if (track && track.getCapabilities) {
         try {
           const caps = track.getCapabilities();
+          const maxAllowed = 3840;
           if (caps && caps.width && caps.width.max > (this.video.videoWidth || 1920)) {
+            const reqW = Math.min(caps.width.max, maxAllowed);
+            const reqH = Math.min(caps.height.max || Math.round(reqW * 9 / 16), 2160);
             await track.applyConstraints({
-              width: { ideal: caps.width.max },
-              height: { ideal: caps.height.max || Math.round(caps.width.max * 9 / 16) }
+              width: { ideal: reqW },
+              height: { ideal: reqH },
+              frameRate: { ideal: 60, min: 30 }
             });
             this._computeWorkSize();
           }
@@ -141,9 +166,13 @@ export class CameraManager {
 
     let targetW = 1920, targetH = 1080;
     if (res === 'max') {
-      const caps = track.getCapabilities ? track.getCapabilities() : null;
-      targetW = (caps && caps.width && caps.width.max) ? caps.width.max : 1920;
-      targetH = (caps && caps.height && caps.height.max) ? caps.height.max : 1080;
+      if (isMobile()) {
+        targetW = 1920; targetH = 1080;
+      } else {
+        const caps = track.getCapabilities ? track.getCapabilities() : null;
+        targetW = (caps && caps.width && caps.width.max) ? Math.min(caps.width.max, 3840) : 1920;
+        targetH = (caps && caps.height && caps.height.max) ? Math.min(caps.height.max, 2160) : 1080;
+      }
     } else if (res === '7680x4320') { targetW = 7680; targetH = 4320; }
     else if (res === '3840x2160') { targetW = 3840; targetH = 2160; }
     else if (res === '2560x1440') { targetW = 2560; targetH = 1440; }
@@ -151,11 +180,17 @@ export class CameraManager {
     else if (res === '1280x720') { targetW = 1280; targetH = 720; }
     else if (res === '640x480') { targetW = 640; targetH = 480; }
 
+    if (isMobile()) {
+      targetW = Math.min(targetW, 1920);
+      targetH = Math.min(targetH, 1080);
+    }
+
     try {
       if (track.applyConstraints) {
         await track.applyConstraints({
           width: { ideal: targetW },
-          height: { ideal: targetH }
+          height: { ideal: targetH },
+          frameRate: { ideal: 60, min: 30 }
         });
       }
     } catch {
@@ -218,14 +253,20 @@ export class CameraManager {
     if (w >= 7600) return '8K UHD';
     if (w >= 3800) return '4K UHD';
     if (w >= 2500) return '2K QHD';
-    if (w >= 1900) return '1080p FHD';
-    if (w >= 1200) return '720p HD';
+    if (w >= 1900) return '1080p 60fps';
+    if (w >= 1200) return '720p 60fps';
     return `${w}×${h}`;
   }
 
   async flip() {
     await this.listDevices();
-    if (this.devices.length < 2) return false;
+    if (this.devices.length < 2) {
+      // Toggle facingMode even if listDevices only reports 1 grouped device (common in Safari)
+      this.facing = this.facing === 'user' ? 'environment' : 'user';
+      this.deviceId = null;
+      await this.start();
+      return true;
+    }
 
     const ids = this.devices.map((d) => d.deviceId).filter(Boolean);
     if (ids.length >= 2) {
@@ -233,6 +274,7 @@ export class CameraManager {
       const settings = current ? current.getSettings() : {};
       const curIdx = ids.indexOf(settings.deviceId);
       this.deviceId = ids[(curIdx + 1) % ids.length];
+      this.facing = this.facing === 'user' ? 'environment' : 'user';
     } else {
       this.facing = this.facing === 'user' ? 'environment' : 'user';
       this.deviceId = null;
@@ -307,7 +349,7 @@ export class CameraManager {
       const sx = (vw - sw) / 2;
       const sy = (vh - sh) / 2;
       ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
+      ctx.imageSmoothingQuality = isMobile() ? 'medium' : 'high';
       ctx.drawImage(this.video, sx, sy, sw, sh, 0, 0, w, h);
     } else {
       drawCover(ctx, this.video, w, h, false);
@@ -329,7 +371,7 @@ export class CameraManager {
     this.work.width = this.width;
     this.work.height = this.height;
     this.workCtx.imageSmoothingEnabled = true;
-    this.workCtx.imageSmoothingQuality = 'high';
+    this.workCtx.imageSmoothingQuality = isMobile() ? 'medium' : 'high';
   }
 
   _waitForMetadata() {

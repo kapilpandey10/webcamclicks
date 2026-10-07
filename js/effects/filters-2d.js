@@ -2,7 +2,7 @@
    Every effect object: { id, name, icon, category, perf, render(fx, frame) }
    `frame` = { src, width, height, time, dt, face, motion, camera } */
 
-import { clamp, rand, pick, makeCanvas } from '../utils.js';
+import { clamp, rand, pick, makeCanvas, isMobile } from '../utils.js';
 
 /* ---------- shared scratch canvas (reused for pixel passes) ---------- */
 let SCRATCH = null;
@@ -26,10 +26,26 @@ function ensureScratch(w, h) {
   return SCRATCH;
 }
 
-/** Read src pixels into `fn(data,w,h)`, then blit the result onto fx. */
+/** Read src pixels into `fn(data,w,h)`, then blit the result onto fx.
+ *  Uses adaptive downsampled pixel buffer on mobile/high-res displays for 60 FPS. */
 function pixelPass(fx, src, fn) {
   const w = fx.canvas.width;
   const h = fx.canvas.height;
+
+  const maxDim = isMobile() ? 480 : 720;
+  if (w > maxDim || h > maxDim) {
+    const scale = maxDim / Math.max(w, h);
+    const sw = Math.max(160, Math.round((w * scale) / 2) * 2);
+    const sh = Math.max(120, Math.round((h * scale) / 2) * 2);
+    const sc = ensureScratch(sw, sh);
+    sc.gx.drawImage(src, 0, 0, sw, sh);
+    const img = sc.gx.getImageData(0, 0, sw, sh);
+    fn(img.data, sw, sh);
+    sc.gx.putImageData(img, 0, 0);
+    fx.drawImage(sc, 0, 0, sw, sh, 0, 0, w, h);
+    return;
+  }
+
   const sc = ensureScratch(w, h);
   sc.gx.drawImage(src, 0, 0, w, h);
   const img = sc.gx.getImageData(0, 0, w, h);
@@ -1175,29 +1191,271 @@ export const defs2d = [
     }
   },
   {
-    id: 'glitch', name: 'Glitch', icon: '📺', category: 'Fun', perf: 'medium',
-    render(fx, { src, width: w, height: h }) {
+    id: 'glitch', name: 'Cyber Glitch', icon: '⚡', category: 'Fun', perf: 'medium',
+    render(fx, { src, width: w, height: h, time: t }) {
       fx.drawImage(src, 0, 0, w, h);
-      const slices = 3 + ((Math.random() * 4) | 0);
-      for (let i = 0; i < slices; i++) {
+
+      // 1. Dynamic RGB Split / Chromatic Aberration
+      const shiftMagnitude = (Math.random() < 0.25 ? 16 : 6) + Math.sin(t * 0.02) * 5;
+      fx.save();
+      fx.globalCompositeOperation = 'screen';
+      
+      // Magenta/Red channel shift
+      fx.globalAlpha = 0.65;
+      fx.filter = 'hue-rotate(300deg) saturate(2.4)';
+      fx.drawImage(src, shiftMagnitude, 0, w, h);
+      
+      // Cyan/Blue channel shift
+      fx.globalAlpha = 0.65;
+      fx.filter = 'hue-rotate(160deg) saturate(2.4)';
+      fx.drawImage(src, -shiftMagnitude, 0, w, h);
+      fx.restore();
+
+      // 2. Horizontal slice tear jitter
+      const sliceCount = 3 + Math.floor(Math.random() * 5);
+      for (let i = 0; i < sliceCount; i++) {
         const sy = Math.random() * h;
-        const sh = 8 + Math.random() * 40;
-        const dx = (Math.random() * 40 - 20) * (Math.random() < 0.5 ? 1 : -1);
+        const sh = 4 + Math.random() * 26;
+        const dx = (Math.random() * 36 - 18) * (Math.random() < 0.5 ? 1 : -1);
         fx.drawImage(src, 0, sy, w, sh, dx, sy, w, sh);
       }
-      fx.globalCompositeOperation = 'lighter';
-      fx.globalAlpha = 0.30;
-      fx.filter = 'hue-rotate(300deg) saturate(2)';
-      fx.drawImage(src, 5, 0, w, h);
-      fx.filter = 'hue-rotate(120deg) saturate(2)';
-      fx.drawImage(src, -5, 0, w, h);
-      fx.filter = 'none';
-      fx.globalAlpha = 1;
-      fx.globalCompositeOperation = 'source-over';
-      if (Math.random() < 0.35) {
-        fx.fillStyle = pick(['rgba(255,0,120,0.16)', 'rgba(0,255,220,0.14)', 'rgba(255,255,255,0.12)']);
-        fx.fillRect(0, Math.random() * h, w, 3 + Math.random() * 14);
+
+      // 3. Digital noise bars
+      if (Math.random() < 0.45) {
+        const barY = Math.random() * h;
+        const barH = 2 + Math.random() * 10;
+        fx.fillStyle = pick(['rgba(0, 255, 234, 0.4)', 'rgba(255, 0, 128, 0.4)', 'rgba(255, 255, 255, 0.3)']);
+        fx.fillRect(0, barY, w, barH);
       }
+
+      // 4. CRT Scanlines
+      fx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+      for (let y = 0; y < h; y += 4) {
+        fx.fillRect(0, y, w, 1.5);
+      }
+    }
+  },
+
+  {
+    id: 'cyberglitch', name: 'Cyberpunk HUD', icon: '🤖', category: 'Fun', perf: 'medium',
+    render(fx, { src, width: w, height: h, time: t }) {
+      fx.drawImage(src, 0, 0, w, h);
+
+      // Cyberpunk Color Grade & Cyan/Magenta Edge Split
+      fx.save();
+      fx.globalCompositeOperation = 'screen';
+      fx.globalAlpha = 0.45;
+      const jx = Math.sin(t * 0.015) * 6;
+      fx.filter = 'hue-rotate(180deg) saturate(2.2)';
+      fx.drawImage(src, jx, 0, w, h);
+      fx.restore();
+
+      // Futuristic Holographic HUD Overlay
+      fx.save();
+      const cx = w / 2;
+      const cy = h / 2;
+      const reticleR = Math.min(w, h) * 0.22;
+
+      // Center lock reticle
+      fx.strokeStyle = 'rgba(0, 255, 234, 0.75)';
+      fx.lineWidth = 1.5;
+      fx.beginPath();
+      fx.arc(cx, cy, reticleR, 0, Math.PI * 2);
+      fx.stroke();
+
+      // Reticle corner brackets
+      fx.beginPath();
+      fx.moveTo(cx - reticleR - 10, cy - 20); fx.lineTo(cx - reticleR - 10, cy - 35); fx.lineTo(cx - reticleR + 5, cy - 35);
+      fx.moveTo(cx + reticleR + 10, cy - 20); fx.lineTo(cx + reticleR + 10, cy - 35); fx.lineTo(cx + reticleR - 5, cy - 35);
+      fx.moveTo(cx - reticleR - 10, cy + 20); fx.lineTo(cx - reticleR - 10, cy + 35); fx.lineTo(cx - reticleR + 5, cy + 35);
+      fx.moveTo(cx + reticleR + 10, cy + 20); fx.lineTo(cx + reticleR + 10, cy + 35); fx.lineTo(cx + reticleR - 5, cy + 35);
+      fx.stroke();
+
+      // Crosshairs
+      fx.beginPath();
+      fx.moveTo(cx - 12, cy); fx.lineTo(cx + 12, cy);
+      fx.moveTo(cx, cy - 12); fx.lineTo(cx, cy + 12);
+      fx.stroke();
+
+      // HUD Telemetry Text
+      fx.font = '700 11px monospace';
+      fx.fillStyle = 'rgba(0, 255, 234, 0.9)';
+      fx.fillText('SYS // CYBER-LINK 2.4.9', 16, 28);
+      fx.fillText('STATUS: TARGET LOCKED [98.4%]', 16, 44);
+
+      fx.fillStyle = 'rgba(255, 0, 128, 0.9)';
+      const sec = Math.floor(t / 1000);
+      fx.fillText(`FPS: 60 // SYNC: ${sec % 60}s`, Math.max(16, w - 175), 28);
+      fx.fillText('OPTICS: NEURAL-EYE v3', Math.max(16, w - 175), 44);
+
+      // Bottom cyber grid accents
+      fx.strokeStyle = 'rgba(255, 0, 128, 0.4)';
+      fx.strokeRect(16, h - 36, 120, 20);
+      fx.fillStyle = 'rgba(255, 0, 128, 0.2)';
+      fx.fillRect(16, h - 36, 60 + Math.sin(t * 0.005) * 40, 20);
+      fx.fillStyle = '#ffffff';
+      fx.fillText('CORE: OPTIMAL', 24, h - 22);
+
+      // Scanlines
+      fx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+      for (let y = 0; y < h; y += 4) {
+        fx.fillRect(0, y, w, 1);
+      }
+      fx.restore();
+    }
+  },
+
+  {
+    id: 'datamosh', name: 'Datamosh FX', icon: '🌀', category: 'Fun', perf: 'medium',
+    render(fx, { src, width: w, height: h }) {
+      fx.drawImage(src, 0, 0, w, h);
+
+      // Macroblock compression tearing simulation
+      const blockCount = 8 + Math.floor(Math.random() * 8);
+      const blockSize = 32 + ((Math.random() * 32) | 0);
+      for (let i = 0; i < blockCount; i++) {
+        const bx = Math.floor(Math.random() * (w / blockSize)) * blockSize;
+        const by = Math.floor(Math.random() * (h / blockSize)) * blockSize;
+        const shiftX = (Math.random() < 0.5 ? 1 : -1) * (16 + Math.random() * 32);
+        fx.drawImage(src, bx, by, blockSize, blockSize, bx + shiftX, by, blockSize, blockSize);
+      }
+
+      // Chroma ghosting displacement
+      if (Math.random() < 0.6) {
+        fx.save();
+        fx.globalCompositeOperation = 'difference';
+        fx.globalAlpha = 0.35;
+        fx.drawImage(src, (Math.random() * 12 - 6), (Math.random() * 6 - 3), w, h);
+        fx.restore();
+      }
+
+      // Codec data burst stripe
+      if (Math.random() < 0.3) {
+        const stY = Math.random() * h;
+        fx.fillStyle = 'rgba(0, 255, 128, 0.35)';
+        fx.fillRect(0, stY, w, 6);
+      }
+    }
+  },
+
+  {
+    id: 'anamorphic', name: 'Anamorphic Cine', icon: '💎', category: 'Classic', perf: 'low',
+    render(fx, { src, width: w, height: h, time: t }) {
+      // Base frame with cinematic grade
+      fx.save();
+      fx.filter = 'contrast(1.15) saturate(1.22)';
+      fx.drawImage(src, 0, 0, w, h);
+      fx.restore();
+
+      // Hollywood Anamorphic Cyan Flare Streak
+      fx.save();
+      fx.globalCompositeOperation = 'screen';
+      const streakY = h * (0.45 + Math.sin(t * 0.001) * 0.06);
+      const flare = fx.createLinearGradient(0, streakY - 14, 0, streakY + 14);
+      flare.addColorStop(0, 'rgba(6, 182, 212, 0)');
+      flare.addColorStop(0.5, 'rgba(56, 189, 248, 0.65)');
+      flare.addColorStop(1, 'rgba(6, 182, 212, 0)');
+      fx.fillStyle = flare;
+      fx.fillRect(0, streakY - 14, w, 28);
+
+      // Intense core highlight
+      fx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      fx.fillRect(w * 0.1, streakY - 1.5, w * 0.8, 3);
+
+      // Subtle anamorphic vignette
+      const vig = fx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.7);
+      vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      vig.addColorStop(1, 'rgba(0, 0, 0, 0.45)');
+      fx.globalCompositeOperation = 'source-over';
+      fx.fillStyle = vig;
+      fx.fillRect(0, 0, w, h);
+      fx.restore();
+    }
+  },
+
+  {
+    id: 'retrowave', name: '80s Retrowave', icon: '🌆', category: 'Fun', perf: 'medium',
+    render(fx, { src, width: w, height: h, time: t }) {
+      fx.save();
+      fx.filter = 'contrast(1.25) saturate(1.4) hue-rotate(275deg)';
+      fx.drawImage(src, 0, 0, w, h);
+      fx.restore();
+
+      // Neon purple horizon gradient
+      fx.save();
+      const horizonY = h * 0.65;
+      const sunset = fx.createLinearGradient(0, horizonY, 0, h);
+      sunset.addColorStop(0, 'rgba(236, 72, 153, 0.1)');
+      sunset.addColorStop(1, 'rgba(168, 85, 247, 0.35)');
+      fx.fillStyle = sunset;
+      fx.fillRect(0, horizonY, w, h - horizonY);
+
+      // Neon perspective wireframe grid on lower third
+      fx.strokeStyle = 'rgba(236, 72, 153, 0.55)';
+      fx.lineWidth = 1.5;
+      const speed = (t * 0.05) % 30;
+      for (let y = horizonY + speed; y < h; y += 24) {
+        fx.beginPath();
+        fx.moveTo(0, y);
+        fx.lineTo(w, y);
+        fx.stroke();
+      }
+      // Perspective rays
+      const vcx = w / 2;
+      for (let x = -w * 0.5; x <= w * 1.5; x += w / 8) {
+        fx.beginPath();
+        fx.moveTo(vcx, horizonY);
+        fx.lineTo(x, h);
+        fx.stroke();
+      }
+
+      // Scanlines & CRT timestamp
+      fx.fillStyle = 'rgba(0, 0, 0, 0.16)';
+      for (let y = 0; y < h; y += 3) fx.fillRect(0, y, w, 1);
+
+      fx.font = '700 14px "Courier New", monospace';
+      fx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      fx.fillText('PLAY ▶ 00:84:19', 16, 26);
+      fx.restore();
+    }
+  },
+
+  {
+    id: 'super8', name: 'Super 8mm Film', icon: '🎞️', category: 'Vintage', perf: 'medium',
+    render(fx, { src, width: w, height: h, time: t }) {
+      fx.save();
+      // Kodachrome warm color tone
+      fx.filter = 'sepia(0.35) contrast(1.18) brightness(1.05) saturate(1.25)';
+      // Projector frame gate jitter
+      const jitterY = (Math.sin(t * 0.03) * 1.5) | 0;
+      fx.drawImage(src, 0, jitterY, w, h);
+      fx.restore();
+
+      // Film scratches
+      fx.save();
+      if (Math.random() < 0.8) {
+        fx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+        fx.lineWidth = 1;
+        const sx = Math.random() * w;
+        fx.beginPath();
+        fx.moveTo(sx, 0);
+        fx.lineTo(sx + (Math.random() * 4 - 2), h);
+        fx.stroke();
+      }
+
+      // Moving dust particles
+      fx.fillStyle = 'rgba(15, 15, 15, 0.5)';
+      for (let i = 0; i < 5; i++) {
+        fx.beginPath();
+        fx.arc(Math.random() * w, Math.random() * h, 1 + Math.random() * 2, 0, Math.PI * 2);
+        fx.fill();
+      }
+
+      // Vintage film gate rounded vignette border
+      fx.lineWidth = 18;
+      fx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
+      fx.strokeRect(0, 0, w, h);
+      fx.restore();
     }
   },
 

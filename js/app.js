@@ -333,7 +333,10 @@ function loop(now) {
       display.height = camera.height;
     }
 
-    motion.update(src);
+    const motionWanted = gameMgr.active || manager.requiresMotion;
+    if (motionWanted) {
+      motion.update(src);
+    }
 
     const faceWanted = manager.requiresFace || gameMgr.needsFace;
     if (faceWanted) {
@@ -656,7 +659,7 @@ async function startRecording() {
     updateRecordUI(true, elapsedMs);
   };
 
-  const started = recorder.start(30, audioTrack);
+  const started = recorder.start(60, audioTrack);
   if (!started) {
     if (recordingAudioStream) {
       try {
@@ -1720,6 +1723,7 @@ function wireEvents() {
       const ok = await camera.flip();
       display.width = camera.width;
       display.height = camera.height;
+      updateMirrorUI();
       await updateCameraSelectUI();
       toast(ok ? '🔄 Switched camera' : '🔄 Only one camera found');
     } catch { toast('⚠️ Could not switch camera'); }
@@ -1731,6 +1735,7 @@ function wireEvents() {
       const ok = await camera.flip();
       display.width = camera.width;
       display.height = camera.height;
+      updateMirrorUI();
       await updateCameraSelectUI();
       toast(ok ? '🔄 Switched camera' : '🔄 Only one camera found');
     } catch { toast('⚠️ Could not switch camera'); }

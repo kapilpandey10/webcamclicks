@@ -169,6 +169,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           </button>
 
           <div class="top-right-actions">
+            <button class="top-icon-btn active" id="btn-mirror-toggle" type="button" title="Toggle Mirror (Selfie Reflection)">🪞</button>
             <button class="top-icon-btn" id="btn-matte-toggle" type="button" title="Toggle Matte Style (Solid vs Translucent)">🔲</button>
             <button class="top-icon-btn" id="btn-info-guide" type="button" title="Movie Aspect Ratio Guide">ℹ️</button>
           </div>
@@ -177,8 +178,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <!-- Pro Telemetry HUD (FPS, Resolution, Audio VU) -->
         <div class="pro-telemetry-bar" aria-hidden="true">
           <div class="telemetry-left">
-            <span class="telem-chip" id="telem-fps">30 FPS</span>
-            <span class="telem-chip accent" id="telem-res">1080p FHD</span>
+            <button class="telem-chip clickable" id="telem-fps" type="button" title="Toggle FPS Mode (60 FPS / 30 FPS / 24 FPS)">60 FPS</button>
+            <span class="telem-chip accent" id="telem-res">1080p 60fps</span>
             <span class="telem-chip rec" id="telem-rec">REC 0:00</span>
           </div>
 
@@ -246,7 +247,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <div class="lut-scroller" role="group" aria-label="Color profiles">
               <button class="lut-chip active" data-lut="rec709" type="button">REC.709</button>
               <button class="lut-chip" data-lut="tealorange" type="button">SCOPEX</button>
+              <button class="lut-chip" data-lut="glitch" type="button">⚡ GLITCH</button>
+              <button class="lut-chip" data-lut="anamorphic" type="button">💎 FLARE</button>
               <button class="lut-chip" data-lut="portra400" type="button">PORTRA 35mm</button>
+              <button class="lut-chip" data-lut="super8" type="button">🎞️ SUPER 8</button>
+              <button class="lut-chip" data-lut="retrowave" type="button">🌆 RETROWAVE</button>
               <button class="lut-chip" data-lut="trixnoir" type="button">TRI-X NOIR</button>
               <button class="lut-chip" data-lut="goldenhour" type="button">3200K WARM</button>
               <button class="lut-chip" data-lut="cyberpunk" type="button">CYBERPUNK</button>

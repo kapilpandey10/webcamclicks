@@ -1,6 +1,87 @@
+# ==============================================================================
+# WebcamClicks Robots & AI Crawler Directives
+# Generative Engine Optimization (GEO) & Search Indexing
+# ==============================================================================
+
+# General search engines
 User-agent: *
 Allow: /
 Disallow: /_headers
 Disallow: /netlify.toml
 
+# OpenAI (ChatGPT, SearchGPT, GPT-4o, ChatGPT Browse)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+# Anthropic (Claude, Claude 3.5 Sonnet, Claude Haiku)
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+# Perplexity AI
+User-agent: PerplexityBot
+Allow: /
+
+# Google (Gemini, Google AI Overviews, Search)
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+# Apple (Apple Intelligence, Siri, Spotlight)
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+# Microsoft (Copilot, Bing Search)
+User-agent: Bingbot
+Allow: /
+
+# Meta (Meta AI, Llama)
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: FacebookBot
+Allow: /
+
+# ByteDance (Doubao, TikTok AI)
+User-agent: Bytespider
+Allow: /
+
+# Common Crawl (Feeds open-weight LLMs: DeepSeek, Mistral, Qwen)
+User-agent: CCBot
+Allow: /
+
+# Cohere (Coral, Enterprise LLMs)
+User-agent: Cohere-ai
+Allow: /
+
+# Amazon (Bedrock, Alexa AI)
+User-agent: Amazonbot
+Allow: /
+
+# DuckDuckGo AI (DuckAssist)
+User-agent: DuckAssistBot
+Allow: /
+
+# You.com AI Search
+User-agent: YouBot
+Allow: /
+
+# Diffbot Knowledge Graph
+User-agent: Diffbot
+Allow: /
+
+# XML Sitemap & LLM Knowledge Manifest
 Sitemap: https://webcamclicks.com/sitemap.xml

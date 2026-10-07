@@ -203,10 +203,26 @@ html, body {
 
 /* Mobile Devices: Native borderless full screen */
 @media (max-width: 768px) {
+  html, body {
+    overflow: hidden !important;
+    height: 100dvh !important;
+    width: 100vw !important;
+    background: #000000 !important;
+    position: fixed !important;
+    inset: 0 !important;
+  }
+  .site-header, .site-footer, .cinema-guide-container, .desktop-app-banner {
+    display: none !important;
+  }
   .pro-page-wrapper {
     padding: 0 !important;
-    min-height: 100dvh;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
     background: #000000 !important;
+    min-height: 100dvh !important;
+    z-index: 100;
   }
   .phone-simulator-frame {
     max-width: 100vw !important;
@@ -218,6 +234,24 @@ html, body {
   }
   .phone-island {
     display: none !important;
+  }
+  .camera-app-viewport {
+    border-radius: 0 !important;
+    height: 100dvh !important;
+    width: 100vw !important;
+  }
+  .camera-top-bar {
+    padding: calc(env(safe-area-inset-top, 0px) + 8px) 14px 8px !important;
+  }
+  .pro-telemetry-bar {
+    top: calc(env(safe-area-inset-top, 0px) + 48px) !important;
+  }
+  .camera-mid-controls {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 120px) !important;
+  }
+  .camera-bottom-deck {
+    padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
+    gap: 8px !important;
   }
 }
 
@@ -234,10 +268,70 @@ html, body {
   user-select: none;
 }
 
-@media (max-width: 768px) {
-  .camera-app-viewport {
-    border-radius: 0;
-  }
+/* Tap to Start Camera Overlay */
+.pro-start-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 40%, rgba(14, 18, 25, 0.95) 0%, rgba(5, 6, 8, 0.98) 100%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  cursor: pointer;
+  transition: opacity 0.25s ease;
+}
+
+.pro-start-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.start-card {
+  max-width: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.start-icon {
+  font-size: 3rem;
+  animation: pulse-icon 2s infinite ease-in-out;
+}
+
+@keyframes pulse-icon {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.start-card h3 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.start-card p {
+  margin: 0;
+  color: var(--pro-muted);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.start-cta-btn {
+  margin-top: 6px;
+  background: var(--brand-grad);
+  color: #ffffff;
+  border: none;
+  font-family: var(--pro-font);
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 10px 22px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(236, 72, 153, 0.4);
 }
 
 /* ---------------- Top Status & Pro Control Bar ---------------- */

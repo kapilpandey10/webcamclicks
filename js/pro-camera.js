@@ -132,6 +132,10 @@ export class ProCameraApp {
       gallerySheet: document.getElementById('gallery-sheet'),
       ratioList: document.getElementById('ratio-cards-list'),
       galleryGrid: document.getElementById('gallery-items-grid'),
+      startOverlay: document.getElementById('pro-start-overlay'),
+      btnStartOverlay: document.getElementById('btn-start-camera-overlay'),
+      guideSheet: document.getElementById('guide-sheet'),
+      btnInfoGuide: document.getElementById('btn-info-guide'),
       btnGridToggle: document.getElementById('btn-grid-toggle'),
       btnMatteToggle: document.getElementById('btn-matte-toggle'),
       btnFlashToggle: document.getElementById('btn-flash-toggle'),
@@ -173,11 +177,17 @@ export class ProCameraApp {
       if (this.dom.resBadge) {
         this.dom.resBadge.textContent = this.camera.getResolutionLabel();
       }
+      if (this.dom.startOverlay) {
+        this.dom.startOverlay.classList.add('hidden');
+      }
       this.initAudioVU();
       this.updateMatte();
       return true;
     } catch (err) {
       console.error('Camera start failed:', err);
+      if (this.dom.startOverlay) {
+        this.dom.startOverlay.classList.remove('hidden');
+      }
       return false;
     }
   }
@@ -736,10 +746,18 @@ export class ProCameraApp {
     Sound.click();
   }
 
+  openGuideSheet() {
+    this.closeSheets();
+    if (this.dom.backdrop) this.dom.backdrop.classList.add('on');
+    if (this.dom.guideSheet) this.dom.guideSheet.classList.add('on');
+    Sound.click();
+  }
+
   closeSheets() {
     if (this.dom.backdrop) this.dom.backdrop.classList.remove('on');
     if (this.dom.ratioSheet) this.dom.ratioSheet.classList.remove('on');
     if (this.dom.gallerySheet) this.dom.gallerySheet.classList.remove('on');
+    if (this.dom.guideSheet) this.dom.guideSheet.classList.remove('on');
   }
 
   setupEventListeners() {
@@ -776,6 +794,18 @@ export class ProCameraApp {
     if (this.dom.btnGridToggle) this.dom.btnGridToggle.addEventListener('click', () => this.toggleGrid());
     if (this.dom.btnMatteToggle) this.dom.btnMatteToggle.addEventListener('click', () => this.toggleMatteStyle());
     if (this.dom.btnFlashToggle) this.dom.btnFlashToggle.addEventListener('click', () => this.toggleFlash());
+    if (this.dom.btnInfoGuide) this.dom.btnInfoGuide.addEventListener('click', () => this.openGuideSheet());
+
+    // Tap to Start Camera Overlay (Mobile gesture friendly)
+    if (this.dom.btnStartOverlay) {
+      this.dom.btnStartOverlay.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.startCamera();
+      });
+    }
+    if (this.dom.startOverlay) {
+      this.dom.startOverlay.addEventListener('click', () => this.startCamera());
+    }
 
     // Stage Tap to Focus
     const stage = document.getElementById('camera-stage-container');

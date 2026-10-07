@@ -216,6 +216,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
       <!-- Floating Top HUD (Mobile & Quick Controls) -->
       <div class="camera-hud-top" id="camera-hud-top" aria-label="Camera quick tools">
+        <a href="/pro-camera" class="hud-btn hud-pro-btn" title="Switch to Pro Camera (Movie Ratios: 1.85:1, 2.39:1, IMAX)">🎬</a>
         <button class="hud-btn" id="hud-btn-flip" type="button" aria-label="Flip camera" title="Flip camera">🔄</button>
         <button class="hud-btn" id="hud-btn-mirror" type="button" aria-label="Toggle mirror mode" title="Mirror">🪞</button>
         <button class="hud-btn" id="hud-btn-sound" type="button" aria-label="Toggle sound" title="Sound">🔊</button>
@@ -396,11 +397,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     <!-- Mobile Native App Shutter Deck & Filter Wheel -->
     <div class="mobile-controls-deck" id="mobile-controls-deck" aria-label="Mobile camera controls">
-      <!-- Mode Switcher: Photo vs Collage vs Video -->
+      <!-- Mode Switcher: Photo vs Collage vs Video vs Pro Cine -->
       <div class="mobile-mode-switcher" role="tablist" aria-label="Camera mode">
         <button class="mode-pill active" id="mode-photo" type="button" role="tab" aria-selected="true">📸 PHOTO</button>
         <button class="mode-pill" id="mode-collage" type="button" role="tab" aria-selected="false">🎞️ COLLAGE</button>
         <button class="mode-pill" id="mode-video" type="button" role="tab" aria-selected="false">📹 VIDEO</button>
+        <a href="/pro-camera" class="mode-pill pro-pill" role="tab" title="Open Professional Camera with Movie Aspect Ratios">🎬 PRO CINE</a>
       </div>
 
       <!-- Quick Pose Count Selector for Mobile Collage -->
@@ -959,17 +961,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <span class="mb-nav-icon">📷</span>
     <span class="mb-nav-label">Camera</span>
   </a>
-  <a href="#games" class="mb-nav-item" id="mb-nav-games">
-    <span class="mb-nav-icon">🎈</span>
-    <span class="mb-nav-label">Games</span>
-  </a>
-  <a href="/mic-test" class="mb-nav-item" id="mb-nav-mic">
-    <span class="mb-nav-icon">🎙️</span>
-    <span class="mb-nav-label">Mic Test</span>
+  <a href="/pro-camera" class="mb-nav-item" id="mb-nav-pro-cam" style="color:var(--brand-2); font-weight:800;">
+    <span class="mb-nav-icon">🎬</span>
+    <span class="mb-nav-label">Pro Cam</span>
   </a>
   <a href="/webcam-toy-alternative" class="mb-nav-item" id="mb-nav-toy-alt">
     <span class="mb-nav-icon">🎯</span>
     <span class="mb-nav-label">Toy Alt</span>
+  </a>
+  <a href="/mic-test" class="mb-nav-item" id="mb-nav-mic">
+    <span class="mb-nav-icon">🎙️</span>
+    <span class="mb-nav-label">Mic Test</span>
   </a>
   <button type="button" class="mb-nav-item" id="mb-nav-gallery">
     <span class="mb-nav-icon">🖼️</span>

@@ -157,6 +157,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <!-- Top Status & Control Bar -->
         <header class="camera-top-bar" aria-label="Camera controls">
           <div class="top-left-actions">
+            <a href="/" class="top-icon-btn pro-exit-btn" title="Back to WebcamClicks Studio" style="text-decoration:none;">✕</a>
             <button class="top-icon-btn" id="btn-flash-toggle" type="button" title="Screen Flash (Auto/On/Off)">⚡</button>
             <button class="top-icon-btn" id="btn-grid-toggle" type="button" title="Toggle Framing Grid">📐</button>
           </div>
@@ -169,6 +170,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
           <div class="top-right-actions">
             <button class="top-icon-btn" id="btn-matte-toggle" type="button" title="Toggle Matte Style (Solid vs Translucent)">🔲</button>
+            <button class="top-icon-btn" id="btn-info-guide" type="button" title="Movie Aspect Ratio Guide">ℹ️</button>
           </div>
         </header>
 
@@ -198,6 +200,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <div class="camera-stage-container" id="camera-stage-container">
           <!-- Primary Camera Canvas -->
           <canvas id="pro-canvas" width="400" height="700" aria-label="Professional camera viewfinder"></canvas>
+
+          <!-- Tap to Start Camera Overlay (Mobile Friendly) -->
+          <div class="pro-start-overlay" id="pro-start-overlay" role="button" tabindex="0" aria-label="Start cinema camera">
+            <div class="start-card">
+              <div class="start-icon">🎬</div>
+              <h3>Start Cinema Camera</h3>
+              <p>Compose in 1.85:1, 2.39:1 Scope, 16:9, 4:3, &amp; IMAX directly on your device.</p>
+              <button class="start-cta-btn" id="btn-start-camera-overlay" type="button">🎥 Enable Camera</button>
+            </div>
+          </div>
 
           <!-- Aspect Ratio Letterbox / Pillarbox Matte Overlays -->
           <div class="cine-matte cine-matte-top" id="matte-top"></div>
@@ -294,6 +306,41 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           </div>
           <div class="gallery-items-grid" id="gallery-items-grid">
             <!-- Injected by pro-camera.js -->
+          </div>
+        </div>
+
+        <!-- Bottom Sheet: Movie Aspect Ratio Cinema Guide -->
+        <div class="pro-bottom-sheet" id="guide-sheet" role="dialog" aria-modal="true" aria-labelledby="guide-sheet-title">
+          <div class="sheet-handle"></div>
+          <div class="sheet-header">
+            <h3 class="sheet-title" id="guide-sheet-title">🎬 Movie Aspect Ratios Guide</h3>
+            <button class="sheet-close-btn" type="button" aria-label="Close modal">✕</button>
+          </div>
+          <div style="overflow-y:auto; max-height:56vh; padding-right:4px; display:flex; flex-direction:column; gap:12px;">
+            <div style="background:var(--pro-surface-2); padding:12px; border-radius:12px; border:1px solid var(--pro-border);">
+              <h4 style="margin:0 0 4px; color:#ffffff; font-size:0.95rem;">1.85:1 (Flat)</h4>
+              <p style="margin:0; font-size:0.8rem; color:var(--pro-muted);">The standard theatrical widescreen format used in U.S. cinemas for spherical lens productions.</p>
+            </div>
+            <div style="background:var(--pro-surface-2); padding:12px; border-radius:12px; border:1px solid var(--pro-border);">
+              <h4 style="margin:0 0 4px; color:#ffffff; font-size:0.95rem;">2.39:1 / 2.40:1 (Scope)</h4>
+              <p style="margin:0; font-size:0.8rem; color:var(--pro-muted);">The ultra-wide anamorphic format commonly used for epics, action films, and sweeping landscapes.</p>
+            </div>
+            <div style="background:var(--pro-surface-2); padding:12px; border-radius:12px; border:1px solid var(--pro-border);">
+              <h4 style="margin:0 0 4px; color:#ffffff; font-size:0.95rem;">16:9 (1.78:1)</h4>
+              <p style="margin:0; font-size:0.8rem; color:var(--pro-muted);">The universal standard for modern high-definition televisions, computer monitors, and streaming.</p>
+            </div>
+            <div style="background:var(--pro-surface-2); padding:12px; border-radius:12px; border:1px solid var(--pro-border);">
+              <h4 style="margin:0 0 4px; color:#ffffff; font-size:0.95rem;">4:3 (1.33:1)</h4>
+              <p style="margin:0; font-size:0.8rem; color:var(--pro-muted);">The classic vintage box format used in early silent cinema and old televisions, used today for nostalgic effect.</p>
+            </div>
+            <div style="background:var(--pro-surface-2); padding:12px; border-radius:12px; border:1px solid var(--pro-border);">
+              <h4 style="margin:0 0 4px; color:#ffffff; font-size:0.95rem;">IMAX (1.43:1 &amp; 1.90:1)</h4>
+              <p style="margin:0; font-size:0.8rem; color:var(--pro-muted);">A much taller format that provides a grand, vertically immersive field of view in specialized theaters.</p>
+            </div>
+            <div style="background:var(--pro-surface-2); padding:12px; border-radius:12px; border:1px solid var(--pro-border);">
+              <h4 style="margin:0 0 4px; color:#ffffff; font-size:0.95rem;">9:16 (Vertical)</h4>
+              <p style="margin:0; font-size:0.8rem; color:var(--pro-muted);">Full-height vertical cinematography format engineered for mobile screens, Reels, TikTok, and Shorts.</p>
+            </div>
           </div>
         </div>
 

@@ -2287,25 +2287,49 @@ h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 0.5em; color: var(--text); font-
     display: none; /* Handled smoothly by bottom nav bar on mobile */
   }
 
-  .hero {
-    padding: 22px 14px 10px;
-  }
-  .hero h1 {
-    font-size: clamp(1.5rem, 5.5vw, 2.2rem);
+  /* Make Main a column flexbox so camera is above the fold on mobile devices */
+  main {
+    display: flex;
+    flex-direction: column;
   }
 
-  .app {
+  /* Camera Stage is #1 on mobile screens: instant native app experience! */
+  #camera {
+    order: 1;
     grid-template-columns: 1fr;
-    padding: 6px 12px 20px;
-    margin-top: 2px;
+    padding: 4px 10px 12px;
+    margin-top: 0;
   }
+
+  .hero {
+    order: 2;
+    padding: 24px 16px 12px;
+  }
+  .hero h1 {
+    font-size: clamp(1.4rem, 5vw, 1.85rem);
+  }
+
+  .stats-ribbon { order: 3; }
+  #infographic { order: 4; }
+  #features { order: 5; }
+  #tech-specs { order: 6; }
+  #games { order: 7; }
+  #how-to { order: 8; }
+  #faq { order: 9; }
 
   /* Viewfinder feels like a native phone camera viewfinder */
   .camera-stage {
-    border-radius: 20px;
-    box-shadow: var(--shadow-lg);
+    border-radius: 22px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
     aspect-ratio: 4 / 3;
-    max-height: 62vh;
+    max-height: 46vh;
+    overflow: hidden;
+  }
+
+  #stage-canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: cover !important;
   }
 
   /* Desktop toolbar hidden when mobile-controls-deck is present */
@@ -2327,6 +2351,36 @@ h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 0.5em; color: var(--text); font-
 
   .mobile-controls-deck {
     display: flex;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .mode-pill.pro-pill {
+    background: rgba(236, 72, 153, 0.12);
+    color: var(--brand-2);
+    border: 1px solid var(--border);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.74rem;
+    padding: 6px 12px;
+  }
+  .mode-pill.pro-pill:hover, .mode-pill.pro-pill:active {
+    background: var(--brand-grad);
+    color: #ffffff;
+    border-color: transparent;
+  }
+
+  .hud-btn.hud-pro-btn {
+    text-decoration: none;
+    font-size: 0.95rem;
+    background: rgba(236, 72, 153, 0.35);
+    border: 1.5px solid var(--brand);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .mobile-bottom-nav {

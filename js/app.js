@@ -34,6 +34,7 @@ const gallery = new Gallery(renderGallery);
 
 let recorder = null;
 let isRecording = false;
+let recordingAudioStream = null;
 
 let display = null;
 let dctx = null;
@@ -224,7 +225,7 @@ function init() {
   buildFilterGrid();
   buildMobileCarousel();
   buildGameCards();
-  renderGallery(gallery.items);
+  renderGallery(gallery.allItems());
   wireEvents();
   readHash();
 
@@ -636,12 +637,33 @@ async function startRecording() {
     return;
   }
 
+  // Attempt to capture microphone audio track if available and permitted
+  let audioTrack = null;
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    try {
+      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const tracks = audioStream.getAudioTracks();
+      if (tracks && tracks.length > 0) {
+        audioTrack = tracks[0];
+        recordingAudioStream = audioStream;
+      }
+    } catch {
+      // Microphone not available or denied; seamlessly proceed with video-only recording
+    }
+  }
+
   recorder.onTick = (elapsedMs) => {
     updateRecordUI(true, elapsedMs);
   };
 
-  const started = recorder.start(30);
+  const started = recorder.start(30, audioTrack);
   if (!started) {
+    if (recordingAudioStream) {
+      try {
+        recordingAudioStream.getTracks().forEach((t) => t.stop());
+      } catch {}
+      recordingAudioStream = null;
+    }
     toast('⚠️ Could not start video recording');
     return;
   }
@@ -649,7 +671,7 @@ async function startRecording() {
   isRecording = true;
   updateRecordUI(true, 0);
   Sound.pop();
-  toast('⏺️ Recording started (max 60 seconds)');
+  toast(audioTrack ? '⏺️ Recording video with audio (max 60s)' : '⏺️ Recording video (max 60s)');
 }
 
 async function stopRecording() {
@@ -657,6 +679,14 @@ async function stopRecording() {
   isRecording = false;
   updateRecordUI(false);
   toast('⏳ Processing video...');
+
+  // Clean up microphone stream if captured
+  if (recordingAudioStream) {
+    try {
+      recordingAudioStream.getTracks().forEach((t) => t.stop());
+    } catch {}
+    recordingAudioStream = null;
+  }
 
   try {
     const clip = await recorder.stop();
@@ -666,6 +696,8 @@ async function stopRecording() {
         id: `${Date.now()}-${Math.round(Math.random() * 1e5)}`,
         url: clip.url,
         blob: clip.blob,
+        thumbnail: clip.thumbnail || null,
+        dataUrl: clip.thumbnail || null,
         filename: clip.filename,
         ts: Date.now(),
         effect: manager.currentName || 'Normal'
@@ -1243,8 +1275,13 @@ function updateMobileGalleryPreview(items) {
   if (!preview) return;
   if (items && items.length > 0) {
     const latest = items[0];
-    if (latest.dataUrl) {
-      preview.innerHTML = `<img src="${latest.dataUrl}" alt="Latest snap">`;
+    const src = latest.dataUrl || latest.thumbnail;
+    if (src) {
+      preview.innerHTML = `<img src="${src}" alt="Latest snap">`;
+      return;
+    }
+    if (latest.kind === 'video') {
+      preview.innerHTML = '🎬';
       return;
     }
   }
@@ -1259,8 +1296,15 @@ function updateDesktopGalleryConsole(items) {
     count.textContent = total === 1 ? '1 item' : `${total} items`;
   }
   if (thumb) {
-    if (total > 0 && items[0].dataUrl) {
-      thumb.innerHTML = `<img src="${items[0].dataUrl}" alt="Latest photo">`;
+    if (total > 0) {
+      const src = items[0].dataUrl || items[0].thumbnail;
+      if (src) {
+        thumb.innerHTML = `<img src="${src}" alt="Latest media">`;
+      } else if (items[0].kind === 'video') {
+        thumb.innerHTML = '<span class="gallery-icon">🎬</span>';
+      } else {
+        thumb.innerHTML = '<span class="gallery-icon">🖼️</span>';
+      }
     } else {
       thumb.innerHTML = '<span class="gallery-icon">🖼️</span>';
     }

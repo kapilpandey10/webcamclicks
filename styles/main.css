@@ -2660,3 +2660,39 @@ h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 0.5em; color: var(--text); font-
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   html { scroll-behavior: auto; }
 }
+
+/* Pro Camera Navigation Link & Mobile Badge */
+.site-nav a.pro-cam-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(236, 72, 153, 0.08);
+  color: var(--brand-2);
+  font-weight: 700;
+  border: 1px solid var(--border);
+}
+.site-nav a.pro-cam-nav-link:hover {
+  background: var(--brand-grad);
+  color: #ffffff;
+  border-color: transparent;
+}
+.site-nav a.pro-cam-nav-link:hover .nav-mobile-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+.nav-mobile-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(236, 72, 153, 0.14);
+  color: var(--brand-2);
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+}
+@media (max-width: 768px) {
+  .nav-mobile-badge {
+    display: none;
+  }
+}
+

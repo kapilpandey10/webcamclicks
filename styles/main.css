@@ -1092,6 +1092,224 @@ h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 0.5em; color: var(--text); font-
 .faq details[open] summary::after { content: "–"; color: var(--brand-2); }
 .faq details p { margin: 12px 0 0; color: var(--muted); font-size: 0.94rem; line-height: 1.6; }
 
+/* ---------- Infographic Stats Ribbon ---------- */
+.stats-ribbon {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  box-shadow: var(--shadow-sm);
+  margin-top: 24px;
+  text-align: center;
+}
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.stat-num {
+  font-size: clamp(1.6rem, 3.2vw, 2.2rem);
+  font-weight: 800;
+  background: var(--brand-grad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.stat-label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+.stat-sub {
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+@media (max-width: 680px) {
+  .stats-ribbon { grid-template-columns: repeat(2, 1fr); gap: 16px 12px; padding: 16px; }
+}
+
+/* ---------- Vintage Photo Shoot Spotlight Box ---------- */
+.vintage-showcase {
+  background: linear-gradient(145deg, #1e1915, #120e0c);
+  color: #fdf6e2;
+  border-radius: var(--radius);
+  border: 1px solid #3d3126;
+  padding: 32px;
+  margin-top: 36px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 32px;
+  align-items: center;
+}
+@media (max-width: 768px) {
+  .vintage-showcase { grid-template-columns: 1fr; padding: 22px; gap: 24px; }
+}
+
+/* CSS-Crafted 4-Cut Vintage Film Strip Mockup */
+.mockup-strip {
+  background: #fdfbf7;
+  padding: 12px 10px 16px;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px #e2d9cc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 220px;
+  margin: 0 auto;
+  transform: rotate(-1.5deg);
+  transition: transform 0.2s ease;
+}
+.mockup-strip:hover {
+  transform: rotate(0deg) scale(1.02);
+}
+.mockup-frame {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #33261d;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mockup-frame.f1 { background: linear-gradient(135deg, #7c2d12, #c2410c); }
+.mockup-frame.f2 { background: linear-gradient(135deg, #451a03, #9a3412); }
+.mockup-frame.f3 { background: linear-gradient(135deg, #18181b, #3f3f46); }
+.mockup-frame.f4 { background: linear-gradient(135deg, #78350f, #d97706); }
+.mockup-frame .mf-emoji {
+  font-size: 2rem;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+}
+.mockup-frame .mf-tag {
+  position: absolute;
+  bottom: 4px;
+  right: 6px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.mockup-footer {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #786b59;
+  text-align: center;
+  padding-top: 4px;
+}
+
+/* Vintage Showcase Content */
+.vintage-info h3 {
+  font-size: clamp(1.4rem, 2.5vw, 1.85rem);
+  margin: 0 0 10px;
+  color: #fef08a;
+  letter-spacing: -0.01em;
+}
+.vintage-info p {
+  color: #d1c7b7;
+  font-size: 0.96rem;
+  line-height: 1.6;
+  margin: 0 0 18px;
+}
+.vintage-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.v-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fef9c3;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+}
+.v-pill:hover {
+  background: #d97706;
+  color: #ffffff;
+  border-color: #d97706;
+  transform: translateY(-1px);
+}
+
+/* Feature Cards with Chip Tags */
+.feature-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+.f-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.feature-card:hover .f-chip {
+  border-color: rgba(236, 72, 153, 0.3);
+  background: rgba(236, 72, 153, 0.05);
+}
+
+/* Deep-Dive Specs Accordion */
+.specs-accordion {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  margin-top: 28px;
+  box-shadow: var(--shadow-sm);
+}
+.specs-accordion summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #0f172a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  list-style: none;
+}
+.specs-accordion summary::-webkit-details-marker { display: none; }
+.specs-accordion summary::after {
+  content: "▾";
+  font-size: 1.25rem;
+  color: var(--brand);
+  transition: transform 0.2s ease;
+}
+.specs-accordion[open] summary::after {
+  transform: rotate(180deg);
+}
+.specs-content {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 0.92rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
 /* ---------- Gallery drawer ---------- */
 .gallery-drawer {
   position: fixed; inset: 0; z-index: 100; display: none;

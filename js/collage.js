@@ -43,6 +43,26 @@ export const COLLAGE_THEMES = {
     subtext: '#94a3b8',
     border: '#334155',
     accent: '#f43f5e'
+  },
+  vintageshoot: {
+    id: 'vintageshoot',
+    name: '🎞️ Vintage Shoot',
+    bg: '#25201b',
+    photoBg: '#1c1714',
+    text: '#fef3c7',
+    subtext: '#d97706',
+    border: '#45372b',
+    accent: '#f59e0b'
+  },
+  polaroid: {
+    id: 'polaroid',
+    name: '📸 Polaroid 1977',
+    bg: '#fcfbf7',
+    photoBg: '#f5f3ec',
+    text: '#1c1917',
+    subtext: '#78716c',
+    border: '#e7e5e4',
+    accent: '#ef4444'
   }
 };
 

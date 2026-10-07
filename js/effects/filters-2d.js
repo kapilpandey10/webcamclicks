@@ -496,6 +496,96 @@ export const defs2d = [
       fx.restore();
     }
   },
+  {
+    id: 'vintageshoot', name: 'Vintage Shoot', icon: '📸', category: 'Vintage', perf: 'low',
+    render(fx, { src, width: w, height: h }) {
+      fx.save();
+      /* 1980s studio glamour photoshoot: soft warm diffusion, flattering skin tones */
+      fx.filter = 'contrast(1.12) saturate(1.18) brightness(1.04) sepia(0.18)';
+      fx.drawImage(src, 0, 0, w, h);
+      fx.filter = 'none';
+
+      renderHalationBloom(fx, src, w, h, 0.44, 'warm');
+
+      /* Soft Studio Radial Lighting Vignette */
+      const vig = fx.createRadialGradient(w * 0.5, h * 0.45, Math.min(w, h) * 0.28, w * 0.5, h * 0.5, Math.max(w, h) * 0.72);
+      vig.addColorStop(0, 'rgba(255, 235, 205, 0.12)');
+      vig.addColorStop(0.65, 'rgba(180, 110, 60, 0.08)');
+      vig.addColorStop(1, 'rgba(25, 12, 5, 0.48)');
+      fx.fillStyle = vig;
+      fx.fillRect(0, 0, w, h);
+
+      /* Authentic 35mm film grain overlay */
+      applyFilmGrain(fx, w, h, 0.18);
+      fx.restore();
+    }
+  },
+  {
+    id: 'trix400', name: 'Kodak Tri-X 400', icon: '🎞️', category: 'Vintage', perf: 'low',
+    render(fx, { src, width: w, height: h }) {
+      fx.save();
+      /* High-contrast silver gelatin black-and-white film shoot */
+      fx.filter = 'grayscale(1) contrast(1.48) brightness(0.96)';
+      fx.drawImage(src, 0, 0, w, h);
+      fx.filter = 'none';
+
+      renderHalationBloom(fx, src, w, h, 0.26, 'bw');
+
+      /* Rich 400-ISO film grain texture */
+      applyFilmGrain(fx, w, h, 0.28);
+
+      /* Corner falloff vignette */
+      const vig = fx.createRadialGradient(w * 0.5, h * 0.5, Math.min(w, h) * 0.35, w * 0.5, h * 0.5, Math.max(w, h) * 0.68);
+      vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      vig.addColorStop(1, 'rgba(0, 0, 0, 0.42)');
+      fx.fillStyle = vig;
+      fx.fillRect(0, 0, w, h);
+      fx.restore();
+    }
+  },
+  {
+    id: 'fujifilm', name: 'Fuji Superia', icon: '📼', category: 'Vintage', perf: 'low',
+    render(fx, { src, width: w, height: h }) {
+      fx.save();
+      /* Japanese 35mm film: cool emerald shadows with rich warm skin highlights */
+      fx.filter = 'contrast(1.18) saturate(1.32) brightness(1.02)';
+      fx.drawImage(src, 0, 0, w, h);
+      fx.filter = 'none';
+
+      renderHalationBloom(fx, src, w, h, 0.32, 'warm');
+
+      const tint = fx.createLinearGradient(0, 0, 0, h);
+      tint.addColorStop(0, 'rgba(255, 220, 180, 0.12)');
+      tint.addColorStop(0.7, 'rgba(34, 197, 94, 0.08)');
+      tint.addColorStop(1, 'rgba(6, 95, 70, 0.22)');
+      fx.globalCompositeOperation = 'soft-light';
+      fx.fillStyle = tint;
+      fx.fillRect(0, 0, w, h);
+
+      applyFilmGrain(fx, w, h, 0.2);
+      fx.restore();
+    }
+  },
+  {
+    id: 'daguerreotype', name: '1890s Antique', icon: '🏛️', category: 'Vintage', perf: 'low',
+    render(fx, { src, width: w, height: h }) {
+      fx.save();
+      /* Antique Victorian tintype / daguerreotype with aged oval plate border */
+      fx.filter = 'sepia(0.88) contrast(1.35) brightness(0.92)';
+      fx.drawImage(src, 0, 0, w, h);
+      fx.filter = 'none';
+
+      const vig = fx.createRadialGradient(w * 0.5, h * 0.5, Math.min(w, h) * 0.25, w * 0.5, h * 0.5, Math.max(w, h) * 0.65);
+      vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      vig.addColorStop(0.7, 'rgba(60, 40, 20, 0.35)');
+      vig.addColorStop(1, 'rgba(15, 8, 3, 0.85)');
+      fx.fillStyle = vig;
+      fx.fillRect(0, 0, w, h);
+
+      applyFilmGrain(fx, w, h, 0.32);
+      fx.restore();
+    }
+  },
 
   /* ============================ CINEMA ============================ */
   {

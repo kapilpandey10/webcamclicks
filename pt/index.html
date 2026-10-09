@@ -46,7 +46,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap"></noscript>
 
-<link rel="stylesheet" href="/styles/main.css">
+<link rel="stylesheet" href="/styles/main.css?v=3">
 
 <!-- Structured data -->
 <script type="application/ld+json">
@@ -162,38 +162,194 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <div class="collage-hud-thumbs" id="collage-hud-thumbs"></div>
         <button class="hud-btn-cancel" id="btn-cancel-collage" type="button" aria-label="Cancel Photo Booth">✕ Cancel</button>
       </div>
+      <!-- Floating Top HUD (Mobile & Quick Controls) -->
+      <div class="camera-hud-top" id="camera-hud-top" role="group" aria-label="Ferramentas da câmera">
+        <a href="/pro-camera" class="hud-btn hud-pro-btn" title="Câmera de Cinema Profissional">🎬</a>
+        <button class="hud-btn" id="hud-btn-flip" type="button" title="Virar Câmera Frente/Trás">🔄</button>
+        <button class="hud-btn" id="hud-btn-mirror" type="button" title="Modo Espelho (M)">🪞</button>
+        <button class="hud-btn" id="hud-btn-sound" type="button" title="Som">🔊</button>
+        <button class="hud-btn" id="hud-btn-settings" type="button" title="Configurações">⚙️</button>
+        <button class="hud-btn" id="hud-btn-fullscreen" type="button" title="Tela cheia">⛶</button>
+      </div>
     </div>
 
-    <!-- Toolbar -->
-    <div class="toolbar" role="toolbar" aria-label="Ferramentas da câmera">
-      <button class="tool" id="btn-capture" type="button">📸 <span class="tool-label">Foto</span> <span class="kbd">C</span></button>
-      <div class="collage-tool-group">
-        <button class="tool" id="btn-collage" type="button">🎞️ <span class="tool-label">Collage</span></button>
-        <select class="collage-select" id="select-collage-poses" title="Number of Poses">
-          <option value="2">2 Poses (Duo)</option>
-          <option value="3">3 Poses (Strip)</option>
-          <option value="4" selected>4 Poses (Quad)</option>
-          <option value="6">6 Poses (Studio)</option>
-        </select>
+    <!-- Pro Camera Studio Console -->
+    <div class="camera-pro-console toolbar" id="camera-console" role="toolbar" aria-label="Ferramentas da câmera">
+      
+      <!-- Tier 1: Mode Switcher & Filter Refinements -->
+      <div class="console-subbar">
+        <div class="console-sub-group left">
+          <button class="tool-sub" id="btn-random" type="button" title="Efeito Aleatório (R)">
+            🎲 <span class="sub-label">Aleatório</span> <span class="kbd">R</span>
+          </button>
+          <button class="tool-sub" id="btn-fav" type="button" title="Adicionar aos Favoritos (F)">
+            ⭐ <span class="sub-label">Favorito</span> <span class="kbd">F</span>
+          </button>
+        </div>
+
+        <!-- Center: Camera Mode Selector -->
+        <div class="console-mode-switcher" role="tablist" aria-label="Modo da câmera">
+          <button class="mode-tab active" id="mode-seg-photo" type="button" role="tab" aria-selected="true">
+            📸 Foto
+          </button>
+          <div class="mode-tab-collage-wrap">
+            <button class="mode-tab" id="mode-seg-collage" type="button" role="tab" aria-selected="false">
+              🎞️ Colagem
+            </button>
+            <select class="collage-poses-select" id="select-collage-poses" aria-label="Layout de colagem" title="Layout de colagem">
+              <option value="2">2 Dupla</option>
+              <option value="3">3 Tira</option>
+              <option value="4" selected>4 Grade</option>
+              <option value="6">6 Estúdio</option>
+            </select>
+          </div>
+          <button class="mode-tab" id="mode-seg-video" type="button" role="tab" aria-selected="false">
+            ⏺️ Vídeo
+          </button>
+        </div>
+
+        <!-- Right: Effect Intensity & Help -->
+        <div class="console-sub-group right">
+          <div class="intensity-wrap" title="Ajustar intensidade">
+            <span class="intensity-label">✨ Força</span>
+            <input type="range" id="intensity" min="0" max="100" value="100" step="5" aria-label="Intensidade">
+            <span class="intensity-val" id="intensity-val">100%</span>
+          </div>
+          <button class="tool-sub" id="btn-help" type="button" title="Atalhos & Ajuda">
+            ❓ <span class="sub-label">Ajuda</span>
+          </button>
+        </div>
       </div>
-      <button class="tool" id="btn-record" type="button">⏺️ <span class="tool-label">Gravar</span> <span class="kbd">V</span></button>
-      <button class="tool" id="btn-random" type="button">🎲 <span class="tool-label">Aleatório</span> <span class="kbd">R</span></button>
-      <button class="tool" id="btn-fav" type="button">⭐ <span class="tool-label">Favorito</span> <span class="kbd">F</span></button>
-      <button class="tool" id="btn-mirror" type="button">🪞 <span class="tool-label">Espelho</span> <span class="kbd">M</span></button>
-      <button class="tool" id="btn-flip" type="button">🔄 <span class="tool-label">Virar</span></button>
-      <button class="tool" id="btn-gallery" type="button">🖼️ <span class="tool-label">Galeria</span></button>
-      <button class="tool" id="btn-fullscreen" type="button">⛶ <span class="tool-label">Tela cheia</span></button>
-      <button class="tool active" id="btn-sound" type="button"><span class="tool-icon">🔊</span> <span class="tool-label">Som</span></button>
-      <div class="spacer"></div>
-      <label class="intensity" for="intensity">Intensidade
-        <input type="range" id="intensity" min="0" max="100" value="100" step="5">
-      </label>
-      <button class="tool" id="btn-help" type="button">❓ <span class="tool-label">Ajuda</span></button>
+
+      <!-- Tier 2: The Master Shutter Deck -->
+      <div class="console-main-deck">
+        <!-- Left Wing: Gallery Access & Quick Mirrors -->
+        <div class="deck-wing left">
+          <button class="deck-gallery-btn" id="btn-gallery" type="button" title="Ver fotos e vídeos">
+            <div class="gallery-icon-frame" id="deck-gallery-thumb">
+              <span class="gallery-icon">🖼️</span>
+            </div>
+            <div class="gallery-btn-text">
+              <span class="gallery-title">Galeria</span>
+              <span class="gallery-sub" id="deck-gallery-count">0 fotos</span>
+            </div>
+          </button>
+
+          <div class="deck-quick-toggles">
+            <button class="deck-toggle-btn" id="btn-mirror" type="button" title="Modo Espelho (M)">
+              🪞 <span class="kbd">M</span>
+            </button>
+            <button class="deck-toggle-btn active" id="btn-sound" type="button" title="Som">
+              <span class="tool-icon">🔊</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Center Hero: The Master Shutter -->
+        <div class="deck-hero-center">
+          <button class="action-secondary-btn" id="btn-collage" type="button" title="Modo Colagem" style="display:none;">
+            <span class="action-sec-icon">🎞️</span>
+            <span class="action-sec-label">Booth</span>
+          </button>
+
+          <div class="master-shutter-container">
+            <button class="camera-shutter-master" id="btn-capture" type="button" aria-label="Tirar Foto (C)">
+              <div class="shutter-halo"></div>
+              <div class="shutter-rim">
+                <div class="shutter-disc">
+                  <span class="shutter-glyph">📷</span>
+                </div>
+              </div>
+            </button>
+            <span class="shutter-hint">Pressione <kbd>C</kbd></span>
+          </div>
+
+          <button class="action-secondary-btn rec-btn" id="btn-record" type="button" title="Gravar Vídeo (V)" style="display:none;">
+            <span class="action-sec-icon">⏺️</span>
+            <span class="action-sec-label">Gravar</span>
+            <span class="kbd">V</span>
+          </button>
+        </div>
+
+        <!-- Right Wing: Hardware & Camera Preferences -->
+        <div class="deck-wing right">
+          <select class="camera-res-select" id="quick-res-select" aria-label="Resolução da câmera" title="Resolução do sensor">
+            <option value="max">✨ Max (Auto)</option>
+            <option value="7680x4320">8K (7680×4320)</option>
+            <option value="3840x2160">4K (3840×2160)</option>
+            <option value="2560x1440">2K (2560×1440)</option>
+            <option value="1920x1080" selected>1080p FHD</option>
+            <option value="1280x720">720p HD</option>
+            <option value="640x480">480p SD</option>
+          </select>
+          <div class="deck-quick-toggles">
+            <button class="deck-toggle-btn" id="btn-flip" type="button" title="Virar Câmera">
+              🔄
+            </button>
+            <button class="deck-toggle-btn" id="btn-fullscreen" type="button" title="Tela cheia">
+              ⛶
+            </button>
+            <button class="deck-toggle-btn" id="btn-settings" type="button" title="Configurações">
+              ⚙️
+            </button>
+          </div>
+
+          <select class="camera-device-select" id="camera-select" aria-label="Selecionar câmera" style="display:none;"></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Native App Shutter Deck & Filter Wheel -->
+    <div class="mobile-controls-deck" id="mobile-controls-deck" aria-label="Controles de câmera mobile">
+      <div class="mobile-mode-switcher" role="tablist" aria-label="Modo da câmera">
+        <button class="mode-pill active" id="mode-photo" type="button" role="tab" aria-selected="true">📸 FOTO</button>
+        <button class="mode-pill" id="mode-collage" type="button" role="tab" aria-selected="false">🎞️ COLAGEM</button>
+        <button class="mode-pill" id="mode-video" type="button" role="tab" aria-selected="false">📹 VÍDEO</button>
+        <a href="/pro-camera" class="mode-pill pro-pill" role="tab" title="Câmera de Cinema Pro">🎬 CINE PRO</a>
+      </div>
+
+      <div class="mobile-collage-selector" id="mobile-collage-selector" style="display:none;">
+        <button class="collage-pill" data-poses="2" type="button">2 Dupla</button>
+        <button class="collage-pill" data-poses="3" type="button">3 Tira</button>
+        <button class="collage-pill active" data-poses="4" type="button">4 Grade</button>
+        <button class="collage-pill" data-poses="6" type="button">6 Estúdio</button>
+      </div>
+
+      <div class="mobile-carousel-container" aria-label="Carrossel de filtros">
+        <div class="mobile-filter-carousel" id="mobile-filter-carousel" role="radiogroup" aria-label="Selecionar efeito"></div>
+      </div>
+
+      <div class="mobile-shutter-bar">
+        <button class="mobile-action-btn" id="btn-mobile-gallery" type="button" aria-label="Abrir galeria">
+          <div class="gallery-thumb-slot" id="mobile-gallery-preview">🖼️</div>
+          <span class="action-caption">Galeria</span>
+        </button>
+
+        <div class="shutter-wrapper">
+          <button class="shutter-btn" id="btn-mobile-shutter" type="button" aria-label="Tirar foto">
+            <span class="shutter-inner"></span>
+          </button>
+        </div>
+
+        <button class="mobile-action-btn" id="btn-mobile-effects" type="button" aria-label="Todos os filtros">
+          <div class="action-icon-circle">✨</div>
+          <span class="action-caption">Filtros</span>
+        </button>
+
+        <button class="mobile-action-btn" id="btn-mobile-flip" type="button" aria-label="Virar câmera">
+          <div class="action-icon-circle">🔄</div>
+          <span class="action-caption">Virar</span>
+        </button>
+      </div>
     </div>
   </div>
 
   <!-- Effects panel -->
   <aside class="effects-panel" aria-label="Painel de efeitos">
+    <div class="sheet-handle-bar">
+      <div class="sheet-handle"></div>
+      <button class="sheet-close-btn" id="btn-close-effects-sheet" type="button" aria-label="Fechar filtros">✕</button>
+    </div>
     <div class="panel-head">
       <h3>🎨 Efeitos e filtros</h3>
       <span class="panel-hint" id="panel-hint">Toque para aplicar</span>
@@ -201,6 +357,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="category-tabs" id="category-tabs"></div>
     <div class="filter-grid" id="filter-grid"></div>
   </aside>
+  <div class="sheet-backdrop" id="sheet-backdrop" aria-hidden="true"></div>
 </section>
 
 <!-- Games -->
@@ -412,6 +569,30 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
   </div>
 </div>
+
+<!-- Mobile Bottom App Navigation Bar -->
+<nav class="mobile-bottom-nav" id="mobile-bottom-nav" aria-label="Navegação mobile">
+  <a href="#camera" class="mb-nav-item active" id="mb-nav-camera">
+    <span class="mb-nav-icon">📷</span>
+    <span class="mb-nav-label">Câmera</span>
+  </a>
+  <a href="/pro-camera" class="mb-nav-item" id="mb-nav-pro-cam" style="color:var(--brand-2); font-weight:800;">
+    <span class="mb-nav-icon">🎬</span>
+    <span class="mb-nav-label">Pro Cam</span>
+  </a>
+  <a href="/webcam-toy-alternative" class="mb-nav-item" id="mb-nav-toy-alt">
+    <span class="mb-nav-icon">🎯</span>
+    <span class="mb-nav-label">Toy Alt</span>
+  </a>
+  <a href="/mic-test" class="mb-nav-item" id="mb-nav-mic">
+    <span class="mb-nav-icon">🎙️</span>
+    <span class="mb-nav-label">Mic Test</span>
+  </a>
+  <button type="button" class="mb-nav-item" id="mb-nav-gallery">
+    <span class="mb-nav-icon">🖼️</span>
+    <span class="mb-nav-label">Galeria</span>
+  </button>
+</nav>
 
 <script type="module" src="/js/app.js?v=2"></script>
 </body>

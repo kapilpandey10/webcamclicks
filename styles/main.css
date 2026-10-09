@@ -639,47 +639,9 @@ h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 0.5em; color: var(--text); font-
   padding: 1px 5px;
 }
 
-/* Secondary Actions beside Shutter */
+/* Secondary Actions beside Shutter (Kept in DOM for keyboard handlers, visually hidden for pure iOS camera clarity) */
 .action-secondary-btn {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  background: #ffffff;
-  border: 1.5px solid var(--border);
-  color: var(--text-secondary);
-  font-family: var(--font);
-  font-size: 0.7rem;
-  font-weight: 800;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-  user-select: none;
-}
-.action-secondary-btn:hover {
-  background: var(--bg-3);
-  border-color: var(--brand);
-  color: var(--brand-2);
-  transform: translateY(-1px);
-}
-.action-secondary-btn .action-sec-icon {
-  font-size: 1.25rem;
-  line-height: 1;
-}
-.action-secondary-btn .kbd {
-  display: none;
-}
-
-.action-secondary-btn.rec-btn.recording {
-  background: var(--danger);
-  border-color: var(--danger);
-  color: #ffffff;
-  animation: recPulse 1.2s infinite ease-in-out;
-  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+  display: none !important;
 }
 
 /* Right Wing: Hardware & Preferences */
@@ -2270,6 +2232,21 @@ h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 0.5em; color: var(--text); font-
 
 /* ---------- Responsive Breakpoints ---------- */
 @media (max-width: 980px) {
+  main {
+    display: flex;
+    flex-direction: column;
+  }
+  main > * {
+    order: 20;
+  }
+  #camera,
+  .app {
+    order: 1 !important;
+    margin-top: 0 !important;
+  }
+  .hero {
+    order: 2 !important;
+  }
   .app { grid-template-columns: 1fr; }
   .filter-grid { grid-template-columns: repeat(5, 1fr); max-height: none; }
 }
@@ -2287,35 +2264,46 @@ h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 0.5em; color: var(--text); font-
     display: none; /* Handled smoothly by bottom nav bar on mobile */
   }
 
-  /* Make Main a column flexbox so camera is above the fold on mobile devices */
+  /* Make Main a column flexbox so camera is guaranteed above the fold on mobile devices */
   main {
     display: flex;
     flex-direction: column;
   }
 
-  /* Camera Stage is #1 on mobile screens: instant native app experience! */
-  #camera {
-    order: 1;
-    grid-template-columns: 1fr;
-    padding: 4px 10px 12px;
-    margin-top: 0;
+  /* Default all children of main to order 20 so un-classed or content sections never jump to the top */
+  main > * {
+    order: 20;
   }
 
+  /* Camera Stage is strictly #1 on mobile screens: instant native app experience at the very top! */
+  #camera,
+  .app {
+    order: 1 !important;
+    grid-template-columns: 1fr;
+    padding: 2px 10px 10px;
+    margin-top: 0 !important;
+  }
+
+  /* Title, hero description and badges go directly underneath the camera */
   .hero {
-    order: 2;
-    padding: 24px 16px 12px;
+    order: 2 !important;
+    padding: 18px 16px 12px;
   }
   .hero h1 {
-    font-size: clamp(1.4rem, 5vw, 1.85rem);
+    font-size: clamp(1.35rem, 4.8vw, 1.75rem);
+    margin-bottom: 6px;
+  }
+  .hero p {
+    font-size: 0.92rem;
+    margin-bottom: 12px;
   }
 
-  .stats-ribbon { order: 3; }
-  #infographic { order: 4; }
-  #features { order: 5; }
-  #tech-specs { order: 6; }
-  #games { order: 7; }
-  #how-to { order: 8; }
-  #faq { order: 9; }
+  #games, .games-section { order: 3 !important; }
+  .stats-ribbon, #infographic { order: 4 !important; }
+  .vintage-showcase { order: 5 !important; }
+  .content-section, #features, #tech-specs { order: 6 !important; }
+  #how, #how-to { order: 7 !important; }
+  #faq, .faq { order: 8 !important; }
 
   /* Viewfinder feels like a native phone camera viewfinder */
   .camera-stage {
@@ -2332,7 +2320,10 @@ h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 0.5em; color: var(--text); font-
     object-fit: cover !important;
   }
 
-  /* Desktop toolbar hidden when mobile-controls-deck is present */
+  /* Desktop console hidden on mobile */
+  .camera-pro-console {
+    display: none !important;
+  }
   .app:has(.mobile-controls-deck) .toolbar {
     display: none !important;
   }

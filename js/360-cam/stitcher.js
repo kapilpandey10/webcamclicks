@@ -234,7 +234,9 @@ export class SphericalStitcher {
     const yStart = Math.max(0, Math.floor(((Math.PI / 2 - maxLat) / Math.PI) * panoH));
     const yEnd = Math.min(panoH - 1, Math.ceil(((Math.PI / 2 - minLat) / Math.PI) * panoH));
 
-    const halfSpanX = Math.ceil((maxAngle / (2 * Math.PI)) * panoW * 1.5);
+    // Near the poles, longitude converges to a single point, so polar shots sweep full 360° width
+    const isNearPole = Math.abs(pitchRad) >= 0.85;
+    const halfSpanX = isNearPole ? Math.floor(panoW / 2) : Math.ceil((maxAngle / (2 * Math.PI)) * panoW * 1.5);
     const centerX = Math.floor((yawRad / (2 * Math.PI)) * panoW);
 
     for (let y = yStart; y <= yEnd; y++) {

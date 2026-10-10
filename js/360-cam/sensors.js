@@ -1,8 +1,8 @@
 /**
  * 360 CAM — Sensor & Orientation Tracking Engine
- * Handles DeviceOrientationEvent with iOS 13+ permission flow,
- * alpha/beta/gamma sensor normalization, calibration zeroing,
- * and manual drag/step fallback for desktop testing.
+ * Provides ultra-responsive 3D orientation tracking for iOS Safari (webkitCompassHeading)
+ * and Android (deviceorientationabsolute / deviceorientation), with immediate calibration,
+ * robust touch/drag simulation fallback, and zero-lag responsiveness.
  */
 
 export class SensorTracker {
@@ -11,23 +11,23 @@ export class SensorTracker {
     this.isListening = false;
     this.permissionGranted = false;
 
-    // Smoothed sensor readings
-    this.yaw = 0;       // 0° to 360° (Heading)
-    this.pitch = 0;     // -90° to +90° (Tilt up/down)
-    this.roll = 0;      // -180° to +180° (Sideways tilt)
+    // Current orientation in degrees
+    this.yaw = 0;       // 0° to 360° (Compass heading / Azimuth)
+    this.pitch = 0;     // -90° (straight down) to +90° (straight up)
+    this.roll = 0;      // -180° to +180° (Device roll tilt)
 
-    // Calibration
+    // Calibration offset (sets current heading as 0° reference)
     this.referenceYaw = 0;
     this.relativeYaw = 0;
 
-    // Manual simulation fallback
+    // Manual touch/drag fallback
     this.manualMode = false;
     this.manualYaw = 0;
     this.manualPitch = 0;
     this.manualRoll = 0;
 
-    // Low-pass filter weights
-    this.smoothFactor = 0.25;
+    // Responsiveness filter: 0.65 provides crisp, instant response with minimal jitter
+    this.smoothFactor = 0.65;
 
     // Listeners
     this._onOrientation = this._handleDeviceOrientation.bind(this);
@@ -35,7 +35,7 @@ export class SensorTracker {
   }
 
   /**
-   * Request permission (required on iOS Safari 13+)
+   * Request permission (required on iOS Safari 13+ inside a user click gesture)
    */
   async requestPermission() {
     if (
@@ -48,40 +48,42 @@ export class SensorTracker {
           this.permissionGranted = true;
           return { granted: true, ios: true };
         } else {
-          return { granted: false, error: 'Permission denied by user' };
+          return { granted: false, error: 'Permission denied by iOS user' };
         }
       } catch (err) {
         return { granted: false, error: err.message };
       }
     }
 
-    // Android, desktop Chrome, or non-iOS browsers grant automatically
+    // Android, desktop, or non-iOS browsers grant automatically
     this.permissionGranted = true;
     return { granted: true, ios: false };
   }
 
   /**
-   * Start listening to device orientation
+   * Start listening to device orientation with high-priority absolute events
    */
   start() {
     if (this.isListening) return;
 
+    // 1. Android Chrome absolute compass heading
+    if ('ondeviceorientationabsolute' in window) {
+      window.addEventListener('deviceorientationabsolute', this._onOrientation, true);
+    }
+    // 2. Standard device orientation (iOS WebKit + Android fallback)
     if (window.DeviceOrientationEvent) {
       window.addEventListener('deviceorientation', this._onOrientation, true);
-      this.isListening = true;
-
-      // Check after 600ms if we actually received sensor events
-      setTimeout(() => {
-        if (!this.hasGyro) {
-          console.log('No gyro events received within 600ms. Enabling manual fallback.');
-          this.manualMode = true;
-          this._notify();
-        }
-      }, 600);
-    } else {
-      this.manualMode = true;
-      this._notify();
     }
+
+    this.isListening = true;
+
+    // If no gyro data received within 800ms, enable manual mode
+    setTimeout(() => {
+      if (!this.hasGyro) {
+        this.manualMode = true;
+        this._notify();
+      }
+    }, 800);
   }
 
   /**
@@ -89,30 +91,30 @@ export class SensorTracker {
    */
   stop() {
     if (!this.isListening) return;
+    if ('ondeviceorientationabsolute' in window) {
+      window.removeEventListener('deviceorientationabsolute', this._onOrientation, true);
+    }
     window.removeEventListener('deviceorientation', this._onOrientation, true);
     this.isListening = false;
   }
 
   /**
-   * Calibrate reference yaw to current phone heading (sets current heading as 0°)
+   * Calibrate reference heading to current phone direction
    */
   calibrateZero() {
     this.referenceYaw = this.yaw;
-    this.manualYaw = 0;
-    this.manualPitch = 0;
-    this.manualRoll = 0;
     this._calculateRelative();
     this._notify();
   }
 
   /**
-   * Manual heading adjustment (useful for desktop / fallback testing)
+   * Set manual relative offset (useful for touch drag or stepper buttons)
    */
   setManualOffset(deltaYaw = 0, deltaPitch = 0) {
-    this.manualYaw = (this.manualYaw + deltaYaw + 360) % 360;
-    this.manualPitch = Math.max(-80, Math.min(80, this.manualPitch + deltaPitch));
+    this.manualYaw = ((this.manualYaw + deltaYaw) % 360 + 360) % 360;
+    this.manualPitch = Math.max(-88, Math.min(88, this.manualPitch + deltaPitch));
 
-    if (this.manualMode) {
+    if (this.manualMode || !this.hasGyro) {
       this.yaw = this.manualYaw;
       this.pitch = this.manualPitch;
       this.roll = 0;
@@ -122,11 +124,11 @@ export class SensorTracker {
   }
 
   /**
-   * Set absolute manual heading
+   * Set manual absolute angles
    */
   setManualHeading(yaw, pitch = 0) {
     this.manualYaw = ((yaw % 360) + 360) % 360;
-    this.manualPitch = Math.max(-80, Math.min(80, pitch));
+    this.manualPitch = Math.max(-88, Math.min(88, pitch));
 
     this.yaw = this.manualYaw;
     this.pitch = this.manualPitch;
@@ -146,24 +148,27 @@ export class SensorTracker {
     this.hasGyro = true;
     this.manualMode = false;
 
-    // Normalizing angles
-    // In portrait mode:
-    // alpha: 0 to 360 (compass heading / yaw)
-    // beta: -180 to 180 (front-to-back tilt / pitch). When phone is held vertical upright, beta ≈ 90°.
-    // gamma: -90 to 90 (left-to-right tilt / roll).
-    const rawAlpha = event.alpha || 0;
-    const rawBeta = event.beta || 0;
-    const rawGamma = event.gamma || 0;
+    // --- 1. YAW (Compass Heading) ---
+    // iOS Safari exposes webkitCompassHeading directly (0 = North, 90 = East, etc.)
+    let targetYaw = 0;
+    if (typeof event.webkitCompassHeading === 'number' && !isNaN(event.webkitCompassHeading)) {
+      targetYaw = event.webkitCompassHeading;
+    } else {
+      // Android / standard: alpha is 0-360 counterclockwise, invert to clockwise
+      targetYaw = (360 - (event.alpha || 0)) % 360;
+    }
 
-    // Normalize pitch so 0° is a level vertical phone (pointing at horizon)
-    // When held vertically: beta = 90° -> pitch = 0°
-    // Tilted up toward sky: beta < 90° -> pitch > 0°
-    // Tilted down toward ground: beta > 90° -> pitch < 0°
-    const targetPitch = 90 - rawBeta;
-    const targetRoll = rawGamma;
-    const targetYaw = 360 - rawAlpha; // Normalize to clockwise 0-360
+    // --- 2. PITCH (Front-to-back tilt) ---
+    // When held vertically upright (portrait): beta ≈ 90°
+    // Tilting up to ceiling: beta decreases to 0° (Zenith pitch = +90°)
+    // Tilting down to floor: beta increases to 180° (Nadir pitch = -90°)
+    const beta = event.beta || 90;
+    const targetPitch = Math.max(-90, Math.min(90, 90 - beta));
 
-    // Smooth values using circular distance for yaw
+    // --- 3. ROLL (Left-to-right sideways tilt) ---
+    const targetRoll = event.gamma || 0;
+
+    // Apply fast responsive smoothing
     this.yaw = this._smoothAngle(this.yaw, targetYaw, this.smoothFactor);
     this.pitch = this.pitch + (targetPitch - this.pitch) * this.smoothFactor;
     this.roll = this.roll + (targetRoll - this.roll) * this.smoothFactor;
@@ -178,7 +183,7 @@ export class SensorTracker {
 
   _smoothAngle(curr, target, factor) {
     let diff = ((target - curr + 540) % 360) - 180;
-    return (curr + diff * factor + 360) % 360;
+    return ((curr + diff * factor) % 360 + 360) % 360;
   }
 
   subscribe(callback) {

@@ -214,6 +214,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <!-- Fullscreen camera background -->
           <video class="camera-feed-video" id="camera-video" playsinline autoplay muted></video>
 
+          <!-- 3D HUD Canvas Layer: Real-time 3D projected dots, beacon guidance line, reticle & mini 3D sphere -->
+          <canvas class="camera-hud-canvas" id="hud-canvas"></canvas>
+
           <!-- Landscape Warning Overlay -->
           <div class="landscape-warning-overlay" id="landscape-warning">
             <div class="landscape-icon">📱</div>
@@ -221,56 +224,37 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <p style="color:var(--cam-muted); font-size:0.9rem;">360 CAM captures optimal vertical field-of-view when your phone is held vertically.</p>
           </div>
 
-          <!-- Guiding HUD Layer -->
+          <!-- Guiding HUD Controls Overlay -->
           <div class="capture-hud-overlay" id="capture-hud">
             
             <!-- Top Status Bar & Controls -->
             <div class="capture-top-bar hud-interactive">
               <button class="hud-icon-btn" id="btn-cancel-capture" type="button" title="Cancel Capture">✕</button>
 
-              <!-- Radar Strip: 10 Target Dots across 360° -->
-              <div class="radar-strip-container">
-                <div class="radar-dots-row" id="radar-nodes-container" title="360° Ring Anchor Nodes">
-                  <!-- Generated dynamically in app.js -->
-                </div>
-                <div class="telemetry-row">
-                  <div class="telem-chip">YAW <span id="telem-yaw">0°</span></div>
-                  <div class="telem-chip">PITCH <span id="telem-pitch">0°</span></div>
-                  <div class="telem-chip">ROLL <span id="telem-roll">0°</span></div>
-                </div>
+              <!-- Mode Selector Pill: Full 360 Sphere vs Horizon Ring -->
+              <div class="hud-mode-pill" id="mode-selector-pill">
+                <button class="mode-pill-btn active" id="btn-mode-sphere" type="button" title="Full 360° Photosphere (Top, Horizon, Bottom)">🌐 Full Sphere</button>
+                <button class="mode-pill-btn" id="btn-mode-horizon" type="button" title="Quick 360° Horizon Ring">🔄 Horizon</button>
               </div>
 
+              <!-- Action buttons -->
               <div style="display:flex; gap:6px;">
+                <button class="hud-icon-btn" id="btn-zero-heading" type="button" title="Calibrate / Zero Heading to current view">🎯</button>
                 <button class="hud-icon-btn" id="btn-switch-camera" type="button" title="Switch Rear/Front Camera">🔄</button>
                 <button class="hud-icon-btn" id="btn-reset-frames" type="button" title="Reset Captured Frames">🗑️</button>
               </div>
             </div>
 
+            <!-- Live Telemetry Ribbon -->
+            <div class="telemetry-ribbon" id="telemetry-ribbon">
+              <span class="telem-badge" id="telem-heading">🧭 HEADING: 000° N</span>
+              <span class="telem-badge" id="telem-elevation">📐 PITCH: 00° LEVEL</span>
+              <span class="telem-badge gyro-badge" id="telem-gyro-status">🟢 SENSOR ACTIVE</span>
+            </div>
+
             <!-- Dynamic Guidance Notification Banner -->
             <div class="guidance-banner" id="hud-guidance-banner">
-              Align reticle with glowing target dot
-            </div>
-
-            <!-- Out-of-View Turn Chevrons Indicator -->
-            <div class="direction-arrow" id="direction-arrow">
-              <span id="direction-text">Turn Right ➔</span>
-            </div>
-
-            <!-- Reticle Stage (Artificial Horizon & Pitch Bubble) -->
-            <div class="reticle-stage">
-              <!-- Artificial Horizon Line (rotates with phone roll) -->
-              <div class="horizon-bar" id="horizon-bar"></div>
-
-              <!-- Center Target Reticle -->
-              <div class="reticle-center" id="reticle-center">
-                <!-- Pitch / Tilt Level Bubble -->
-                <div class="reticle-bubble" id="reticle-bubble"></div>
-              </div>
-            </div>
-
-            <!-- Floating Target Node (projected in viewport) -->
-            <div class="floating-target-node" id="floating-target-node">
-              <div class="floating-target-inner"></div>
+              Point camera at glowing target dot
             </div>
 
             <!-- Bottom Control Dock -->
@@ -281,11 +265,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <!-- Populated dynamically with mini snapshots -->
               </div>
 
-              <!-- Manual Stepping Controls (desktop / non-gyro environments) -->
-              <div class="manual-controls-bar" id="manual-controls-bar" style="display:none;">
-                <button class="manual-step-btn" id="btn-manual-left" type="button">◀ Step -36°</button>
-                <button class="manual-step-btn" id="btn-manual-level" type="button">🎯 Level 0°</button>
-                <button class="manual-step-btn" id="btn-manual-right" type="button">Step +36° ▶</button>
+              <!-- Stepper Controls (for manual swipe/desktop testing) -->
+              <div class="manual-controls-bar" id="manual-controls-bar">
+                <button class="manual-step-btn" id="btn-manual-up" type="button">▲ Up 30°</button>
+                <button class="manual-step-btn" id="btn-manual-left" type="button">◀ Left 45°</button>
+                <button class="manual-step-btn" id="btn-manual-level" type="button">🎯 Level</button>
+                <button class="manual-step-btn" id="btn-manual-right" type="button">Right 45° ▶</button>
+                <button class="manual-step-btn" id="btn-manual-down" type="button">▼ Down 30°</button>
               </div>
 
               <!-- Primary Action Triggers -->
@@ -296,23 +282,24 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     <circle class="progress-ring-bg" stroke-width="4" fill="transparent" r="26" cx="29" cy="29"></circle>
                     <circle class="progress-ring-indicator" id="progress-ring-circle" stroke-width="4" fill="transparent" r="26" cx="29" cy="29"></circle>
                   </svg>
-                  <span class="progress-ring-label" id="progress-text">0/10</span>
+                  <span class="progress-ring-label" id="progress-text">0/24</span>
                 </div>
 
-                <!-- Ergonomic Shutter Button -->
+                <!-- Ergonomic Shutter Button (Tap anytime to shoot!) -->
                 <button class="btn-shutter-trigger" id="btn-shutter" type="button" aria-label="Capture 360 Frame">
                   <div class="shutter-inner-core"></div>
                 </button>
 
                 <!-- Finish & Stitch CTA -->
                 <button class="btn-finish-stitch" id="btn-finish-stitch" type="button" disabled title="Stitch 360 Panorama">
-                  <span>✨ Stitch</span>
+                  <span>✨ Stitch 360</span>
                 </button>
               </div>
 
               <!-- Secondary Row: Auto-Snap & Undo -->
               <div style="display:flex; align-items:center; justify-content:space-between; padding: 0 10px;">
                 <button class="banner-btn" id="btn-autosnap-toggle" type="button" style="font-size:0.75rem;">⚡ Auto-Snap: ON</button>
+                <span style="font-size:0.72rem; color:var(--cam-muted);" id="capture-status-subtext">Min 4 frames to stitch</span>
                 <button class="banner-btn" id="btn-undo-frame" type="button" style="font-size:0.75rem; display:none;">↩ Undo Last</button>
               </div>
             </div>

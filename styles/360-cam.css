@@ -531,72 +531,104 @@ html, body {
   border-color: var(--cam-cyan);
 }
 
-/* 360 Radar strip */
-.radar-strip-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  margin-top: 6px;
+/* 3D HUD Canvas Layer */
+.camera-hud-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
 }
 
-.radar-dots-row {
-  display: flex;
+.camera-hud-canvas:active {
+  cursor: grabbing;
+}
+
+/* Mode Selector Pill */
+.hud-mode-pill {
+  display: inline-flex;
   align-items: center;
-  gap: 7px;
-  background: rgba(10, 15, 28, 0.65);
-  backdrop-filter: blur(12px);
-  padding: 6px 12px;
+  background: rgba(10, 15, 28, 0.85);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--cam-border);
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 3px;
+  gap: 4px;
 }
 
-.radar-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
-  transition: all 0.2s ease;
+.mode-pill-btn {
+  background: transparent;
+  border: none;
+  color: var(--cam-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.radar-dot.captured {
-  background: var(--cam-green);
-  box-shadow: 0 0 8px var(--cam-green);
-}
-
-.radar-dot.next-target {
+.mode-pill-btn.active {
   background: var(--cam-cyan);
-  box-shadow: 0 0 10px var(--cam-cyan);
-  transform: scale(1.35);
-  animation: pulseDot 1s infinite alternate;
+  color: #000000;
+  font-weight: 700;
+  box-shadow: 0 0 12px var(--cam-cyan-glow);
 }
 
-@keyframes pulseDot {
-  from { transform: scale(1.2); opacity: 0.8; }
-  to { transform: scale(1.55); opacity: 1; }
-}
-
-/* Telemetry readout pills */
-.telemetry-row {
+/* Telemetry Ribbon */
+.telemetry-ribbon {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.telem-badge {
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 4px 10px;
+  border-radius: 8px;
   font-family: var(--cam-mono);
-  font-size: 0.74rem;
+  font-size: 0.72rem;
+  color: var(--cam-text);
 }
 
-.telem-chip {
-  background: rgba(0, 0, 0, 0.6);
-  padding: 3px 8px;
-  border-radius: 6px;
-  color: var(--cam-muted);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+.telem-badge.gyro-badge {
+  color: var(--cam-green);
+  border-color: rgba(16, 185, 129, 0.35);
 }
 
-.telem-chip span {
-  color: var(--cam-cyan);
-  font-weight: 700;
+.manual-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.manual-step-btn {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--cam-border);
+  color: #f1f5f9;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.manual-step-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #ffffff;
 }
 
 /* Guidance notification banner */

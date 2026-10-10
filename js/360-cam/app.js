@@ -1,7 +1,8 @@
 /**
- * 360 CAM — Main Application Controller
- * Coordinates permissions, camera stream, orientation sensors, capture HUD,
- * auto-snap reticle guidance, spherical stitching, and interactive Three.js 360 viewer.
+ * 360 CAM — Primary Application Controller
+ * Professional Photosphere Capture Engine with Multi-Tier 3D Spherical Lattice
+ * (Zenith Sky, Upper Ring, Horizon Ring, Lower Ring, Nadir Ground),
+ * 3D HUD Canvas perspective projection, beacon guidance beam, and 3D mini-globe radar.
  */
 
 import { audioHaptics } from './audio-haptics.js';
@@ -16,32 +17,36 @@ class ThreeSixtyApp {
     // State machine: 'setup' | 'capture' | 'stitching' | 'viewer'
     this.currentState = 'setup';
 
+    // Capture mode: 'sphere' (full 24-node photosphere) | 'horizon' (8-node ring)
+    this.captureMode = 'sphere';
+
     // Core engines
     this.cameraStream = null;
     this.stitcher = new SphericalStitcher({ width: 2048, height: 1024 });
     this.viewer = null;
 
-    // Captured frames array: { canvas, yaw, pitch, roll, fovH, fovV }
+    // Captured frames: array of { canvas, yaw, pitch, roll, fovH, fovV, nodeIndex }
     this.capturedFrames = [];
     this.capturedPanoCanvas = null;
 
-    // Target capture nodes configuration
-    // 10 nodes spaced every 36° horizontally
-    this.nodeCount = 10;
+    // Target spherical nodes lattice
     this.targetNodes = [];
+    this.activeTargetNode = null;
 
-    // Capture settings
+    // Capture and alignment settings
     this.autoSnapEnabled = true;
     this.lockSteadyTime = 0;
-    this.lockDurationRequired = 500; // ms holding still within reticle before snap
-    this.lastFrameTime = performance.now();
-    this.activeTargetNode = null;
+    this.lockDurationRequired = 450; // ms to hold steady for auto-snap
     this.isSnapping = false;
 
-    // Alignment thresholds (degrees)
-    this.yawThreshold = 5.0;
-    this.pitchThreshold = 6.5;
-    this.rollThreshold = 8.0;
+    // Alignment lock thresholds (degrees)
+    this.snapThreshold = 6.5; // degrees distance to center
+
+    // HUD Canvas 2D context
+    this.hudCanvas = null;
+    this.hudCtx = null;
+    this.hudAnimId = null;
+    this.lastFrameTime = performance.now();
 
     // Elements cache
     this.dom = {};
@@ -49,8 +54,9 @@ class ThreeSixtyApp {
 
   init() {
     this._cacheElements();
-    this._initTargetNodes();
+    this._initTargetNodes(this.captureMode);
     this._bindEvents();
+    this._setupPointerDrag();
 
     // Check query params for quick start or demo
     const urlParams = new URLSearchParams(window.location.search);
@@ -58,7 +64,7 @@ class ThreeSixtyApp {
       this.loadDemoPanorama();
     }
 
-    // Check for Secure Context (iOS Safari blocks getUserMedia on unencrypted LAN HTTP)
+    // Check for Secure Context on iOS Safari
     const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     const isSecure = window.isSecureContext || isLocalhost;
     if (!isSecure && this.dom.sensorNotice) {
@@ -66,7 +72,7 @@ class ThreeSixtyApp {
       this.dom.sensorNotice.style.background = 'rgba(239, 68, 68, 0.15)';
       this.dom.sensorNotice.style.borderColor = 'rgba(239, 68, 68, 0.4)';
       this.dom.sensorNotice.style.color = '#fca5a5';
-      this.dom.sensorNotice.innerHTML = `⚠️ <strong>HTTPS Required on iPhone:</strong> iOS Safari strictly disables camera &amp; gyroscope access over unencrypted HTTP (<code>${location.host}</code>). Run <code>npm run tunnel</code> on your Mac or access via HTTPS to use your physical camera!`;
+      this.dom.sensorNotice.innerHTML = `⚠️ <strong>Notice for iPhone:</strong> iOS Safari strictly disables camera and motion sensors over unencrypted local HTTP (<code>${location.host}</code>). Run <code>npm run tunnel</code> on your Mac or access via HTTPS to use your real camera!`;
     }
   }
 
@@ -86,24 +92,23 @@ class ThreeSixtyApp {
 
       // Capture HUD
       cameraVideo: document.getElementById('camera-video'),
+      hudCanvas: document.getElementById('hud-canvas'),
       captureHud: document.getElementById('capture-hud'),
-      horizonBar: document.getElementById('horizon-bar'),
-      reticleCenter: document.getElementById('reticle-center'),
-      reticleBubble: document.getElementById('reticle-bubble'),
-      floatingTargetNode: document.getElementById('floating-target-node'),
-      directionArrow: document.getElementById('direction-arrow'),
-      directionText: document.getElementById('direction-text'),
-      progressRingCircle: document.getElementById('progress-ring-circle'),
-      progressText: document.getElementById('progress-text'),
-      frameCounterBadge: document.getElementById('frame-counter-badge'),
       hudGuidanceBanner: document.getElementById('hud-guidance-banner'),
       filmstripContainer: document.getElementById('filmstrip-container'),
-      radarNodesContainer: document.getElementById('radar-nodes-container'),
-      telemetryYaw: document.getElementById('telem-yaw'),
-      telemetryPitch: document.getElementById('telem-pitch'),
-      telemetryRoll: document.getElementById('telem-roll'),
-      manualControlsBar: document.getElementById('manual-controls-bar'),
+      progressRingCircle: document.getElementById('progress-ring-circle'),
+      progressText: document.getElementById('progress-text'),
+      captureStatusSubtext: document.getElementById('capture-status-subtext'),
       landscapeWarning: document.getElementById('landscape-warning'),
+
+      // Telemetry Ribbon
+      telemetryHeading: document.getElementById('telem-heading'),
+      telemetryElevation: document.getElementById('telem-elevation'),
+      telemetryGyroStatus: document.getElementById('telem-gyro-status'),
+
+      // Mode Selector buttons
+      btnModeSphere: document.getElementById('btn-mode-sphere'),
+      btnModeHorizon: document.getElementById('btn-mode-horizon'),
 
       // Action triggers
       btnShutter: document.getElementById('btn-shutter'),
@@ -112,7 +117,12 @@ class ThreeSixtyApp {
       btnUndoFrame: document.getElementById('btn-undo-frame'),
       btnResetFrames: document.getElementById('btn-reset-frames'),
       btnSwitchCamera: document.getElementById('btn-switch-camera'),
+      btnZeroHeading: document.getElementById('btn-zero-heading'),
       btnAutoSnapToggle: document.getElementById('btn-autosnap-toggle'),
+
+      // Stepper controls
+      btnManualUp: document.getElementById('btn-manual-up'),
+      btnManualDown: document.getElementById('btn-manual-down'),
       btnManualLeft: document.getElementById('btn-manual-left'),
       btnManualRight: document.getElementById('btn-manual-right'),
       btnManualLevel: document.getElementById('btn-manual-level'),
@@ -143,34 +153,55 @@ class ThreeSixtyApp {
       btnBannerClose: document.getElementById('btn-banner-close')
     };
 
+    this.hudCanvas = this.dom.hudCanvas;
+    if (this.hudCanvas) {
+      this.hudCtx = this.hudCanvas.getContext('2d');
+    }
+
     this.cameraStream = new CameraStream(this.dom.cameraVideo);
   }
 
-  _initTargetNodes() {
+  /**
+   * Construct 3D spherical lattice covering Top, Upper, Horizon, Lower, and Ground
+   */
+  _initTargetNodes(mode = 'sphere') {
+    this.captureMode = mode;
     this.targetNodes = [];
-    const step = 360 / this.nodeCount;
-    for (let i = 0; i < this.nodeCount; i++) {
-      this.targetNodes.push({
-        index: i,
-        yaw: i * step,
-        pitch: 0,
-        captured: false,
-        thumbnail: null
+    let id = 0;
+
+    if (mode === 'sphere') {
+      // 1. ZENITH SKY (+70° pitch, 2 opposite nodes)
+      [0, 180].forEach((yaw) => {
+        this.targetNodes.push({ id: id++, yaw, pitch: 70, label: 'Sky', captured: false, thumbnail: null });
+      });
+
+      // 2. UPPER RING (+35° pitch, 6 nodes every 60°)
+      [0, 60, 120, 180, 240, 300].forEach((yaw) => {
+        this.targetNodes.push({ id: id++, yaw, pitch: 35, label: 'Upper', captured: false, thumbnail: null });
+      });
+
+      // 3. HORIZON RING (0° pitch, 8 nodes every 45°)
+      [0, 45, 90, 135, 180, 225, 270, 315].forEach((yaw) => {
+        this.targetNodes.push({ id: id++, yaw, pitch: 0, label: 'Horizon', captured: false, thumbnail: null });
+      });
+
+      // 4. LOWER RING (-35° pitch, 6 nodes every 60°)
+      [0, 60, 120, 180, 240, 300].forEach((yaw) => {
+        this.targetNodes.push({ id: id++, yaw, pitch: -35, label: 'Lower', captured: false, thumbnail: null });
+      });
+
+      // 5. NADIR GROUND (-70° pitch, 2 opposite nodes)
+      [0, 180].forEach((yaw) => {
+        this.targetNodes.push({ id: id++, yaw, pitch: -70, label: 'Ground', captured: false, thumbnail: null });
+      });
+    } else {
+      // Quick Horizon Ring (8 nodes at pitch 0°)
+      [0, 45, 90, 135, 180, 225, 270, 315].forEach((yaw) => {
+        this.targetNodes.push({ id: id++, yaw, pitch: 0, label: 'Horizon', captured: false, thumbnail: null });
       });
     }
-    this._renderRadarDots();
-  }
 
-  _renderRadarDots() {
-    if (!this.dom.radarNodesContainer) return;
-    this.dom.radarNodesContainer.innerHTML = '';
-    this.targetNodes.forEach((node) => {
-      const dot = document.createElement('div');
-      dot.className = `radar-dot ${node.captured ? 'captured' : ''}`;
-      dot.id = `radar-dot-${node.index}`;
-      dot.title = `Yaw ${Math.round(node.yaw)}°`;
-      this.dom.radarNodesContainer.appendChild(dot);
-    });
+    this._updateProgressHud();
   }
 
   _bindEvents() {
@@ -179,6 +210,10 @@ class ThreeSixtyApp {
     this.dom.btnSimulateCapture?.addEventListener('click', () => this.startCaptureFlow(true));
     this.dom.btnTryDemo?.addEventListener('click', () => this.loadDemoPanorama());
 
+    // Mode Selector
+    this.dom.btnModeSphere?.addEventListener('click', () => this.setMode('sphere'));
+    this.dom.btnModeHorizon?.addEventListener('click', () => this.setMode('horizon'));
+
     // Capture actions
     this.dom.btnShutter?.addEventListener('click', () => this.snapCurrentFrame());
     this.dom.btnFinishStitch?.addEventListener('click', () => this.startStitchingProcess());
@@ -186,11 +221,14 @@ class ThreeSixtyApp {
     this.dom.btnUndoFrame?.addEventListener('click', () => this.undoLastFrame());
     this.dom.btnResetFrames?.addEventListener('click', () => this.resetCaptureSession());
     this.dom.btnSwitchCamera?.addEventListener('click', () => this.switchCamera());
+    this.dom.btnZeroHeading?.addEventListener('click', () => this.zeroHeading());
     this.dom.btnAutoSnapToggle?.addEventListener('click', () => this.toggleAutoSnap());
 
-    // Manual step buttons for desktop / non-gyro environments
-    this.dom.btnManualLeft?.addEventListener('click', () => sensorTracker.setManualOffset(-36, 0));
-    this.dom.btnManualRight?.addEventListener('click', () => sensorTracker.setManualOffset(36, 0));
+    // Stepper buttons
+    this.dom.btnManualUp?.addEventListener('click', () => sensorTracker.setManualOffset(0, 30));
+    this.dom.btnManualDown?.addEventListener('click', () => sensorTracker.setManualOffset(0, -30));
+    this.dom.btnManualLeft?.addEventListener('click', () => sensorTracker.setManualOffset(-45, 0));
+    this.dom.btnManualRight?.addEventListener('click', () => sensorTracker.setManualOffset(45, 0));
     this.dom.btnManualLevel?.addEventListener('click', () => sensorTracker.setManualHeading(sensorTracker.manualYaw, 0));
 
     // Viewer actions
@@ -210,30 +248,78 @@ class ThreeSixtyApp {
       if (this.dom.desktopBanner) this.dom.desktopBanner.style.display = 'none';
     });
 
-    // Touch swipe on capture viewfinder for manual yaw rotation on desktop/laptops
-    let touchStartX = 0;
-    let touchStartY = 0;
-    this.dom.screenCapture?.addEventListener('pointerdown', (e) => {
-      touchStartX = e.clientX;
-      touchStartY = e.clientY;
-    });
-
-    this.dom.screenCapture?.addEventListener('pointermove', (e) => {
-      if (e.buttons === 1 && sensorTracker.manualMode) {
-        const dx = e.clientX - touchStartX;
-        const dy = e.clientY - touchStartY;
-        touchStartX = e.clientX;
-        touchStartY = e.clientY;
-        sensorTracker.setManualOffset(-dx * 0.25, dy * 0.25);
-      }
-    });
-
-    // Listen to screen orientation changes (portrait vs landscape)
-    window.addEventListener('resize', () => this._checkOrientation());
-    window.addEventListener('orientationchange', () => this._checkOrientation());
+    // Orientation change
+    window.addEventListener('resize', () => this._onWindowResize());
+    window.addEventListener('orientationchange', () => this._onWindowResize());
   }
 
-  _checkOrientation() {
+  /**
+   * Direct finger swipe / pointer drag on the viewfinder allows immediate rotation
+   * on any device (iOS touch, Android touch, desktop mouse)
+   */
+  _setupPointerDrag() {
+    if (!this.hudCanvas) return;
+
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+
+    this.hudCanvas.addEventListener('pointerdown', (e) => {
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      try {
+        this.hudCanvas.setPointerCapture(e.pointerId);
+      } catch (err) {}
+    });
+
+    this.hudCanvas.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      startX = e.clientX;
+      startY = e.clientY;
+
+      // Always allow drag to adjust view when in manual mode or testing
+      sensorTracker.setManualOffset(-dx * 0.35, dy * 0.35);
+    });
+
+    const endDrag = () => {
+      isDragging = false;
+    };
+
+    this.hudCanvas.addEventListener('pointerup', endDrag);
+    this.hudCanvas.addEventListener('pointercancel', endDrag);
+  }
+
+  setMode(mode) {
+    if (this.capturedFrames.length > 0) {
+      if (!confirm(`Switching mode will reset currently captured frames. Proceed?`)) {
+        return;
+      }
+      this.capturedFrames = [];
+    }
+
+    this.captureMode = mode;
+    this._initTargetNodes(mode);
+
+    if (this.dom.btnModeSphere) this.dom.btnModeSphere.classList.toggle('active', mode === 'sphere');
+    if (this.dom.btnModeHorizon) this.dom.btnModeHorizon.classList.toggle('active', mode === 'horizon');
+  }
+
+  zeroHeading() {
+    sensorTracker.calibrateZero();
+    audioHaptics.vibrate(30);
+    if (this.dom.hudGuidanceBanner) {
+      this.dom.hudGuidanceBanner.textContent = '🎯 Heading zeroed to current viewpoint!';
+    }
+  }
+
+  _onWindowResize() {
+    if (this.hudCanvas) {
+      this.hudCanvas.width = this.hudCanvas.clientWidth || window.innerWidth;
+      this.hudCanvas.height = this.hudCanvas.clientHeight || window.innerHeight;
+    }
     const isLandscape = window.innerWidth > window.innerHeight && window.innerWidth < 1024;
     if (this.dom.landscapeWarning) {
       this.dom.landscapeWarning.style.display = (this.currentState === 'capture' && isLandscape) ? 'flex' : 'none';
@@ -243,9 +329,6 @@ class ThreeSixtyApp {
     }
   }
 
-  /**
-   * Transition between screen states
-   */
   setState(state) {
     this.currentState = state;
     const screens = [
@@ -267,34 +350,28 @@ class ThreeSixtyApp {
       }
     });
 
-    this._checkOrientation();
+    this._onWindowResize();
   }
 
-  /**
-   * Start sequential permissions flow and enter capture interface
-   */
   async startCaptureFlow(simulate = false) {
     try {
       if (simulate) {
-        // Desktop / Simulator Mode
         this.cameraStream.startSimulator(() => sensorTracker.getCurrent());
         sensorTracker.manualMode = true;
       } else {
-        // Step 1: Sequential Camera Access
         try {
           await this.cameraStream.startCamera('environment');
         } catch (camErr) {
-          console.warn('Camera stream failed, falling back to simulator:', camErr);
+          console.warn('Camera failed:', camErr);
           const isHttpsIssue = !window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1';
           const alertMsg = isHttpsIssue
-            ? `🔒 Camera & Gyroscope Blocked by iOS Safari:\n\nApple strictly disables camera and motion sensors on local HTTP addresses (e.g. ${location.host}).\n\nHow to fix:\nRun "npm run tunnel" on your Mac to get an instant secure HTTPS link, then open that link on your iPhone.\n\nStarting 360 Studio in interactive simulator mode for now.`
-            : `Unable to access rear camera (${camErr.message}). Starting 360 Studio in interactive simulator mode.`;
+            ? `🔒 Camera & Sensors Blocked by iOS Safari:\n\nApple strictly disables camera and motion sensors on local HTTP addresses (e.g. ${location.host}).\n\nHow to fix:\nRun "npm run tunnel" on your Mac to get an instant HTTPS link, then open that link on your iPhone!\n\nStarting 360 Studio in interactive simulator mode for now.`
+            : `Unable to access rear camera (${camErr.message}). Starting in interactive simulator mode.`;
           alert(alertMsg);
           this.cameraStream.startSimulator(() => sensorTracker.getCurrent());
           sensorTracker.manualMode = true;
         }
 
-        // Step 2: Gyroscope & Motion Sensor Access (iOS 13+ requires user gesture)
         const sensorResult = await sensorTracker.requestPermission();
         if (!sensorResult.granted) {
           if (this.dom.sensorNotice) {
@@ -304,216 +381,476 @@ class ThreeSixtyApp {
         }
       }
 
-      // Initialize tracker
       sensorTracker.start();
       sensorTracker.calibrateZero();
 
-      // Reset captures
       this.capturedFrames = [];
-      this._initTargetNodes();
+      this._initTargetNodes(this.captureMode);
       this._updateProgressHud();
 
-      // Enter capture state
       this.setState('capture');
-
-      // Start live HUD render loop
-      this._startHudLoop();
+      this._start3DHudLoop();
     } catch (err) {
-      console.error('Start capture flow failed:', err);
-      alert('Failed to initialize 360 capture session: ' + err.message);
+      console.error('Start capture failed:', err);
+      alert('Failed to start capture: ' + err.message);
     }
   }
 
-  _startHudLoop() {
+  _start3DHudLoop() {
     this.lastFrameTime = performance.now();
 
-    const loop = (timestamp) => {
+    const renderLoop = (timestamp) => {
       if (this.currentState !== 'capture') return;
 
       const dt = timestamp - this.lastFrameTime;
       this.lastFrameTime = timestamp;
 
-      this._updateHud(dt);
-      requestAnimationFrame(loop);
+      this._render3DHud(dt);
+      this.hudAnimId = requestAnimationFrame(renderLoop);
     };
 
-    requestAnimationFrame(loop);
+    if (this.hudAnimId) cancelAnimationFrame(this.hudAnimId);
+    this.hudAnimId = requestAnimationFrame(renderLoop);
   }
 
   /**
-   * Real-time HUD and Reticle update loop
+   * High-Performance 3D HUD Canvas Renderer
+   * Projects ALL in-view target dots, beacon guidance beam, reticle, and mini 3D sphere.
    */
-  _updateHud(dt) {
+  _render3DHud(dt) {
+    if (!this.hudCanvas || !this.hudCtx) return;
+
+    const ctx = this.hudCtx;
+    const w = this.hudCanvas.width = this.hudCanvas.clientWidth || window.innerWidth;
+    const h = this.hudCanvas.height = this.hudCanvas.clientHeight || window.innerHeight;
+
+    ctx.clearRect(0, 0, w, h);
+
     const orient = sensorTracker.getCurrent();
 
-    // 1. Update Telemetry displays
-    if (this.dom.telemetryYaw) this.dom.telemetryYaw.textContent = `${Math.round(orient.relativeYaw)}°`;
-    if (this.dom.telemetryPitch) this.dom.telemetryPitch.textContent = `${Math.round(orient.pitch)}°`;
-    if (this.dom.telemetryRoll) this.dom.telemetryRoll.textContent = `${Math.round(orient.roll)}°`;
-
-    // 2. Artificial Horizon Bar (Roll angle rotation)
-    if (this.dom.horizonBar) {
-      this.dom.horizonBar.style.transform = `translate(-50%, -50%) rotate(${orient.roll}deg)`;
+    // 1. Update Telemetry Ribbon
+    if (this.dom.telemetryHeading) {
+      const cardinal = this._getCardinal(orient.relativeYaw);
+      this.dom.telemetryHeading.textContent = `🧭 ${Math.round(orient.relativeYaw)}° ${cardinal}`;
     }
-
-    // 3. Pitch Bubble Level (Vertical offset inside reticle)
-    if (this.dom.reticleBubble) {
-      const bubbleMaxOffset = 45; // pixels
-      const bubbleY = Math.max(-bubbleMaxOffset, Math.min(bubbleMaxOffset, orient.pitch * 3.5));
-      const bubbleX = Math.max(-bubbleMaxOffset, Math.min(bubbleMaxOffset, orient.roll * 2.0));
-      this.dom.reticleBubble.style.transform = `translate(calc(-50% + ${bubbleX}px), calc(-50% + ${bubbleY}px))`;
+    if (this.dom.telemetryElevation) {
+      const sign = orient.pitch > 0 ? '+' : '';
+      const tag = Math.abs(orient.pitch) < 5 ? 'LEVEL' : orient.pitch > 0 ? 'UP' : 'DOWN';
+      this.dom.telemetryElevation.textContent = `📐 ${sign}${Math.round(orient.pitch)}° ${tag}`;
     }
-
-    // Show manual controls bar if gyro is unavailable or manual mode active
-    if (this.dom.manualControlsBar) {
-      this.dom.manualControlsBar.style.display = orient.manualMode ? 'flex' : 'none';
-    }
-
-    // 4. Find nearest uncaptured target node
-    let nearestNode = null;
-    let minDiffYaw = 999;
-    let minSignedDiff = 0;
-
-    for (const node of this.targetNodes) {
-      if (!node.captured) {
-        let diff = ((node.yaw - orient.relativeYaw + 540) % 360) - 180;
-        if (Math.abs(diff) < minDiffYaw) {
-          minDiffYaw = Math.abs(diff);
-          minSignedDiff = diff;
-          nearestNode = node;
-        }
+    if (this.dom.telemetryGyroStatus) {
+      if (orient.hasGyro && !orient.manualMode) {
+        this.dom.telemetryGyroStatus.textContent = '🟢 GYRO SENSORS ACTIVE';
+        this.dom.telemetryGyroStatus.style.color = 'var(--cam-green)';
+      } else {
+        this.dom.telemetryGyroStatus.textContent = '🟡 TOUCH / SWIPE ACTIVE';
+        this.dom.telemetryGyroStatus.style.color = 'var(--cam-amber)';
       }
     }
 
-    this.activeTargetNode = nearestNode;
+    // 2. Camera Projection Basis Vectors
+    const yawRad = ((orient.relativeYaw % 360) * Math.PI) / 180;
+    const pitchRad = (orient.pitch * Math.PI) / 180;
+    const rollRad = (orient.roll * Math.PI) / 180;
 
-    // 5. Update Radar dots active highlights
-    this.targetNodes.forEach((node) => {
-      const dotEl = document.getElementById(`radar-dot-${node.index}`);
-      if (dotEl) {
-        if (node.captured) {
-          dotEl.className = 'radar-dot captured';
-        } else if (nearestNode && node.index === nearestNode.index) {
-          dotEl.className = 'radar-dot next-target';
-        } else {
-          dotEl.className = 'radar-dot';
-        }
+    const fovHRad = ((this.cameraStream.fovH || 65) * Math.PI) / 180;
+    const fovVRad = ((this.cameraStream.fovV || 80) * Math.PI) / 180;
+
+    const focalX = (w / 2) / Math.tan(fovHRad / 2);
+    const focalY = (h / 2) / Math.tan(fovVRad / 2);
+
+    // Forward, Right, Up vectors
+    const cy = Math.cos(yawRad);
+    const sy = Math.sin(yawRad);
+    const cp = Math.cos(pitchRad);
+    const sp = Math.sin(pitchRad);
+    const cr = Math.cos(rollRad);
+    const sr = Math.sin(rollRad);
+
+    const fwd = { x: sy * cp, y: sp, z: cy * cp };
+    const rgt = { x: cy * cr + sy * sp * sr, y: -cp * sr, z: -sy * cr + cy * sp * sr };
+    const up = { x: -cy * sr + sy * sp * cr, y: cp * cr, z: sy * sr + cy * sp * cr };
+
+    // 3. Project each target node in 3D
+    let nearestNode = null;
+    let minDistanceDeg = 999;
+    const projectedNodes = [];
+
+    for (const node of this.targetNodes) {
+      const nYawRad = ((node.yaw % 360) * Math.PI) / 180;
+      const nPitchRad = (node.pitch * Math.PI) / 180;
+
+      // World 3D vector on unit sphere
+      const wx = Math.cos(nPitchRad) * Math.sin(nYawRad);
+      const wy = Math.sin(nPitchRad);
+      const wz = Math.cos(nPitchRad) * Math.cos(nYawRad);
+
+      // Camera coordinates
+      const zCam = wx * fwd.x + wy * fwd.y + wz * fwd.z;
+      const xCam = wx * rgt.x + wy * rgt.y + wz * rgt.z;
+      const yCam = wx * up.x + wy * up.y + wz * up.z;
+
+      // Angular distance on sphere (great-circle distance)
+      const dot = Math.max(-1, Math.min(1, zCam));
+      const distDeg = (Math.acos(dot) * 180) / Math.PI;
+
+      if (!node.captured && distDeg < minDistanceDeg) {
+        minDistanceDeg = distDeg;
+        nearestNode = { node, distDeg, zCam, xCam, yCam };
+      }
+
+      let screenX = null;
+      let screenY = null;
+      let inFront = zCam > 0.1;
+
+      if (inFront) {
+        screenX = w / 2 + (xCam / zCam) * focalX;
+        screenY = h / 2 - (yCam / zCam) * focalY;
+      }
+
+      projectedNodes.push({
+        node,
+        inFront,
+        screenX,
+        screenY,
+        distDeg
+      });
+    }
+
+    this.activeTargetNode = nearestNode ? nearestNode.node : null;
+
+    // 4. Render All Visible Target Nodes
+    projectedNodes.forEach((p) => {
+      if (p.inFront && p.screenX >= -50 && p.screenX <= w + 50 && p.screenY >= -50 && p.screenY <= h + 50) {
+        const isTarget = nearestNode && nearestNode.node.id === p.node.id;
+        this._drawNodeOnCanvas(ctx, p.screenX, p.screenY, p.node, isTarget);
       }
     });
 
-    if (!nearestNode) {
-      // All nodes captured!
-      if (this.dom.floatingTargetNode) this.dom.floatingTargetNode.style.display = 'none';
-      if (this.dom.directionArrow) this.dom.directionArrow.style.display = 'none';
-      if (this.dom.hudGuidanceBanner) {
-        this.dom.hudGuidanceBanner.textContent = '🎉 All 360° frames captured! Tap Finish to stitch.';
-        this.dom.hudGuidanceBanner.classList.add('success');
-      }
-      return;
-    }
-
-    // 6. Calculate in-view projection for active target node
-    const fovH = this.cameraStream.fovH || 65;
-    const fovV = this.cameraStream.fovV || 80;
-    const hudW = this.dom.captureHud?.clientWidth || window.innerWidth;
-    const hudH = this.dom.captureHud?.clientHeight || window.innerHeight;
-
-    const diffPitch = nearestNode.pitch - orient.pitch;
-    const isInsideFov = Math.abs(minSignedDiff) <= fovH * 0.55;
-
-    if (isInsideFov) {
-      // In-view floating target ring
-      if (this.dom.floatingTargetNode) {
-        this.dom.floatingTargetNode.style.display = 'flex';
-        const screenX = hudW / 2 + (minSignedDiff / (fovH / 2)) * (hudW / 2);
-        const screenY = hudH / 2 - (diffPitch / (fovV / 2)) * (hudH / 2);
-        this.dom.floatingTargetNode.style.left = `${screenX}px`;
-        this.dom.floatingTargetNode.style.top = `${screenY}px`;
-      }
-      if (this.dom.directionArrow) this.dom.directionArrow.style.display = 'none';
-    } else {
-      // Out-of-view directional turn arrow
-      if (this.dom.floatingTargetNode) this.dom.floatingTargetNode.style.display = 'none';
-      if (this.dom.directionArrow) {
-        this.dom.directionArrow.style.display = 'flex';
-        const turnRight = minSignedDiff > 0;
-        this.dom.directionArrow.className = `direction-arrow ${turnRight ? 'arrow-right' : 'arrow-left'}`;
-        if (this.dom.directionText) {
-          this.dom.directionText.textContent = turnRight
-            ? `Turn Right ${Math.round(minDiffYaw)}° ➔`
-            : `⬅ Turn Left ${Math.round(minDiffYaw)}°`;
-        }
+    // 5. Draw 3D Beacon Guidance Line to Nearest Target
+    if (nearestNode) {
+      const targetProj = projectedNodes.find((p) => p.node.id === nearestNode.node.id);
+      if (targetProj && targetProj.inFront && targetProj.screenX >= 0 && targetProj.screenX <= w && targetProj.screenY >= 0 && targetProj.screenY <= h) {
+        // Glowing laser line connecting center reticle directly to target
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(w / 2, h / 2);
+        ctx.lineTo(targetProj.screenX, targetProj.screenY);
+        ctx.strokeStyle = 'rgba(6, 182, 212, 0.45)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 6]);
+        ctx.stroke();
+        ctx.restore();
+      } else {
+        // Out-of-FOV Directional Pointer Arrow
+        this._drawOffscreenArrow(ctx, w, h, orient, nearestNode.node);
       }
     }
 
-    // 7. Alignment Lock Detection
-    const isYawAligned = Math.abs(minSignedDiff) <= this.yawThreshold;
-    const isPitchAligned = Math.abs(diffPitch) <= this.pitchThreshold;
-    const isRollAligned = Math.abs(orient.roll) <= this.rollThreshold;
-    const isFullyAligned = isYawAligned && isPitchAligned && isRollAligned;
+    // 6. Center Reticle & Level Bubble
+    const isAligned = nearestNode && nearestNode.distDeg <= this.snapThreshold;
+    this._drawCenterReticle(ctx, w / 2, h / 2, orient, isAligned);
 
-    if (isFullyAligned) {
-      this.dom.reticleCenter?.classList.add('aligned');
-      this.dom.floatingTargetNode?.classList.add('aligned');
-
+    // 7. Auto-Snap Steady Alignment Countdown
+    if (isAligned && !this.isSnapping) {
       this.lockSteadyTime += dt;
-      const progressPercent = Math.min(100, (this.lockSteadyTime / this.lockDurationRequired) * 100);
+      const progressRatio = Math.min(1.0, this.lockSteadyTime / this.lockDurationRequired);
+
+      // Draw countdown ring around center reticle
+      ctx.beginPath();
+      ctx.arc(w / 2, h / 2, 42, -Math.PI / 2, -Math.PI / 2 + progressRatio * Math.PI * 2);
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 4;
+      ctx.stroke();
 
       if (this.dom.hudGuidanceBanner) {
         this.dom.hudGuidanceBanner.textContent = '🎯 ALIGNED — HOLD STEADY...';
         this.dom.hudGuidanceBanner.classList.add('steady');
       }
 
-      // Auto-Snap trigger
-      if (this.autoSnapEnabled && this.lockSteadyTime >= this.lockDurationRequired && !this.isSnapping) {
+      if (this.autoSnapEnabled && this.lockSteadyTime >= this.lockDurationRequired) {
         this.snapCurrentFrame();
       }
     } else {
-      this.dom.reticleCenter?.classList.remove('aligned');
-      this.dom.floatingTargetNode?.classList.remove('aligned');
       this.lockSteadyTime = 0;
-
       if (this.dom.hudGuidanceBanner) {
-        this.dom.hudGuidanceBanner.classList.remove('steady', 'success');
-        if (!isInsideFov) {
-          this.dom.hudGuidanceBanner.textContent = minSignedDiff > 0 ? 'Rotate right to next target node' : 'Rotate left to next target node';
-        } else if (!isPitchAligned) {
-          this.dom.hudGuidanceBanner.textContent = orient.pitch > 0 ? 'Tilt down to level horizon' : 'Tilt up to level horizon';
-        } else if (!isRollAligned) {
-          this.dom.hudGuidanceBanner.textContent = 'Keep phone upright (no roll tilt)';
+        this.dom.hudGuidanceBanner.classList.remove('steady');
+        if (!nearestNode) {
+          this.dom.hudGuidanceBanner.textContent = '🎉 All 360° anchor points captured! Tap Stitch.';
+          this.dom.hudGuidanceBanner.classList.add('success');
+        } else if (nearestNode.node.pitch > 40) {
+          this.dom.hudGuidanceBanner.textContent = `▲ Tilt camera up towards the Sky (${Math.round(nearestNode.distDeg)}° away)`;
+        } else if (nearestNode.node.pitch < -40) {
+          this.dom.hudGuidanceBanner.textContent = `▼ Tilt camera down towards the Ground (${Math.round(nearestNode.distDeg)}° away)`;
         } else {
-          this.dom.hudGuidanceBanner.textContent = 'Align reticle with glowing target dot';
+          this.dom.hudGuidanceBanner.textContent = `Turn slowly to line up with the target dot (${Math.round(nearestNode.distDeg)}° away)`;
         }
       }
     }
+
+    // 8. Draw Mini 3D Sphere Radar in Top-Right Corner
+    this._drawMiniSphereRadar(ctx, w - 46, 75, orient, this.targetNodes);
+  }
+
+  _drawNodeOnCanvas(ctx, x, y, node, isTarget) {
+    ctx.save();
+
+    if (node.captured) {
+      // Captured Green Checkmark Node
+      ctx.beginPath();
+      ctx.arc(x, y, 14, 0, Math.PI * 2);
+      ctx.fillStyle = '#10b981';
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Checkmark icon
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✓', x, y);
+    } else if (isTarget) {
+      // Active Target Node: Glowing cyan/amber pulsing ring
+      const pulse = Math.sin(performance.now() * 0.008) * 4;
+      const radius = 22 + pulse;
+
+      // Outer glow
+      ctx.beginPath();
+      ctx.arc(x, y, radius + 8, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.4)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Inner target ring
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.25)';
+      ctx.fill();
+      ctx.strokeStyle = '#06b6d4';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Center crosshair dot
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+
+      // Label badge
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+      ctx.fillRect(x - 36, y + 26, 72, 20);
+      ctx.strokeStyle = '#06b6d4';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x - 36, y + 26, 72, 20);
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${node.pitch >= 0 ? '+' : ''}${node.pitch}° ${node.label}`, x, y + 40);
+    } else {
+      // Uncaptured Nearby Node: Subtle cyan ring
+      ctx.beginPath();
+      ctx.arc(x, y, 12, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.6)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  _drawOffscreenArrow(ctx, w, h, orient, targetNode) {
+    let diffYaw = ((targetNode.yaw - orient.relativeYaw + 540) % 360) - 180;
+    let diffPitch = targetNode.pitch - orient.pitch;
+
+    const angle = Math.atan2(diffPitch, diffYaw); // Angle in radians
+    const pad = 65;
+    const cx = w / 2;
+    const cy = h / 2;
+
+    const arrowX = Math.max(pad, Math.min(w - pad, cx + Math.cos(-angle) * (cx - pad)));
+    const arrowY = Math.max(pad + 40, Math.min(h - pad - 60, cy + Math.sin(-angle) * (cy - pad)));
+
+    ctx.save();
+    ctx.translate(arrowX, arrowY);
+
+    // Glowing badge
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    ctx.strokeStyle = '#06b6d4';
+    ctx.lineWidth = 1.5;
+
+    let guideText = '';
+    if (diffPitch > 30) guideText = `▲ Tilt Up ${Math.round(diffPitch)}°`;
+    else if (diffPitch < -30) guideText = `▼ Tilt Down ${Math.round(-diffPitch)}°`;
+    else if (diffYaw > 0) guideText = `Turn Right ${Math.round(diffYaw)}° ➔`;
+    else guideText = `⬅ Turn Left ${Math.round(-diffYaw)}°`;
+
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    const textW = ctx.measureText(guideText).width + 24;
+
+    ctx.fillRect(-textW / 2, -16, textW, 32);
+    ctx.strokeRect(-textW / 2, -16, textW, 32);
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText(guideText, 0, 5);
+
+    ctx.restore();
+  }
+
+  _drawCenterReticle(ctx, cx, cy, orient, isAligned) {
+    ctx.save();
+
+    // Roll rotation
+    ctx.translate(cx, cy);
+    ctx.rotate((orient.roll * Math.PI) / 180);
+
+    const color = isAligned ? '#10b981' : 'rgba(255, 255, 255, 0.7)';
+
+    // Artificial horizon bar
+    ctx.beginPath();
+    ctx.moveTo(-60, 0);
+    ctx.lineTo(-24, 0);
+    ctx.moveTo(24, 0);
+    ctx.lineTo(60, 0);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Center circular reticle
+    ctx.beginPath();
+    ctx.arc(0, 0, 20, 0, Math.PI * 2);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = isAligned ? 3 : 1.5;
+    ctx.stroke();
+
+    if (isAligned) {
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.2)';
+      ctx.fill();
+    }
+
+    // Center crosshairs
+    ctx.beginPath();
+    ctx.moveTo(0, -6);
+    ctx.lineTo(0, 6);
+    ctx.moveTo(-6, 0);
+    ctx.lineTo(6, 0);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.restore();
   }
 
   /**
-   * Capture still snapshot from camera stream at current orientation
+   * 3D Mini-Globe Radar Widget in top-right corner
+   */
+  _drawMiniSphereRadar(ctx, cx, cy, orient, nodes) {
+    ctx.save();
+    const radius = 28;
+
+    // Background sphere
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(6, 10, 20, 0.82)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(6, 182, 212, 0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Equator line
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, radius, radius * 0.35, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Plot nodes on mini globe
+    nodes.forEach((n) => {
+      let relYaw = ((n.yaw - orient.relativeYaw + 540) % 360) - 180;
+      const yawRad = (relYaw * Math.PI) / 180;
+      const pitchRad = (n.pitch * Math.PI) / 180;
+
+      // Simple orthographic projection
+      const z = Math.cos(pitchRad) * Math.cos(yawRad);
+      if (z > -0.2) {
+        const nx = cx + Math.cos(pitchRad) * Math.sin(yawRad) * (radius * 0.85);
+        const ny = cy - Math.sin(pitchRad) * (radius * 0.85);
+
+        ctx.beginPath();
+        ctx.arc(nx, ny, n.captured ? 2.5 : 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = n.captured ? '#10b981' : 'rgba(255, 255, 255, 0.4)';
+        ctx.fill();
+      }
+    });
+
+    // Camera view frustum dot in center
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#06b6d4';
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  _getCardinal(yaw) {
+    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    const idx = Math.round((yaw % 360) / 45) % 8;
+    return directions[idx];
+  }
+
+  /**
+   * Snap frame at current orientation (User can tap Shutter anytime!)
    */
   async snapCurrentFrame() {
     if (this.isSnapping) return;
     this.isSnapping = true;
 
     try {
-      // 1. Shutter sound & haptics
       audioHaptics.triggerCaptureFeedback();
 
-      // Flash animation on viewfinder
       if (this.dom.cameraVideo) {
         this.dom.cameraVideo.classList.add('shutter-flash');
-        setTimeout(() => this.dom.cameraVideo?.classList.remove('shutter-flash'), 200);
+        setTimeout(() => this.dom.cameraVideo?.classList.remove('shutter-flash'), 150);
       }
 
-      // 2. Capture still from video stream
       const snapshot = this.cameraStream.captureFrame();
       const orient = sensorTracker.getCurrent();
 
-      // Find which target node this represents
-      let targetNode = this.activeTargetNode;
-      if (!targetNode) {
-        // Fallback: pick closest node
-        targetNode = this.targetNodes.find((n) => !n.captured) || this.targetNodes[0];
+      // Find any uncaptured node within 15° of this snapshot
+      let matchedNode = null;
+      let minDistance = 999;
+
+      for (const node of this.targetNodes) {
+        if (!node.captured) {
+          let diffYaw = ((node.yaw - orient.relativeYaw + 540) % 360) - 180;
+          let diffPitch = node.pitch - orient.pitch;
+          const dist = Math.hypot(diffYaw, diffPitch);
+          if (dist < minDistance) {
+            minDistance = dist;
+            if (dist <= 16) {
+              matchedNode = node;
+            }
+          }
+        }
+      }
+
+      // If no node was strictly within 16°, assign closest or active
+      if (!matchedNode && this.activeTargetNode && !this.activeTargetNode.captured) {
+        matchedNode = this.activeTargetNode;
+      }
+
+      if (matchedNode) {
+        matchedNode.captured = true;
       }
 
       const frameData = {
@@ -523,22 +860,10 @@ class ThreeSixtyApp {
         roll: orient.roll,
         fovH: this.cameraStream.fovH,
         fovV: this.cameraStream.fovV,
-        nodeIndex: targetNode ? targetNode.index : this.capturedFrames.length
+        nodeId: matchedNode ? matchedNode.id : this.capturedFrames.length
       };
 
       this.capturedFrames.push(frameData);
-
-      if (targetNode) {
-        targetNode.captured = true;
-        // Generate tiny thumbnail for filmstrip
-        const thumbCanvas = document.createElement('canvas');
-        thumbCanvas.width = 60;
-        thumbCanvas.height = 80;
-        const tCtx = thumbCanvas.getContext('2d');
-        tCtx.drawImage(snapshot.canvas, 0, 0, 60, 80);
-        targetNode.thumbnail = thumbCanvas.toDataURL('image/jpeg', 0.7);
-      }
-
       this._updateProgressHud();
 
       // Check if all nodes are captured
@@ -547,7 +872,7 @@ class ThreeSixtyApp {
         audioHaptics.playCompleteSound();
         audioHaptics.vibrate([80, 50, 120]);
         setTimeout(() => {
-          if (confirm('All 360° anchor frames captured! Proceed to stitch panorama now?')) {
+          if (confirm('🎉 All 360° spherical frames captured! Stitch your interactive Photosphere now?')) {
             this.startStitchingProcess();
           }
         }, 300);
@@ -558,7 +883,7 @@ class ThreeSixtyApp {
       this.lockSteadyTime = 0;
       setTimeout(() => {
         this.isSnapping = false;
-      }, 500);
+      }, 350);
     }
   }
 
@@ -567,12 +892,12 @@ class ThreeSixtyApp {
     const count = this.capturedFrames.length;
     const percent = Math.round((count / total) * 100);
 
-    // Frame counter
     if (this.dom.progressText) {
       this.dom.progressText.textContent = `${count}/${total}`;
     }
-    if (this.dom.frameCounterBadge) {
-      this.dom.frameCounterBadge.textContent = `${count} of ${total} (${percent}%)`;
+
+    if (this.dom.captureStatusSubtext) {
+      this.dom.captureStatusSubtext.textContent = count >= 4 ? `${count} captured • Ready to stitch!` : `Min 4 frames to stitch (${count}/4)`;
     }
 
     // Circular progress ring
@@ -587,17 +912,18 @@ class ThreeSixtyApp {
     // Filmstrip thumbnails
     if (this.dom.filmstripContainer) {
       this.dom.filmstripContainer.innerHTML = '';
-      this.capturedFrames.forEach((frame, idx) => {
+      this.capturedFrames.forEach((frame) => {
         const thumb = document.createElement('div');
         thumb.className = 'filmstrip-thumb';
-        thumb.innerHTML = `<canvas width="48" height="64"></canvas><span class="thumb-label">${Math.round(frame.yaw)}°</span>`;
+        const sign = frame.pitch >= 0 ? '+' : '';
+        thumb.innerHTML = `<canvas width="48" height="64"></canvas><span class="thumb-label">${Math.round(frame.yaw)}°/${sign}${Math.round(frame.pitch)}°</span>`;
         const c = thumb.querySelector('canvas');
         c.getContext('2d').drawImage(frame.canvas, 0, 0, 48, 64);
         this.dom.filmstripContainer.appendChild(thumb);
       });
     }
 
-    // Enable / Highlight Finish button if at least 4 frames captured
+    // Enable Stitch CTA as soon as >= 4 frames are taken
     if (this.dom.btnFinishStitch) {
       if (count >= 4) {
         this.dom.btnFinishStitch.removeAttribute('disabled');
@@ -608,7 +934,6 @@ class ThreeSixtyApp {
       }
     }
 
-    // Undo button
     if (this.dom.btnUndoFrame) {
       this.dom.btnUndoFrame.style.display = count > 0 ? 'inline-flex' : 'none';
     }
@@ -617,8 +942,9 @@ class ThreeSixtyApp {
   undoLastFrame() {
     if (this.capturedFrames.length === 0) return;
     const last = this.capturedFrames.pop();
-    if (last && typeof last.nodeIndex === 'number' && this.targetNodes[last.nodeIndex]) {
-      this.targetNodes[last.nodeIndex].captured = false;
+    if (last && typeof last.nodeId === 'number') {
+      const n = this.targetNodes.find((item) => item.id === last.nodeId);
+      if (n) n.captured = false;
     }
     this._updateProgressHud();
     audioHaptics.vibrate(30);
@@ -629,7 +955,7 @@ class ThreeSixtyApp {
       return;
     }
     this.capturedFrames = [];
-    this._initTargetNodes();
+    this._initTargetNodes(this.captureMode);
     this._updateProgressHud();
     sensorTracker.calibrateZero();
   }
@@ -638,6 +964,7 @@ class ThreeSixtyApp {
     if (this.capturedFrames.length > 0 && !confirm('Cancel 360 capture and return to home screen?')) {
       return;
     }
+    if (this.hudAnimId) cancelAnimationFrame(this.hudAnimId);
     this.cameraStream.stop();
     sensorTracker.stop();
     this.setState('setup');
@@ -659,16 +986,13 @@ class ThreeSixtyApp {
     }
   }
 
-  /**
-   * Process and stitch captured frames into an equirectangular panorama
-   */
   async startStitchingProcess() {
     if (this.capturedFrames.length < 3) {
-      alert('Please capture at least 3 to 4 frames across 360° before stitching.');
+      alert('Please capture at least 3 to 4 frames before stitching.');
       return;
     }
 
-    // Stop camera and sensors during heavy compute
+    if (this.hudAnimId) cancelAnimationFrame(this.hudAnimId);
     this.cameraStream.stop();
     sensorTracker.stop();
 
@@ -681,11 +1005,9 @@ class ThreeSixtyApp {
         if (this.dom.stitchProgressText) this.dom.stitchProgressText.textContent = statusText;
       };
 
-      // Execute Spherical Stitcher
       const panoCanvas = await this.stitcher.stitch(this.capturedFrames, onProgress);
       this.capturedPanoCanvas = panoCanvas;
 
-      // Launch 360 Interactive Viewer
       setTimeout(() => {
         this.open360Viewer(panoCanvas);
       }, 400);
@@ -695,12 +1017,10 @@ class ThreeSixtyApp {
       this.setState('capture');
       this.cameraStream.startCamera('environment');
       sensorTracker.start();
+      this._start3DHudLoop();
     }
   }
 
-  /**
-   * Initialize and display Three.js 360 Interactive Viewer
-   */
   open360Viewer(panoSource) {
     this.setState('viewer');
 
@@ -711,24 +1031,17 @@ class ThreeSixtyApp {
     this.viewer.loadPanorama(panoSource);
     this.viewer.onResize();
 
-    // Set preview image for flat map modal
     if (this.dom.imgFlatMapPreview) {
       this.dom.imgFlatMapPreview.src = panoSource.toDataURL ? panoSource.toDataURL('image/jpeg', 0.85) : panoSource.src;
     }
   }
 
-  /**
-   * Load synthetic pre-generated 360 demo scene
-   */
   loadDemoPanorama() {
     const demoCanvas = generateDemoPanorama(2048, 1024);
     this.capturedPanoCanvas = demoCanvas;
     this.open360Viewer(demoCanvas);
   }
 
-  /**
-   * Download 360 equirectangular photo with Google Photo Sphere / Facebook 360 XMP metadata
-   */
   async download360Photo() {
     if (!this.capturedPanoCanvas) return;
 
@@ -736,19 +1049,16 @@ class ThreeSixtyApp {
       const btn = this.dom.btnViewerDownload;
       if (btn) btn.textContent = '⏳ Injecting 360 XMP...';
 
-      // Convert canvas to JPEG blob
       const rawBlob = await new Promise((resolve) => {
         this.capturedPanoCanvas.toBlob(resolve, 'image/jpeg', 0.95);
       });
 
-      // Inject GPano metadata
       const finalBlob = await this.stitcher.injectGPanoMetadata(
         rawBlob,
         this.capturedPanoCanvas.width,
         this.capturedPanoCanvas.height
       );
 
-      // Trigger browser file download
       const url = URL.createObjectURL(finalBlob);
       const a = document.createElement('a');
       const timeStr = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '');
@@ -777,7 +1087,7 @@ class ThreeSixtyApp {
         if (navigator.canShare({ files: [file] })) {
           await navigator.share({
             files: [file],
-            title: 'My 360° Panorama Photo',
+            title: 'My 360° Photosphere',
             text: 'Check out this 360 photo captured with 360 CAM on WebcamClicks!'
           });
           return;
@@ -787,12 +1097,11 @@ class ThreeSixtyApp {
       }
     }
 
-    // Fallback: copy current page link
     try {
       await navigator.clipboard.writeText(window.location.href);
       alert('Link copied to clipboard! You can share it anywhere.');
     } catch (e) {
-      alert('Share not supported on this browser. Use the Download button to save your 360 photo.');
+      alert('Share not supported on this browser. Use Download button to save your 360 photo.');
     }
   }
 

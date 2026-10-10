@@ -123,6 +123,14 @@
     <priority>0.9</priority>
   </url>
 
+  <!-- 360 Spatial Panorama Camera App -->
+  <url>
+    <loc>https://webcamclicks.com/360-cam</loc>
+    <lastmod>2026-10-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
   <!-- Languages Hub Page -->
   <url>
     <loc>https://webcamclicks.com/languages</loc>

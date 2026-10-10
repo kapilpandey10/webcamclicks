@@ -1,0 +1,1328 @@
+/* ============================================================
+   360 CAM — Spatial Panorama Studio CSS (styles/360-cam.css)
+   Ultra-modern, mobile-first responsive dark spatial interface.
+   Equirectangular projection, Gyro HUD, and Three.js 360 Explorer.
+   ============================================================ */
+
+:root {
+  --cam-bg: #06080e;
+  --cam-surface: rgba(13, 17, 28, 0.75);
+  --cam-surface-card: rgba(18, 24, 40, 0.85);
+  --cam-border: rgba(255, 255, 255, 0.12);
+  --cam-border-glow: rgba(6, 182, 212, 0.4);
+  --cam-text: #f8fafc;
+  --cam-muted: #94a3b8;
+  --cam-cyan: #06b6d4;
+  --cam-cyan-glow: rgba(6, 182, 212, 0.5);
+  --cam-violet: #8b5cf6;
+  --cam-pink: #ec4899;
+  --cam-green: #10b981;
+  --cam-green-glow: rgba(16, 185, 129, 0.55);
+  --cam-amber: #f59e0b;
+  --cam-red: #ef4444;
+  --cam-font: 'Outfit', -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  --cam-mono: "SF Mono", Menlo, Monaco, Consolas, "Courier New", monospace;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--cam-bg);
+  color: var(--cam-text);
+  font-family: var(--cam-font);
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+/* ---------------- Desktop Warning & Simulator Banner ---------------- */
+.desktop-app-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 24px;
+  background: linear-gradient(90deg, rgba(6, 182, 212, 0.16) 0%, rgba(139, 92, 246, 0.18) 50%, rgba(236, 72, 153, 0.16) 100%);
+  border-bottom: 1px solid var(--cam-border);
+  color: #f1f5f9;
+  font-size: 0.88rem;
+  z-index: 999;
+  position: relative;
+}
+
+.banner-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.banner-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(6, 182, 212, 0.25);
+  border: 1px solid rgba(6, 182, 212, 0.45);
+  color: #ffffff;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.banner-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.banner-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #ffffff;
+}
+
+.banner-btn.active {
+  background: var(--cam-cyan);
+  border-color: var(--cam-cyan);
+  color: #000000;
+  font-weight: 700;
+}
+
+.banner-close {
+  background: transparent;
+  border: none;
+  color: var(--cam-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 4px;
+}
+
+@media (max-width: 768px) {
+  .desktop-app-banner {
+    display: none !important;
+  }
+}
+
+/* ---------------- Desktop Page Wrapper ---------------- */
+.cam-page-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 54px);
+  padding: 24px 16px;
+  background: radial-gradient(circle at 50% 20%, #111827 0%, #06080e 70%);
+}
+
+/* ---------------- Phone Simulator Shell ---------------- */
+.phone-simulator-frame {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  height: 890px;
+  max-height: 94vh;
+  border-radius: 50px;
+  background: #000000;
+  padding: 12px;
+  box-shadow:
+    0 0 0 4px #232936,
+    0 0 0 6px #111520,
+    0 25px 60px -10px rgba(0, 0, 0, 0.9),
+    0 0 80px -10px rgba(6, 182, 212, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.phone-simulator-frame.fullscreen-studio {
+  max-width: 1000px;
+  height: 860px;
+  border-radius: 24px;
+  padding: 6px;
+}
+
+.phone-island {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 26px;
+  background: #000000;
+  border-radius: 20px;
+  z-index: 80;
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.phone-simulator-frame.fullscreen-studio .phone-island {
+  display: none;
+}
+
+/* ---------------- Native Camera App Viewport ---------------- */
+.camera-app-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 40px;
+  overflow: hidden;
+  background: #000000;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  touch-action: none;
+}
+
+@media (max-width: 768px) {
+  .cam-page-wrapper {
+    padding: 0;
+    min-height: 100dvh;
+    background: #000000;
+  }
+  .phone-simulator-frame {
+    max-width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+  .phone-island {
+    display: none;
+  }
+  .camera-app-viewport {
+    border-radius: 0;
+  }
+}
+
+/* ---------------- Generic Screen Container ---------------- */
+.cam-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ============================================================
+   SCREEN 1: SETUP & PERMISSIONS
+   ============================================================ */
+.screen-setup {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: calc(var(--safe-top) + 32px) 24px calc(var(--safe-bottom) + 24px) 24px;
+  background: radial-gradient(circle at 50% 15%, #172554 0%, #06080e 75%);
+  z-index: 10;
+  overflow-y: auto;
+}
+
+.setup-header {
+  text-align: center;
+  margin-top: 10px;
+}
+
+.setup-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(6, 182, 212, 0.15);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  color: var(--cam-cyan);
+  font-weight: 700;
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.setup-title {
+  font-size: 2.4rem;
+  font-weight: 800;
+  margin: 12px 0 6px 0;
+  background: linear-gradient(135deg, #ffffff 30%, #38bdf8 70%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.15;
+}
+
+.setup-subtitle {
+  color: var(--cam-muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  margin: 0 auto;
+  max-width: 320px;
+}
+
+/* Interactive 360 Sphere Graphic Preview */
+.setup-hero-graphic {
+  position: relative;
+  width: 170px;
+  height: 170px;
+  margin: 18px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sphere-rings {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px dashed rgba(6, 182, 212, 0.6);
+  animation: rotateSlow 20s linear infinite;
+}
+
+.sphere-rings-inner {
+  position: absolute;
+  width: 76%;
+  height: 76%;
+  border-radius: 50%;
+  border: 2px solid rgba(139, 92, 246, 0.7);
+  animation: rotateRev 12s linear infinite;
+}
+
+.sphere-core-icon {
+  font-size: 3rem;
+  filter: drop-shadow(0 0 20px rgba(6, 182, 212, 0.8));
+  z-index: 2;
+}
+
+@keyframes rotateSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes rotateRev {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+/* Feature grid */
+.setup-feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.setup-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--cam-surface);
+  backdrop-filter: blur(12px);
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--cam-border);
+}
+
+.feature-icon-bubble {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.feature-meta h4 {
+  margin: 0 0 2px 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.feature-meta p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--cam-muted);
+}
+
+/* CTAs */
+.setup-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.btn-primary-capture {
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #ec4899 100%);
+  color: #ffffff;
+  border: none;
+  padding: 16px 24px;
+  border-radius: 999px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 10px 25px -5px rgba(6, 182, 212, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-primary-capture:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px -4px rgba(6, 182, 212, 0.6);
+}
+
+.btn-primary-capture:active {
+  transform: scale(0.98);
+}
+
+.btn-secondary-setup {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border: 1px solid var(--cam-border);
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.15s ease;
+}
+
+.btn-secondary-setup:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.sensor-warning-pill {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  text-align: center;
+  margin-top: 6px;
+  display: none;
+}
+
+/* ============================================================
+   SCREEN 2: CAPTURE INTERFACE & GUIDING HUD
+   ============================================================ */
+.screen-capture {
+  display: none;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000000;
+}
+
+/* Fullscreen camera viewfinder */
+.camera-feed-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.camera-feed-video.shutter-flash {
+  filter: brightness(2.8);
+  transition: filter 0.1s ease;
+}
+
+/* HUD Overlay Layer */
+.capture-hud-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+  padding: calc(var(--safe-top) + 14px) 16px calc(var(--safe-bottom) + 16px) 16px;
+}
+
+.hud-interactive {
+  pointer-events: auto;
+}
+
+/* Top Navigation & Status Bar */
+.capture-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+}
+
+.hud-pill {
+  background: rgba(10, 15, 28, 0.75);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--cam-border);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hud-icon-btn {
+  background: rgba(10, 15, 28, 0.75);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--cam-border);
+  color: #ffffff;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hud-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #ffffff;
+}
+
+.hud-icon-btn.active {
+  background: var(--cam-cyan);
+  color: #000000;
+  border-color: var(--cam-cyan);
+}
+
+/* 360 Radar strip */
+.radar-strip-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.radar-dots-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(10, 15, 28, 0.65);
+  backdrop-filter: blur(12px);
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.radar-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  transition: all 0.2s ease;
+}
+
+.radar-dot.captured {
+  background: var(--cam-green);
+  box-shadow: 0 0 8px var(--cam-green);
+}
+
+.radar-dot.next-target {
+  background: var(--cam-cyan);
+  box-shadow: 0 0 10px var(--cam-cyan);
+  transform: scale(1.35);
+  animation: pulseDot 1s infinite alternate;
+}
+
+@keyframes pulseDot {
+  from { transform: scale(1.2); opacity: 0.8; }
+  to { transform: scale(1.55); opacity: 1; }
+}
+
+/* Telemetry readout pills */
+.telemetry-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--cam-mono);
+  font-size: 0.74rem;
+}
+
+.telem-chip {
+  background: rgba(0, 0, 0, 0.6);
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: var(--cam-muted);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.telem-chip span {
+  color: var(--cam-cyan);
+  font-weight: 700;
+}
+
+/* Guidance notification banner */
+.guidance-banner {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--cam-border);
+  color: #f8fafc;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  margin: 6px auto;
+  max-width: 90%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+}
+
+.guidance-banner.steady {
+  background: rgba(16, 185, 129, 0.9);
+  color: #000000;
+  border-color: #10b981;
+  font-weight: 800;
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.7);
+}
+
+.guidance-banner.success {
+  background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+  color: #000000;
+  font-weight: 800;
+}
+
+/* ---------------- Reticle & Artificial Horizon ---------------- */
+.reticle-stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 220px;
+  height: 220px;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Artificial horizon bar */
+.horizon-bar {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 180px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.35);
+  transform: translate(-50%, -50%);
+  transition: transform 0.05s linear;
+}
+
+.horizon-bar::before,
+.horizon-bar::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  width: 2px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.horizon-bar::before { left: 0; }
+.horizon-bar::after { right: 0; }
+
+/* Center crosshair & level bubble */
+.reticle-center {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.reticle-center::before {
+  content: '';
+  position: absolute;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+}
+
+.reticle-center.aligned {
+  border-color: var(--cam-green);
+  box-shadow: 0 0 25px var(--cam-green-glow);
+  transform: scale(1.08);
+}
+
+.reticle-center.aligned::before {
+  border-color: var(--cam-green);
+  border-style: solid;
+  animation: rotateSlow 8s linear infinite;
+}
+
+/* Pitch level bubble */
+.reticle-bubble {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--cam-cyan);
+  box-shadow: 0 0 10px var(--cam-cyan);
+  transition: transform 0.04s linear;
+}
+
+.reticle-center.aligned .reticle-bubble {
+  background: var(--cam-green);
+  box-shadow: 0 0 14px var(--cam-green);
+}
+
+/* Floating Projected Target Node (in viewport) */
+.floating-target-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2.5px solid var(--cam-cyan);
+  background: rgba(6, 182, 212, 0.15);
+  box-shadow: 0 0 20px var(--cam-cyan-glow);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transition: left 0.05s linear, top 0.05s linear, border-color 0.2s;
+  animation: pulseTarget 1.2s infinite ease-in-out;
+}
+
+.floating-target-node.aligned {
+  border-color: var(--cam-green);
+  background: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 30px var(--cam-green);
+}
+
+.floating-target-inner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+@keyframes pulseTarget {
+  0% { transform: translate(-50%, -50%) scale(0.9); }
+  50% { transform: translate(-50%, -50%) scale(1.15); }
+  100% { transform: translate(-50%, -50%) scale(0.9); }
+}
+
+/* Out-of-view directional turn arrow */
+.direction-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(14px);
+  border: 1.5px solid var(--cam-cyan);
+  color: var(--cam-cyan);
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+  pointer-events: none;
+  z-index: 15;
+}
+
+.direction-arrow.arrow-right {
+  right: 18px;
+  animation: bounceRight 0.8s infinite alternate;
+}
+
+.direction-arrow.arrow-left {
+  left: 18px;
+  animation: bounceLeft 0.8s infinite alternate;
+}
+
+@keyframes bounceRight {
+  from { transform: translateY(-50%) translateX(0); }
+  to { transform: translateY(-50%) translateX(8px); }
+}
+
+@keyframes bounceLeft {
+  from { transform: translateY(-50%) translateX(0); }
+  to { transform: translateY(-50%) translateX(-8px); }
+}
+
+/* ---------------- Bottom Control Dock & Filmstrip ---------------- */
+.capture-bottom-dock {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+/* Mini filmstrip drawer */
+.filmstrip-scroll-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 2px;
+  scrollbar-width: none;
+}
+
+.filmstrip-scroll-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.filmstrip-thumb {
+  position: relative;
+  width: 44px;
+  height: 60px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1.5px solid var(--cam-green);
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.filmstrip-thumb canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumb-label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  font-size: 9px;
+  text-align: center;
+  font-family: var(--cam-mono);
+  color: #ffffff;
+}
+
+/* Manual stepping controls (for desktop / non-gyro environments) */
+.manual-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.manual-step-btn {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid var(--cam-border);
+  color: #f1f5f9;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.manual-step-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #ffffff;
+}
+
+/* Primary Trigger Bar */
+.capture-primary-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 8px;
+}
+
+/* Circular SVG Progress Ring */
+.progress-ring-container {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progress-ring-svg {
+  transform: rotate(-90deg);
+}
+
+.progress-ring-bg {
+  stroke: rgba(255, 255, 255, 0.15);
+}
+
+.progress-ring-indicator {
+  stroke: var(--cam-green);
+  transition: stroke-dashoffset 0.3s ease;
+}
+
+.progress-ring-label {
+  position: absolute;
+  font-size: 0.76rem;
+  font-weight: 700;
+  font-family: var(--cam-mono);
+  color: #ffffff;
+}
+
+/* Shutter Trigger Button */
+.btn-shutter-trigger {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  border: 4px solid #ffffff;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+  box-shadow: 0 0 25px rgba(255, 255, 255, 0.35);
+}
+
+.shutter-inner-core {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.1s ease, background 0.2s ease;
+}
+
+.btn-shutter-trigger:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 35px rgba(6, 182, 212, 0.6);
+}
+
+.btn-shutter-trigger:active .shutter-inner-core {
+  transform: scale(0.88);
+  background: var(--cam-cyan);
+}
+
+/* Finish & Stitch button */
+.btn-finish-stitch {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--cam-muted);
+  border: 1px solid var(--cam-border);
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: not-allowed;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-finish-stitch.ready {
+  background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+  color: #000000;
+  border-color: #10b981;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+  animation: pulseStitch 2s infinite ease-in-out;
+}
+
+@keyframes pulseStitch {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+/* Landscape orientation warning */
+.landscape-warning-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(6, 8, 14, 0.95);
+  backdrop-filter: blur(20px);
+  z-index: 100;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  text-align: center;
+}
+
+.landscape-icon {
+  font-size: 3.5rem;
+  animation: rotateRotate 2s infinite ease-in-out;
+}
+
+@keyframes rotateRotate {
+  0% { transform: rotate(90deg); }
+  50% { transform: rotate(0deg); }
+  100% { transform: rotate(90deg); }
+}
+
+/* ============================================================
+   SCREEN 3: STITCHING & PROCESSING
+   ============================================================ */
+.screen-stitching {
+  display: none;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  background: radial-gradient(circle at 50% 50%, #0f172a 0%, #06080e 85%);
+  z-index: 50;
+  text-align: center;
+}
+
+.stitching-hologram-box {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.holo-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+
+.holo-ring-1 {
+  width: 100%;
+  height: 100%;
+  border-top-color: var(--cam-cyan);
+  border-bottom-color: var(--cam-cyan);
+  animation: rotateSlow 4s linear infinite;
+}
+
+.holo-ring-2 {
+  width: 78%;
+  height: 78%;
+  border-left-color: var(--cam-violet);
+  border-right-color: var(--cam-violet);
+  animation: rotateRev 3s linear infinite;
+}
+
+.holo-ring-3 {
+  width: 56%;
+  height: 56%;
+  border-top-color: var(--cam-pink);
+  border-bottom-color: var(--cam-pink);
+  animation: rotateSlow 2s linear infinite;
+}
+
+.holo-core-globe {
+  font-size: 3rem;
+  filter: drop-shadow(0 0 25px var(--cam-cyan));
+}
+
+.stitching-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0 0 8px 0;
+  background: linear-gradient(135deg, #ffffff 0%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.stitching-status-text {
+  color: var(--cam-cyan);
+  font-size: 0.92rem;
+  margin: 0 0 20px 0;
+  min-height: 24px;
+  font-family: var(--cam-mono);
+}
+
+.stitch-progress-wrapper {
+  width: 100%;
+  max-width: 280px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.stitch-progress-bar {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #06b6d4 0%, #8b5cf6 50%, #ec4899 100%);
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+
+.stitch-percent-badge {
+  font-family: var(--cam-mono);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* ============================================================
+   SCREEN 4: 360 INTERACTIVE VIEWER & EXPORT
+   ============================================================ */
+.screen-viewer {
+  display: none;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000000;
+}
+
+.pano-webgl-canvas-container {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Viewer Floating Overlays */
+.viewer-top-bar {
+  position: absolute;
+  top: calc(var(--safe-top) + 16px);
+  left: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.viewer-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.viewer-control-btn {
+  background: rgba(10, 15, 28, 0.75);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--cam-border);
+  color: #ffffff;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.viewer-control-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #ffffff;
+}
+
+.viewer-control-btn.active {
+  background: var(--cam-cyan);
+  color: #000000;
+  border-color: var(--cam-cyan);
+  font-weight: 700;
+}
+
+/* Bottom Export Dock */
+.viewer-bottom-bar {
+  position: absolute;
+  bottom: calc(var(--safe-bottom) + 18px);
+  left: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 20;
+}
+
+.viewer-export-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.btn-export-download {
+  flex: 1;
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #ec4899 100%);
+  color: #ffffff;
+  border: none;
+  padding: 14px 20px;
+  border-radius: 999px;
+  font-size: 0.96rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 10px 25px -5px rgba(6, 182, 212, 0.45);
+  transition: all 0.15s ease;
+}
+
+.btn-export-download:hover {
+  box-shadow: 0 14px 30px -4px rgba(6, 182, 212, 0.6);
+  transform: translateY(-2px);
+}
+
+.btn-export-secondary {
+  background: rgba(10, 15, 28, 0.85);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--cam-border);
+  color: #ffffff;
+  padding: 14px 18px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* 2D Flat Map Modal */
+.flat-map-modal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(6, 8, 14, 0.92);
+  backdrop-filter: blur(20px);
+  z-index: 100;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.flat-map-content {
+  width: 100%;
+  max-width: 380px;
+  background: var(--cam-surface-card);
+  border: 1px solid var(--cam-border);
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.flat-map-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flat-map-preview-img {
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid var(--cam-border);
+}
+
+/* ============================================================
+   SEO & EDUCATIONAL CONTENT (Below Fold)
+   ============================================================ */
+.seo-guide-section {
+  width: 100%;
+  max-width: 900px;
+  margin: 60px auto 40px auto;
+  padding: 0 20px;
+  color: #cbd5e1;
+}
+
+.seo-card {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 32px 28px;
+  margin-bottom: 24px;
+}
+
+.seo-card h2 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 16px 0;
+}
+
+.seo-card h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--cam-cyan);
+  margin: 20px 0 8px 0;
+}
+
+.seo-card p, .seo-card li {
+  line-height: 1.65;
+  font-size: 0.95rem;
+  color: #94a3b8;
+}
+
+.seo-card ul {
+  padding-left: 20px;
+}

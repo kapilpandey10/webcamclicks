@@ -1,0 +1,8 @@
+# ==============================================================================
+# WebcamClicks Canonical 301 Redirects
+# Enforce non-www canonical URL and HTTPS everywhere
+# ==============================================================================
+
+https://www.webcamclicks.com/* https://webcamclicks.com/:splat 301!
+http://www.webcamclicks.com/*  https://webcamclicks.com/:splat 301!
+http://webcamclicks.com/*      https://webcamclicks.com/:splat 301!

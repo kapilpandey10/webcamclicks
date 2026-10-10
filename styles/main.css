@@ -1354,7 +1354,8 @@ h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 0.5em; color: var(--text); font-
   gap: 24px; margin-bottom: 24px;
 }
 .site-footer h3,
-.site-footer h4 { color: #0f172a; font-size: 0.95rem; margin: 0 0 10px; font-weight: 700; }
+.site-footer h4,
+.site-footer .footer-title { color: #0f172a; font-size: 0.95rem; margin: 0 0 10px; font-weight: 700; }
 .site-footer ul { list-style: none; padding: 0; margin: 0; }
 .site-footer li { margin-bottom: 8px; }
 .site-footer li a { color: var(--muted); transition: color 0.15s; }

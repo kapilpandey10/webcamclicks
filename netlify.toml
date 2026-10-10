@@ -24,3 +24,22 @@
   for = "/styles/*"
   [headers.values]
     Cache-Control = "public, max-age=86400"
+
+# Canonical 301 Redirects: www to non-www
+[[redirects]]
+  from = "https://www.webcamclicks.com/*"
+  to = "https://webcamclicks.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "http://www.webcamclicks.com/*"
+  to = "https://webcamclicks.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "http://webcamclicks.com/*"
+  to = "https://webcamclicks.com/:splat"
+  status = 301
+  force = true

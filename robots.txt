@@ -16,6 +16,9 @@ Allow: /
 User-agent: ChatGPT-User
 Allow: /
 
+User-agent: ChatGPT
+Allow: /
+
 User-agent: OAI-SearchBot
 Allow: /
 
@@ -23,11 +26,20 @@ Allow: /
 User-agent: ClaudeBot
 Allow: /
 
+User-agent: Claude
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
 User-agent: anthropic-ai
 Allow: /
 
 # Perplexity AI
 User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity
 Allow: /
 
 # Google (Gemini, Google AI Overviews, Search)

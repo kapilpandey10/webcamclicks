@@ -584,25 +584,28 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  margin-top: 6px;
+  gap: 8px;
+  margin-top: 8px;
   flex-wrap: wrap;
 }
 
 .telem-badge {
-  background: rgba(0, 0, 0, 0.72);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 4px 10px;
-  border-radius: 8px;
+  background: rgba(6, 12, 24, 0.88);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(6, 182, 212, 0.45);
+  padding: 6px 14px;
+  border-radius: 999px;
   font-family: var(--cam-mono);
-  font-size: 0.72rem;
-  color: var(--cam-text);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+  letter-spacing: 0.5px;
 }
 
 .telem-badge.gyro-badge {
   color: var(--cam-green);
-  border-color: rgba(16, 185, 129, 0.35);
+  border-color: rgba(16, 185, 129, 0.6);
 }
 
 .manual-controls-bar {

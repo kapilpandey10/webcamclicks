@@ -16,12 +16,16 @@ export class SensorTracker {
     this.pitch = 0;     // -90° (straight down) to +90° (straight up)
     this.roll = 0;      // -180° to +180° (Device roll tilt)
 
-    // Calibration offset (sets current heading as 0° reference)
+    // Calibration offset (sets current heading & pitch as 0° reference)
     this.referenceYaw = 0;
+    this.referencePitch = 0;
     this.relativeYaw = 0;
+    this.relativePitch = 0;
 
-    // Manual touch/drag fallback
+    // Manual touch/drag fallback & offset adjustments
     this.manualMode = false;
+    this.manualYawOffset = 0;
+    this.manualPitchOffset = 0;
     this.manualYaw = 0;
     this.manualPitch = 0;
     this.manualRoll = 0;
@@ -103,6 +107,9 @@ export class SensorTracker {
    */
   calibrateZero() {
     this.referenceYaw = this.yaw;
+    this.referencePitch = this.pitch;
+    this.manualYawOffset = 0;
+    this.manualPitchOffset = 0;
     this._calculateRelative();
     this._notify();
   }
@@ -111,28 +118,28 @@ export class SensorTracker {
    * Set manual relative offset (useful for touch drag or stepper buttons)
    */
   setManualOffset(deltaYaw = 0, deltaPitch = 0) {
-    this.manualYaw = ((this.manualYaw + deltaYaw) % 360 + 360) % 360;
-    this.manualPitch = Math.max(-88, Math.min(88, this.manualPitch + deltaPitch));
+    this.manualYawOffset = ((this.manualYawOffset + deltaYaw) % 360 + 360) % 360;
+    this.manualPitchOffset = Math.max(-88, Math.min(88, this.manualPitchOffset + deltaPitch));
 
-    if (this.manualMode || !this.hasGyro) {
-      this.yaw = this.manualYaw;
-      this.pitch = this.manualPitch;
-      this.roll = 0;
-      this._calculateRelative();
-      this._notify();
+    if (!this.hasGyro) {
+      this.manualMode = true;
     }
+    this._calculateRelative();
+    this._notify();
   }
 
   /**
    * Set manual absolute angles
    */
   setManualHeading(yaw, pitch = 0) {
-    this.manualYaw = ((yaw % 360) + 360) % 360;
-    this.manualPitch = Math.max(-88, Math.min(88, pitch));
+    this.referenceYaw = 0;
+    this.referencePitch = 0;
+    this.yaw = 0;
+    this.pitch = 0;
+    this.manualYawOffset = ((yaw % 360) + 360) % 360;
+    this.manualPitchOffset = Math.max(-88, Math.min(88, pitch));
+    this.manualMode = true;
 
-    this.yaw = this.manualYaw;
-    this.pitch = this.manualPitch;
-    this.roll = 0;
     this._calculateRelative();
     this._notify();
   }
@@ -146,10 +153,8 @@ export class SensorTracker {
     }
 
     this.hasGyro = true;
-    this.manualMode = false;
 
     // --- 1. YAW (Compass Heading) ---
-    // iOS Safari exposes webkitCompassHeading directly (0 = North, 90 = East, etc.)
     let targetYaw = 0;
     if (typeof event.webkitCompassHeading === 'number' && !isNaN(event.webkitCompassHeading)) {
       targetYaw = event.webkitCompassHeading;
@@ -178,7 +183,9 @@ export class SensorTracker {
   }
 
   _calculateRelative() {
-    this.relativeYaw = ((this.yaw - this.referenceYaw + 360) % 360);
+    this.relativeYaw = ((this.yaw - this.referenceYaw + this.manualYawOffset + 720) % 360);
+    const netPitch = (this.pitch - (this.referencePitch || 0)) + this.manualPitchOffset;
+    this.relativePitch = Math.max(-88, Math.min(88, netPitch));
   }
 
   _smoothAngle(curr, target, factor) {
@@ -192,21 +199,14 @@ export class SensorTracker {
   }
 
   _notify() {
-    const data = {
-      yaw: this.yaw,
-      pitch: this.pitch,
-      roll: this.roll,
-      relativeYaw: this.relativeYaw,
-      hasGyro: this.hasGyro,
-      manualMode: this.manualMode
-    };
+    const data = this.getCurrent();
     this._listeners.forEach((cb) => cb(data));
   }
 
   getCurrent() {
     return {
       yaw: this.yaw,
-      pitch: this.pitch,
+      pitch: this.relativePitch !== undefined ? this.relativePitch : this.pitch,
       roll: this.roll,
       relativeYaw: this.relativeYaw,
       hasGyro: this.hasGyro,

@@ -41,6 +41,7 @@ class ThreeSixtyApp {
 
     // Alignment lock thresholds (degrees)
     this.snapThreshold = 6.5; // degrees distance to center
+    this.hasPlayedLockBeep = false;
 
     // HUD Canvas 2D context
     this.hudCanvas = null;
@@ -169,35 +170,31 @@ class ThreeSixtyApp {
     this.targetNodes = [];
     let id = 0;
 
-    if (mode === 'sphere') {
-      // 1. ZENITH SKY (+70° pitch, 2 opposite nodes)
-      [0, 180].forEach((yaw) => {
-        this.targetNodes.push({ id: id++, yaw, pitch: 70, label: 'Sky', captured: false, thumbnail: null });
-      });
+    // 1. HORIZON RING (0° pitch, 8 nodes every 45°) - START RIGHT HERE!
+    // Starts at eye level so node 0 (yaw 0, pitch 0) is dead center in the viewfinder!
+    [0, 45, 90, 135, 180, 225, 270, 315].forEach((yaw) => {
+      this.targetNodes.push({ id: id++, yaw, pitch: 0, label: 'Level', captured: false, thumbnail: null });
+    });
 
+    if (mode === 'sphere') {
       // 2. UPPER RING (+35° pitch, 6 nodes every 60°)
       [0, 60, 120, 180, 240, 300].forEach((yaw) => {
         this.targetNodes.push({ id: id++, yaw, pitch: 35, label: 'Upper', captured: false, thumbnail: null });
       });
 
-      // 3. HORIZON RING (0° pitch, 8 nodes every 45°)
-      [0, 45, 90, 135, 180, 225, 270, 315].forEach((yaw) => {
-        this.targetNodes.push({ id: id++, yaw, pitch: 0, label: 'Horizon', captured: false, thumbnail: null });
-      });
-
-      // 4. LOWER RING (-35° pitch, 6 nodes every 60°)
+      // 3. LOWER RING (-35° pitch, 6 nodes every 60°)
       [0, 60, 120, 180, 240, 300].forEach((yaw) => {
         this.targetNodes.push({ id: id++, yaw, pitch: -35, label: 'Lower', captured: false, thumbnail: null });
+      });
+
+      // 4. ZENITH SKY (+70° pitch, 2 opposite nodes)
+      [0, 180].forEach((yaw) => {
+        this.targetNodes.push({ id: id++, yaw, pitch: 70, label: 'Sky', captured: false, thumbnail: null });
       });
 
       // 5. NADIR GROUND (-70° pitch, 2 opposite nodes)
       [0, 180].forEach((yaw) => {
         this.targetNodes.push({ id: id++, yaw, pitch: -70, label: 'Ground', captured: false, thumbnail: null });
-      });
-    } else {
-      // Quick Horizon Ring (8 nodes at pitch 0°)
-      [0, 45, 90, 135, 180, 225, 270, 315].forEach((yaw) => {
-        this.targetNodes.push({ id: id++, yaw, pitch: 0, label: 'Horizon', captured: false, thumbnail: null });
       });
     }
 
@@ -315,11 +312,28 @@ class ThreeSixtyApp {
     }
   }
 
-  _onWindowResize() {
-    if (this.hudCanvas) {
-      this.hudCanvas.width = this.hudCanvas.clientWidth || window.innerWidth;
-      this.hudCanvas.height = this.hudCanvas.clientHeight || window.innerHeight;
+  _resizeHudCanvas() {
+    if (!this.hudCanvas) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const rect = this.hudCanvas.getBoundingClientRect();
+    const w = rect.width || this.hudCanvas.clientWidth || window.innerWidth;
+    const h = rect.height || this.hudCanvas.clientHeight || window.innerHeight;
+
+    if (w <= 0 || h <= 0) return;
+
+    this.cssWidth = w;
+    this.cssHeight = h;
+    this.hudCanvas.width = Math.round(w * dpr);
+    this.hudCanvas.height = Math.round(h * dpr);
+
+    if (this.hudCtx) {
+      this.hudCtx.resetTransform?.();
+      this.hudCtx.scale(dpr, dpr);
     }
+  }
+
+  _onWindowResize() {
+    this._resizeHudCanvas();
     const isLandscape = window.innerWidth > window.innerHeight && window.innerWidth < 1024;
     if (this.dom.landscapeWarning) {
       this.dom.landscapeWarning.style.display = (this.currentState === 'capture' && isLandscape) ? 'flex' : 'none';
@@ -350,6 +364,9 @@ class ThreeSixtyApp {
       }
     });
 
+    if (state === 'capture') {
+      setTimeout(() => this._resizeHudCanvas(), 30);
+    }
     this._onWindowResize();
   }
 
@@ -417,12 +434,24 @@ class ThreeSixtyApp {
    * High-Performance 3D HUD Canvas Renderer
    * Projects ALL in-view target dots, beacon guidance beam, reticle, and mini 3D sphere.
    */
+  /**
+   * High-Performance 3D HUD Canvas Renderer
+   * Projects 360° Compass Ribbon Tape, In-view target dots, beacon guidance beam,
+   * Pitch attitude gauge, center reticle, and 3D mini-globe radar.
+   */
   _render3DHud(dt) {
     if (!this.hudCanvas || !this.hudCtx) return;
 
+    // Verify canvas dimensions without resetting canvas backbuffer every frame
+    const currentW = this.hudCanvas.clientWidth || window.innerWidth;
+    const currentH = this.hudCanvas.clientHeight || window.innerHeight;
+    if (!this.cssWidth || Math.abs(this.cssWidth - currentW) > 2 || Math.abs(this.cssHeight - currentH) > 2) {
+      this._resizeHudCanvas();
+    }
+
     const ctx = this.hudCtx;
-    const w = this.hudCanvas.width = this.hudCanvas.clientWidth || window.innerWidth;
-    const h = this.hudCanvas.height = this.hudCanvas.clientHeight || window.innerHeight;
+    const w = this.cssWidth || currentW;
+    const h = this.cssHeight || currentH;
 
     ctx.clearRect(0, 0, w, h);
 
@@ -501,7 +530,7 @@ class ThreeSixtyApp {
 
       let screenX = null;
       let screenY = null;
-      let inFront = zCam > 0.1;
+      let inFront = zCam > 0.05;
 
       if (inFront) {
         screenX = w / 2 + (xCam / zCam) * focalX;
@@ -519,11 +548,11 @@ class ThreeSixtyApp {
 
     this.activeTargetNode = nearestNode ? nearestNode.node : null;
 
-    // 4. Render All Visible Target Nodes
+    // 4. Render All Visible Target Nodes (prominent, high contrast)
     projectedNodes.forEach((p) => {
-      if (p.inFront && p.screenX >= -50 && p.screenX <= w + 50 && p.screenY >= -50 && p.screenY <= h + 50) {
+      if (p.inFront && p.screenX >= -80 && p.screenX <= w + 80 && p.screenY >= -80 && p.screenY <= h + 80) {
         const isTarget = nearestNode && nearestNode.node.id === p.node.id;
-        this._drawNodeOnCanvas(ctx, p.screenX, p.screenY, p.node, isTarget);
+        this._drawNodeOnCanvas(ctx, p.screenX, p.screenY, p.node, isTarget, p.distDeg);
       }
     });
 
@@ -536,31 +565,43 @@ class ThreeSixtyApp {
         ctx.beginPath();
         ctx.moveTo(w / 2, h / 2);
         ctx.lineTo(targetProj.screenX, targetProj.screenY);
-        ctx.strokeStyle = 'rgba(6, 182, 212, 0.45)';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(6, 182, 212, 0.65)';
+        ctx.lineWidth = 2.5;
         ctx.setLineDash([6, 6]);
         ctx.stroke();
         ctx.restore();
       } else {
         // Out-of-FOV Directional Pointer Arrow
-        this._drawOffscreenArrow(ctx, w, h, orient, nearestNode.node);
+        this._drawOffscreenArrow(ctx, w, h, orient, nearestNode.node, nearestNode.distDeg);
       }
     }
 
-    // 6. Center Reticle & Level Bubble
+    // 6. Draw 360° Scrolling Compass Ribbon Tape
+    this._drawCompassTapeRibbon(ctx, w, orient);
+
+    // 7. Draw Pitch Attitude Gauge
+    this._drawPitchAttitudeGauge(ctx, w, h, orient);
+
+    // 8. Center Reticle & Level Bubble
     const isAligned = nearestNode && nearestNode.distDeg <= this.snapThreshold;
     this._drawCenterReticle(ctx, w / 2, h / 2, orient, isAligned);
 
-    // 7. Auto-Snap Steady Alignment Countdown
+    // 9. Auto-Snap Steady Alignment Countdown & Audio Lock
     if (isAligned && !this.isSnapping) {
+      if (!this.hasPlayedLockBeep) {
+        audioHaptics.playLockSound();
+        audioHaptics.vibrate(40);
+        this.hasPlayedLockBeep = true;
+      }
+
       this.lockSteadyTime += dt;
       const progressRatio = Math.min(1.0, this.lockSteadyTime / this.lockDurationRequired);
 
       // Draw countdown ring around center reticle
       ctx.beginPath();
-      ctx.arc(w / 2, h / 2, 42, -Math.PI / 2, -Math.PI / 2 + progressRatio * Math.PI * 2);
+      ctx.arc(w / 2, h / 2, 46, -Math.PI / 2, -Math.PI / 2 + progressRatio * Math.PI * 2);
       ctx.strokeStyle = '#10b981';
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 4.5;
       ctx.stroke();
 
       if (this.dom.hudGuidanceBanner) {
@@ -572,137 +613,335 @@ class ThreeSixtyApp {
         this.snapCurrentFrame();
       }
     } else {
+      this.hasPlayedLockBeep = false;
       this.lockSteadyTime = 0;
       if (this.dom.hudGuidanceBanner) {
         this.dom.hudGuidanceBanner.classList.remove('steady');
         if (!nearestNode) {
-          this.dom.hudGuidanceBanner.textContent = '🎉 All 360° anchor points captured! Tap Stitch.';
+          this.dom.hudGuidanceBanner.textContent = '🎉 All 360° anchor points captured! Tap Stitch 360.';
           this.dom.hudGuidanceBanner.classList.add('success');
         } else if (nearestNode.node.pitch > 40) {
-          this.dom.hudGuidanceBanner.textContent = `▲ Tilt camera up towards the Sky (${Math.round(nearestNode.distDeg)}° away)`;
+          this.dom.hudGuidanceBanner.textContent = `▲ Tilt phone up towards the Sky (${Math.round(nearestNode.distDeg)}° away)`;
         } else if (nearestNode.node.pitch < -40) {
-          this.dom.hudGuidanceBanner.textContent = `▼ Tilt camera down towards the Ground (${Math.round(nearestNode.distDeg)}° away)`;
+          this.dom.hudGuidanceBanner.textContent = `▼ Tilt phone down towards the Ground (${Math.round(nearestNode.distDeg)}° away)`;
         } else {
-          this.dom.hudGuidanceBanner.textContent = `Turn slowly to line up with the target dot (${Math.round(nearestNode.distDeg)}° away)`;
+          this.dom.hudGuidanceBanner.textContent = `Turn slowly to line up with target dot (${Math.round(nearestNode.distDeg)}° away)`;
         }
       }
     }
 
-    // 8. Draw Mini 3D Sphere Radar in Top-Right Corner
-    this._drawMiniSphereRadar(ctx, w - 46, 75, orient, this.targetNodes);
+    // 10. Draw Mini 3D Sphere Radar in Top-Right Corner
+    this._drawMiniSphereRadar(ctx, w - 46, 155, orient, this.targetNodes);
   }
 
-  _drawNodeOnCanvas(ctx, x, y, node, isTarget) {
+  /**
+   * Fighter-Jet / Drone Style 360° Compass Ribbon Tape across Top
+   */
+  _drawCompassTapeRibbon(ctx, w, orient) {
+    ctx.save();
+    const cx = w / 2;
+    const ribbonY = 72;
+    const ribbonW = Math.min(w - 24, 340);
+    const ribbonH = 40;
+    const halfW = ribbonW / 2;
+
+    // Glass backdrop container
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(cx - halfW, ribbonY - 18, ribbonW, ribbonH, 10);
+    } else {
+      ctx.rect(cx - halfW, ribbonY - 18, ribbonW, ribbonH);
+    }
+    ctx.fillStyle = 'rgba(6, 12, 24, 0.88)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(6, 182, 212, 0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Clip region for scrolling tick tape
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(cx - halfW + 4, ribbonY - 16, ribbonW - 8, ribbonH - 4);
+    ctx.clip();
+
+    const pixelsPerDegree = 3.2;
+    const heading = orient.relativeYaw;
+
+    const startDeg = Math.floor(heading - halfW / pixelsPerDegree);
+    const endDeg = Math.ceil(heading + halfW / pixelsPerDegree);
+
+    for (let deg = startDeg; deg <= endDeg; deg++) {
+      const normDeg = ((deg % 360) + 360) % 360;
+      const x = cx + (deg - heading) * pixelsPerDegree;
+
+      if (deg % 15 === 0) {
+        // Major degree tick
+        ctx.beginPath();
+        ctx.moveTo(x, ribbonY - 14);
+        ctx.lineTo(x, ribbonY - 2);
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        let label = `${normDeg}°`;
+        if (normDeg === 0) label = 'N (0°)';
+        else if (normDeg === 90) label = 'E (90°)';
+        else if (normDeg === 180) label = 'S (180°)';
+        else if (normDeg === 270) label = 'W (270°)';
+
+        ctx.fillStyle = (normDeg % 90 === 0) ? '#38bdf8' : 'rgba(255, 255, 255, 0.75)';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, x, ribbonY + 12);
+      } else if (deg % 5 === 0) {
+        // Minor tick
+        ctx.beginPath();
+        ctx.moveTo(x, ribbonY - 10);
+        ctx.lineTo(x, ribbonY - 2);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+
+    // Target pips on ribbon
+    this.targetNodes.forEach(node => {
+      let diff = ((node.yaw - heading + 540) % 360) - 180;
+      const pipX = cx + diff * pixelsPerDegree;
+      if (pipX >= cx - halfW + 4 && pipX <= cx + halfW - 4) {
+        ctx.beginPath();
+        ctx.arc(pipX, ribbonY - 8, node.captured ? 3 : 4, 0, Math.PI * 2);
+        ctx.fillStyle = node.captured ? '#10b981' : (this.activeTargetNode?.id === node.id ? '#06b6d4' : '#f59e0b');
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    });
+
+    ctx.restore(); // finish clip
+
+    // Center indicator chevron pointing down
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, ribbonY - 18);
+    ctx.lineTo(cx + 6, ribbonY - 18);
+    ctx.lineTo(cx, ribbonY - 10);
+    ctx.closePath();
+    ctx.fillStyle = '#06b6d4';
+    ctx.fill();
+
+    // Center vertical marker
+    ctx.beginPath();
+    ctx.moveTo(cx, ribbonY - 10);
+    ctx.lineTo(cx, ribbonY + 2);
+    ctx.strokeStyle = '#06b6d4';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // High-visibility Digital Heading Readout Pill right below ribbon
+    const cardinal = this._getCardinal(heading);
+    const hdgText = `🧭 ${String(Math.round(heading)).padStart(3, '0')}° ${cardinal}`;
+    ctx.fillStyle = 'rgba(6, 12, 24, 0.92)';
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(cx - 56, ribbonY + 26, 112, 22, 6);
+    } else {
+      ctx.rect(cx - 56, ribbonY + 26, 112, 22);
+    }
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(hdgText, cx, ribbonY + 41);
+
+    ctx.restore();
+  }
+
+  /**
+   * Pitch Attitude Gauge / Ladder
+   */
+  _drawPitchAttitudeGauge(ctx, w, h, orient) {
+    ctx.save();
+    const cy = h / 2;
+    const isLevel = Math.abs(orient.pitch) < 3.5;
+
+    // Pitch readout chip on left side
+    const pitchText = `📐 PITCH: ${orient.pitch >= 0 ? '+' : ''}${Math.round(orient.pitch)}° ${isLevel ? 'LEVEL' : orient.pitch > 0 ? 'UP' : 'DOWN'}`;
+    ctx.fillStyle = isLevel ? 'rgba(16, 185, 129, 0.85)' : 'rgba(6, 12, 24, 0.85)';
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(20, cy - 14, 140, 26, 6);
+    } else {
+      ctx.rect(20, cy - 14, 140, 26);
+    }
+    ctx.fill();
+    ctx.strokeStyle = isLevel ? '#10b981' : 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = isLevel ? '#000000' : '#ffffff';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(pitchText, 90, cy + 3);
+
+    ctx.restore();
+  }
+
+  /**
+   * Render Target Node: Large, High-Contrast, Impossible to miss
+   */
+  _drawNodeOnCanvas(ctx, x, y, node, isTarget, distDeg = 0) {
     ctx.save();
 
     if (node.captured) {
       // Captured Green Checkmark Node
       ctx.beginPath();
-      ctx.arc(x, y, 14, 0, Math.PI * 2);
+      ctx.arc(x, y, 16, 0, Math.PI * 2);
       ctx.fillStyle = '#10b981';
       ctx.fill();
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
       ctx.stroke();
 
-      // Checkmark icon
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 12px sans-serif';
+      ctx.font = 'bold 14px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('✓', x, y);
+
+      ctx.font = 'bold 10px monospace';
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.9)';
+      ctx.fillText('DONE', x, y + 26);
     } else if (isTarget) {
       // Active Target Node: Glowing cyan/amber pulsing ring
-      const pulse = Math.sin(performance.now() * 0.008) * 4;
-      const radius = 22 + pulse;
+      const pulse = Math.sin(performance.now() * 0.008) * 5;
+      const radius = 28 + pulse;
 
-      // Outer glow
+      // Dark contrast backplate so it stands out against any background
       ctx.beginPath();
-      ctx.arc(x, y, radius + 8, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(6, 182, 212, 0.4)';
+      ctx.arc(x, y, radius + 12, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+      ctx.fill();
+
+      // Outer animated radar pulse ring
+      ctx.beginPath();
+      ctx.arc(x, y, radius + 10, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.45)';
       ctx.lineWidth = 3;
       ctx.stroke();
 
       // Inner target ring
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(6, 182, 212, 0.25)';
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.3)';
       ctx.fill();
       ctx.strokeStyle = '#06b6d4';
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 3;
       ctx.stroke();
 
-      // Center crosshair dot
+      // Center crosshair pip
       ctx.beginPath();
-      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.arc(x, y, 7, 0, Math.PI * 2);
       ctx.fillStyle = '#ffffff';
       ctx.fill();
-
-      // Label badge
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-      ctx.fillRect(x - 36, y + 26, 72, 20);
       ctx.strokeStyle = '#06b6d4';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x - 36, y + 26, 72, 20);
+      ctx.lineWidth = 2;
+      ctx.stroke();
 
-      ctx.fillStyle = '#38bdf8';
-      ctx.font = 'bold 10px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${node.pitch >= 0 ? '+' : ''}${node.pitch}° ${node.label}`, x, y + 40);
-    } else {
-      // Uncaptured Nearby Node: Subtle cyan ring
+      // Prominent High-Contrast Target Pill Label
+      const isStart = node.id === 0 && !node.captured;
+      const pillText = isStart
+        ? '🎯 START HERE — 0° LEVEL'
+        : `🎯 ${node.pitch >= 0 ? '+' : ''}${node.pitch}° ${node.label.toUpperCase()} (${Math.round(distDeg)}°)`;
+      ctx.font = 'bold 11px monospace';
+      const textW = ctx.measureText(pillText).width + 24;
+
+      ctx.fillStyle = 'rgba(6, 12, 24, 0.94)';
       ctx.beginPath();
-      ctx.arc(x, y, 12, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.6)';
+      if (ctx.roundRect) {
+        ctx.roundRect(x - textW / 2, y + 36, textW, 24, 6);
+      } else {
+        ctx.rect(x - textW / 2, y + 36, textW, 24);
+      }
       ctx.fill();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.strokeStyle = isStart ? '#f59e0b' : '#06b6d4';
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
+      ctx.fillStyle = isStart ? '#fbbf24' : '#38bdf8';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(pillText, x, y + 48);
+    } else {
+      // Nearby uncaptured node
       ctx.beginPath();
-      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.arc(x, y, 16, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(6, 12, 24, 0.65)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
       ctx.fillStyle = '#38bdf8';
       ctx.fill();
+
+      // Pitch label
+      ctx.font = 'bold 9px monospace';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${node.pitch >= 0 ? '+' : ''}${node.pitch}°`, x, y + 26);
     }
 
     ctx.restore();
   }
 
-  _drawOffscreenArrow(ctx, w, h, orient, targetNode) {
+  _drawOffscreenArrow(ctx, w, h, orient, targetNode, distDeg = 0) {
     let diffYaw = ((targetNode.yaw - orient.relativeYaw + 540) % 360) - 180;
     let diffPitch = targetNode.pitch - orient.pitch;
 
     const angle = Math.atan2(diffPitch, diffYaw); // Angle in radians
-    const pad = 65;
+    const pad = 75;
     const cx = w / 2;
     const cy = h / 2;
 
     const arrowX = Math.max(pad, Math.min(w - pad, cx + Math.cos(-angle) * (cx - pad)));
-    const arrowY = Math.max(pad + 40, Math.min(h - pad - 60, cy + Math.sin(-angle) * (cy - pad)));
+    const arrowY = Math.max(pad + 60, Math.min(h - pad - 80, cy + Math.sin(-angle) * (cy - pad)));
 
     ctx.save();
     ctx.translate(arrowX, arrowY);
 
     // Glowing badge
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-    ctx.strokeStyle = '#06b6d4';
-    ctx.lineWidth = 1.5;
-
     let guideText = '';
-    if (diffPitch > 30) guideText = `▲ Tilt Up ${Math.round(diffPitch)}°`;
-    else if (diffPitch < -30) guideText = `▼ Tilt Down ${Math.round(-diffPitch)}°`;
+    if (diffPitch > 25) guideText = `▲ Tilt Up ${Math.round(diffPitch)}° to ${targetNode.label}`;
+    else if (diffPitch < -25) guideText = `▼ Tilt Down ${Math.round(-diffPitch)}° to ${targetNode.label}`;
     else if (diffYaw > 0) guideText = `Turn Right ${Math.round(diffYaw)}° ➔`;
     else guideText = `⬅ Turn Left ${Math.round(-diffYaw)}°`;
 
     ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
-    const textW = ctx.measureText(guideText).width + 24;
+    const textW = ctx.measureText(guideText).width + 28;
 
-    ctx.fillRect(-textW / 2, -16, textW, 32);
-    ctx.strokeRect(-textW / 2, -16, textW, 32);
+    ctx.fillStyle = 'rgba(6, 12, 24, 0.94)';
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(-textW / 2, -18, textW, 36, 8);
+    } else {
+      ctx.rect(-textW / 2, -18, textW, 36);
+    }
+    ctx.fill();
+    ctx.strokeStyle = '#06b6d4';
+    ctx.lineWidth = 2;
+    ctx.stroke();
 
     ctx.fillStyle = '#38bdf8';
-    ctx.fillText(guideText, 0, 5);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(guideText, 0, 0);
 
     ctx.restore();
   }
@@ -714,38 +953,49 @@ class ThreeSixtyApp {
     ctx.translate(cx, cy);
     ctx.rotate((orient.roll * Math.PI) / 180);
 
-    const color = isAligned ? '#10b981' : 'rgba(255, 255, 255, 0.7)';
+    const isLevel = Math.abs(orient.pitch) < 3.5;
+    const color = isAligned ? '#10b981' : isLevel ? '#38bdf8' : 'rgba(255, 255, 255, 0.75)';
 
     // Artificial horizon bar
     ctx.beginPath();
-    ctx.moveTo(-60, 0);
-    ctx.lineTo(-24, 0);
-    ctx.moveTo(24, 0);
-    ctx.lineTo(60, 0);
+    ctx.moveTo(-65, 0);
+    ctx.lineTo(-26, 0);
+    ctx.moveTo(26, 0);
+    ctx.lineTo(65, 0);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Horizon bar end wings
+    ctx.beginPath();
+    ctx.moveTo(-65, -6);
+    ctx.lineTo(-65, 6);
+    ctx.moveTo(65, -6);
+    ctx.lineTo(65, 6);
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
     ctx.stroke();
 
     // Center circular reticle
     ctx.beginPath();
-    ctx.arc(0, 0, 20, 0, Math.PI * 2);
+    ctx.arc(0, 0, 22, 0, Math.PI * 2);
     ctx.strokeStyle = color;
-    ctx.lineWidth = isAligned ? 3 : 1.5;
+    ctx.lineWidth = isAligned ? 3.5 : 2;
     ctx.stroke();
 
     if (isAligned) {
-      ctx.fillStyle = 'rgba(16, 185, 129, 0.2)';
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.25)';
       ctx.fill();
     }
 
     // Center crosshairs
     ctx.beginPath();
-    ctx.moveTo(0, -6);
-    ctx.lineTo(0, 6);
-    ctx.moveTo(-6, 0);
-    ctx.lineTo(6, 0);
+    ctx.moveTo(0, -8);
+    ctx.lineTo(0, 8);
+    ctx.moveTo(-8, 0);
+    ctx.lineTo(8, 0);
     ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     ctx.stroke();
 
     ctx.restore();
@@ -881,6 +1131,7 @@ class ThreeSixtyApp {
       console.error('Frame snap error:', err);
     } finally {
       this.lockSteadyTime = 0;
+      this.hasPlayedLockBeep = false;
       setTimeout(() => {
         this.isSnapping = false;
       }, 350);
@@ -1165,8 +1416,16 @@ class ThreeSixtyApp {
   }
 }
 
-// Auto-boot application on DOM ready
-document.addEventListener('DOMContentLoaded', () => {
-  window.app360 = new ThreeSixtyApp();
-  window.app360.init();
-});
+// Auto-boot application on DOM ready or immediate if already loaded
+function bootApp() {
+  if (!window.app360) {
+    window.app360 = new ThreeSixtyApp();
+    window.app360.init();
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootApp);
+} else {
+  bootApp();
+}

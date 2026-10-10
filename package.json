@@ -4,10 +4,9 @@
   "description": "WebcamClicks - Free Webcam Filters & Video Studio",
   "type": "module",
   "scripts": {
-    "dev": "npx serve -l 3600",
-    "start": "npx serve -l 3600",
-    "serve": "python3 -m http.server 8000",
-    "tunnel": "cloudflared tunnel --url http://localhost:3600"
+    "dev": "npx serve -l 3000",
+    "start": "npx serve -l 3000",
+    "serve": "python3 -m http.server 8000"
   },
   "keywords": [],
   "author": "",

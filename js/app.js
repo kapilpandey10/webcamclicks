@@ -304,6 +304,14 @@ async function startCamera() {
     setEffect(settings.effect || 'normal', { save: false });
     if (pendingGame) { startGame(pendingGame); pendingGame = null; }
     Sound.pop();
+
+    // Eagerly warmup face tracking in background so face effects work instantly with zero delay
+    setTimeout(() => {
+      tracker.ensureBase().then(() => {
+        tracker.ensureExpressions().catch(() => {});
+        tracker.ensureAge().catch(() => {});
+      }).catch(() => {});
+    }, 1200);
   } catch (err) {
     if (el.startBtn) {
       el.startBtn.disabled = false;
@@ -375,6 +383,7 @@ function loop(now) {
     if (faceWanted) {
       ensureTrackerBase();
       tracker.detect(src);
+      tracker.update(dt);
     }
 
     const frame = {

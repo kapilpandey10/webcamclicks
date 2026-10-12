@@ -1,7 +1,7 @@
 /* WebcamClicks — on-device face detection via face-api.js (lazy loaded).
    Nothing is uploaded; all inference happens in the browser. */
 
-import { isMobile } from '../utils.js';
+import { isMobile, lerp, clamp } from '../utils.js';
 
 const SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
@@ -43,7 +43,7 @@ export class FaceTracker {
   constructor(onStatus) {
     this.status = 'off';           // off | loading | ready | error
     this.onStatus = onStatus || null;
-    this.result = null;            // { box, points, expressions, age, gender, at }
+    this.result = null;            // { box, points, expressions, age, gender, genderProbability, at }
     this.error = null;
 
     this.loadedBase = false;
@@ -53,18 +53,23 @@ export class FaceTracker {
     this._loadingExpr = null;
     this._loadingAge = null;
 
-    this.interval = isMobile() ? 9 : 6; // detect every N frames
-    this._frame = 0;
     this._pending = false;
+    this._lastDetectTime = 0;
+    this._lastSeenAt = 0;
+
+    // Real-time smoothed interpolation state (updated every frame for 60fps tracking)
+    this._smoothBox = null;
+    this._smoothPoints = null;
 
     this._opts = null;
   }
 
-  get box() { return this.result ? this.result.box : null; }
-  get points() { return this.result ? this.result.points : null; }
+  get box() { return this._smoothBox || (this.result ? this.result.box : null); }
+  get points() { return this._smoothPoints || (this.result ? this.result.points : null); }
   get expressions() { return this.result ? this.result.expressions : null; }
   get age() { return this.result ? this.result.age : null; }
   get gender() { return this.result ? this.result.gender : null; }
+  get genderProbability() { return this.result ? this.result.genderProbability : null; }
   get hasFace() { return !!(this.result && this.result.box); }
 
   _setStatus(s, err = null) {
@@ -82,9 +87,10 @@ export class FaceTracker {
       const faceapi = await loadScript();
       await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
       await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL);
+      // Fast, responsive detector options
       this._opts = new faceapi.TinyFaceDetectorOptions({
-        inputSize: isMobile() ? 224 : 320,
-        scoreThreshold: 0.35
+        inputSize: isMobile() ? 192 : 256,
+        scoreThreshold: 0.3
       });
       this.loadedBase = true;
       this._setStatus('ready');
@@ -124,22 +130,30 @@ export class FaceTracker {
   }
 
   /**
-   * Throttled detection. Call every animation frame; it runs the async
-   * detector only every `interval` frames and caches the last result.
+   * High-responsiveness async detector. Initiates as soon as previous task
+   * completes (throttled to a sleek ~20fps, zero idle delay).
    */
   detect(canvas) {
     if (this.status !== 'ready' || this._pending || !canvas) return;
-    this._frame++;
-    if (this._frame % this.interval !== 0) return;
+    const now = performance.now();
+    const minCooldown = isMobile() ? 65 : 40;
+    if (this._lastDetectTime && (now - this._lastDetectTime < minCooldown)) return;
+
     this._pending = true;
+    this._lastDetectTime = now;
 
     const faceapi = window.faceapi;
     let task = faceapi.detectSingleFace(canvas, this._opts).withFaceLandmarks(true);
-    if (this.loadedExpressions) task = task.withFaceExpressions();
-    if (this.loadedAge) task = task.withFaceAgeGender();
+    if (this.loadedExpressions && typeof task.withFaceExpressions === 'function') {
+      task = task.withFaceExpressions();
+    }
+    // face-api.js uses withAgeAndGender()
+    if (this.loadedAge && typeof task.withAgeAndGender === 'function') {
+      task = task.withAgeAndGender();
+    }
 
     task.then((res) => {
-      const now = performance.now();
+      const finishTime = performance.now();
       if (res) {
         this.result = {
           box: res.detection ? res.detection.box : res.box,
@@ -147,22 +161,69 @@ export class FaceTracker {
           expressions: res.expressions || null,
           age: typeof res.age === 'number' ? res.age : null,
           gender: res.gender || null,
-          at: now
+          genderProbability: typeof res.genderProbability === 'number' ? res.genderProbability : null,
+          at: finishTime
         };
-        this._lastSeenAt = now;
+        this._lastSeenAt = finishTime;
       } else {
-        // Keep last known face for a grace period (~380ms) to prevent flickering or freezing during quick head turns
-        if (!this._lastSeenAt || (now - this._lastSeenAt > 380)) {
+        // Keep last known face for a grace period (~350ms) to prevent flickering during blinks or quick turns
+        if (!this._lastSeenAt || (finishTime - this._lastSeenAt > 350)) {
           this.result = null;
         }
       }
-    }).catch(() => { /* transient detection errors are fine */ })
-      .finally(() => { this._pending = false; });
+    }).catch(() => {
+      /* transient detection errors are caught safely */
+    }).finally(() => {
+      this._pending = false;
+    });
+  }
+
+  /**
+   * Real-time 60fps exponential pose & landmark interpolation.
+   * Eliminates all jitter, lag, and stepping between detection frames.
+   */
+  update(dt = 16.7) {
+    if (!this.result) {
+      if (!this._lastSeenAt || (performance.now() - this._lastSeenAt > 350)) {
+        this._smoothBox = null;
+        this._smoothPoints = null;
+      }
+      return;
+    }
+    const alpha = 1 - Math.exp(-clamp(dt, 1, 100) / 28); // ~28ms response: lightning fast & buttery smooth
+
+    // Smooth bounding box
+    const tb = this.result.box;
+    if (tb) {
+      if (!this._smoothBox) {
+        this._smoothBox = { x: tb.x, y: tb.y, width: tb.width, height: tb.height };
+      } else {
+        this._smoothBox.x = lerp(this._smoothBox.x, tb.x, alpha);
+        this._smoothBox.y = lerp(this._smoothBox.y, tb.y, alpha);
+        this._smoothBox.width = lerp(this._smoothBox.width, tb.width, alpha);
+        this._smoothBox.height = lerp(this._smoothBox.height, tb.height, alpha);
+      }
+    }
+
+    // Smooth 68 landmark points
+    const tp = this.result.points;
+    if (tp && tp.length) {
+      if (!this._smoothPoints || this._smoothPoints.length !== tp.length) {
+        this._smoothPoints = tp.map((p) => ({ x: p.x, y: p.y }));
+      } else {
+        for (let i = 0; i < tp.length; i++) {
+          this._smoothPoints[i].x = lerp(this._smoothPoints[i].x, tp[i].x, alpha);
+          this._smoothPoints[i].y = lerp(this._smoothPoints[i].y, tp[i].y, alpha);
+        }
+      }
+    }
   }
 
   reset() {
     this.result = null;
-    this._frame = 0;
+    this._smoothBox = null;
+    this._smoothPoints = null;
     this._lastSeenAt = 0;
+    this._lastDetectTime = 0;
   }
 }

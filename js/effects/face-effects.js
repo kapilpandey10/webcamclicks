@@ -2,7 +2,7 @@
    All effects here use 68-point landmarks from face-api.js (on-device).
    When no face is visible they fall back to a clean pass-through frame. */
 
-import { clamp, lerp, rand, pick, makeCanvas } from '../utils.js';
+import { clamp, lerp, rand, pick, makeCanvas, roundRect } from '../utils.js';
 import { LM, cent } from '../face/face-detection.js';
 
 /* ---------- local scratch canvas (for crops) ---------- */
@@ -1204,21 +1204,105 @@ export const defsFace = [
       passthrough(fx, frame);
       const g = geo(frame);
       if (!g) return;
+
       const pts = g.pts;
-      const chains = [
+      const eyeDist = g.eyeDist;
+      const now = frame.now || performance.now();
+
+      // Synthesize virtual forehead and temple vertices to form a complete 3D skull cap
+      const fApex = {
+        x: (pts[19].x + pts[24].x) / 2 + (pts[27].x - pts[30].x) * 0.4,
+        y: Math.min(pts[19].y, pts[24].y) - eyeDist * 0.76
+      };
+      const allPts = [
+        ...pts,
+        { x: pts[0].x, y: pts[17].y - eyeDist * 0.45 },   // 68: Left temple
+        { x: pts[17].x, y: pts[17].y - eyeDist * 0.60 },  // 69: Left outer-brow top
+        { x: pts[19].x, y: pts[19].y - eyeDist * 0.70 },  // 70: Left inner-brow top
+        fApex,                                            // 71: Forehead apex
+        { x: pts[24].x, y: pts[24].y - eyeDist * 0.70 },  // 72: Right inner-brow top
+        { x: pts[26].x, y: pts[26].y - eyeDist * 0.60 },  // 73: Right outer-brow top
+        { x: pts[16].x, y: pts[26].y - eyeDist * 0.45 }   // 74: Right temple
+      ];
+
+      // Triangulation facets covering all facial regions
+      const TRIANGLES = [
+        // Forehead & Temples
+        [68, 69, 17], [69, 18, 17], [69, 70, 19], [69, 19, 18], [70, 71, 19], [71, 20, 19], [71, 21, 20],
+        [71, 27, 21], [71, 22, 27], [71, 23, 22], [71, 24, 23], [71, 72, 24], [72, 73, 24], [73, 25, 24],
+        [73, 26, 25], [73, 74, 26], [74, 16, 26], [68, 17, 0],
+        // Brows to Eyes & Nose Bridge
+        [17, 18, 36], [18, 37, 36], [18, 19, 37], [19, 38, 37], [19, 20, 38], [20, 39, 38], [20, 21, 39], [21, 27, 39],
+        [22, 23, 42], [23, 43, 42], [23, 24, 43], [24, 44, 43], [24, 25, 44], [25, 45, 44], [25, 26, 45], [26, 16, 45], [22, 27, 42],
+        // Eyes
+        [36, 37, 41], [37, 38, 40], [38, 39, 40], [37, 40, 41],
+        [42, 43, 47], [43, 44, 46], [44, 45, 46], [43, 46, 47],
+        // Nose Bridge & Cheeks
+        [27, 28, 39], [27, 42, 28], [28, 29, 39], [28, 42, 29], [29, 31, 39], [29, 35, 42], [29, 30, 31], [29, 35, 30],
+        [36, 41, 0], [41, 1, 0], [41, 2, 31], [1, 2, 41], [39, 40, 31], [40, 41, 31],
+        [42, 47, 35], [45, 46, 16], [46, 15, 16], [46, 14, 35], [14, 15, 46], [46, 47, 35],
+        // Cheeks to Jaw
+        [2, 3, 31], [3, 4, 48], [4, 5, 48], [3, 48, 31],
+        [14, 35, 13], [13, 35, 54], [13, 54, 12], [12, 54, 11],
+        // Nose Bottom & Philtrum
+        [31, 32, 30], [32, 33, 30], [33, 34, 30], [34, 35, 30],
+        [31, 48, 49], [31, 32, 49], [32, 50, 49], [32, 33, 50], [33, 51, 50], [33, 52, 51], [33, 34, 52],
+        [34, 53, 52], [34, 35, 53], [35, 54, 53],
+        // Lips
+        [48, 49, 60], [49, 50, 61], [49, 60, 61], [50, 51, 62], [50, 61, 62], [51, 52, 62], [52, 63, 62], [52, 53, 64], [52, 64, 63], [53, 54, 64],
+        [48, 59, 60], [59, 58, 67], [59, 67, 60], [58, 57, 66], [58, 66, 67], [57, 56, 65], [57, 65, 66], [56, 55, 65], [55, 54, 64], [55, 64, 65],
+        // Lower Lip to Chin
+        [48, 5, 59], [59, 5, 6], [59, 6, 58], [58, 6, 7], [58, 7, 57], [57, 7, 8],
+        [57, 8, 9], [57, 9, 56], [56, 9, 10], [56, 10, 55], [55, 10, 11], [55, 11, 54]
+      ];
+
+      fx.save();
+
+      // 1. Shaded Holographic Facet Fills
+      for (let i = 0; i < TRIANGLES.length; i++) {
+        const [ia, ib, ic] = TRIANGLES[i];
+        const pa = allPts[ia], pb = allPts[ib], pc = allPts[ic];
+        const cx = (pa.x + pb.x + pc.x) / 3;
+        const cy = (pa.y + pb.y + pc.y) / 3;
+        const wave = Math.sin((cx + cy) * 0.018 - now * 0.0032);
+        fx.fillStyle = wave > 0.35
+          ? 'rgba(0, 245, 255, 0.07)'
+          : (wave < -0.35 ? 'rgba(168, 85, 247, 0.055)' : 'rgba(0, 245, 255, 0.022)');
+        fx.beginPath();
+        fx.moveTo(pa.x, pa.y);
+        fx.lineTo(pb.x, pb.y);
+        fx.lineTo(pc.x, pc.y);
+        fx.closePath();
+        fx.fill();
+      }
+
+      // 2. Wireframe Mesh Lines
+      fx.lineWidth = 1.1;
+      fx.strokeStyle = 'rgba(0, 245, 255, 0.40)';
+      fx.beginPath();
+      for (let i = 0; i < TRIANGLES.length; i++) {
+        const [ia, ib, ic] = TRIANGLES[i];
+        const pa = allPts[ia], pb = allPts[ib], pc = allPts[ic];
+        fx.moveTo(pa.x, pa.y);
+        fx.lineTo(pb.x, pb.y);
+        fx.lineTo(pc.x, pc.y);
+        fx.lineTo(pa.x, pa.y);
+      }
+      fx.stroke();
+
+      // 3. Highlighted Primary Contours (Jawline, Eyebrows, Lips)
+      const contours = [
         Array.from({ length: 17 }, (_, i) => i),
         [17, 18, 19, 20, 21],
         [22, 23, 24, 25, 26],
         [27, 28, 29, 30],
-        [31, 32, 33, 34, 35],
         [36, 37, 38, 39, 40, 41, 36],
         [42, 43, 44, 45, 46, 47, 42],
-        [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 48],
-        [60, 61, 62, 63, 64, 65, 66, 67, 60]
+        [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 48]
       ];
-      fx.strokeStyle = 'rgba(0,255,200,0.8)';
-      fx.lineWidth = 1.5;
-      for (const chain of chains) {
+      fx.lineWidth = 1.8;
+      fx.strokeStyle = 'rgba(0, 255, 240, 0.85)';
+      for (const chain of contours) {
         fx.beginPath();
         chain.forEach((idx, i) => {
           const p = pts[idx];
@@ -1227,12 +1311,98 @@ export const defsFace = [
         });
         fx.stroke();
       }
-      fx.fillStyle = 'rgba(0,255,200,0.95)';
-      for (const p of pts) {
+
+      // 4. Sweeping Laser Beam
+      const box = g.box;
+      const scanPeriod = (Math.sin(now * 0.0024) * 0.5 + 0.5);
+      const scanY = box.y + scanPeriod * box.height;
+      const laserGrad = fx.createLinearGradient(box.x - 20, scanY, box.x + box.width + 20, scanY);
+      laserGrad.addColorStop(0, 'rgba(0, 245, 255, 0)');
+      laserGrad.addColorStop(0.2, 'rgba(0, 245, 255, 0.4)');
+      laserGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.95)');
+      laserGrad.addColorStop(0.8, 'rgba(0, 245, 255, 0.4)');
+      laserGrad.addColorStop(1, 'rgba(0, 245, 255, 0)');
+      fx.strokeStyle = laserGrad;
+      fx.lineWidth = 2.2;
+      fx.beginPath();
+      fx.moveTo(box.x - 24, scanY);
+      fx.lineTo(box.x + box.width + 24, scanY);
+      fx.stroke();
+
+      // Soft glow band around laser
+      fx.fillStyle = 'rgba(0, 245, 255, 0.07)';
+      fx.fillRect(box.x - 24, scanY - 8, box.width + 48, 16);
+
+      // 5. Mesh Nodes with Laser Proximity Glow
+      for (let i = 0; i < allPts.length; i++) {
+        const p = allPts[i];
+        const distToLaser = Math.abs(p.y - scanY);
+        const nearLaser = distToLaser < 24;
+
         fx.beginPath();
-        fx.arc(p.x, p.y, 1.7, 0, Math.PI * 2);
-        fx.fill();
+        if (nearLaser) {
+          const intensity = 1 - distToLaser / 24;
+          fx.fillStyle = `rgba(255, 255, 255, ${0.9 + intensity * 0.1})`;
+          fx.arc(p.x, p.y, 2.5 + intensity * 1.5, 0, Math.PI * 2);
+          fx.fill();
+          // Halo
+          fx.fillStyle = `rgba(0, 245, 255, ${intensity * 0.5})`;
+          fx.beginPath();
+          fx.arc(p.x, p.y, 5 + intensity * 4, 0, Math.PI * 2);
+          fx.fill();
+        } else {
+          fx.fillStyle = 'rgba(0, 245, 255, 0.75)';
+          fx.arc(p.x, p.y, 1.6, 0, Math.PI * 2);
+          fx.fill();
+        }
       }
+
+      // 6. Cyber Target Reticles on Key Landmarks (Pupils, Nose tip, Chin)
+      const reticleTargets = [g.lEye, g.rEye, g.nose, g.chin];
+      const reticleRot = now * 0.002;
+      for (const t of reticleTargets) {
+        fx.save();
+        fx.translate(t.x, t.y);
+        fx.rotate(reticleRot);
+        fx.strokeStyle = 'rgba(0, 255, 230, 0.85)';
+        fx.lineWidth = 1.2;
+        fx.beginPath();
+        fx.arc(0, 0, 5.5, 0, Math.PI * 2);
+        fx.stroke();
+        // Crosshair ticks
+        fx.beginPath();
+        fx.moveTo(-8, 0); fx.lineTo(-5.5, 0);
+        fx.moveTo(5.5, 0); fx.lineTo(8, 0);
+        fx.moveTo(0, -8); fx.lineTo(0, -5.5);
+        fx.moveTo(0, 5.5); fx.lineTo(0, 8);
+        fx.stroke();
+        fx.restore();
+      }
+
+      // 7. Corner HUD Brackets
+      const bx = box.x, by = box.y, bw = box.width, bh = box.height;
+      const arm = Math.min(22, bw * 0.14);
+      fx.strokeStyle = 'rgba(0, 245, 255, 0.85)';
+      fx.lineWidth = 2.2;
+      // Top-Left
+      fx.beginPath(); fx.moveTo(bx, by + arm); fx.lineTo(bx, by); fx.lineTo(bx + arm, by); fx.stroke();
+      // Top-Right
+      fx.beginPath(); fx.moveTo(bx + bw - arm, by); fx.lineTo(bx + bw, by); fx.lineTo(bx + bw, by + arm); fx.stroke();
+      // Bottom-Left
+      fx.beginPath(); fx.moveTo(bx, by + bh - arm); fx.lineTo(bx, by + bh); fx.lineTo(bx + arm, by + bh); fx.stroke();
+      // Bottom-Right
+      fx.beginPath(); fx.moveTo(bx + bw - arm, by + bh); fx.lineTo(bx + bw, by + bh); fx.lineTo(bx + bw, by + bh - arm); fx.stroke();
+
+      // 8. Cyberpunk Telemetry HUD Badge
+      const hudY = Math.max(22, by - 12);
+      fx.font = '700 11px ui-monospace, Menlo, Monaco, monospace';
+      fx.fillStyle = '#00f5ff';
+      fx.fillText('BIO-TOPOLOGY 3D // 68 PTS', bx, hudY);
+      fx.font = '600 10px ui-monospace, Menlo, Monaco, monospace';
+      fx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      fx.fillText(`YAW: ${(g.yaw * 45).toFixed(1)}°  DEPTH: ${Math.round(g.headW * 0.9)}mm  TRACK: 99.8%`, bx, hudY + 14);
+
+      fx.restore();
     }
   },
 
@@ -1243,74 +1413,418 @@ export const defsFace = [
       const g = geo(frame);
       const expr = frame.face && frame.face.expressions;
       if (!g || !expr) return;
-      const EXPR = {
-        happy: ['😄', 'Happy'], sad: ['😢', 'Sad'], angry: ['😠', 'Angry'],
-        surprised: ['😮', 'Surprised'], neutral: ['😐', 'Neutral'],
-        disgusted: ['🤢', 'Disgusted'], fearful: ['😨', 'Fearful']
+
+      const now = frame.now || performance.now();
+
+      const THEMES = {
+        happy: {
+          emoji: '😄', title: 'JOY / HAPPINESS',
+          color: '#facc15', aura: 'rgba(250, 204, 21, 0.28)',
+          vibe: 'Radiating positive energy! ✨', particle: 'star'
+        },
+        surprised: {
+          emoji: '😮', title: 'WOW / SURPRISED',
+          color: '#06b6d4', aura: 'rgba(6, 182, 212, 0.32)',
+          vibe: 'Mind blown! High alertness! ⚡', particle: 'ripple'
+        },
+        neutral: {
+          emoji: '🧘', title: 'CHILL & ZEN',
+          color: '#a855f7', aura: 'rgba(168, 85, 247, 0.22)',
+          vibe: 'Unbothered composure & calm 🌿', particle: 'dust'
+        },
+        sad: {
+          emoji: '🥺', title: 'MELANCHOLY',
+          color: '#3b82f6', aura: 'rgba(59, 130, 246, 0.26)',
+          vibe: 'Warm hug & cozy energy needed ☕', particle: 'mist'
+        },
+        angry: {
+          emoji: '😤', title: 'FIERY FOCUS',
+          color: '#ef4444', aura: 'rgba(239, 68, 68, 0.35)',
+          vibe: 'Intense drive & powerhouse fire 🔥', particle: 'ember'
+        },
+        disgusted: {
+          emoji: '🤨', title: 'SKEPTICAL / SUS',
+          color: '#10b981', aura: 'rgba(16, 185, 129, 0.28)',
+          vibe: 'Side-eyeing the vibe 👀', particle: 'ring'
+        },
+        fearful: {
+          emoji: '⚡', title: 'HIGH ALERT',
+          color: '#ec4899', aura: 'rgba(236, 72, 153, 0.30)',
+          vibe: 'Spidey-senses active & wired! ⚡', particle: 'spark'
+        }
       };
-      const top = Object.entries(expr).sort((a, b) => b[1] - a[1])[0];
-      const [emoji, label] = EXPR[top[0]] || ['🙂', top[0]];
-      const text = `${emoji} ${label} ${Math.round(top[1] * 100)}%`;
-      fx.font = '700 20px -apple-system, "Segoe UI", sans-serif';
-      const tw = fx.measureText(text).width;
-      const pad = 14;
-      const bw = tw + pad * 2;
-      const bh = 42;
-      const bx = clamp(g.box.x + g.box.width / 2 - bw / 2, 6, frame.width - bw - 6);
-      let by = g.box.y - bh - 14;
-      if (by < 6) by = g.box.y + g.box.height + 14;
+
+      // Smooth expression scores with EMA
+      if (!this._scores) this._scores = {};
+      for (const [k, v] of Object.entries(expr)) {
+        this._scores[k] = lerp(this._scores[k] ?? v, v, 0.15);
+      }
+      const sorted = Object.entries(this._scores).sort((a, b) => b[1] - a[1]);
+      const [topKey, topVal] = sorted[0] || ['neutral', 1];
+      const theme = THEMES[topKey] || THEMES.neutral;
+
       fx.save();
+
+      // 1. Dynamic Glowing Mood Aura Halo around Head
+      const auraRadius = g.headW * (0.85 + 0.08 * Math.sin(now * 0.005));
+      const auraGrad = fx.createRadialGradient(g.midEye.x, g.midEye.y, g.headW * 0.25, g.midEye.x, g.midEye.y, auraRadius);
+      auraGrad.addColorStop(0, theme.aura);
+      auraGrad.addColorStop(0.7, theme.aura.replace(/[\d\.]+\)$/, '0.08)'));
+      auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      fx.fillStyle = auraGrad;
       fx.beginPath();
-      roundRect(fx, bx, by, bw, bh, 12);
-      fx.fillStyle = 'rgba(11, 11, 20, 0.85)';
+      fx.arc(g.midEye.x, g.midEye.y, auraRadius, 0, Math.PI * 2);
       fx.fill();
-      fx.strokeStyle = 'rgba(255,255,255,0.25)';
+
+      // 2. Emotion-Reactive Particle Atmosphere
+      if (!this._particles) this._particles = [];
+      if (this._particles.length < 24 && Math.random() < 0.35) {
+        this._particles.push({
+          x: g.midEye.x + rand(-g.headW * 0.55, g.headW * 0.55),
+          y: g.midEye.y + rand(-g.headW * 0.3, g.headW * 0.5),
+          vx: rand(-0.4, 0.4),
+          vy: topKey === 'sad' ? rand(0.6, 1.4) : rand(-1.4, -0.4),
+          size: rand(4, 9),
+          life: 1,
+          decay: rand(0.012, 0.022),
+          type: theme.particle,
+          rot: rand(0, Math.PI * 2),
+          vrot: rand(-0.06, 0.06),
+          color: theme.color
+        });
+      }
+
+      for (let i = this._particles.length - 1; i >= 0; i--) {
+        const p = this._particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vrot;
+        p.life -= p.decay;
+        if (p.life <= 0) {
+          this._particles.splice(i, 1);
+          continue;
+        }
+        fx.save();
+        fx.globalAlpha = p.life;
+        fx.translate(p.x, p.y);
+        fx.rotate(p.rot);
+        if (p.type === 'star') {
+          fx.fillStyle = p.color;
+          fx.beginPath();
+          for (let s = 0; s < 4; s++) {
+            fx.rotate(Math.PI / 2);
+            fx.lineTo(p.size, 0);
+            fx.lineTo(p.size * 0.25, p.size * 0.25);
+          }
+          fx.closePath();
+          fx.fill();
+        } else if (p.type === 'ripple') {
+          fx.strokeStyle = p.color;
+          fx.lineWidth = 1.5;
+          fx.beginPath();
+          fx.arc(0, 0, (1 - p.life) * 22 + 4, 0, Math.PI * 2);
+          fx.stroke();
+        } else {
+          fx.fillStyle = p.color;
+          fx.beginPath();
+          fx.arc(0, 0, p.size * 0.4, 0, Math.PI * 2);
+          fx.fill();
+        }
+        fx.restore();
+      }
+
+      // 3. Multi-Emotion Equalizer HUD Card
+      const cw = 250;
+      const ch = 114;
+      let targetX = clamp(g.box.x + g.box.width / 2 - cw / 2, 10, frame.width - cw - 10);
+      let targetY = g.box.y - ch - 16;
+      if (targetY < 12) targetY = g.box.y + g.box.height + 16;
+      if (targetY + ch > frame.height - 10) targetY = frame.height - ch - 10;
+
+      if (!this._cardX) { this._cardX = targetX; this._cardY = targetY; }
+      else {
+        this._cardX = lerp(this._cardX, targetX, 0.16);
+        this._cardY = lerp(this._cardY, targetY, 0.16);
+      }
+      const cx = this._cardX;
+      const cy = this._cardY;
+
+      // Card Body
+      roundRect(fx, cx, cy, cw, ch, 14);
+      fx.fillStyle = 'rgba(10, 14, 26, 0.90)';
+      fx.fill();
+      fx.strokeStyle = theme.color + 'aa';
       fx.lineWidth = 1.5;
       fx.stroke();
+
+      // Top glowing color bar
+      roundRect(fx, cx, cy, cw, 4, 3);
+      fx.fillStyle = theme.color;
+      fx.fill();
+
+      // Header: Emoji, Title, Score %
+      fx.font = '22px -apple-system, sans-serif';
+      fx.fillText(theme.emoji, cx + 12, cy + 28);
+
+      fx.font = '700 13px -apple-system, "Segoe UI", sans-serif';
       fx.fillStyle = '#ffffff';
-      fx.textAlign = 'center';
-      fx.textBaseline = 'middle';
-      fx.fillText(text, bx + bw / 2, by + bh / 2 + 1);
-      fx.restore();
+      fx.fillText(theme.title, cx + 42, cy + 22);
+
+      fx.font = '800 16px -apple-system, "Segoe UI", sans-serif';
+      fx.fillStyle = theme.color;
+      fx.textAlign = 'right';
+      fx.fillText(`${Math.round(topVal * 100)}%`, cx + cw - 12, cy + 23);
       fx.textAlign = 'left';
-      fx.textBaseline = 'alphabetic';
+
+      // Vibe tagline
+      fx.font = '500 10px -apple-system, sans-serif';
+      fx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+      fx.fillText(theme.vibe, cx + 42, cy + 35);
+
+      // Multi-Emotion Spectrum Equalizer (Top 3)
+      const top3 = sorted.slice(0, 3);
+      const startEqY = cy + 50;
+      top3.forEach(([key, val], idx) => {
+        const itemY = startEqY + idx * 19;
+        const itemTheme = THEMES[key] || THEMES.neutral;
+        const barW = 120;
+        const barH = 6;
+        const fillW = Math.max(4, barW * clamp(val, 0, 1));
+
+        // Label
+        fx.font = '600 9.5px ui-monospace, Menlo, monospace';
+        fx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+        fx.fillText(key.toUpperCase().slice(0, 7), cx + 12, itemY + 6);
+
+        // Bar Track
+        roundRect(fx, cx + 66, itemY, barW, barH, 3);
+        fx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+        fx.fill();
+
+        // Bar Fill
+        roundRect(fx, cx + 66, itemY, fillW, barH, 3);
+        fx.fillStyle = itemTheme.color;
+        fx.fill();
+
+        // Percentage
+        fx.font = '700 9.5px ui-monospace, Menlo, monospace';
+        fx.fillStyle = '#ffffff';
+        fx.textAlign = 'right';
+        fx.fillText(`${Math.round(val * 100)}%`, cx + cw - 12, itemY + 6);
+        fx.textAlign = 'left';
+      });
+
+      fx.restore();
     }
   },
+
   {
     id: 'agegender', name: 'Age & Gender', icon: '🔍', category: 'Face', perf: 'low', requiresFace: true, needsAge: true,
     render(fx, frame) {
       passthrough(fx, frame);
       const g = geo(frame);
       if (!g) return;
-      const age = frame.face.age;
-      const gender = frame.face.gender;
-      if (age == null) return;
-      const text = `~${Math.round(age)} yrs · ${gender === 'male' ? 'Male' : 'Female'}`;
-      fx.font = '700 20px -apple-system, "Segoe UI", sans-serif';
-      const tw = fx.measureText(text).width;
-      const pad = 14;
-      const bw = tw + pad * 2;
-      const bh = 42;
-      const bx = clamp(g.box.x + g.box.width / 2 - bw / 2, 6, frame.width - bw - 6);
-      const by = clamp(g.box.y + g.box.height + 12, 6, frame.height - bh - 6);
+
+      const rawAge = frame.face.age;
+      const rawGender = frame.face.gender || 'neutral';
+      const rawConf = frame.face.genderProbability ?? 0.95;
+      if (rawAge == null) return;
+
+      const now = frame.now || performance.now();
+
+      // Exponential moving average for silky-smooth, jitter-free stabilization
+      if (!this._age) this._age = rawAge;
+      else this._age = lerp(this._age, rawAge, 0.05);
+
+      if (!this._conf) this._conf = rawConf;
+      else this._conf = lerp(this._conf, rawConf, 0.08);
+
+      const dispAge = Math.round(this._age);
+      const dispConf = Math.round(this._conf * 100);
+      const isMale = rawGender === 'male';
+
+      // Fun generation classifications & vibe tags
+      let genTitle = 'GEN Z';
+      let genIcon = '✨';
+      let genVibe = 'Main Character Energy';
+      let genBadgeColor = '#a855f7';
+
+      if (dispAge < 13) {
+        genTitle = 'GEN ALPHA';
+        genIcon = '🚀';
+        genVibe = 'Curious Explorer';
+        genBadgeColor = '#fbbf24';
+      } else if (dispAge <= 26) {
+        genTitle = 'GEN Z';
+        genIcon = '✨';
+        genVibe = 'Main Character Vibe';
+        genBadgeColor = '#a855f7';
+      } else if (dispAge <= 42) {
+        genTitle = 'MILLENNIAL';
+        genIcon = '🌟';
+        genVibe = 'Peak Living & Aesthetic';
+        genBadgeColor = '#06b6d4';
+      } else if (dispAge <= 58) {
+        genTitle = 'GEN X';
+        genIcon = '⚡';
+        genVibe = 'Iconic Boss Energy';
+        genBadgeColor = '#f59e0b';
+      } else {
+        genTitle = 'LEGEND';
+        genIcon = '👑';
+        genVibe = 'Distinguished Icon';
+        genBadgeColor = '#e11d48';
+      }
+
       fx.save();
-      fx.beginPath();
-      roundRect(fx, bx, by, bw, bh, 12);
-      fx.fillStyle = 'rgba(11, 11, 20, 0.85)';
+
+      const bx = g.box.x, by = g.box.y, bw = g.box.width, bh = g.box.height;
+
+      // 1. Futuristic Corner Reticles [   ]
+      const arm = Math.min(24, bw * 0.15);
+      fx.strokeStyle = '#00f5ff';
+      fx.lineWidth = 2.4;
+      // Top-Left
+      fx.beginPath(); fx.moveTo(bx, by + arm); fx.lineTo(bx, by); fx.lineTo(bx + arm, by); fx.stroke();
+      // Top-Right
+      fx.beginPath(); fx.moveTo(bx + bw - arm, by); fx.lineTo(bx + bw, by); fx.lineTo(bx + bw, by + arm); fx.stroke();
+      // Bottom-Left
+      fx.beginPath(); fx.moveTo(bx, by + bh - arm); fx.lineTo(bx, by + bh); fx.lineTo(bx + arm, by + bh); fx.stroke();
+      // Bottom-Right
+      fx.beginPath(); fx.moveTo(bx + bw - arm, by + bh); fx.lineTo(bx + bw, by + bh); fx.lineTo(bx + bw, by + bh - arm); fx.stroke();
+
+      // 2. High-Tech Laser Scanline
+      const scanPeriod = ((now * 0.16) % bh) / bh;
+      const scanY = by + scanPeriod * bh;
+      const scanGrad = fx.createLinearGradient(bx, scanY, bx + bw, scanY);
+      scanGrad.addColorStop(0, 'rgba(0, 245, 255, 0)');
+      scanGrad.addColorStop(0.3, 'rgba(0, 245, 255, 0.6)');
+      scanGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.95)');
+      scanGrad.addColorStop(0.7, 'rgba(0, 245, 255, 0.6)');
+      scanGrad.addColorStop(1, 'rgba(0, 245, 255, 0)');
+      fx.strokeStyle = scanGrad;
+      fx.lineWidth = 2;
+      fx.beginPath(); fx.moveTo(bx, scanY); fx.lineTo(bx + bw, scanY); fx.stroke();
+
+      // 3. Eye & Chin Biometric Crosshairs
+      const targets = [
+        { pt: g.lEye, label: 'L-EYE' },
+        { pt: g.rEye, label: 'R-EYE' },
+        { pt: g.chin, label: 'CHIN' }
+      ];
+      fx.font = '600 8.5px ui-monospace, Menlo, monospace';
+      fx.fillStyle = 'rgba(0, 245, 255, 0.8)';
+      fx.strokeStyle = 'rgba(0, 245, 255, 0.85)';
+      fx.lineWidth = 1;
+      for (const t of targets) {
+        fx.beginPath();
+        fx.moveTo(t.pt.x - 4, t.pt.y); fx.lineTo(t.pt.x + 4, t.pt.y);
+        fx.moveTo(t.pt.x, t.pt.y - 4); fx.lineTo(t.pt.x, t.pt.y + 4);
+        fx.stroke();
+        fx.fillText(t.label, t.pt.x + 6, t.pt.y + 3);
+      }
+
+      // 4. Biometric ID Badge Card
+      const cw = 268;
+      const ch = 118;
+      let targetX = clamp(bx + bw / 2 - cw / 2, 10, frame.width - cw - 10);
+      let targetY = by + bh + 16;
+      if (targetY + ch > frame.height - 10) targetY = by - ch - 16;
+      if (targetY < 12) targetY = 12;
+
+      if (!this._cardX) { this._cardX = targetX; this._cardY = targetY; }
+      else {
+        this._cardX = lerp(this._cardX, targetX, 0.16);
+        this._cardY = lerp(this._cardY, targetY, 0.16);
+      }
+      const cx = this._cardX;
+      const cy = this._cardY;
+
+      // Card Background & Neon Border
+      roundRect(fx, cx, cy, cw, ch, 14);
+      fx.fillStyle = 'rgba(8, 12, 24, 0.90)';
       fx.fill();
-      fx.strokeStyle = 'rgba(108, 92, 231, 0.7)';
+      fx.strokeStyle = 'rgba(0, 245, 255, 0.45)';
       fx.lineWidth = 1.5;
       fx.stroke();
-      fx.fillStyle = '#ffffff';
-      fx.textAlign = 'center';
-      fx.textBaseline = 'middle';
-      fx.fillText(text, bx + bw / 2, by + bh / 2 + 1);
-      fx.restore();
+
+      // Top Header: Status bar with pulsing green dot
+      fx.fillStyle = '#10b981';
+      fx.beginPath();
+      fx.arc(cx + 16, cy + 16, 3.5, 0, Math.PI * 2);
+      fx.fill();
+
+      fx.font = '700 9.5px ui-monospace, Menlo, monospace';
+      fx.fillStyle = 'rgba(0, 245, 255, 0.9)';
+      fx.fillText('BIOMETRIC SCAN // ACTIVE', cx + 26, cy + 19);
+
+      fx.font = '600 9.5px ui-monospace, Menlo, monospace';
+      fx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      fx.textAlign = 'right';
+      fx.fillText('BIO-ID #4092', cx + cw - 14, cy + 19);
       fx.textAlign = 'left';
-      fx.textBaseline = 'alphabetic';
-      fx.font = '600 11px -apple-system, sans-serif';
-      fx.fillStyle = 'rgba(255,255,255,0.55)';
-      fx.fillText('AI estimate · for fun only', bx, by + bh + 14);
+
+      // Age Hero Display
+      fx.font = '800 24px -apple-system, "Segoe UI", sans-serif';
+      fx.fillStyle = '#ffffff';
+      fx.fillText(`~${dispAge}`, cx + 14, cy + 48);
+
+      fx.font = '600 12px -apple-system, sans-serif';
+      fx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+      fx.fillText('YRS', cx + 16 + fx.measureText(`~${dispAge}`).width + 4, cy + 48);
+
+      // Generation Badge Pill
+      const badgeText = `${genIcon} ${genTitle}`;
+      fx.font = '700 11px -apple-system, "Segoe UI", sans-serif';
+      const badgeW = fx.measureText(badgeText).width + 16;
+      const badgeX = cx + cw - badgeW - 14;
+      const badgeY = cy + 30;
+
+      roundRect(fx, badgeX, badgeY, badgeW, 22, 6);
+      fx.fillStyle = genBadgeColor + '22';
+      fx.fill();
+      fx.strokeStyle = genBadgeColor + '88';
+      fx.lineWidth = 1;
+      fx.stroke();
+
+      fx.fillStyle = genBadgeColor;
+      fx.fillText(badgeText, badgeX + 8, badgeY + 15);
+
+      // Gender & Confidence Row
+      const genderSymbol = isMale ? '♂ Male' : '♀ Female';
+      fx.font = '600 12px -apple-system, "Segoe UI", sans-serif';
+      fx.fillStyle = '#ffffff';
+      fx.fillText(genderSymbol, cx + 14, cy + 76);
+
+      // Confidence Bar
+      const confTrackW = 75;
+      const confTrackX = cx + 80;
+      const confY = cy + 69;
+      roundRect(fx, confTrackX, confY, confTrackW, 6, 3);
+      fx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+      fx.fill();
+
+      roundRect(fx, confTrackX, confY, Math.max(4, confTrackW * (dispConf / 100)), 6, 3);
+      fx.fillStyle = '#38bdf8';
+      fx.fill();
+
+      fx.font = '600 10px ui-monospace, Menlo, monospace';
+      fx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      fx.fillText(`${dispConf}%`, confTrackX + confTrackW + 8, cy + 76);
+
+      // Vibe Tag
+      fx.font = '500 10.5px -apple-system, sans-serif';
+      fx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      fx.fillText(`Vibe: ${genVibe}`, cx + 14, cy + 96);
+
+      // Tiny Disclaimer
+      fx.font = '500 8.5px -apple-system, sans-serif';
+      fx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      fx.textAlign = 'right';
+      fx.fillText('AI estimate · 100% on-device', cx + cw - 14, cy + 110);
+      fx.textAlign = 'left';
+
+      fx.restore();
     }
   },
 

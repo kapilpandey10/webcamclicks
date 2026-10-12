@@ -59,51 +59,70 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <main class="legal">
   <h1>Privacy Policy</h1>
-  <p class="muted">Last updated: October 6, 2026 · Effective Date: October 6, 2026</p>
+  <p class="muted">Last updated: October 12, 2026 · Effective Date: October 12, 2026</p>
 
-  <p>At <strong>WebcamClicks</strong> (accessible at <a href="https://webcamclicks.com">webcamclicks.com</a>), your privacy is our highest priority. This Privacy Policy document describes what information is collected and how it is used when you interact with our website, webcam effects, video recorder, and browser games.</p>
+  <p>At <strong>WebcamClicks</strong> (accessible at <a href="https://webcamclicks.com">webcamclicks.com</a>), your privacy is our highest priority. This Privacy Policy describes how camera feeds, photos, recordings, cookies, analytics, and sharing functions operate across our website, webcam effects studio, video recorder, and browser games. We believe in total transparency: our architecture is designed to process your media entirely on your own device.</p>
 
   <h2>1. Zero Server Uploads: Camera, Video &amp; Photos Stay in Your Browser</h2>
-  <p>WebcamClicks is an entirely client-side web application built with HTML5, Canvas 2D, and the MediaRecorder API. When you grant permission for camera access:</p>
+  <p>WebcamClicks is an entirely client-side web application built with HTML5, Canvas 2D, WebGL, WebRTC, and the browser MediaRecorder API. When you use our camera tools:</p>
   <ul>
-    <li>The live video stream is rendered and processed <strong>strictly in your browser memory</strong> on your physical device.</li>
-    <li><strong>We NEVER record, upload, monitor, stream, or transmit your video feed, photos, or audio to any server.</strong></li>
-    <li>When you click <strong>Capture Photo</strong> or <strong>Record Video</strong>, the resulting JPEG snapshot or WebM/MP4 clip is stored exclusively in your browser's private local storage ("Gallery") or saved directly to your device's download folder.</li>
-    <li>Closing or reloading the browser page immediately releases your webcam hardware and flushes temporary memory buffers.</li>
+    <li><strong>Camera access is requested only when you tap:</strong> We never request camera or microphone permissions automatically on page load. Access is only requested when you tap a "Start camera" or "Enable my camera" button.</li>
+    <li><strong>Live video never leaves your device:</strong> Your live webcam stream is rendered and processed strictly in temporary browser memory on your physical hardware. We NEVER record, upload, monitor, stream, or transmit your live video feed or camera frames to any server.</li>
+    <li><strong>Photos &amp; photo strips stay local:</strong> When you snap a photo or create a 4-pose photo booth collage, the resulting JPEG snapshot is generated client-side and saved exclusively in your browser's private local storage ("Gallery", up to 24 photos) or downloaded directly to your device storage.</li>
+    <li><strong>Video recordings stay local:</strong> When you record a video clip, it is recorded client-side via the browser's <code>MediaRecorder</code> into a temporary memory buffer (up to 6 session clips) and downloaded as a WebM or MP4 file directly to your device. We do not store or host video clips on any remote server.</li>
+    <li><strong>Immediate hardware release:</strong> Closing or reloading the tab immediately terminates camera and microphone hardware tracks and flushes all temporary memory buffers.</li>
   </ul>
 
-  <h2>2. On-Device Face Detection &amp; Biometrics</h2>
-  <p>Certain visual effects (such as digital crowns, sunglasses, dog ears, facial mesh, and games like Face Pong) utilize real-time computer vision powered by the client-side library <code>face-api.js</code>.</p>
+  <h2>2. On-Device Face Tracking &amp; Novelty AI Estimates</h2>
+  <p>Certain visual effects (such as digital crowns, sunglasses, dog ears, face mesh, and games like Face Pong) utilize real-time computer vision powered by the client-side library <code>face-api.js</code>.</p>
   <ul>
-    <li>All model evaluation occurs locally using WebGL and WebAssembly on your device.</li>
-    <li>No biometric markers, facial templates, geometry vectors, or identifying data are ever extracted, retained, or sent over the Internet.</li>
-    <li>AI feature estimates (such as age, emotion, or gender) are playful approximations generated purely in local memory and are never saved or tied to any identity.</li>
+    <li><strong>100% on-device processing:</strong> All machine-learning model calculations run strictly in your browser using local WebGL and WebAssembly hardware acceleration. No video frames or face crops are ever sent over the network.</li>
+    <li><strong>No biometric data or templates:</strong> No facial templates, biometric markers, geometric face embeddings, or identifying records are ever created, stored, or transmitted to any server.</li>
+    <li><strong>Playful novelty estimates:</strong> WebcamClicks includes optional entertainment filters such as "Age &amp; Gender" and the "Emotion Meter". These algorithms run purely in real-time browser memory to display casual approximations for fun. They are playful entertainment novelties and are never saved or tied to any personal identity. They are not intended, certified, or suitable for medical, biometric authentication, psychological, legal, or identity verification purposes.</li>
   </ul>
 
-  <h2>3. Cookies &amp; Analytics</h2>
-  <p>WebcamClicks is 100% free and open for public use without requiring account creation. We do not use intrusive tracking cookies, and we do not run third-party advertising cookies. Google Tag Manager / Analytics may collect aggregated, anonymized usage telemetry (such as page views and browser device type) strictly to improve website performance and compatibility.</p>
+  <h2>3. Analytics &amp; Performance Telemetry</h2>
+  <p>We use Google Tag Manager (<code>GTM-NFMSK93M</code>) and Google Analytics to collect aggregated, anonymized website usage statistics (such as page visits, referring domains, device and browser categories, and page load speeds). This data helps us monitor site stability, fix compatibility bugs across different browsers, and optimize performance. Analytics services never capture, access, or receive your camera stream, snapshot photos, audio recordings, or biometric information.</p>
 
-  <h2>4. Local Storage (Device Only)</h2>
-  <p>We use your browser's standard <code>localStorage</code> API solely to preserve your non-personal preferences between visits, including:</p>
+  <h2>4. Advertising, Google AdSense &amp; Cookie Choices</h2>
+  <p>WebcamClicks is 100% free to use with no paid subscriptions or accounts required. To keep our camera tools free for everyone, we display advertisements provided by Google AdSense and third-party advertising partners:</p>
+  <ul>
+    <li><strong>Google Ad Cookies:</strong> Google and its advertising partners use cookies, device identifiers, or web beacons to serve ads based on your prior visits to WebcamClicks or other websites on the Internet.</li>
+    <li><strong>Personalized &amp; Non-Personalized Ads:</strong> Google's use of advertising cookies enables it and its partners to serve ads to users based on their visit to our sites and/or other sites on the Internet.</li>
+    <li><strong>Opt-Out Options:</strong> You may opt out of personalized advertising by visiting Google's <a href="https://adssettings.google.com" target="_blank" rel="noopener">Google Ad Settings</a>. Alternatively, you can opt out of third-party vendor cookies for personalized advertising by visiting <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener">aboutads.info</a>.</li>
+    <li><strong>Consent Setup for EEA, UK &amp; California (GDPR / CCPA):</strong> For visitors in the European Economic Area (EEA), United Kingdom (under GDPR and the ePrivacy Directive), and California (under CCPA/CPRA), we implement Google-certified Consent Management mechanisms (Google Consent Mode v2 and certified CMP frameworks). Non-essential advertising cookies and personalized ad targeting are only deployed in compliance with your region's legal consent standards.</li>
+  </ul>
+
+  <h2>5. User-Chosen Sharing &amp; Third-Party Actions</h2>
+  <p>When you choose to export, share, or save a capture, the action is initiated strictly by you and executed client-side on your device:</p>
+  <ul>
+    <li><strong>Native Share:</strong> Clicking "Share" uses your browser's standard Web Share API (<code>navigator.share</code>) to hand the local image or video file directly to your device operating system (e.g. Apple AirDrop, Messages, WhatsApp, or local apps). WebcamClicks does not act as an intermediate host.</li>
+    <li><strong>Google Drive:</strong> Clicking "Google Drive" downloads the photo to your local computer or phone and opens Google Drive (<code>drive.google.com</code>) in a new browser tab so you can manually drag or upload the file into your personal Google Drive account. We never request, access, or store your Google account credentials.</li>
+    <li><strong>Clipboard Copy:</strong> Clicking "Copy" uses the standard <code>navigator.clipboard.write</code> API to copy the image directly to your local operating system clipboard.</li>
+    <li><strong>Social Sharing (X / Twitter):</strong> Clicking the tweet button opens a public sharing intent with pre-filled text in a new tab. WebcamClicks does not upload your media to social media servers.</li>
+  </ul>
+
+  <h2>6. Local Storage (Device Only)</h2>
+  <p>We use your browser's standard <code>localStorage</code> API solely to store your non-personal preferences on your physical device, including:</p>
   <ul>
     <li>Camera mirror mode (flipped or normal).</li>
-    <li>Audio sound effects preference (enabled/disabled).</li>
-    <li>Last selected filter and your pinned favorite effects.</li>
+    <li>Camera sound effects toggle (enabled or disabled).</li>
+    <li>Your last selected filter and pinned favorite effects.</li>
     <li>Photos in your temporary local gallery (up to 24 images, compressed client-side).</li>
   </ul>
-  <p>You can erase all locally stored photos at any time by clicking <strong>"Clear all"</strong> inside the gallery drawer, or by clearing your browser's cache and site data.</p>
+  <p>You can clear all locally stored gallery photos at any time by clicking <strong>"Clear all"</strong> inside the gallery drawer, or by clearing your browser's cookies and site data.</p>
 
-  <h2>5. Children's Online Privacy (COPPA Compliance)</h2>
-  <p>WebcamClicks is designed as family-friendly entertainment. Because our site performs all image processing and video recording strictly client-side on the user's device and does not require user accounts, email addresses, or names, <strong>we do not collect any personally identifiable information from children under the age of 13</strong> (or under 16 in the EEA).</p>
+  <h2>7. Children's Online Privacy (COPPA Compliance)</h2>
+  <p>WebcamClicks is designed as family-friendly entertainment. Because our site performs all image processing and video recording strictly client-side on your device and does not require user accounts, email addresses, names, or contact information, <strong>we do not collect any personally identifiable information from children under the age of 13</strong> (or under 16 in the EEA).</p>
 
-  <h2>6. GDPR, UK DPA &amp; California Consumer Privacy Act (CCPA)</h2>
-  <p>Under regulations like the General Data Protection Regulation (GDPR) and CCPA, users have rights regarding their personal data. Because WebcamClicks does not transmit, store, or profile personal data on our servers, there are no server-side databases containing personal user records to access, rectify, or delete.</p>
-  <p>For advertising choices under GDPR/CCPA, our site deploys Google-certified consent management mechanisms (Consent Mode) to respect your choices regarding cookies and personalized ads.</p>
+  <h2>8. GDPR, UK DPA &amp; California Consumer Privacy Act (CCPA)</h2>
+  <p>Under regulations like the General Data Protection Regulation (GDPR) and CCPA/CPRA, users have rights regarding their personal data. Because WebcamClicks does not transmit, store, or profile personal data on our servers, there are no server-side databases containing personal user records to access, rectify, or delete.</p>
+  <p>For advertising choices under GDPR and CCPA, our site deploys Google-certified consent management mechanisms (Consent Mode) to respect your choices regarding cookies and personalized ads.</p>
 
-  <h2>7. Changes to This Privacy Policy</h2>
+  <h2>9. Changes to This Privacy Policy</h2>
   <p>We may periodically update this Privacy Policy to reflect technical enhancements, browser security requirements, or legal standards. Revisions will be published directly on this page with an updated timestamp.</p>
 
-  <h2>8. Contact Us</h2>
+  <h2>10. Contact Us</h2>
   <p>If you have any questions or feedback regarding this Privacy Policy or the security of your camera data, please reach out to us at:</p>
   <p><strong>Email:</strong> <a href="mailto:privacy@webcamclicks.com">privacy@webcamclicks.com</a><br>
   <strong>Website:</strong> <a href="https://webcamclicks.com">https://webcamclicks.com</a></p>

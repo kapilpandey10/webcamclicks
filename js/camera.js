@@ -34,6 +34,21 @@ export class CameraManager {
     this.height = 720;
     this.nativeWidth = 1280;
     this.nativeHeight = 720;
+
+    /* Handle mobile orientation change & viewport resize */
+    this._handleOrientation = () => {
+      if (this.active && this.video && this.video.videoWidth) {
+        this._computeWorkSize();
+      }
+    };
+    window.addEventListener('resize', this._handleOrientation);
+    if (window.screen && window.screen.orientation) {
+      try {
+        window.screen.orientation.addEventListener('change', this._handleOrientation);
+      } catch {}
+    } else {
+      window.addEventListener('orientationchange', this._handleOrientation);
+    }
   }
 
   attach(container) {
@@ -99,11 +114,16 @@ export class CameraManager {
           height: { ideal: 720 },
           frameRate: { ideal: 30, min: 15 }
         };
-        if (this.deviceId) fallback.deviceId = { exact: this.deviceId };
+        if (this.deviceId) fallback.deviceId = { ideal: this.deviceId };
         else fallback.facingMode = { ideal: this.facing };
         this.stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: fallback });
       } catch {
-        throw err;
+        // Last-resort fallback: basic video stream (handles restricted mobile permissions or unusual drivers)
+        try {
+          this.stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+        } catch {
+          throw err;
+        }
       }
     }
 
@@ -260,21 +280,23 @@ export class CameraManager {
 
   async flip() {
     await this.listDevices();
-    if (this.devices.length < 2) {
-      // Toggle facingMode even if listDevices only reports 1 grouped device (common in Safari)
+    // On mobile devices (iOS Safari, Android Chrome), toggling facingMode between 'user' and 'environment'
+    // without locking deviceId provides the cleanest and most reliable front <-> rear switching.
+    if (isMobile() || this.devices.length < 2) {
       this.facing = this.facing === 'user' ? 'environment' : 'user';
       this.deviceId = null;
       await this.start();
       return true;
     }
 
+    // On desktop computers with multiple distinct video inputs, cycle through device IDs:
     const ids = this.devices.map((d) => d.deviceId).filter(Boolean);
     if (ids.length >= 2) {
       const current = this.stream && this.stream.getVideoTracks()[0];
-      const settings = current ? current.getSettings() : {};
-      const curIdx = ids.indexOf(settings.deviceId);
-      this.deviceId = ids[(curIdx + 1) % ids.length];
-      this.facing = this.facing === 'user' ? 'environment' : 'user';
+      const s = current && current.getSettings ? current.getSettings() : {};
+      const curIdx = ids.indexOf(s.deviceId || this.deviceId);
+      const nextIdx = (curIdx + 1) % ids.length;
+      this.deviceId = ids[nextIdx];
     } else {
       this.facing = this.facing === 'user' ? 'environment' : 'user';
       this.deviceId = null;

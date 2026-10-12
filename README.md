@@ -10,7 +10,7 @@ Free online webcam effects, filters, face-detection tools and camera games — a
 | Camera engine | `getUserMedia` + dual-canvas pipeline (work + display), mirror, flip camera, FPS monitor |
 | Effects | 45+ Canvas 2D filters (Classic, Vintage, Art, Fun, Mirror categories) |
 | Face effects | 12+ effects powered by face-api.js (glasses, crown, dog ears, mustache, big eyes, blur background, emotion bubble, age/gender badge, face mesh, fire breath, confetti smile) |
-| Games | Motion Catch, Face Pong, Freeze Pose — controlled by your face or motion |
+| Games | Balloon Pop, Motion Catch, Face Pong, Freeze Pose — controlled by your face or motion |
 | Photo tools | Capture, flash, gallery (localStorage), download PNG/JPEG, Web Share, clipboard copy |
 | Monetization | Google AdSense auto-ads + 4 manual responsive slots (configured in `index.html`) |
 | SEO | Pre-rendered content, FAQ schema, JSON-LD, sitemap.xml, robots.txt, Open Graph, canonical URLs, privacy & terms pages |

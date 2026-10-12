@@ -5,26 +5,32 @@
 import { timestamp } from './utils.js';
 
 function pickMimeType() {
+  if (typeof MediaRecorder === 'undefined') return '';
   const isApple = /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent) && !/Chrome|Chromium/i.test(navigator.userAgent);
   const candidates = isApple ? [
-    'video/mp4;codecs=avc1,mp4a.40.2',
+    'video/mp4;codecs=avc1',
     'video/mp4',
+    'video/mp4;codecs=avc1,mp4a.40.2',
+    'video/mp4;codecs=h264',
     'video/webm;codecs=vp9,opus',
     'video/webm;codecs=vp8,opus',
     'video/webm'
   ] : [
     'video/webm;codecs=vp9,opus',
     'video/webm;codecs=vp8,opus',
-    'video/mp4;codecs=avc1,mp4a.40.2',
-    'video/mp4',
-    'video/webm'
+    'video/webm',
+    'video/mp4;codecs=avc1',
+    'video/mp4'
   ];
-  if (typeof MediaRecorder === 'undefined') return '';
   for (const type of candidates) {
     try {
       if (MediaRecorder.isTypeSupported(type)) return type;
     } catch { /* ignore */ }
   }
+  try {
+    if (MediaRecorder.isTypeSupported('video/mp4')) return 'video/mp4';
+    if (MediaRecorder.isTypeSupported('video/webm')) return 'video/webm';
+  } catch { /* ignore */ }
   return '';
 }
 
@@ -60,9 +66,12 @@ export class Recorder {
     const captureFn = this.canvas.captureStream || this.canvas.webkitCaptureStream;
     if (!captureFn) return false;
 
+    // Mobile devices (iOS Safari, Android Chrome) achieve maximum stability at 30 FPS
+    const recFps = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? Math.min(fps || 30, 30) : (fps || 60);
+
     let canvasStream;
     try {
-      canvasStream = captureFn.call(this.canvas, fps);
+      canvasStream = captureFn.call(this.canvas, recFps);
     } catch {
       try {
         canvasStream = captureFn.call(this.canvas);

@@ -221,7 +221,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     "50+ live webcam filters and visual effects",
     "Korean-style 4-cut photo booth strips & collages",
     "Interactive motion-controlled camera games",
-    "Hardware sensor resolution support up to 4K / 8K",
+    "Hardware sensor resolution support up to 4K / 8K (hardware-dependent)",
     "100% private on-device processing without server uploads"
   ]
 }
@@ -379,10 +379,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <tr>
             <td>
               <div class="feature-lead">Camera Sensor Resolution</div>
-              <div class="feature-sub">Support for modern 1080p, 2K, 4K, and 8K camera sensors</div>
+              <div class="feature-sub">Auto sensor negotiation (up to 4K/8K where supported by hardware)</div>
             </td>
             <td><span class="badge-no">✕ Standard 480p / 640×480</span></td>
-            <td><span class="badge-yes">✓ Auto Max Resolution (up to 4K/8K)</span></td>
+            <td><span class="badge-yes">✓ Auto Max Sensor (hardware-dependent)</span></td>
           </tr>
           <tr>
             <td>
@@ -517,7 +517,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <span>⚙️ View Detailed Technical Specifications &amp; Compatibility</span>
       </summary>
       <div class="specs-content">
-        <p><strong>Supported Camera Sensors:</strong> Auto Sensor Negotiation up to 8K Ultra HD (7680×4320), 4K UHD, 1080p Full HD, and 720p HD.</p>
+        <p><strong>Supported Camera Sensors:</strong> Auto Sensor Negotiation up to 8K Ultra HD (7680×4320) or 4K UHD (where supported by physical camera hardware and browser), down to 1080p Full HD and 720p HD.</p>
         <p><strong>Video Recording Specifications:</strong> Real-time Canvas MediaRecorder with WebM (VP8/VP9) container, Opus stereo audio, and MP4 conversion support.</p>
         <p><strong>Supported Platforms:</strong> macOS (FaceTime HD / external USB), Windows 10/11, Google ChromeOS (Chromebooks), iOS Safari, Android Chrome, and Linux.</p>
       </div>
@@ -556,8 +556,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <details>
       <summary>Does WebcamClicks work on school Chromebooks and unblocked networks?</summary>
       <p>
-        Yes. WebcamClicks is completely browser-based, lightweight, and uses standard HTML5 WebRTC. It works
-        flawlessly on Chromebooks, Mac, Windows, and mobile devices without requiring any administrative installation privileges.
+        Yes. WebcamClicks is completely browser-based, lightweight, and uses standard HTML5 WebRTC. It runs
+        smoothly across modern Chromebooks, Macs, Windows PCs, and mobile devices (subject to device hardware and browser support) without requiring any administrative installation privileges.
       </p>
     </details>
 

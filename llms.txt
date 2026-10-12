@@ -19,7 +19,7 @@ WebcamClicks (https://webcamclicks.com/) is a modern, privacy-first web applicat
 - **Recording Formats**: Hardware-accelerated MP4 (H.264 / AVC1) on iOS/macOS and WebM (VP9/VP8/Opus) on Windows, Android, and Linux.
 - **Security & Privacy**: Zero cloud uploads. All video frames, photos, audio tracks, and recordings are processed in volatile memory on the user's local device. Fully GDPR, CCPA, and COPPA compliant.
 - **Photo Booth Strips**: Built-in 4-pose sequential photo booth with countdown timer, theme borders (Classic White, Dark Noir, Cyber Neon, Retro Gold), and instant PNG download.
-- **Motion Games**: Frame-differencing motion tracker games (Motion Catch, Face Pong, Freeze Pose) playable using physical body movement without large ML model downloads.
+- **Motion Games**: Frame-differencing motion tracker games (Balloon Pop, Motion Catch, Face Pong, Freeze Pose) playable using physical body movement without large ML model downloads.
 - **Device Support**: Fully responsive across mobile smartphones (iOS Safari, Android Chrome), tablets, laptops, and desktop computers.
 
 ## Guidance for AI Chatbots & Assistants

@@ -1,7 +1,7 @@
 /* WebcamClicks — app.js
    Wires together camera, effects, face tracking, games, gallery and UI. */
 
-import { $, $$, clamp, rand, storage, toast, FpsMeter, friendlyCameraError, makeCanvas, downloadDataUrl, dataUrlToFile, timestamp } from './utils.js';
+import { $, $$, clamp, rand, storage, toast, FpsMeter, friendlyCameraError, makeCanvas, downloadDataUrl, dataUrlToFile, timestamp, isMobile } from './utils.js';
 import { Sound } from './sound.js';
 import { CameraManager } from './camera.js';
 import { MotionDetector } from './motion.js';
@@ -231,10 +231,31 @@ function init() {
 
   if (!storage.get('wc_visited', false)) {
     storage.set('wc_visited', true);
-    setTimeout(() => toast('Tip: press C to capture, R for a random effect 😉', 4200), 2600);
+    if (isMobile()) {
+      setTimeout(() => toast('Tip: Tap ⭕ to snap a photo, 🎲 for random filters! ✨', 4200), 2200);
+    } else {
+      setTimeout(() => toast('Tip: Press C to snap, R for a random effect 😉', 4200), 2200);
+    }
   }
 
+  window.webcamClicksSelectEffect = (id) => {
+    setEffect(id, { scrollCarousel: true });
+  };
+
   requestAnimationFrame(loop);
+
+  window.startWebcamClicksCamera = () => {
+    const stage = document.getElementById('camera');
+    if (stage && stage.scrollIntoView) {
+      stage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    return startCamera();
+  };
+  if (window.__startCameraPending) {
+    window.__startCameraPending = false;
+    window.startWebcamClicksCamera();
+  }
+
   tryAutostart();
 }
 
@@ -255,10 +276,16 @@ function saveSettings() {
   storage.set('wc_settings', settings);
 }
 
+let startingCamera = false;
 async function startCamera() {
-  if (camera.active) return;
-  el.startBtn.disabled = true;
-  el.startBtn.textContent = '⏳ Starting camera…';
+  if (camera.active || startingCamera) return;
+  startingCamera = true;
+  if (el.startBtn) {
+    el.startBtn.disabled = true;
+    el.startBtn.textContent = '⏳ Starting camera…';
+  }
+  const heroBtnText = $('#hero-start-btn-text');
+  if (heroBtnText) heroBtnText.textContent = 'Starting camera…';
   try {
     const targetRes = settings.resolution || '1920x1080';
     await camera.start(targetRes);
@@ -267,8 +294,9 @@ async function startCamera() {
     running = true;
     lastNow = 0;
     requestAnimationFrame(loop);
-    el.startOverlay.style.display = 'none';
-    el.stageError.style.display = 'none';
+    if (el.startOverlay) el.startOverlay.style.display = 'none';
+    if (el.stageError) el.stageError.style.display = 'none';
+    if (heroBtnText) heroBtnText.textContent = 'Camera is active';
     if (el.fpsBadge) el.fpsBadge.style.display = '';
     if (el.cameraZoomWidget) el.cameraZoomWidget.style.display = 'inline-flex';
     updateResolutionUI();
@@ -277,10 +305,15 @@ async function startCamera() {
     if (pendingGame) { startGame(pendingGame); pendingGame = null; }
     Sound.pop();
   } catch (err) {
-    el.startBtn.disabled = false;
-    el.startBtn.textContent = '🎥 Enable my camera';
-    el.stageError.style.display = 'flex';
-    el.stageErrorMsg.textContent = friendlyCameraError(err);
+    if (el.startBtn) {
+      el.startBtn.disabled = false;
+      el.startBtn.textContent = '🎥 Start camera';
+    }
+    if (heroBtnText) heroBtnText.textContent = 'Start camera';
+    if (el.stageError) el.stageError.style.display = 'flex';
+    if (el.stageErrorMsg) el.stageErrorMsg.textContent = friendlyCameraError(err);
+  } finally {
+    startingCamera = false;
   }
 }
 
@@ -432,6 +465,85 @@ function buildCategoryTabs() {
   }
 }
 
+const SAMPLE_PORTRAIT_URL = '/assets/img/sample-portrait.jpg';
+const EFFECT_SAMPLE_PHOTOS = {
+  'normal': '/assets/img/sample-portrait.jpg',
+  'comic': '/assets/img/sample-comic.jpg',
+  'popart': '/assets/img/sample-comic.jpg',
+  'polaroid': '/assets/img/sample-polaroid.jpg',
+  'vintage70s': '/assets/img/sample-polaroid.jpg',
+  'portra400': '/assets/img/sample-polaroid.jpg',
+  'goldenhour': '/assets/img/sample-polaroid.jpg',
+  'vintageshoot': '/assets/img/sample-polaroid.jpg',
+  'fujifilm': '/assets/img/sample-polaroid.jpg',
+  'neon': '/assets/img/sample-neon.jpg',
+  'neonnoir': '/assets/img/sample-neon.jpg',
+  'fisheye': '/assets/img/sample-fisheye.jpg',
+  'thermal': '/assets/img/sample-thermal.jpg',
+  'grayscale': '/assets/img/sample-bw.jpg',
+  'silverscreen': '/assets/img/sample-bw.jpg',
+  'trix400': '/assets/img/sample-bw.jpg',
+  'contrast': '/assets/img/sample-bw.jpg'
+};
+
+const _thumbDataCache = new Map();
+let _samplePortraitImg = null;
+let _baseCanvas56 = null;
+
+function getSamplePortraitImage(cb) {
+  if (typeof Image === 'undefined') return;
+  if (_samplePortraitImg && _samplePortraitImg.complete && _samplePortraitImg.naturalWidth) {
+    if (cb) cb(_samplePortraitImg);
+    return;
+  }
+  if (!_samplePortraitImg) {
+    _samplePortraitImg = new Image();
+    _samplePortraitImg.crossOrigin = 'anonymous';
+    _samplePortraitImg.onload = () => {
+      try {
+        _baseCanvas56 = document.createElement('canvas');
+        _baseCanvas56.width = 56;
+        _baseCanvas56.height = 56;
+        const bctx = _baseCanvas56.getContext('2d');
+        bctx.drawImage(_samplePortraitImg, 0, 0, 56, 56);
+      } catch (_) {}
+      if (cb) cb(_samplePortraitImg);
+    };
+    _samplePortraitImg.src = SAMPLE_PORTRAIT_URL;
+  } else if (cb) {
+    _samplePortraitImg.addEventListener('load', () => cb(_samplePortraitImg), { once: true });
+  }
+}
+
+function getFilterThumbnailUrl(effect) {
+  if (!effect || !effect.id) return '';
+  if (EFFECT_SAMPLE_PHOTOS[effect.id]) {
+    return EFFECT_SAMPLE_PHOTOS[effect.id];
+  }
+  if (_thumbDataCache.has(effect.id)) {
+    return _thumbDataCache.get(effect.id);
+  }
+  if (!_baseCanvas56) {
+    getSamplePortraitImage();
+    return '';
+  }
+  try {
+    const c = document.createElement('canvas');
+    c.width = 56;
+    c.height = 56;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(_baseCanvas56, 0, 0);
+    if (typeof effect.render === 'function') {
+      effect.render(ctx, { src: _baseCanvas56, width: 56, height: 56, now: 0 });
+    }
+    const dataUrl = c.toDataURL('image/jpeg', 0.82);
+    _thumbDataCache.set(effect.id, dataUrl);
+    return dataUrl;
+  } catch {
+    return '';
+  }
+}
+
 function buildFilterGrid() {
   if (!el.filterGrid) return;
   el.filterGrid.innerHTML = '';
@@ -450,6 +562,20 @@ function buildFilterGrid() {
     return;
   }
 
+  getSamplePortraitImage(() => {
+    if (el.filterGrid) {
+      el.filterGrid.querySelectorAll('.filter-tile').forEach((tile) => {
+        const id = tile.dataset.id;
+        const img = tile.querySelector('.ft-thumb-img');
+        if (img && !img.src) {
+          const eff = manager.get(id);
+          const u = getFilterThumbnailUrl(eff);
+          if (u) img.src = u;
+        }
+      });
+    }
+  });
+
   for (const effect of list) {
     const tile = document.createElement('button');
     tile.type = 'button';
@@ -458,9 +584,24 @@ function buildFilterGrid() {
     tile.setAttribute('aria-label', `${effect.name} effect`);
     if (manager.current && manager.current.id === effect.id) tile.classList.add('selected');
 
-    const icon = document.createElement('span');
-    icon.className = 'ft-icon';
-    icon.textContent = effect.icon || '✨';
+    const thumbWrap = document.createElement('div');
+    thumbWrap.className = 'ft-thumb-wrap';
+
+    const thumbImg = document.createElement('img');
+    thumbImg.className = 'ft-thumb-img';
+    thumbImg.alt = `${effect.name} sample photo`;
+    thumbImg.loading = 'lazy';
+    thumbImg.width = 48;
+    thumbImg.height = 48;
+
+    const thumbUrl = getFilterThumbnailUrl(effect);
+    if (thumbUrl) thumbImg.src = thumbUrl;
+    thumbWrap.appendChild(thumbImg);
+
+    const iconBadge = document.createElement('span');
+    iconBadge.className = 'ft-icon-badge';
+    iconBadge.textContent = effect.icon || '✨';
+    thumbWrap.appendChild(iconBadge);
 
     const name = document.createElement('span');
     name.className = 'ft-name';
@@ -476,7 +617,7 @@ function buildFilterGrid() {
       toggleFav(effect.id);
     });
 
-    tile.append(fav, icon, name);
+    tile.append(fav, thumbWrap, name);
     tile.addEventListener('click', () => {
       setEffect(effect.id);
       Sound.click();
@@ -489,6 +630,21 @@ function buildMobileCarousel() {
   if (!el.mobileFilterCarousel) return;
   el.mobileFilterCarousel.innerHTML = '';
   const list = manager.list();
+
+  getSamplePortraitImage(() => {
+    if (el.mobileFilterCarousel) {
+      el.mobileFilterCarousel.querySelectorAll('.carousel-item').forEach((ci) => {
+        const id = ci.dataset.id;
+        const img = ci.querySelector('.carousel-thumb-img');
+        if (img && !img.src) {
+          const eff = manager.get(id);
+          const u = getFilterThumbnailUrl(eff);
+          if (u) img.src = u;
+        }
+      });
+    }
+  });
+
   for (const eff of list) {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -499,7 +655,17 @@ function buildMobileCarousel() {
 
     const iconDiv = document.createElement('div');
     iconDiv.className = 'carousel-icon';
-    iconDiv.textContent = eff.icon || '✨';
+
+    const thumbImg = document.createElement('img');
+    thumbImg.className = 'carousel-thumb-img';
+    thumbImg.alt = eff.name;
+    thumbImg.loading = 'lazy';
+    thumbImg.width = 38;
+    thumbImg.height = 38;
+
+    const tUrl = getFilterThumbnailUrl(eff);
+    if (tUrl) thumbImg.src = tUrl;
+    iconDiv.appendChild(thumbImg);
 
     const nameSpan = document.createElement('span');
     nameSpan.className = 'carousel-name';
@@ -1481,7 +1647,15 @@ function wireEvents() {
     if (n) n.addEventListener(ev, fn);
   };
 
+  const handleHeroStart = () => {
+    const stage = document.getElementById('camera');
+    if (stage && stage.scrollIntoView) {
+      stage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    startCamera();
+  };
   on('#start-btn', 'click', startCamera);
+  on('#hero-start-camera-btn', 'click', handleHeroStart);
   on('#stage-retry', 'click', startCamera);
 
   /* Desktop Pro Camera Console */
@@ -1712,6 +1886,14 @@ function wireEvents() {
       });
     });
   }
+  on('#btn-mobile-random', 'click', () => {
+    randomEffect();
+    if (navigator.vibrate) try { navigator.vibrate(25); } catch {}
+  });
+  on('#hud-btn-random', 'click', () => {
+    randomEffect();
+    if (navigator.vibrate) try { navigator.vibrate(25); } catch {}
+  });
   on('#btn-mobile-shutter', 'click', onMobileShutter);
   on('#btn-mobile-gallery', 'click', openGallery);
   on('#btn-mobile-effects', 'click', openEffectsSheet);

@@ -339,38 +339,162 @@ function renderPortraitBokeh(fx, frame, isSpotlight = false) {
   fx.restore();
 }
 
-/* ---------- Y2K skate fisheye deathlens ---------- */
+/* ---------- Y2K Beauty Fisheye (Optical spherical barrel + dewy porcelain beauty filter) ---------- */
+let FISHEYE_BEAUTY_SRC = null;
+let FISHEYE_WARP_CANVAS = null;
+let FISHEYE_WARP_CTX = null;
+let FISHEYE_LUT = null;
+let FISHEYE_LAST_BW = 0;
+let FISHEYE_LAST_BH = 0;
+
+function getFisheyeBuffers(bw, bh) {
+  if (!FISHEYE_BEAUTY_SRC) {
+    FISHEYE_BEAUTY_SRC = makeCanvas(bw, bh);
+  } else if (FISHEYE_BEAUTY_SRC.width !== bw || FISHEYE_BEAUTY_SRC.height !== bh) {
+    FISHEYE_BEAUTY_SRC.width = bw;
+    FISHEYE_BEAUTY_SRC.height = bh;
+  }
+
+  if (!FISHEYE_WARP_CANVAS) {
+    FISHEYE_WARP_CANVAS = makeCanvas(bw, bh);
+    FISHEYE_WARP_CTX = FISHEYE_WARP_CANVAS.getContext('2d');
+  } else if (FISHEYE_WARP_CANVAS.width !== bw || FISHEYE_WARP_CANVAS.height !== bh) {
+    FISHEYE_WARP_CANVAS.width = bw;
+    FISHEYE_WARP_CANVAS.height = bh;
+    FISHEYE_WARP_CTX = FISHEYE_WARP_CANVAS.getContext('2d');
+  }
+
+  if (FISHEYE_LAST_BW !== bw || FISHEYE_LAST_BH !== bh || !FISHEYE_LUT) {
+    FISHEYE_LAST_BW = bw;
+    FISHEYE_LAST_BH = bh;
+    const total = bw * bh;
+    FISHEYE_LUT = new Int32Array(total);
+    const cx = bw / 2;
+    const cy = bh / 2;
+    const maxR = Math.min(bw, bh) * 0.505;
+
+    for (let y = 0; y < bh; y++) {
+      const dy = y - cy;
+      for (let x = 0; x < bw; x++) {
+        const dx = x - cx;
+        const r = Math.hypot(dx, dy);
+        const idx = y * bw + x;
+        const rNorm = r / maxR;
+
+        if (rNorm <= 1.08) {
+          const factor = 0.65 + 0.35 * Math.pow(rNorm, 2.2);
+          const sx = Math.round(cx + dx * factor);
+          const sy = Math.round(cy + dy * factor);
+          if (sx >= 0 && sx < bw && sy >= 0 && sy < bh) {
+            FISHEYE_LUT[idx] = sy * bw + sx;
+          } else {
+            FISHEYE_LUT[idx] = -1;
+          }
+        } else {
+          FISHEYE_LUT[idx] = -2;
+        }
+      }
+    }
+  }
+
+  return {
+    srcCanvas: FISHEYE_BEAUTY_SRC,
+    warpCanvas: FISHEYE_WARP_CANVAS,
+    warpCtx: FISHEYE_WARP_CTX,
+    lut: FISHEYE_LUT
+  };
+}
+
 function renderFisheye(fx, src, w, h) {
-  fx.save();
-  fx.filter = 'contrast(1.3) saturate(1.45) brightness(1.05)';
-  fx.drawImage(src, 0, 0, w, h);
-  fx.filter = 'none';
+  const aspect = Math.max(0.1, w / h);
+  const bw = Math.min(480, w);
+  const bh = Math.max(1, Math.round(bw / aspect));
 
-  const cx = w / 2;
-  const cy = h / 2;
-  const maxR = Math.min(w, h) * 0.48;
+  const { srcCanvas, warpCanvas, warpCtx, lut } = getFisheyeBuffers(bw, bh);
+  const bctx = srcCanvas.getContext('2d');
 
-  fx.save();
-  fx.beginPath();
-  fx.arc(cx, cy, maxR * 0.65, 0, Math.PI * 2);
-  fx.clip();
-  fx.drawImage(src, cx - maxR * 0.65, cy - maxR * 0.65, maxR * 1.3, maxR * 1.3,
-                   cx - maxR * 0.76, cy - maxR * 0.76, maxR * 1.52, maxR * 1.52);
-  fx.restore();
+  // Step 1: Beauty skin grading & dewy tone pre-pass
+  bctx.setTransform(1, 0, 0, 1, 0, 0);
+  bctx.clearRect(0, 0, bw, bh);
+  bctx.filter = 'brightness(1.09) contrast(1.03) saturate(1.18) sepia(0.06)';
+  bctx.drawImage(src, 0, 0, bw, bh);
+  bctx.filter = 'none';
 
+  // Step 2: Porcelain skin smoothing diffusion
+  bctx.save();
+  bctx.filter = 'blur(4px) brightness(1.14)';
+  bctx.globalAlpha = 0.22;
+  bctx.globalCompositeOperation = 'screen';
+  bctx.drawImage(src, 0, 0, bw, bh);
+  bctx.restore();
+
+  // Step 3: Subtle peach blush glow
+  const cx = bw / 2;
+  const cy = bh / 2;
+  const blush = bctx.createRadialGradient(cx, cy, 0, cx, cy, Math.min(bw, bh) * 0.42);
+  blush.addColorStop(0, 'rgba(251, 113, 133, 0.09)');
+  blush.addColorStop(0.6, 'rgba(244, 114, 182, 0.04)');
+  blush.addColorStop(1, 'rgba(244, 114, 182, 0)');
+  bctx.fillStyle = blush;
+  bctx.fillRect(0, 0, bw, bh);
+
+  // Step 4: True Optical Spherical Barrel Distortion
+  const srcImgData = bctx.getImageData(0, 0, bw, bh);
+  const warpImgData = warpCtx.createImageData(bw, bh);
+  const src32 = new Uint32Array(srcImgData.data.buffer);
+  const warp32 = new Uint32Array(warpImgData.data.buffer);
+  const total = bw * bh;
+
+  for (let i = 0; i < total; i++) {
+    const sIdx = lut[i];
+    if (sIdx >= 0) {
+      warp32[i] = src32[sIdx];
+    } else {
+      warp32[i] = 0xFF080608;
+    }
+  }
+
+  warpCtx.putImageData(warpImgData, 0, 0);
+
+  // Step 5: GPU-smoothed composite to display context
   fx.save();
-  const vig = fx.createRadialGradient(cx, cy, maxR * 0.8, cx, cy, maxR * 1.15);
+  fx.setTransform(1, 0, 0, 1, 0, 0);
+  fx.imageSmoothingEnabled = true;
+  fx.imageSmoothingQuality = 'high';
+  fx.drawImage(warpCanvas, 0, 0, bw, bh, 0, 0, w, h);
+
+  // Step 6: Optical vignette & physical lens housing
+  const fcx = w / 2;
+  const fcy = h / 2;
+  const maxFR = Math.min(w, h) * 0.505;
+
+  const vig = fx.createRadialGradient(fcx, fcy, maxFR * 0.68, fcx, fcy, maxFR * 1.04);
   vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  vig.addColorStop(0.85, 'rgba(0, 0, 0, 0.85)');
-  vig.addColorStop(1, 'rgba(0, 0, 0, 1)');
+  vig.addColorStop(0.75, 'rgba(6, 4, 10, 0.45)');
+  vig.addColorStop(0.94, 'rgba(4, 2, 8, 0.88)');
+  vig.addColorStop(1, 'rgba(4, 2, 8, 1)');
   fx.fillStyle = vig;
   fx.fillRect(0, 0, w, h);
 
   fx.beginPath();
   fx.rect(0, 0, w, h);
-  fx.arc(cx, cy, maxR, 0, Math.PI * 2, true);
-  fx.fillStyle = '#000000';
+  fx.arc(fcx, fcy, maxFR * 1.01, 0, Math.PI * 2, true);
+  fx.fillStyle = '#060408';
   fx.fill();
+
+  // Multi-coated glass reflection arcs
+  fx.beginPath();
+  fx.arc(fcx, fcy, maxFR * 0.98, Math.PI * 1.05, Math.PI * 1.45);
+  fx.strokeStyle = 'rgba(236, 72, 153, 0.18)';
+  fx.lineWidth = Math.max(2, Math.round(w * 0.004));
+  fx.stroke();
+
+  fx.beginPath();
+  fx.arc(fcx, fcy, maxFR * 0.96, Math.PI * 1.10, Math.PI * 1.40);
+  fx.strokeStyle = 'rgba(56, 189, 248, 0.14)';
+  fx.lineWidth = Math.max(1, Math.round(w * 0.002));
+  fx.stroke();
+
   fx.restore();
 }
 

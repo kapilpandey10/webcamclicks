@@ -177,7 +177,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- ================= Hero ================= -->
 <section class="hero hero-clean">
   <h1 class="hero-clean-title">WebcamClicks <span>Free Webcam Filters &amp; Studio</span></h1>
-  <p class="hero-clean-sub">Over 50 fun webcam effects, photo booth strips &amp; HD video recording — 100% on-device &amp; private.</p>
+  <p class="hero-clean-sub">Over 100 trending webcam effects, AR face lenses, photo booth strips &amp; HD video recording — 100% on-device &amp; private.</p>
 
   <div class="hero-cta-single">
     <button class="hero-start-btn" id="hero-start-camera-btn" type="button" aria-label="Start Camera">
@@ -262,15 +262,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
 
       <div class="stage-overlay" id="stage-overlay">
-        <h2>📷 Webcam clicks &amp; live effects</h2>
-        <p>Private &amp; instant — camera access is requested only after you tap.</p>
-        <button class="btn btn-primary" id="start-btn" type="button">🎥 Start camera</button>
+        <h2>📷 Webcam clicks &amp; 100+ live effects</h2>
+        <p>Private &amp; instant — camera access is requested only after you tap, or test instantly with Live Demo Mode.</p>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+          <button class="btn btn-primary" id="start-btn" type="button">🎥 Start camera</button>
+          <button class="btn" id="demo-btn" type="button" style="background:rgba(255,255,255,0.14); color:#ffffff; border:1px solid rgba(255,255,255,0.3);">✨ Try Demo Portrait</button>
+        </div>
       </div>
 
       <div class="stage-overlay" id="stage-error" style="display:none">
         <h2>😕 Camera not available</h2>
         <p id="stage-error-msg"></p>
-        <button class="btn btn-primary" id="stage-retry" type="button">🔄 Try again</button>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+          <button class="btn btn-primary" id="stage-retry" type="button">🔄 Try again</button>
+          <button class="btn" id="stage-demo-retry" type="button" style="background:rgba(255,255,255,0.14); color:#ffffff; border:1px solid rgba(255,255,255,0.3);">✨ Use Live Demo Portrait</button>
+        </div>
       </div>
     </div>
 
@@ -287,6 +293,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <button class="tool-sub" id="btn-fav" type="button" title="Add to Favorites (F)">
             ⭐ <span class="sub-label">Favorite</span> <span class="kbd">F</span>
           </button>
+          <button class="tool-sub" id="btn-split-compare" type="button" title="Toggle 50/50 Before & After Split Screen">
+            🌗 <span class="sub-label">Split</span>
+          </button>
+          <button class="tool-sub" id="btn-compare-hold" type="button" title="Press and hold to view unfiltered original">
+            👁️ <span class="sub-label">Original</span>
+          </button>
         </div>
 
         <!-- Center: Camera Mode Selector -->
@@ -301,8 +313,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <select class="collage-poses-select" id="select-collage-poses" aria-label="Collage layout" title="Select collage layout">
               <option value="2">2 Duo</option>
               <option value="3">3 Strip</option>
-              <option value="4" selected>4 Quad</option>
+              <option value="4v">4 Life4Cuts Strip</option>
+              <option value="4" selected>4 Quad Grid</option>
               <option value="6">6 Studio</option>
+              <option value="9">9 Mega Grid</option>
             </select>
           </div>
           <button class="mode-tab" id="mode-seg-video" type="button" role="tab" aria-selected="false">
@@ -418,8 +432,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="mobile-collage-selector" id="mobile-collage-selector" style="display:none;">
         <button class="collage-pill" data-poses="2" type="button">2 Duo</button>
         <button class="collage-pill" data-poses="3" type="button">3 Strip</button>
+        <button class="collage-pill" data-poses="4v" type="button">4 Strip</button>
         <button class="collage-pill active" data-poses="4" type="button">4 Grid</button>
         <button class="collage-pill" data-poses="6" type="button">6 Studio</button>
+        <button class="collage-pill" data-poses="9" type="button">9 Grid</button>
       </div>
 
       <!-- Horizontal Thumb-Scroll Lens / Effect Carousel -->
@@ -471,7 +487,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
     <div class="panel-head">
       <h3>🎨 Effects &amp; filters</h3>
-      <span class="panel-hint" id="panel-hint">Tap a tile to apply</span>
+      <span class="panel-hint" id="panel-hint">100+ live effects</span>
+    </div>
+    <div class="filter-search-wrap" style="margin-bottom:10px;">
+      <input type="search" id="filter-search" class="filter-search-input" placeholder="🔍 Search 100+ filters (e.g. K-Pop, Y2K, Glow, VHS)..." aria-label="Search effects and filters">
     </div>
     <div class="category-tabs" id="category-tabs"></div>
     <div class="filter-grid" id="filter-grid"></div>

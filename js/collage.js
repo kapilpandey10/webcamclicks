@@ -122,9 +122,13 @@ export function generateCollage(poses, opts = {}) {
 
   let cw = 1200;
   let ch = 1600;
-  let layout = 'grid'; // 'strip' | 'grid' | 'duo'
+  let layout = opts.layout || 'grid'; // 'strip' | 'grid' | 'duo'
 
-  if (count === 2) {
+  if (opts.poses === '4v' || opts.layout === '4v' || (count === 4 && opts.layout === 'strip')) {
+    layout = 'strip';
+    cw = 650;
+    ch = 2350;
+  } else if (count === 2) {
     layout = 'duo';
     cw = 1200;
     ch = 950;
@@ -140,6 +144,10 @@ export function generateCollage(poses, opts = {}) {
     layout = 'grid';
     cw = 1200;
     ch = 1850;
+  } else if (count >= 7 || opts.layout === 'grid9') {
+    layout = 'grid9';
+    cw = 1200;
+    ch = 1350;
   }
 
   const canvas = makeCanvas(cw, ch);
@@ -238,10 +246,10 @@ export function generateCollage(poses, opts = {}) {
       ctx.restore();
     }
   } else {
-    // Grid: 2 Columns, 2 or 3 Rows
-    const cols = 2;
-    const rows = count <= 4 ? 2 : 3;
-    const photoW = (cw - margin * 2 - gap) / cols;
+    // Grid: 2 or 3 Columns
+    const cols = layout === 'grid9' || count >= 7 ? 3 : 2;
+    const rows = cols === 3 ? 3 : (count <= 4 ? 2 : 3);
+    const photoW = (cw - margin * 2 - gap * (cols - 1)) / cols;
     const availH = ch - headerHeight - footerHeight;
     const photoH = (availH - gap * (rows - 1)) / rows;
 

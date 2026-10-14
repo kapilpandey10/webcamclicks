@@ -24,6 +24,8 @@ export class CameraManager {
     this.resolution = '1920x1080';
     this.zoom = 1;
     this._digitalZoom = 1;
+    this.isDemo = false;
+    this.demoImg = null;
 
     /* Work canvas: the frame all effects/games read from.
        NOTE: willReadFrequently is intentionally NOT set here so Mobile Safari
@@ -63,11 +65,56 @@ export class CameraManager {
     return this.devices;
   }
 
+  async startDemo(imageSrc = '/assets/img/sample-portrait.jpg') {
+    this.stopTracks();
+    this.isDemo = true;
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        this.demoImg = img;
+        this.active = true;
+        this.mirror = false;
+        this.nativeWidth = img.naturalWidth || 1280;
+        this.nativeHeight = img.naturalHeight || 720;
+        this._computeWorkSize();
+        resolve(true);
+      };
+      img.onerror = () => {
+        const synth = makeCanvas(1280, 720);
+        const sctx = synth.getContext('2d');
+        const grad = sctx.createLinearGradient(0, 0, 1280, 720);
+        grad.addColorStop(0, '#fce7f3');
+        grad.addColorStop(1, '#fbcfe8');
+        sctx.fillStyle = grad;
+        sctx.fillRect(0, 0, 1280, 720);
+        sctx.fillStyle = '#f8d7da';
+        sctx.beginPath();
+        sctx.ellipse(640, 360, 180, 240, 0, 0, Math.PI * 2);
+        sctx.fill();
+        sctx.fillStyle = '#1e293b';
+        sctx.font = 'bold 36px "Outfit", sans-serif';
+        sctx.textAlign = 'center';
+        sctx.fillText('✨ Live Demo Portrait', 640, 360);
+        this.demoImg = synth;
+        this.active = true;
+        this.mirror = false;
+        this.nativeWidth = 1280;
+        this.nativeHeight = 720;
+        this._computeWorkSize();
+        resolve(true);
+      };
+      img.src = imageSrc;
+    });
+  }
+
   async start(requestedResolution = null) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw Object.assign(new Error('unsupported'), { name: 'NotSupportedError' });
     }
     this.stopTracks();
+    this.isDemo = false;
+    this.demoImg = null;
 
     if (requestedResolution) {
       this.resolution = requestedResolution;
@@ -268,6 +315,7 @@ export class CameraManager {
   }
 
   getResolutionLabel() {
+    if (this.isDemo) return 'Demo Portrait';
     const w = this.nativeWidth || (this.video && this.video.videoWidth) || this.width;
     const h = this.nativeHeight || (this.video && this.video.videoHeight) || this.height;
     if (w >= 7600) return '8K UHD';
@@ -328,6 +376,8 @@ export class CameraManager {
   }
 
   stopTracks() {
+    this.isDemo = false;
+    this.demoImg = null;
     if (this.stream) {
       this.stream.getTracks().forEach((t) => t.stop());
       this.stream = null;
@@ -341,7 +391,21 @@ export class CameraManager {
   }
 
   grabFrame() {
-    if (!this.active || !this.video) return null;
+    if (!this.active) return null;
+    if (this.isDemo && this.demoImg) {
+      const ctx = this.workCtx;
+      const { width: w, height: h } = this;
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      if (this.mirror) {
+        ctx.translate(w, 0);
+        ctx.scale(-1, 1);
+      }
+      drawCover(ctx, this.demoImg, w, h, false);
+      ctx.restore();
+      return this.work;
+    }
+    if (!this.video) return null;
     if (this.video.readyState < 2 || !this.video.videoWidth || !this.video.videoHeight) {
       return null;
     }

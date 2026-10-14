@@ -49,6 +49,11 @@ let badgeTick = 0;
 let mobileMode = 'photo'; /* 'photo' | 'collage' | 'video' */
 let desktopMode = 'photo'; /* 'photo' | 'collage' | 'video' */
 let collagePoseCount = 4;
+let collagePoseSpec = '4';
+let collageActiveLayout = 'grid';
+let splitCompare = false;
+let compareHold = false;
+let filterSearchQuery = '';
 let collageActive = false;
 let collagePoses = [];
 let currentCollageResult = null;
@@ -108,9 +113,11 @@ function init() {
 
   el.startOverlay = $('#stage-overlay');
   el.startBtn = $('#start-btn');
+  el.demoBtn = $('#demo-btn');
   el.stageError = $('#stage-error');
   el.stageErrorMsg = $('#stage-error-msg');
   el.stageRetry = $('#stage-retry');
+  el.stageDemoRetry = $('#stage-demo-retry');
   el.fpsBadge = $('#fps-badge');
   el.resBadge = $('#res-badge');
   el.recBadge = $('#rec-badge');
@@ -118,10 +125,13 @@ function init() {
   el.quickResSelect = $('#quick-res-select');
   el.btnCapture = $('#btn-capture');
   el.btnRecord = $('#btn-record');
+  el.btnSplitCompare = $('#btn-split-compare');
+  el.btnCompareHold = $('#btn-compare-hold');
   el.cameraSelect = $('#camera-select');
   el.faceBadge = $('#face-badge');
   el.flash = $('#flash');
   el.categoryTabs = $('#category-tabs');
+  el.filterSearch = $('#filter-search');
   el.filterGrid = $('#filter-grid');
   el.panelHint = $('#panel-hint');
   el.intensity = $('#intensity');
@@ -325,6 +335,37 @@ async function startCamera() {
   }
 }
 
+async function startDemoPortrait() {
+  if (startingCamera) return;
+  try {
+    await camera.startDemo();
+    display.width = camera.width;
+    display.height = camera.height;
+    running = true;
+    lastNow = 0;
+    requestAnimationFrame(loop);
+    if (el.startOverlay) el.startOverlay.style.display = 'none';
+    if (el.stageError) el.stageError.style.display = 'none';
+    const heroBtnText = $('#hero-start-btn-text');
+    if (heroBtnText) heroBtnText.textContent = 'Demo Portrait Active';
+    if (el.fpsBadge) el.fpsBadge.style.display = '';
+    if (el.cameraZoomWidget) el.cameraZoomWidget.style.display = 'inline-flex';
+    updateResolutionUI();
+    setEffect(settings.effect || 'normal', { save: false });
+    if (pendingGame) { startGame(pendingGame); pendingGame = null; }
+    Sound.pop();
+    toast('✨ Live Demo Mode active — test any effect or game!', 3500);
+
+    // Warmup tracker
+    setTimeout(() => {
+      tracker.ensureBase().catch(() => {});
+    }, 800);
+  } catch (err) {
+    console.error('[WebcamClicks] demo portrait start err:', err);
+  }
+}
+window.startWebcamClicksDemo = startDemoPortrait;
+
 function updateResolutionUI() {
   if (el.resBadge) {
     el.resBadge.textContent = camera.getResolutionLabel();
@@ -401,6 +442,55 @@ function loop(now) {
       dctx.drawImage(src, 0, 0);
       gameMgr.update(dt, frame);
       gameMgr.render(dctx, frame);
+    } else if (compareHold) {
+      dctx.drawImage(src, 0, 0, display.width, display.height);
+      dctx.save();
+      dctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
+      dctx.font = 'bold 13px "Outfit", sans-serif';
+      dctx.textBaseline = 'top';
+      const txt = '👁️ ORIGINAL (UNFILTERED)';
+      const tw = dctx.measureText(txt).width + 16;
+      dctx.fillRect(12, 12, tw, 26);
+      dctx.fillStyle = '#ffffff';
+      dctx.fillText(txt, 20, 17);
+      dctx.restore();
+    } else if (splitCompare) {
+      manager.render(dctx, frame);
+      dctx.save();
+      dctx.beginPath();
+      dctx.rect(0, 0, display.width / 2, display.height);
+      dctx.clip();
+      dctx.drawImage(src, 0, 0, display.width, display.height);
+      dctx.restore();
+
+      // Divider line
+      dctx.save();
+      dctx.strokeStyle = '#ffffff';
+      dctx.lineWidth = 3;
+      dctx.shadowColor = 'rgba(236, 72, 153, 0.8)';
+      dctx.shadowBlur = 8;
+      dctx.beginPath();
+      dctx.moveTo(display.width / 2, 0);
+      dctx.lineTo(display.width / 2, display.height);
+      dctx.stroke();
+
+      // Badges
+      dctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+      dctx.font = 'bold 12px "Outfit", sans-serif';
+      dctx.textBaseline = 'top';
+      const pad = 6;
+      const origW = dctx.measureText('ORIGINAL').width + pad * 2;
+      dctx.fillRect(display.width / 2 - origW - 12, 12, origW, 22);
+      dctx.fillStyle = '#ffffff';
+      dctx.fillText('ORIGINAL', display.width / 2 - origW - 12 + pad, 16);
+
+      const filtText = (manager.current && manager.current.name ? manager.current.name.toUpperCase() : 'FILTERED');
+      const filtW = dctx.measureText(filtText).width + pad * 2;
+      dctx.fillStyle = 'rgba(236, 72, 153, 0.85)';
+      dctx.fillRect(display.width / 2 + 12, 12, filtW, 22);
+      dctx.fillStyle = '#ffffff';
+      dctx.fillText(filtText, display.width / 2 + 12 + pad, 16);
+      dctx.restore();
     } else {
       manager.render(dctx, frame);
     }
@@ -557,16 +647,31 @@ function buildFilterGrid() {
   if (!el.filterGrid) return;
   el.filterGrid.innerHTML = '';
   let list = manager.list();
-  if (currentCategory === 'Favorites') list = list.filter((e) => favs.has(e.id));
-  else if (currentCategory !== 'All') list = list.filter((e) => e.category === currentCategory);
+  if (filterSearchQuery) {
+    const q = filterSearchQuery.toLowerCase();
+    list = list.filter((e) =>
+      (e.name && e.name.toLowerCase().includes(q)) ||
+      (e.id && e.id.toLowerCase().includes(q)) ||
+      (e.category && e.category.toLowerCase().includes(q))
+    );
+    if (el.panelHint) {
+      el.panelHint.textContent = `${list.length} filter${list.length === 1 ? '' : 's'} found`;
+    }
+  } else {
+    if (el.panelHint) el.panelHint.textContent = '100+ live effects';
+    if (currentCategory === 'Favorites') list = list.filter((e) => favs.has(e.id));
+    else if (currentCategory !== 'All') list = list.filter((e) => e.category === currentCategory);
+  }
 
   if (!list.length) {
     const p = document.createElement('p');
     p.className = 'panel-hint';
     p.style.gridColumn = '1 / -1';
-    p.textContent = currentCategory === 'Favorites'
-      ? 'No favorites yet — tap the ☆ on any filter to save it here.'
-      : 'Nothing in this category.';
+    p.textContent = filterSearchQuery
+      ? `No filters matching "${filterSearchQuery}". Try "Y2K", "VHS", "Glow", or "Comic".`
+      : (currentCategory === 'Favorites'
+        ? 'No favorites yet — tap the ☆ on any filter to save it here.'
+        : 'Nothing in this category.');
     el.filterGrid.appendChild(p);
     return;
   }
@@ -967,7 +1072,7 @@ async function capture() {
   }
 }
 
-async function startCollageShoot(poseCount = 4) {
+async function startCollageShoot(poseSpec = 4) {
   if (!camera.active) {
     toast('🎥 Enable the camera first');
     return;
@@ -977,7 +1082,27 @@ async function startCollageShoot(poseCount = 4) {
   collageActive = true;
   cancelCollageRequested = false;
   collagePoses = [];
-  collagePoseCount = parseInt(poseCount, 10) || 4;
+
+  let count = 4;
+  let layout = 'grid';
+  if (poseSpec === '4v') {
+    count = 4;
+    layout = 'strip';
+  } else if (poseSpec === '9' || poseSpec === 9) {
+    count = 9;
+    layout = 'grid9';
+  } else if (poseSpec === '3' || poseSpec === 3) {
+    count = 3;
+    layout = 'strip';
+  } else if (poseSpec === '2' || poseSpec === 2) {
+    count = 2;
+    layout = 'duo';
+  } else {
+    count = parseInt(poseSpec, 10) || 4;
+    layout = 'grid';
+  }
+  collagePoseCount = count;
+  collageActiveLayout = layout;
 
   // Setup Collage HUD
   if (el.collageHud) {
@@ -1061,6 +1186,8 @@ function abortCollageShoot() {
 function finishCollageShoot() {
   currentCollageResult = generateCollage(collagePoses, {
     theme: collageTheme,
+    layout: collageActiveLayout,
+    poses: collagePoseSpec,
     title: 'WEBCAMCLICKS PHOTO BOOTH'
   });
 
@@ -1534,7 +1661,7 @@ async function onMobileShutter() {
   if (mobileMode === 'video') {
     await toggleRecord();
   } else if (mobileMode === 'collage') {
-    await startCollageShoot(collagePoseCount);
+    await startCollageShoot(collagePoseSpec || collagePoseCount);
   } else {
     await capture();
   }
@@ -1582,7 +1709,7 @@ async function onMasterCapture() {
   if (desktopMode === 'video') {
     await toggleRecord();
   } else if (desktopMode === 'collage') {
-    const poses = el.selectCollagePoses ? parseInt(el.selectCollagePoses.value, 10) : collagePoseCount;
+    const poses = el.selectCollagePoses ? el.selectCollagePoses.value : (collagePoseSpec || collagePoseCount);
     await startCollageShoot(poses);
   } else {
     await capture();
@@ -1664,8 +1791,10 @@ function wireEvents() {
     startCamera();
   };
   on('#start-btn', 'click', startCamera);
+  on('#demo-btn', 'click', startDemoPortrait);
   on('#hero-start-camera-btn', 'click', handleHeroStart);
   on('#stage-retry', 'click', startCamera);
+  on('#stage-demo-retry', 'click', startDemoPortrait);
 
   /* Desktop Pro Camera Console */
   on('#btn-capture', 'click', onMasterCapture);
@@ -1673,11 +1802,61 @@ function wireEvents() {
   on('#mode-seg-collage', 'click', () => setDesktopMode('collage'));
   on('#mode-seg-video', 'click', () => setDesktopMode('video'));
   on('#btn-collage', 'click', () => {
-    const poses = el.selectCollagePoses ? parseInt(el.selectCollagePoses.value, 10) : collagePoseCount;
+    const poses = el.selectCollagePoses ? el.selectCollagePoses.value : (collagePoseSpec || collagePoseCount);
     startCollageShoot(poses);
   });
   on('#select-collage-poses', 'change', (e) => {
-    collagePoseCount = parseInt(e.target.value, 10) || 4;
+    const spec = e.target.value;
+    collagePoseSpec = spec;
+    if (spec === '4v') {
+      collagePoseCount = 4;
+      collageActiveLayout = 'strip';
+    } else if (spec === '9') {
+      collagePoseCount = 9;
+      collageActiveLayout = 'grid9';
+    } else {
+      collagePoseCount = parseInt(spec, 10) || 4;
+      collageActiveLayout = collagePoseCount === 3 ? 'strip' : (collagePoseCount === 2 ? 'duo' : 'grid');
+    }
+    if (el.mobileCollageSelector) {
+      const pills = el.mobileCollageSelector.querySelectorAll('.collage-pill');
+      pills.forEach(p => p.classList.toggle('active', p.dataset.poses === spec));
+    }
+  });
+
+  on('#btn-split-compare', 'click', () => {
+    splitCompare = !splitCompare;
+    if (el.btnSplitCompare) {
+      el.btnSplitCompare.classList.toggle('active', splitCompare);
+    }
+    Sound.click();
+    toast(splitCompare ? '🌗 50/50 Split Screen active' : 'Full effect view');
+  });
+
+  const compBtn = $('#btn-compare-hold');
+  if (compBtn) {
+    const startHold = (e) => {
+      e.preventDefault();
+      compareHold = true;
+      compBtn.classList.add('active');
+      Sound.click();
+    };
+    const endHold = () => {
+      if (!compareHold) return;
+      compareHold = false;
+      compBtn.classList.remove('active');
+    };
+    compBtn.addEventListener('mousedown', startHold);
+    compBtn.addEventListener('mouseup', endHold);
+    compBtn.addEventListener('mouseleave', endHold);
+    compBtn.addEventListener('touchstart', startHold, { passive: false });
+    compBtn.addEventListener('touchend', endHold);
+    compBtn.addEventListener('touchcancel', endHold);
+  }
+
+  on('#filter-search', 'input', (e) => {
+    filterSearchQuery = e.target.value.trim();
+    buildFilterGrid();
   });
   on('#btn-record', 'click', toggleRecord);
   on('#btn-random', 'click', randomEffect);
@@ -1889,8 +2068,19 @@ function wireEvents() {
       pill.addEventListener('click', () => {
         pills.forEach(p => p.classList.remove('active'));
         pill.classList.add('active');
-        collagePoseCount = parseInt(pill.dataset.poses, 10) || 4;
-        if (el.selectCollagePoses) el.selectCollagePoses.value = String(collagePoseCount);
+        const spec = pill.dataset.poses;
+        collagePoseSpec = spec;
+        if (spec === '4v') {
+          collagePoseCount = 4;
+          collageActiveLayout = 'strip';
+        } else if (spec === '9') {
+          collagePoseCount = 9;
+          collageActiveLayout = 'grid9';
+        } else {
+          collagePoseCount = parseInt(spec, 10) || 4;
+          collageActiveLayout = collagePoseCount === 3 ? 'strip' : (collagePoseCount === 2 ? 'duo' : 'grid');
+        }
+        if (el.selectCollagePoses) el.selectCollagePoses.value = spec;
         Sound.click();
       });
     });

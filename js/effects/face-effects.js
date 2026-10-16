@@ -2246,6 +2246,1173 @@ export const defsFace = [
 
       fx.restore();
     }
+  },
+
+  /* ============================ CYBERNETIC VISOR ============================ */
+  {
+    id: 'cyborg_visor', name: 'Cyber Cyborg Visor', icon: '🥽', category: 'Face', perf: 'low', requiresFace: true,
+    render(fx, frame) {
+      passthrough(fx, frame);
+      const g = geo(frame);
+      const s = smoothGeo(this, g, frame.dt || 16.7, 40);
+      const t = frame.time || performance.now();
+      const w = frame.width;
+      const h = frame.height;
+
+      if (!s) {
+        // Fallback: ambient cyber corner brackets when searching for face
+        fx.save();
+        fx.strokeStyle = 'rgba(0, 240, 255, 0.5)';
+        fx.lineWidth = 2;
+        const bs = Math.max(16, Math.round(w * 0.04));
+        fx.strokeRect(bs, bs, w - bs * 2, h - bs * 2);
+        fx.font = 'bold 12px "Courier New", monospace';
+        fx.fillStyle = '#00f0ff';
+        fx.fillText('OPTIC SCANNER: ACQUIRING TARGET...', bs + 8, bs + 20);
+        fx.restore();
+        return;
+      }
+
+      const ed = s.eyeDist;
+      const hw = Math.max(ed * 1.6, s.headW);
+      const vW = hw * 1.05;
+      const vH = ed * 0.72;
+
+      fx.save();
+      fx.translate(s.x, s.y);
+      fx.rotate(s.a);
+      fx.translate(s.yaw * hw * 0.1, 0);
+
+      // 1. Visor curved aerodynamic frame
+      fx.beginPath();
+      fx.moveTo(-vW * 0.5, -vH * 0.4);
+      fx.lineTo(vW * 0.5, -vH * 0.4);
+      fx.quadraticCurveTo(vW * 0.55, vH * 0.5, 0, vH * 0.55);
+      fx.quadraticCurveTo(-vW * 0.55, vH * 0.5, -vW * 0.5, -vH * 0.4);
+      fx.closePath();
+
+      // Tinted holographic glass fill
+      const vGrad = fx.createLinearGradient(0, -vH * 0.4, 0, vH * 0.55);
+      vGrad.addColorStop(0, 'rgba(6, 182, 212, 0.45)');
+      vGrad.addColorStop(0.5, 'rgba(15, 23, 42, 0.65)');
+      vGrad.addColorStop(1, 'rgba(0, 240, 255, 0.35)');
+      fx.fillStyle = vGrad;
+      fx.fill();
+
+      // Glowing neon cyan visor rim
+      fx.strokeStyle = '#00f0ff';
+      fx.shadowColor = '#00f0ff';
+      fx.shadowBlur = 14;
+      fx.lineWidth = Math.max(2, ed * 0.04);
+      fx.stroke();
+      fx.shadowBlur = 0;
+
+      // 2. Horizontal scanning laser beam traversing across visor
+      const laserX = (Math.sin(t * 0.003) * 0.45) * vW;
+      const lGrad = fx.createLinearGradient(laserX - 12, 0, laserX + 12, 0);
+      lGrad.addColorStop(0, 'rgba(0, 240, 255, 0)');
+      lGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.9)');
+      lGrad.addColorStop(1, 'rgba(0, 240, 255, 0)');
+      fx.fillStyle = lGrad;
+      fx.fillRect(laserX - 12, -vH * 0.4, 24, vH * 0.9);
+
+      // 3. Dual pupil targeting reticles
+      const eyeDx = ed * 0.5;
+      const pr = ed * 0.28;
+      [-eyeDx, eyeDx].forEach((px) => {
+        fx.save();
+        fx.translate(px, 0);
+        fx.rotate(t * 0.002);
+        fx.strokeStyle = '#facc15';
+        fx.lineWidth = 1.5;
+        // Rotating dashed reticle ring
+        for (let a = 0; a < 4; a++) {
+          fx.beginPath();
+          fx.arc(0, 0, pr, a * Math.PI * 0.5 + 0.15, a * Math.PI * 0.5 + 0.6);
+          fx.stroke();
+        }
+        // Center cross
+        fx.strokeStyle = '#00f0ff';
+        fx.lineWidth = 1;
+        fx.beginPath();
+        fx.moveTo(-pr * 0.4, 0); fx.lineTo(pr * 0.4, 0);
+        fx.moveTo(0, -pr * 0.4); fx.lineTo(0, pr * 0.4);
+        fx.stroke();
+        fx.restore();
+      });
+
+      // 4. Biometric HUD telemetry labels near temples
+      const fs = Math.max(8, Math.round(ed * 0.14));
+      fx.font = `bold ${fs}px "Courier New", monospace`;
+      fx.textBaseline = 'top';
+      fx.fillStyle = '#00f0ff';
+      fx.shadowColor = '#00f0ff';
+      fx.shadowBlur = 4;
+      fx.fillText('OPTIC: 120 FPS', -vW * 0.46, -vH * 0.32);
+      fx.fillText('PUPIL: LOCKED', -vW * 0.46, -vH * 0.32 + fs * 1.3);
+
+      fx.textAlign = 'right';
+      fx.fillStyle = '#39ff14';
+      fx.fillText('TARGET: HOMINID', vW * 0.46, -vH * 0.32);
+      fx.fillText('SYNC: 99.8%', vW * 0.46, -vH * 0.32 + fs * 1.3);
+
+      // 5. Circuit traces extending along cheekbones
+      fx.strokeStyle = 'rgba(0, 240, 255, 0.65)';
+      fx.lineWidth = 1.5;
+      [-vW * 0.5, vW * 0.5].forEach((cx, idx) => {
+        const dir = idx === 0 ? -1 : 1;
+        fx.beginPath();
+        fx.moveTo(cx, 0);
+        fx.lineTo(cx + dir * 18, vH * 0.3);
+        fx.lineTo(cx + dir * 28, vH * 0.7);
+        fx.stroke();
+        fx.fillStyle = '#facc15';
+        fx.beginPath();
+        fx.arc(cx + dir * 28, vH * 0.7, 2, 0, Math.PI * 2);
+        fx.fill();
+      });
+
+      fx.restore();
+    }
+  },
+
+  /* ============================ DEMON HORNS ============================ */
+  {
+    id: 'demon_horns', name: 'Neon Demon Horns', icon: '😈', category: 'Face', perf: 'low', requiresFace: true,
+    render(fx, frame) {
+      passthrough(fx, frame);
+      const g = geo(frame);
+      const s = smoothGeo(this, g, frame.dt || 16.7, 40);
+      const t = frame.time || performance.now();
+      if (!s) return;
+
+      const ed = s.eyeDist;
+      const hw = s.headW;
+
+      // Particle system for rising purple/crimson flame wisps
+      if (!this._p) this._p = [];
+      const delta = clamp(frame.dt || 16.7, 0, 50);
+
+      fx.save();
+      fx.translate(s.x, s.y);
+      fx.rotate(s.a);
+      fx.translate(s.yaw * hw * 0.08, 0);
+
+      const hornBaseY = -ed * 0.75;
+      const hornSpacing = ed * 0.55;
+      const hornH = ed * 1.25;
+
+      // Draw Left and Right Horns
+      [-hornSpacing, hornSpacing].forEach((hx, idx) => {
+        const dir = idx === 0 ? -1 : 1;
+        fx.save();
+        fx.translate(hx, hornBaseY);
+
+        // Horn bezier curve
+        fx.beginPath();
+        fx.moveTo(-dir * ed * 0.12, 0);
+        fx.quadraticCurveTo(dir * ed * 0.1, -hornH * 0.45, dir * ed * 0.45, -hornH);
+        fx.quadraticCurveTo(dir * ed * 0.05, -hornH * 0.35, dir * ed * 0.12, 0);
+        fx.closePath();
+
+        // 3D Obsidian-to-crimson gradient
+        const hGrad = fx.createLinearGradient(0, 0, dir * ed * 0.45, -hornH);
+        hGrad.addColorStop(0, '#1e1124');
+        hGrad.addColorStop(0.5, '#4c0519');
+        hGrad.addColorStop(0.85, '#e11d48');
+        hGrad.addColorStop(1, '#fda4af');
+        fx.fillStyle = hGrad;
+        fx.fill();
+
+        // Glowing neon outline
+        fx.strokeStyle = '#f43f5e';
+        fx.shadowColor = '#f43f5e';
+        fx.shadowBlur = 18;
+        fx.lineWidth = Math.max(2, ed * 0.04);
+        fx.stroke();
+        fx.shadowBlur = 0;
+
+        // Metallic horn segments
+        fx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        fx.lineWidth = 1;
+        for (let i = 1; i <= 3; i++) {
+          const sy = -hornH * (i * 0.22);
+          const sx = dir * ed * (i * 0.09);
+          fx.beginPath();
+          fx.moveTo(sx - 6, sy);
+          fx.lineTo(sx + 6, sy - 2);
+          fx.stroke();
+        }
+        fx.restore();
+
+        // Spawn rising flame particles from horn tips
+        if (Math.random() < 0.45) {
+          this._p.push({
+            x: s.x + Math.cos(s.a) * (hx + dir * ed * 0.45) - Math.sin(s.a) * (hornBaseY - hornH),
+            y: s.y + Math.sin(s.a) * (hx + dir * ed * 0.45) + Math.cos(s.a) * (hornBaseY - hornH),
+            vx: (Math.random() - 0.5) * 0.04,
+            vy: -rand(0.08, 0.18),
+            life: rand(300, 600),
+            age: 0,
+            r: rand(4, 9)
+          });
+        }
+      });
+
+      // Subtle glowing red reflections on pupils
+      const pR = Math.max(3, ed * 0.06);
+      [-ed * 0.5, ed * 0.5].forEach((px) => {
+        const eg = fx.createRadialGradient(px, 0, 0.5, px, 0, pR * 2);
+        eg.addColorStop(0, 'rgba(244, 63, 94, 0.85)');
+        eg.addColorStop(0.5, 'rgba(225, 29, 72, 0.35)');
+        eg.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        fx.fillStyle = eg;
+        fx.beginPath();
+        fx.arc(px, 0, pR * 2, 0, Math.PI * 2);
+        fx.fill();
+      });
+      fx.restore();
+
+      // Render flame particles in screen space
+      fx.save();
+      fx.globalCompositeOperation = 'screen';
+      for (let i = this._p.length - 1; i >= 0; i--) {
+        const p = this._p[i];
+        p.age += delta;
+        if (p.age >= p.life) { this._p.splice(i, 1); continue; }
+        const k = 1 - p.age / p.life;
+        p.x += p.vx * delta;
+        p.y += p.vy * delta;
+
+        const rad = p.r * (1 + (1 - k) * 0.8);
+        const g = fx.createRadialGradient(p.x, p.y, 0.5, p.x, p.y, rad);
+        g.addColorStop(0, `rgba(254, 205, 211, ${0.85 * k})`);
+        g.addColorStop(0.4, `rgba(225, 29, 72, ${0.65 * k})`);
+        g.addColorStop(1, 'rgba(126, 34, 206, 0)');
+        fx.fillStyle = g;
+        fx.beginPath();
+        fx.arc(p.x, p.y, rad, 0, Math.PI * 2);
+        fx.fill();
+      }
+      fx.restore();
+      if (this._p.length > 80) this._p.splice(0, this._p.length - 80);
+    }
+  },
+
+  /* ============================ BUTTERFLY TIARA ============================ */
+  {
+    id: 'butterfly_crown', name: 'Celestial Butterfly Tiara', icon: '🦋', category: 'Face', perf: 'low', requiresFace: true,
+    render(fx, frame) {
+      passthrough(fx, frame);
+      const g = geo(frame);
+      const s = smoothGeo(this, g, frame.dt || 16.7, 45);
+      const t = frame.time || performance.now();
+      if (!s) return;
+
+      const ed = s.eyeDist;
+      const hw = ed * 1.15;
+      const hh = ed * 0.28;
+
+      fx.save();
+      fx.translate(s.x, s.y - ed * 0.72);
+      fx.rotate(s.a * 0.65);
+      fx.translate(s.yaw * s.headW * 0.06, 0);
+
+      // 1. Golden organic vine headband across forehead
+      fx.beginPath();
+      fx.ellipse(0, 0, hw, hh, 0, Math.PI * 0.05, Math.PI * 0.95);
+      const vineGrad = fx.createLinearGradient(-hw, 0, hw, 0);
+      vineGrad.addColorStop(0, '#b45309');
+      vineGrad.addColorStop(0.5, '#fef08a');
+      vineGrad.addColorStop(1, '#b45309');
+      fx.strokeStyle = vineGrad;
+      fx.lineWidth = Math.max(2, ed * 0.045);
+      fx.shadowColor = 'rgba(250, 204, 21, 0.8)';
+      fx.shadowBlur = 12;
+      fx.stroke();
+      fx.shadowBlur = 0;
+
+      // Small glowing gem nodes along tiara
+      for (let i = 1; i <= 5; i++) {
+        const ga = Math.PI * 0.15 + (i * Math.PI * 0.7) / 6;
+        const gx = Math.cos(ga) * hw;
+        const gy = Math.sin(ga) * hh;
+        fx.fillStyle = '#ffffff';
+        fx.beginPath();
+        fx.arc(gx, gy, Math.max(2, ed * 0.035), 0, Math.PI * 2);
+        fx.fill();
+      }
+
+      // 2. 4 Animated 3D Fluttering Butterflies orbiting around the head
+      const bFlies = [
+        { hue0: '#67e8f9', hue1: '#06b6d4', size: ed * 0.38, speed: 0.0016, offset: 0 },
+        { hue0: '#e879f9', hue1: '#a855f7', size: ed * 0.34, speed: 0.0019, offset: 1.57 },
+        { hue0: '#fde047', hue1: '#f97316', size: ed * 0.32, speed: 0.0014, offset: 3.14 },
+        { hue0: '#6ee7b7', hue1: '#10b981', size: ed * 0.36, speed: 0.0018, offset: 4.71 }
+      ];
+
+      for (let i = 0; i < bFlies.length; i++) {
+        const bf = bFlies[i];
+        const ang = t * bf.speed + bf.offset;
+        const bx = Math.cos(ang) * (hw * 1.35);
+        const by = Math.sin(ang) * (hh * 1.5) - ed * 0.45 + Math.sin(t * 0.004 + i) * 12;
+        const flap = Math.sin(t * 0.016 + i * 1.8);
+
+        fx.save();
+        fx.translate(bx, by);
+        fx.rotate(Math.sin(ang) * 0.3);
+
+        const bs = bf.size;
+        // Butterfly wings (left and right with perspective flap foreshortening)
+        [-1, 1].forEach((dir) => {
+          fx.save();
+          fx.scale(dir * (0.3 + 0.7 * Math.abs(flap)), 1);
+
+          // Top wing
+          fx.beginPath();
+          fx.moveTo(0, 0);
+          fx.bezierCurveTo(bs * 0.3, -bs * 0.9, bs * 0.9, -bs * 0.7, bs * 0.7, -bs * 0.1);
+          fx.bezierCurveTo(bs * 0.5, 0, 0, 0, 0, 0);
+          const wg = fx.createLinearGradient(0, 0, bs * 0.8, -bs * 0.8);
+          wg.addColorStop(0, '#ffffff');
+          wg.addColorStop(0.4, bf.hue0);
+          wg.addColorStop(1, bf.hue1);
+          fx.fillStyle = wg;
+          fx.fill();
+          fx.strokeStyle = '#ffffff';
+          fx.lineWidth = 1;
+          fx.stroke();
+
+          // Bottom wing
+          fx.beginPath();
+          fx.moveTo(0, 0);
+          fx.bezierCurveTo(bs * 0.3, bs * 0.2, bs * 0.7, bs * 0.5, bs * 0.5, bs * 0.8);
+          fx.bezierCurveTo(bs * 0.2, bs * 0.6, 0, 0, 0, 0);
+          fx.fillStyle = bf.hue1;
+          fx.fill();
+          fx.restore();
+        });
+
+        // Butterfly slim body
+        fx.fillStyle = '#0f172a';
+        fx.beginPath();
+        fx.ellipse(0, 0, 2, bs * 0.3, 0, 0, Math.PI * 2);
+        fx.fill();
+
+        // Sparkle dust falling from butterfly
+        const spA = (Math.sin(t * 0.006 + i * 2) + 1) * 0.5;
+        if (spA > 0.3) {
+          fx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+          fx.beginPath();
+          fx.arc(0, bs * 0.5 + 4, 1.8, 0, Math.PI * 2);
+          fx.fill();
+        }
+        fx.restore();
+      }
+
+      fx.restore();
+    }
+  },
+
+  /* ============================ CYBER SAMURAI ONI MASK ============================ */
+  {
+    id: 'cyber_samurai', name: 'Cyber Samurai Oni Mask', icon: '👺', category: 'Face', perf: 'low', requiresFace: true,
+    render(fx, frame) {
+      passthrough(fx, frame);
+      const g = geo(frame);
+      const s = smoothGeo(this, g, frame.dt || 16.7, 35);
+      const t = frame.time || performance.now();
+      const w = frame.width;
+      const h = frame.height;
+
+      if (!s) {
+        // Fallback: floating holographic Oni glyph
+        fx.save();
+        fx.translate(w / 2, h / 2);
+        fx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
+        fx.lineWidth = 2;
+        fx.strokeRect(-40, -40, 80, 80);
+        fx.font = 'bold 12px "Courier New", monospace';
+        fx.fillStyle = '#ef4444';
+        fx.textAlign = 'center';
+        fx.fillText('CYBER SAMURAI: SEEKING WARRIOR', 0, 60);
+        fx.restore();
+        return;
+      }
+
+      const ed = s.eyeDist;
+      const hw = Math.max(ed * 1.5, s.headW);
+      const mW = hw * 0.95;
+      const mH = ed * 1.25;
+
+      fx.save();
+      fx.translate(s.x, s.y);
+      fx.rotate(s.a);
+      fx.translate(s.yaw * hw * 0.12, 0);
+
+      // 1. Forehead Kabuto Golden Horns / Crescent Crest
+      fx.save();
+      fx.translate(0, -ed * 0.7);
+      fx.beginPath();
+      fx.moveTo(0, -ed * 0.2);
+      fx.bezierCurveTo(ed * 0.4, -ed * 0.7, ed * 0.9, -ed * 0.85, ed * 1.15, -ed * 0.5);
+      fx.bezierCurveTo(ed * 0.8, -ed * 0.65, ed * 0.35, -ed * 0.45, 0, -ed * 0.05);
+      fx.bezierCurveTo(-ed * 0.35, -ed * 0.45, -ed * 0.8, -ed * 0.65, -ed * 1.15, -ed * 0.5);
+      fx.bezierCurveTo(-ed * 0.9, -ed * 0.85, -ed * 0.4, -ed * 0.7, 0, -ed * 0.2);
+      fx.closePath();
+
+      const hornGrad = fx.createLinearGradient(0, -ed * 0.85, 0, 0);
+      hornGrad.addColorStop(0, '#fef08a');
+      hornGrad.addColorStop(0.5, '#eab308');
+      hornGrad.addColorStop(1, '#854d0e');
+      fx.fillStyle = hornGrad;
+      fx.fill();
+      fx.strokeStyle = '#fef08a';
+      fx.lineWidth = 1.5;
+      fx.shadowColor = 'rgba(234, 179, 8, 0.8)';
+      fx.shadowBlur = 10;
+      fx.stroke();
+      fx.shadowBlur = 0;
+      fx.restore();
+
+      // 2. Lower Face Oni Armor Plate (Nose bridge down to jaw)
+      fx.save();
+      fx.translate(0, ed * 0.3);
+
+      // Mask ambient occlusion drop shadow on face
+      fx.beginPath();
+      fx.moveTo(-mW * 0.5, 0);
+      fx.quadraticCurveTo(0, -ed * 0.25, mW * 0.5, 0);
+      fx.quadraticCurveTo(mW * 0.52, mH * 0.8, 0, mH * 1.05);
+      fx.quadraticCurveTo(-mW * 0.52, mH * 0.8, -mW * 0.5, 0);
+      fx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+      fx.fill();
+
+      // Main Oni Mask Hull (Lacquered Obsidian / Crimson Plates)
+      fx.beginPath();
+      fx.moveTo(-mW * 0.48, -ed * 0.05);
+      fx.lineTo(-mW * 0.2, -ed * 0.2);
+      fx.lineTo(0, -ed * 0.08); // Nose bridge notch
+      fx.lineTo(mW * 0.2, -ed * 0.2);
+      fx.lineTo(mW * 0.48, -ed * 0.05);
+      fx.quadraticCurveTo(mW * 0.5, mH * 0.5, mW * 0.35, mH * 0.85);
+      fx.quadraticCurveTo(mW * 0.18, mH * 1.02, 0, mH * 1.04);
+      fx.quadraticCurveTo(-mW * 0.18, mH * 1.02, -mW * 0.35, mH * 0.85);
+      fx.quadraticCurveTo(-mW * 0.5, mH * 0.5, -mW * 0.48, -ed * 0.05);
+      fx.closePath();
+
+      const maskGrad = fx.createLinearGradient(-mW * 0.5, 0, mW * 0.5, mH);
+      maskGrad.addColorStop(0, '#1c1917');
+      maskGrad.addColorStop(0.3, '#7f1d1d');
+      maskGrad.addColorStop(0.7, '#1c1917');
+      maskGrad.addColorStop(1, '#0c0a09');
+      fx.fillStyle = maskGrad;
+      fx.fill();
+
+      fx.strokeStyle = '#ef4444';
+      fx.lineWidth = Math.max(1.5, ed * 0.035);
+      fx.shadowColor = '#ef4444';
+      fx.shadowBlur = 8;
+      fx.stroke();
+      fx.shadowBlur = 0;
+
+      // 3. Menacing Oni Fangs & Mouth Grill
+      const mouthY = mH * 0.55;
+      const fangW = ed * 0.12;
+      const fangH = ed * 0.26;
+
+      // Golden Demon Fangs (Upper & Lower)
+      fx.fillStyle = '#fef08a';
+      fx.strokeStyle = '#b45309';
+      fx.lineWidth = 1;
+
+      // Upper fangs
+      [-ed * 0.22, ed * 0.22].forEach((fxPos) => {
+        fx.beginPath();
+        fx.moveTo(fxPos - fangW * 0.5, mouthY - fangH * 0.4);
+        fx.lineTo(fxPos + fangW * 0.5, mouthY - fangH * 0.4);
+        fx.lineTo(fxPos, mouthY + fangH * 0.7);
+        fx.closePath();
+        fx.fill();
+        fx.stroke();
+      });
+
+      // Lower fangs
+      [-ed * 0.36, ed * 0.36].forEach((fxPos) => {
+        fx.beginPath();
+        fx.moveTo(fxPos - fangW * 0.4, mouthY + fangH * 0.4);
+        fx.lineTo(fxPos + fangW * 0.4, mouthY + fangH * 0.4);
+        fx.lineTo(fxPos, mouthY - fangH * 0.5);
+        fx.closePath();
+        fx.fill();
+        fx.stroke();
+      });
+
+      // 4. Glowing Neon Cyber Vents on Cheeks
+      fx.strokeStyle = '#00f0ff';
+      fx.shadowColor = '#00f0ff';
+      fx.shadowBlur = 6;
+      fx.lineWidth = 2;
+      [-1, 1].forEach((dir) => {
+        for (let i = 0; i < 3; i++) {
+          const vy = mH * (0.28 + i * 0.14);
+          const vx1 = dir * (mW * 0.24 + i * 4);
+          const vx2 = dir * (mW * 0.42 + i * 2);
+          fx.beginPath();
+          fx.moveTo(vx1, vy);
+          fx.lineTo(vx2, vy + 4);
+          fx.stroke();
+        }
+      });
+      fx.shadowBlur = 0;
+
+      // 5. Cybernetic Japanese Kanji / Clan Sigil on Chin
+      fx.font = `bold ${Math.max(10, Math.round(ed * 0.2))}px "Courier New", sans-serif`;
+      fx.fillStyle = '#ef4444';
+      fx.textAlign = 'center';
+      fx.shadowColor = '#ef4444';
+      fx.shadowBlur = 6;
+      fx.fillText('鬼', 0, mH * 0.88);
+      fx.shadowBlur = 0;
+
+      fx.restore();
+
+      // 6. Glowing Crimson Samurai Eyes
+      const eyeR = Math.max(3, ed * 0.08);
+      [-ed * 0.5, ed * 0.5].forEach((px) => {
+        const eyeGrad = fx.createRadialGradient(px, 0, 0, px, 0, eyeR * 2.2);
+        eyeGrad.addColorStop(0, '#ffffff');
+        eyeGrad.addColorStop(0.3, '#f43f5e');
+        eyeGrad.addColorStop(0.7, 'rgba(225, 29, 72, 0.4)');
+        eyeGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        fx.fillStyle = eyeGrad;
+        fx.beginPath();
+        fx.arc(px, 0, eyeR * 2.2, 0, Math.PI * 2);
+        fx.fill();
+      });
+
+      fx.restore();
+    }
+  },
+
+  /* ============================ STEAMPUNK AVIATOR GOGGLES ============================ */
+  {
+    id: 'steampunk_aviator', name: 'Steampunk Brass Goggles', icon: '🥽', category: 'Face', perf: 'low', requiresFace: true,
+    render(fx, frame) {
+      passthrough(fx, frame);
+      const g = geo(frame);
+      const s = smoothGeo(this, g, frame.dt || 16.7, 35);
+      const t = frame.time || performance.now();
+      const w = frame.width;
+      const h = frame.height;
+
+      if (!s) {
+        // Fallback brass goggle preview
+        fx.save();
+        fx.translate(w / 2, h / 2);
+        fx.fillStyle = '#78350f';
+        fx.fillRect(-60, -8, 120, 16);
+        [-30, 30].forEach((gx) => {
+          fx.beginPath();
+          fx.arc(gx, 0, 24, 0, Math.PI * 2);
+          fx.fillStyle = '#d97706';
+          fx.fill();
+          fx.strokeStyle = '#fef08a';
+          fx.lineWidth = 3;
+          fx.stroke();
+        });
+        fx.font = 'bold 11px monospace';
+        fx.fillStyle = '#fef08a';
+        fx.textAlign = 'center';
+        fx.fillText('STEAMPUNK: CALIBRATING OPTICS', 0, 48);
+        fx.restore();
+        return;
+      }
+
+      const ed = s.eyeDist;
+      const gR = ed * 0.44; // Goggle lens radius
+      const rimW = Math.max(3, ed * 0.08);
+
+      fx.save();
+      fx.translate(s.x, s.y);
+      fx.rotate(s.a);
+      fx.translate(s.yaw * s.headW * 0.08, 0);
+
+      // 1. Leather Headband Strap hugging head
+      fx.beginPath();
+      fx.moveTo(-s.headW * 0.6, 0);
+      fx.lineTo(s.headW * 0.6, 0);
+      fx.strokeStyle = '#451a03';
+      fx.lineWidth = Math.max(6, ed * 0.16);
+      fx.lineCap = 'round';
+      fx.stroke();
+      // Leather stitching line
+      fx.strokeStyle = '#b45309';
+      fx.lineWidth = 1;
+      fx.setLineDash([3, 3]);
+      fx.stroke();
+      fx.setLineDash([]);
+
+      // 2. Leather Nose Bridge Connector
+      fx.beginPath();
+      fx.moveTo(-ed * 0.18, 0);
+      fx.quadraticCurveTo(0, -ed * 0.06, ed * 0.18, 0);
+      fx.strokeStyle = '#78350f';
+      fx.lineWidth = Math.max(5, ed * 0.14);
+      fx.stroke();
+      // Brass nose bridge buckle
+      fx.fillStyle = '#fef08a';
+      fx.fillRect(-ed * 0.05, -ed * 0.05, ed * 0.1, ed * 0.1);
+
+      // 3. Left and Right Heavy Brass Ocular Cups
+      [-ed * 0.5, ed * 0.5].forEach((cx, idx) => {
+        const isRight = idx === 1;
+
+        // Drop shadow behind goggle rim
+        fx.beginPath();
+        fx.arc(cx, ed * 0.05, gR + rimW, 0, Math.PI * 2);
+        fx.fillStyle = 'rgba(0,0,0,0.3)';
+        fx.fill();
+
+        // Heavy Brass Outer Rim with Metallic Radial Gradient
+        const brassGrad = fx.createRadialGradient(cx - gR * 0.3, -gR * 0.3, gR * 0.2, cx, 0, gR + rimW);
+        brassGrad.addColorStop(0, '#fef08a');
+        brassGrad.addColorStop(0.35, '#d97706');
+        brassGrad.addColorStop(0.7, '#78350f');
+        brassGrad.addColorStop(1, '#451a03');
+
+        fx.beginPath();
+        fx.arc(cx, 0, gR + rimW, 0, Math.PI * 2);
+        fx.fillStyle = brassGrad;
+        fx.fill();
+
+        // Rivet Studs around brass rim (8 rivets)
+        for (let r = 0; r < 8; r++) {
+          const ra = (r * Math.PI) / 4;
+          const rx = cx + Math.cos(ra) * (gR + rimW * 0.5);
+          const ry = Math.sin(ra) * (gR + rimW * 0.5);
+          fx.fillStyle = '#fde68a';
+          fx.beginPath();
+          fx.arc(rx, ry, Math.max(1.5, ed * 0.025), 0, Math.PI * 2);
+          fx.fill();
+        }
+
+        // Inner Brass Stepped Lip
+        fx.strokeStyle = '#451a03';
+        fx.lineWidth = 1.5;
+        fx.beginPath();
+        fx.arc(cx, 0, gR, 0, Math.PI * 2);
+        fx.stroke();
+
+        // 4. Amber Glass Lens with Fresnel reflections
+        fx.save();
+        fx.beginPath();
+        fx.arc(cx, 0, gR, 0, Math.PI * 2);
+        fx.clip();
+
+        // Amber lens gradient
+        const lensGrad = fx.createRadialGradient(cx, 0, 0, cx, 0, gR);
+        lensGrad.addColorStop(0, 'rgba(251, 191, 36, 0.45)');
+        lensGrad.addColorStop(0.75, 'rgba(180, 83, 9, 0.7)');
+        lensGrad.addColorStop(1, 'rgba(69, 26, 3, 0.88)');
+        fx.fillStyle = lensGrad;
+        fx.fillRect(cx - gR, -gR, gR * 2, gR * 2);
+
+        // Etched Crosshair Reticle in glass
+        fx.strokeStyle = 'rgba(254, 240, 138, 0.35)';
+        fx.lineWidth = 1;
+        fx.beginPath();
+        fx.moveTo(cx - gR, 0); fx.lineTo(cx + gR, 0);
+        fx.moveTo(cx, -gR); fx.lineTo(cx, gR);
+        fx.arc(cx, 0, gR * 0.5, 0, Math.PI * 2);
+        fx.stroke();
+
+        // Dynamic Specular Glint sweep moving with head angle
+        const sweepAngle = s.a * 2 + t * 0.001;
+        const gx1 = cx + Math.cos(sweepAngle) * gR * 0.7;
+        const gy1 = Math.sin(sweepAngle) * gR * 0.7;
+        const glint = fx.createLinearGradient(gx1 - 15, gy1 - 15, gx1 + 15, gy1 + 15);
+        glint.addColorStop(0, 'rgba(255,255,255,0)');
+        glint.addColorStop(0.5, 'rgba(255,255,255,0.4)');
+        glint.addColorStop(1, 'rgba(255,255,255,0)');
+        fx.fillStyle = glint;
+        fx.fillRect(cx - gR, -gR, gR * 2, gR * 2);
+
+        fx.restore();
+
+        // 5. Spinning Brass Gear Cog on Right Eye Rim!
+        if (isRight) {
+          fx.save();
+          fx.translate(cx + gR * 0.78, -gR * 0.6);
+          const gearR = gR * 0.38;
+          const gearRot = t * 0.002;
+          fx.rotate(gearRot);
+
+          // Gear teeth (10 teeth)
+          const teeth = 10;
+          fx.beginPath();
+          for (let g = 0; g < teeth; g++) {
+            const a0 = (g * Math.PI * 2) / teeth;
+            const a1 = a0 + Math.PI / teeth * 0.5;
+            const rOut = gearR * 1.25;
+            const rIn = gearR;
+            if (g === 0) fx.moveTo(Math.cos(a0) * rIn, Math.sin(a0) * rIn);
+            fx.lineTo(Math.cos(a0) * rOut, Math.sin(a0) * rOut);
+            fx.lineTo(Math.cos(a1) * rOut, Math.sin(a1) * rOut);
+            fx.lineTo(Math.cos(a1) * rIn, Math.sin(a1) * rIn);
+          }
+          fx.closePath();
+          fx.fillStyle = '#d97706';
+          fx.fill();
+          fx.strokeStyle = '#fef08a';
+          fx.lineWidth = 1;
+          fx.stroke();
+
+          // Gear center hole
+          fx.beginPath();
+          fx.arc(0, 0, gearR * 0.35, 0, Math.PI * 2);
+          fx.fillStyle = '#451a03';
+          fx.fill();
+          fx.stroke();
+          fx.restore();
+        }
+      });
+
+      fx.restore();
+    }
+  },
+
+  /* ============================ ASTRAL SPIRIT MANDALA & THIRD EYE ============================ */
+  {
+    id: 'astral_mandala', name: 'Astral Spirit Mandala', icon: '🕉️', category: 'Face', perf: 'low', requiresFace: true,
+    render(fx, frame) {
+      passthrough(fx, frame);
+      const g = geo(frame);
+      const s = smoothGeo(this, g, frame.dt || 16.7, 40);
+      const t = frame.time || performance.now();
+      const w = frame.width;
+      const h = frame.height;
+
+      if (!s) {
+        // Fallback: centered rotating cosmic mandala
+        fx.save();
+        fx.translate(w / 2, h / 2);
+        fx.rotate(t * 0.0005);
+        fx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
+        fx.lineWidth = 1.5;
+        for (let i = 0; i < 6; i++) {
+          fx.strokeRect(-50, -50, 100, 100);
+          fx.rotate(Math.PI / 6);
+        }
+        fx.restore();
+        return;
+      }
+
+      const ed = s.eyeDist;
+      const mR = ed * 2.2; // Mandala radius behind head
+
+      // 1. Giant Sacred Geometry Mandala behind the head (Screen Blend for ethereal luminescence)
+      fx.save();
+      // Counter-parallax: shifts slightly opposite to head motion to create 3D holographic depth!
+      fx.translate(s.x - s.yaw * ed * 0.25, s.y - ed * 0.3);
+      fx.rotate(t * 0.0006);
+      fx.globalCompositeOperation = 'screen';
+
+      // Outer golden aura
+      const aura = fx.createRadialGradient(0, 0, mR * 0.3, 0, 0, mR * 1.15);
+      aura.addColorStop(0, 'rgba(245, 158, 11, 0.35)');
+      aura.addColorStop(0.5, 'rgba(168, 85, 247, 0.22)');
+      aura.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      fx.fillStyle = aura;
+      fx.beginPath();
+      fx.arc(0, 0, mR * 1.15, 0, Math.PI * 2);
+      fx.fill();
+
+      // Multi-layered Sacred Geometry Rings
+      fx.strokeStyle = 'rgba(254, 240, 138, 0.7)';
+      fx.lineWidth = Math.max(1.2, ed * 0.02);
+
+      // Concentric circles
+      [0.35, 0.55, 0.75, 0.95].forEach((kr) => {
+        fx.beginPath();
+        fx.arc(0, 0, mR * kr, 0, Math.PI * 2);
+        fx.stroke();
+      });
+
+      // 12-Fold Sacred Flower of Life Petals
+      const petals = 12;
+      for (let p = 0; p < petals; p++) {
+        const pa = (p * Math.PI * 2) / petals;
+        const px = Math.cos(pa) * (mR * 0.55);
+        const py = Math.sin(pa) * (mR * 0.55);
+        fx.beginPath();
+        fx.arc(px, py, mR * 0.55, 0, Math.PI * 2);
+        fx.stroke();
+      }
+
+      // Intersecting Golden Triangles (Star Dodecagram)
+      for (let st = 0; st < 4; st++) {
+        fx.save();
+        fx.rotate((st * Math.PI) / 6);
+        fx.beginPath();
+        for (let a = 0; a < 3; a++) {
+          const ta = (a * Math.PI * 2) / 3 - Math.PI / 2;
+          const tx = Math.cos(ta) * (mR * 0.92);
+          const ty = Math.sin(ta) * (mR * 0.92);
+          if (a === 0) fx.moveTo(tx, ty); else fx.lineTo(tx, ty);
+        }
+        fx.closePath();
+        fx.stroke();
+        fx.restore();
+      }
+      fx.restore();
+
+      // 2. Mystic Glowing Third Eye on Forehead
+      fx.save();
+      const thirdEyeY = s.y - ed * 0.45;
+      fx.translate(s.x, thirdEyeY);
+      fx.rotate(s.a);
+      fx.translate(s.yaw * ed * 0.1, 0);
+
+      const eyeW = ed * 0.32;
+      const eyeH = ed * 0.18;
+
+      // Ethereal vertical spirit beam
+      const bGrad = fx.createLinearGradient(0, -eyeH * 3, 0, eyeH);
+      bGrad.addColorStop(0, 'rgba(56, 189, 248, 0)');
+      bGrad.addColorStop(0.5, 'rgba(168, 85, 247, 0.45)');
+      bGrad.addColorStop(1, 'rgba(254, 240, 138, 0.7)');
+      fx.fillStyle = bGrad;
+      fx.fillRect(-2, -eyeH * 4, 4, eyeH * 4);
+
+      // Third Eye Golden Almond Rim
+      fx.beginPath();
+      fx.moveTo(-eyeW * 0.5, 0);
+      fx.quadraticCurveTo(0, -eyeH, eyeW * 0.5, 0);
+      fx.quadraticCurveTo(0, eyeH, -eyeW * 0.5, 0);
+      fx.closePath();
+      fx.fillStyle = '#0f172a';
+      fx.fill();
+      fx.strokeStyle = '#fef08a';
+      fx.lineWidth = 2;
+      fx.shadowColor = '#facc15';
+      fx.shadowBlur = 8;
+      fx.stroke();
+      fx.shadowBlur = 0;
+
+      // Mystic Sapphire / Opal Iris
+      const irisGrad = fx.createRadialGradient(0, 0, 0, 0, 0, eyeH * 0.7);
+      irisGrad.addColorStop(0, '#ffffff');
+      irisGrad.addColorStop(0.3, '#38bdf8');
+      irisGrad.addColorStop(0.7, '#7c3aed');
+      irisGrad.addColorStop(1, '#0f172a');
+      fx.fillStyle = irisGrad;
+      fx.beginPath();
+      fx.arc(0, 0, eyeH * 0.65, 0, Math.PI * 2);
+      fx.fill();
+
+      // Slit pupil
+      fx.fillStyle = '#ffffff';
+      fx.beginPath();
+      fx.ellipse(0, 0, 1.5, eyeH * 0.4, 0, 0, Math.PI * 2);
+      fx.fill();
+
+      // Floating golden spirit dust drifting upwards from third eye
+      for (let m = 0; m < 6; m++) {
+        const ma = t * 0.003 + m * 1.05;
+        const mx = Math.sin(ma) * (eyeW * 0.7);
+        const my = -((t * 0.04 + m * 24) % (ed * 1.2));
+        fx.fillStyle = 'rgba(254, 240, 138, 0.8)';
+        fx.beginPath();
+        fx.arc(mx, my, Math.max(1, ed * 0.02), 0, Math.PI * 2);
+        fx.fill();
+      }
+
+      fx.restore();
+    }
+  },
+
+  /* ============================ MARK-VII TACTICAL AR HUD ============================ */
+  {
+    id: 'iron_hud', name: 'Mark-VII Tactical AR HUD', icon: '🪖', category: 'Face', perf: 'low', requiresFace: true,
+    render(fx, frame) {
+      passthrough(fx, frame);
+      const g = geo(frame);
+      const s = smoothGeo(this, g, frame.dt || 16.7, 30);
+      const t = frame.time || performance.now();
+      const w = frame.width;
+      const h = frame.height;
+
+      if (!s) {
+        // Fallback: radar sweep grid
+        fx.save();
+        fx.translate(w / 2, h / 2);
+        fx.strokeStyle = 'rgba(6, 182, 212, 0.5)';
+        fx.lineWidth = 1.5;
+        fx.beginPath();
+        fx.arc(0, 0, 60, 0, Math.PI * 2);
+        fx.stroke();
+        fx.font = 'bold 11px monospace';
+        fx.fillStyle = '#06b6d4';
+        fx.textAlign = 'center';
+        fx.fillText('MARK-VII: SCANNING SECTOR', 0, 85);
+        fx.restore();
+        return;
+      }
+
+      const ed = s.eyeDist;
+      const hw = Math.max(ed * 1.6, s.headW);
+
+      fx.save();
+      fx.translate(s.x, s.y);
+      fx.rotate(s.a);
+      fx.translate(s.yaw * hw * 0.1, 0);
+
+      // 1. Dual Glowing Arc-Reactor Eye Reticles
+      [-ed * 0.5, ed * 0.5].forEach((px) => {
+        const er = ed * 0.32;
+        fx.save();
+        fx.translate(px, 0);
+
+        // Rotating cyan reticle ring
+        fx.rotate(t * 0.003);
+        fx.strokeStyle = 'rgba(6, 182, 212, 0.85)';
+        fx.lineWidth = 2;
+        fx.shadowColor = '#00f0ff';
+        fx.shadowBlur = 10;
+        for (let i = 0; i < 3; i++) {
+          fx.beginPath();
+          fx.arc(0, 0, er, i * (Math.PI * 2 / 3), i * (Math.PI * 2 / 3) + 1.2);
+          fx.stroke();
+        }
+
+        // Inner targeting cross
+        fx.strokeStyle = '#ffffff';
+        fx.lineWidth = 1;
+        fx.beginPath();
+        fx.moveTo(-er * 0.4, 0); fx.lineTo(er * 0.4, 0);
+        fx.moveTo(0, -er * 0.4); fx.lineTo(0, er * 0.4);
+        fx.stroke();
+        fx.restore();
+      });
+
+      // 2. Anamorphic Horizontal Lens Flare across eyes
+      const flareGrad = fx.createLinearGradient(-hw * 0.9, 0, hw * 0.9, 0);
+      flareGrad.addColorStop(0, 'rgba(0, 240, 255, 0)');
+      flareGrad.addColorStop(0.3, 'rgba(0, 240, 255, 0.4)');
+      flareGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.95)');
+      flareGrad.addColorStop(0.7, 'rgba(0, 240, 255, 0.4)');
+      flareGrad.addColorStop(1, 'rgba(0, 240, 255, 0)');
+      fx.fillStyle = flareGrad;
+      fx.fillRect(-hw * 0.9, -2, hw * 1.8, 4);
+
+      // 3. Artificial Horizon Indicator that levels counter to head roll!
+      fx.save();
+      fx.translate(0, ed * 0.85);
+      fx.rotate(-s.a); // Counter-rotates so horizon remains level!
+      fx.strokeStyle = '#39ff14';
+      fx.lineWidth = 1.5;
+      fx.beginPath();
+      fx.moveTo(-ed * 0.9, 0); fx.lineTo(-ed * 0.25, 0);
+      fx.moveTo(ed * 0.25, 0); fx.lineTo(ed * 0.9, 0);
+      fx.stroke();
+      // Degree notch marks
+      [-ed * 0.7, -ed * 0.5, ed * 0.5, ed * 0.7].forEach((nx) => {
+        fx.beginPath();
+        fx.moveTo(nx, -4); fx.lineTo(nx, 4);
+        fx.stroke();
+      });
+      fx.restore();
+
+      // 4. Altitude & Power Ladders on Left/Right Temples
+      const ladderH = ed * 1.1;
+      const fs = Math.max(9, Math.round(ed * 0.12));
+      fx.font = `bold ${fs}px "Courier New", monospace`;
+      fx.textBaseline = 'middle';
+
+      // Left Ladder (Altitude)
+      fx.strokeStyle = 'rgba(0, 240, 255, 0.6)';
+      fx.lineWidth = 1.5;
+      fx.beginPath();
+      fx.moveTo(-hw * 0.75, -ladderH * 0.5);
+      fx.lineTo(-hw * 0.75, ladderH * 0.5);
+      fx.stroke();
+      for (let i = 0; i < 5; i++) {
+        const ly = -ladderH * 0.5 + (i * ladderH) / 4;
+        fx.beginPath();
+        fx.moveTo(-hw * 0.75, ly);
+        fx.lineTo(-hw * 0.75 + 8, ly);
+        fx.stroke();
+      }
+      fx.fillStyle = '#00f0ff';
+      fx.textAlign = 'right';
+      fx.fillText('ALT: 8,420m', -hw * 0.78, -ladderH * 0.3);
+      fx.fillText('MACH: 2.4', -hw * 0.78, 0);
+      fx.fillText('THRUST: 98%', -hw * 0.78, ladderH * 0.3);
+
+      // Right Ladder (Power / Targeting)
+      fx.beginPath();
+      fx.moveTo(hw * 0.75, -ladderH * 0.5);
+      fx.lineTo(hw * 0.75, ladderH * 0.5);
+      fx.stroke();
+      for (let i = 0; i < 5; i++) {
+        const ly = -ladderH * 0.5 + (i * ladderH) / 4;
+        fx.beginPath();
+        fx.moveTo(hw * 0.75, ly);
+        fx.lineTo(hw * 0.75 - 8, ly);
+        fx.stroke();
+      }
+      fx.fillStyle = '#39ff14';
+      fx.textAlign = 'left';
+      fx.fillText('JARVIS v4.2', hw * 0.78, -ladderH * 0.3);
+      fx.fillText('LOCK: 100%', hw * 0.78, 0);
+      fx.fillText('PWR: 100%', hw * 0.78, ladderH * 0.3);
+
+      fx.restore();
+    }
+  },
+
+  /* ============================ ETHEREAL FOREST ELF TIARA ============================ */
+  {
+    id: 'elven_tiara', name: 'Ethereal Forest Elf Tiara', icon: '🧝', category: 'Face', perf: 'low', requiresFace: true,
+    render(fx, frame) {
+      passthrough(fx, frame);
+      const g = geo(frame);
+      const s = smoothGeo(this, g, frame.dt || 16.7, 40);
+      const t = frame.time || performance.now();
+      const w = frame.width;
+      const h = frame.height;
+
+      if (!s) {
+        // Fallback: centered silver tiara preview
+        fx.save();
+        fx.translate(w / 2, h / 2);
+        fx.strokeStyle = '#e2e8f0';
+        fx.lineWidth = 2;
+        fx.beginPath();
+        fx.ellipse(0, 0, 50, 20, 0, 0, Math.PI * 2);
+        fx.stroke();
+        fx.fillStyle = '#38bdf8';
+        fx.beginPath();
+        fx.arc(0, -10, 5, 0, Math.PI * 2);
+        fx.fill();
+        fx.restore();
+        return;
+      }
+
+      const ed = s.eyeDist;
+      const hw = Math.max(ed * 1.5, s.headW);
+
+      fx.save();
+      fx.translate(s.x, s.y);
+      fx.rotate(s.a);
+      fx.translate(s.yaw * hw * 0.08, 0);
+
+      // 1. Pointed Luminous Elven Ears on Sides of Head!
+      [-hw * 0.52, hw * 0.52].forEach((ex, idx) => {
+        const dir = idx === 0 ? -1 : 1;
+        fx.save();
+        fx.translate(ex, -ed * 0.15);
+
+        // Pointed elf ear outer curve
+        fx.beginPath();
+        fx.moveTo(0, ed * 0.3);
+        fx.quadraticCurveTo(dir * ed * 0.2, ed * 0.1, dir * ed * 0.55, -ed * 0.45); // Sharp elven tip!
+        fx.quadraticCurveTo(dir * ed * 0.15, -ed * 0.25, 0, -ed * 0.1);
+        fx.closePath();
+
+        // Soft skin/glow gradient
+        const earGrad = fx.createLinearGradient(0, 0, dir * ed * 0.55, -ed * 0.45);
+        earGrad.addColorStop(0, 'rgba(254, 215, 170, 0.7)');
+        earGrad.addColorStop(0.7, 'rgba(251, 146, 60, 0.6)');
+        earGrad.addColorStop(1, '#ffffff');
+        fx.fillStyle = earGrad;
+        fx.fill();
+
+        fx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        fx.lineWidth = 1.5;
+        fx.shadowColor = 'rgba(167, 243, 208, 0.8)';
+        fx.shadowBlur = 6;
+        fx.stroke();
+        fx.shadowBlur = 0;
+        fx.restore();
+      });
+
+      // 2. Silver Mithril Filigree Tiara across Forehead
+      const tiaraY = -ed * 0.65;
+      const tW = ed * 1.1;
+      const tH = ed * 0.24;
+
+      fx.save();
+      fx.translate(0, tiaraY);
+
+      // Organic curved arch
+      fx.beginPath();
+      fx.ellipse(0, 0, tW, tH, 0, Math.PI * 0.08, Math.PI * 0.92);
+      const silverGrad = fx.createLinearGradient(-tW, 0, tW, 0);
+      silverGrad.addColorStop(0, '#94a3b8');
+      silverGrad.addColorStop(0.5, '#ffffff');
+      silverGrad.addColorStop(1, '#94a3b8');
+      fx.strokeStyle = silverGrad;
+      fx.lineWidth = Math.max(2, ed * 0.04);
+      fx.shadowColor = 'rgba(255, 255, 255, 0.9)';
+      fx.shadowBlur = 8;
+      fx.stroke();
+      fx.shadowBlur = 0;
+
+      // Delicate leaves along tiara
+      for (let l = 1; l <= 5; l++) {
+        const la = Math.PI * 0.15 + (l * Math.PI * 0.7) / 6;
+        const lx = Math.cos(la) * tW;
+        const ly = Math.sin(la) * tH;
+        fx.fillStyle = '#6ee7b7';
+        fx.beginPath();
+        fx.ellipse(lx, ly, ed * 0.06, ed * 0.03, la - Math.PI / 2, 0, Math.PI * 2);
+        fx.fill();
+      }
+
+      // 3. Central Starlight Teardrop Diamond Gem on Forehead
+      const gemGrad = fx.createRadialGradient(0, tH * 0.8, 0, 0, tH * 0.8, ed * 0.14);
+      gemGrad.addColorStop(0, '#ffffff');
+      gemGrad.addColorStop(0.4, '#38bdf8');
+      gemGrad.addColorStop(1, '#0284c7');
+      fx.fillStyle = gemGrad;
+      fx.beginPath();
+      fx.arc(0, tH * 0.8, ed * 0.08, 0, Math.PI * 2);
+      fx.fill();
+      fx.strokeStyle = '#ffffff';
+      fx.lineWidth = 1;
+      fx.stroke();
+
+      // 4-point Diamond Starlight Sparkle
+      const sparkSize = ed * 0.22 * (0.8 + 0.2 * Math.sin(t * 0.005));
+      fx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      fx.lineWidth = 1.5;
+      fx.beginPath();
+      fx.moveTo(0, tH * 0.8 - sparkSize); fx.lineTo(0, tH * 0.8 + sparkSize);
+      fx.moveTo(-sparkSize, tH * 0.8); fx.lineTo(sparkSize, tH * 0.8);
+      fx.stroke();
+
+      fx.restore();
+
+      // 4. Bioluminescent Forest Fireflies orbiting around the head
+      for (let f = 0; f < 7; f++) {
+        const fa = t * 0.002 + f * 0.95;
+        const fr = hw * (0.65 + 0.25 * Math.sin(t * 0.001 + f));
+        const fxPos = Math.cos(fa) * fr;
+        const fyPos = Math.sin(fa) * (ed * 0.7) - ed * 0.35 + Math.sin(t * 0.003 + f) * 15;
+        const glow = fx.createRadialGradient(fxPos, fyPos, 0, fxPos, fyPos, 12);
+        glow.addColorStop(0, '#ffffff');
+        glow.addColorStop(0.35, '#6ee7b7');
+        glow.addColorStop(1, 'rgba(16, 185, 129, 0)');
+        fx.fillStyle = glow;
+        fx.beginPath();
+        fx.arc(fxPos, fyPos, 12, 0, Math.PI * 2);
+        fx.fill();
+      }
+
+      fx.restore();
+    }
   }
 ];
 

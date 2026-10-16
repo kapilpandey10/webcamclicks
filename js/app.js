@@ -579,6 +579,22 @@ const EFFECT_SAMPLE_PHOTOS = {
   'neonnoir': '/assets/img/sample-neon.jpg',
   'fisheye': '/assets/img/sample-fisheye.jpg',
   'thermal': '/assets/img/sample-thermal.jpg',
+  'flir_thermal': '/assets/img/sample-thermal.jpg',
+  'neon_contour': '/assets/img/sample-neon.jpg',
+  'anime_impact': '/assets/img/sample-comic.jpg',
+  'retro_camcorder': '/assets/img/sample-polaroid.jpg',
+  'cyber_glitch_vhs': '/assets/img/sample-polaroid.jpg',
+  'thunder_god': '/assets/img/sample-neon.jpg',
+  'vortex_blackhole': '/assets/img/sample-neon.jpg',
+  'supernova_cosmic': '/assets/img/sample-neon.jpg',
+  'underwater_aquarium': '/assets/img/sample-neon.jpg',
+  'hologram_transmission': '/assets/img/sample-neon.jpg',
+  'film_noir_1940': '/assets/img/sample-bw.jpg',
+  'cyber_samurai': '/assets/img/sample-neon.jpg',
+  'steampunk_aviator': '/assets/img/sample-polaroid.jpg',
+  'astral_mandala': '/assets/img/sample-neon.jpg',
+  'iron_hud': '/assets/img/sample-neon.jpg',
+  'elven_tiara': '/assets/img/sample-portrait.jpg',
   'grayscale': '/assets/img/sample-bw.jpg',
   'silverscreen': '/assets/img/sample-bw.jpg',
   'trix400': '/assets/img/sample-bw.jpg',
@@ -668,7 +684,7 @@ function buildFilterGrid() {
     p.className = 'panel-hint';
     p.style.gridColumn = '1 / -1';
     p.textContent = filterSearchQuery
-      ? `No filters matching "${filterSearchQuery}". Try "Y2K", "VHS", "Glow", or "Comic".`
+      ? `No filters matching "${filterSearchQuery}". Try "Cyberpunk", "Nebula", "FLIR", "Y2K", "Camcorder", or "Prism".`
       : (currentCategory === 'Favorites'
         ? 'No favorites yet — tap the ☆ on any filter to save it here.'
         : 'Nothing in this category.');

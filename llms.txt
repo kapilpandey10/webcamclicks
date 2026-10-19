@@ -11,6 +11,10 @@ WebcamClicks (https://webcamclicks.com/) is a modern, privacy-first web applicat
 - [Webcam Toy Alternative](https://webcamclicks.com/webcam-toy-alternative): Comprehensive comparison and upgrade guide over Webcam Toy. Explains modern advantages: full HD/4K resolution (vs 640x480), video recording capability, photo booth collages, mobile responsiveness, and zero third-party ads.
 - [Microphone Tester](https://webcamclicks.com/mic-test): Free online mic tester featuring live decibel (dB) level meter, frequency spectrum visualizer, pitch detection, and instant voice playback recording.
 - [Dual Webcam Compare](https://webcamclicks.com/compare-webcams): Side-by-side split-screen comparison of two connected webcams or video input devices with latency, sharpness, and color grading inspection.
+- [Webcam Troubleshooting Guide](https://webcamclicks.com/webcam-troubleshooting-guide): Comprehensive diagnostic manual for resolving camera permissions, black screens, OS security locks, and low FPS issues across Chrome, Safari, Edge, macOS, Windows 11, and Chromebooks.
+- [Webcam Lighting & Setup Guide](https://webcamclicks.com/webcam-lighting-and-setup-guide): Complete tutorial on 3-point illumination, Kelvin color temperature, eye-level framing, and optical sensor optimization.
+- [About WebcamClicks](https://webcamclicks.com/about): Engineering philosophy, mission, creator background, and zero-upload client-side privacy architecture.
+- [Contact & Support](https://webcamclicks.com/contact): Direct technical assistance, inquiry forms, and publisher channels.
 - [International Language Hub](https://webcamclicks.com/languages): Multilingual hubs localized in Spanish (/es/), French (/fr/), German (/de/), Portuguese (/pt/), and Hindi (/hi/).
 
 ## Key Capabilities & Technical Specifications

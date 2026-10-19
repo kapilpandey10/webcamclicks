@@ -134,7 +134,7 @@
   <!-- Privacy Policy -->
   <url>
     <loc>https://webcamclicks.com/privacy</loc>
-    <lastmod>2026-10-06</lastmod>
+    <lastmod>2026-10-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
@@ -142,15 +142,47 @@
   <!-- Terms of Service -->
   <url>
     <loc>https://webcamclicks.com/terms</loc>
-    <lastmod>2026-10-06</lastmod>
+    <lastmod>2026-10-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
+  </url>
+
+  <!-- About Us (E-E-A-T Publisher Identity) -->
+  <url>
+    <loc>https://webcamclicks.com/about</loc>
+    <lastmod>2026-10-19</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Contact Us & Technical Support -->
+  <url>
+    <loc>https://webcamclicks.com/contact</loc>
+    <lastmod>2026-10-19</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Comprehensive Webcam Troubleshooting Guide -->
+  <url>
+    <loc>https://webcamclicks.com/webcam-troubleshooting-guide</loc>
+    <lastmod>2026-10-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Webcam Lighting & Studio Setup Guide -->
+  <url>
+    <loc>https://webcamclicks.com/webcam-lighting-and-setup-guide</loc>
+    <lastmod>2026-10-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
   </url>
 
   <!-- LLM Knowledge Base Manifest for AI Crawlers -->
   <url>
     <loc>https://webcamclicks.com/llms.txt</loc>
-    <lastmod>2026-10-08</lastmod>
+    <lastmod>2026-10-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>

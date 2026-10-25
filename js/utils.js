@@ -51,8 +51,11 @@ export function dataUrlToFile(dataUrl, filename) {
 
 /* ---------- Environment ---------- */
 export const isMobile = () =>
-  /Android|iPhone|iPad|iPod|Mobile|Silk/i.test(navigator.userAgent) ||
-  (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.userAgent));
+  (typeof navigator !== 'undefined' && (
+    /Android|iPhone|iPad|iPod|Mobile|Silk/i.test(navigator.userAgent) ||
+    (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.userAgent)) ||
+    (typeof window !== 'undefined' && window.innerWidth <= 768 && navigator.maxTouchPoints > 0)
+  ));
 
 export function friendlyCameraError(err) {
   const name = err && err.name ? err.name : '';

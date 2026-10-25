@@ -7,7 +7,35 @@
      3. manager composites:  display = src, then fx at `intensity` alpha
    Effects never touch the display canvas directly. */
 
-import { makeCanvas } from '../utils.js';
+import { makeCanvas, isMobile } from '../utils.js';
+
+/** Effects that require heavy neural nets or unbuffered full-frame CPU pixel convolution,
+ *  which cause browser crashes, freezes, or massive lag on mobile phones. */
+export const MOBILE_DISABLED_EFFECTS = new Set([
+  // Heavy Neural Networks that crash/fail on mobile WebGL:
+  'agegender',        // Age & Gender (requires heavy ageGenderNet)
+  'emotion',          // Emotion Meter (requires heavy faceExpressionNet)
+  'facemesh',         // Face Mesh (74 vertices + 100+ triangles per frame)
+
+  // Heavy CPU Pixel Convolution / Loops that freeze mobile:
+  'neon_contour',     // Neon Cyber Contour (Sobel kernel convolution)
+  'flir_thermal',     // Military FLIR Predator (pixel thermal mapping)
+  'liquid_rainbow',   // Liquid Rainbow Chrome (thin-film trig pixel loop)
+  'comic',            // Comic Book (allocates Float32Array on every frame)
+  'sketch',           // Pencil Sketch (allocates Float32Array on every frame)
+  'watercolor',       // Watercolor (unbuffered full-frame pixel quantization)
+  'ascii',            // ASCII Art (thousands of fillText calls per frame)
+  'datamosh',         // Datamosh FX (excessive frame buffer memory allocation)
+  'faceblur',         // Blur Background (destination-in blur crashes Safari canvas)
+  'xray',             // X-Ray (high-cost per-pixel inversion)
+  'alien',            // Alien (high-cost per-pixel remapping)
+  'nightvision',      // Night Vision (per-pixel phosphor loop)
+  'filmgrain',        // Film Grain (heavy random noise loop per pixel)
+  'cocoa',            // Cocoa (unbuffered per-pixel math)
+  'thermal',          // Thermal (full-frame per-pixel loop)
+  'neon',             // Neon Glow (per-pixel loop)
+  'popart'            // Pop Art (per-pixel loop)
+]);
 
 export class EffectManager {
   constructor() {
@@ -32,13 +60,38 @@ export class EffectManager {
     defs.forEach((d) => this.register(d));
   }
 
+  isSupportedOnDevice(effectOrId) {
+    const e = typeof effectOrId === 'string' ? this.effects.get(effectOrId) : effectOrId;
+    if (!e) return false;
+    if (isMobile()) {
+      if (e.disabledOnMobile || e.desktopOnly || MOBILE_DISABLED_EFFECTS.has(e.id)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   get(id) { return this.effects.get(id) || null; }
-  list() { return this.ordered; }
-  categories() { return [...new Set(this.ordered.map((e) => e.category))]; }
+
+  list() {
+    if (isMobile()) {
+      return this.ordered.filter((e) => this.isSupportedOnDevice(e));
+    }
+    return this.ordered;
+  }
+
+  categories() {
+    const available = this.list();
+    return [...new Set(available.map((e) => e.category))];
+  }
 
   set(id) {
     const e = this.effects.get(id);
     if (!e) return false;
+    if (isMobile() && !this.isSupportedOnDevice(e)) {
+      console.warn(`[WebcamClicks] Effect '${id}' is optimized for desktop and disabled on mobile.`);
+      return false;
+    }
     // Clean up previous effect (e.g. stop audio nodes, free resources)
     if (this.current && typeof this.current.destroy === 'function') {
       try { this.current.destroy(); } catch { /* ignore */ }

@@ -819,7 +819,20 @@ function buildMobileCarousel() {
 function setEffect(id, opts = {}) {
   const effect = manager.get(id);
   if (!effect) return;
-  manager.set(id);
+
+  if (isMobile() && !manager.isSupportedOnDevice(effect)) {
+    if (opts.silent !== true) {
+      toast('📱 This filter is optimized for desktop computers.');
+    }
+    if (!manager.current || !manager.isSupportedOnDevice(manager.current)) {
+      manager.set('normal');
+      updateHashEffect('normal');
+    }
+    return;
+  }
+
+  const ok = manager.set(id);
+  if (!ok) return;
   const tiles = el.filterGrid ? el.filterGrid.querySelectorAll('.filter-tile') : [];
   tiles.forEach((t) => t.classList.toggle('selected', t.dataset.id === id));
 

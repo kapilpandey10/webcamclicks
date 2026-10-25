@@ -4,7 +4,7 @@
    live resolution & FPS, and captures synchronized comparison shots.
    ============================================================ */
 
-import { FpsMeter, downloadDataUrl, timestamp } from './utils.js';
+import { FpsMeter, downloadDataUrl, timestamp, drawWatermark } from './utils.js';
 
 export class DualWebcamComparator {
   constructor(options = {}) {
@@ -241,6 +241,7 @@ export class DualWebcamComparator {
     ctx.fillText(`${labelA}: ${wA}×${hA}`, 26, targetH + 60 - 27);
     ctx.fillText(`${labelB}: ${wB}×${hB}`, scaledWA + 26, targetH + 60 - 27);
 
+    drawWatermark(ctx, totalW, targetH + 60);
     const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
     downloadDataUrl(dataUrl, `webcam-comparison-${timestamp()}.jpg`);
     return dataUrl;

@@ -313,7 +313,7 @@ export function generateCollage(poses, opts = {}) {
   ctx.font = '600 13px "Outfit", sans-serif';
   ctx.fillStyle = theme.subtext;
   ctx.letterSpacing = '1px';
-  ctx.fillText(`${dateFormatted} · 100% PRIVATE ON-DEVICE`, cw / 2, footY + 14);
+  ctx.fillText(`${dateFormatted} · WEBCAMCLICKS.COM · 100% PRIVATE`, cw / 2, footY + 14);
   ctx.restore();
 
   const dataUrl = canvas.toDataURL('image/jpeg', 0.94);

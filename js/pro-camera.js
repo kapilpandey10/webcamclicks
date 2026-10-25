@@ -7,7 +7,7 @@
 import { CameraManager } from './camera.js';
 import { Recorder } from './recorder.js';
 import { Sound } from './sound.js';
-import { timestamp, downloadDataUrl } from './utils.js';
+import { timestamp, downloadDataUrl, drawWatermark } from './utils.js';
 
 /* Theatrical & Cinema Aspect Ratios */
 export const RATIOS = {
@@ -308,6 +308,7 @@ export class ProCameraApp {
               this.recCanvas.height = crop.h;
             }
             this.recCtx.drawImage(this.displayCanvas, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
+            drawWatermark(this.recCtx, crop.w, crop.h);
           }
         }
       }
@@ -549,6 +550,7 @@ export class ProCameraApp {
     photoCanvas.height = Math.max(2, crop.h);
     const pctx = photoCanvas.getContext('2d');
     pctx.drawImage(this.displayCanvas, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
+    drawWatermark(pctx, photoCanvas.width, photoCanvas.height);
 
     const dataUrl = photoCanvas.toDataURL('image/jpeg', 0.95);
     const ratioInfo = RATIOS[this.currentRatioKey] || RATIOS.scope;

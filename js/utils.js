@@ -144,3 +144,44 @@ export function toast(msg, ms = 2200) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toastEl.classList.remove('show'), ms);
 }
+
+/* ---------- Professional Watermark ---------- */
+export function drawWatermark(ctx, width, height, options = {}) {
+  if (!ctx || !width || !height) return;
+  ctx.save();
+  const baseW = Math.max(320, width);
+  // Scale font cleanly with canvas resolution (roughly 1.8% - 2.2% of width)
+  const fontSize = clamp(Math.round(baseW * 0.021), 12, 26);
+  const padX = Math.round(fontSize * 0.85);
+  const padY = Math.round(fontSize * 0.45);
+  const radius = Math.round(fontSize * 0.55);
+
+  ctx.font = `600 ${fontSize}px "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  const text = options.text || '📷 webcamclicks.com';
+  const textW = ctx.measureText(text).width;
+  const badgeW = textW + padX * 2;
+  const badgeH = fontSize + padY * 2;
+
+  const margin = Math.max(12, Math.round(baseW * 0.022));
+  const x = width - badgeW - margin;
+  const y = height - badgeH - margin;
+
+  // Frosted dark pill background
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+  ctx.lineWidth = Math.max(1, Math.round(fontSize * 0.07));
+  roundRect(ctx, x, y, badgeW, badgeH, radius);
+  ctx.fill();
+  ctx.stroke();
+
+  // Crisp white typography with subtle shadow for contrast
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+  ctx.shadowBlur = 4;
+  ctx.fillStyle = '#ffffff';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  ctx.fillText(text, x + padX, y + badgeH / 2);
+
+  ctx.restore();
+}
+

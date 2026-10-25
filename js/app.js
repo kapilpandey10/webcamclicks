@@ -1,7 +1,7 @@
 /* WebcamClicks — app.js
    Wires together camera, effects, face tracking, games, gallery and UI. */
 
-import { $, $$, clamp, rand, storage, toast, FpsMeter, friendlyCameraError, makeCanvas, downloadDataUrl, dataUrlToFile, timestamp, isMobile } from './utils.js';
+import { $, $$, clamp, rand, storage, toast, FpsMeter, friendlyCameraError, makeCanvas, downloadDataUrl, dataUrlToFile, timestamp, isMobile, drawWatermark } from './utils.js';
 import { Sound } from './sound.js';
 import { CameraManager } from './camera.js';
 import { MotionDetector } from './motion.js';
@@ -493,6 +493,11 @@ function loop(now) {
       dctx.restore();
     } else {
       manager.render(dctx, frame);
+    }
+
+    // Burn professional watermark into recorded video stream
+    if (isRecording) {
+      drawWatermark(dctx, display.width, display.height);
     }
 
     /* FPS badge (throttled by the meter itself) */

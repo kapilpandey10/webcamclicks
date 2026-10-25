@@ -2,7 +2,7 @@
    Captures are stored as compressed JPEG data URLs in localStorage
    (device-only — nothing is ever uploaded). */
 
-import { storage, downloadDataUrl, timestamp } from './utils.js';
+import { storage, downloadDataUrl, timestamp, drawWatermark } from './utils.js';
 
 const KEY = 'wc_gallery_v1';
 const MAX_ITEMS = 24;
@@ -24,7 +24,8 @@ export class Gallery {
     c.height = Math.max(2, Math.round(canvas.height * ratio));
     const ctx = c.getContext('2d');
     ctx.drawImage(canvas, 0, 0, c.width, c.height);
-    const dataUrl = c.toDataURL('image/jpeg', 0.85);
+    drawWatermark(ctx, c.width, c.height);
+    const dataUrl = c.toDataURL('image/jpeg', 0.88);
 
     const item = {
       id: `${Date.now()}-${Math.round(Math.random() * 1e5)}`,

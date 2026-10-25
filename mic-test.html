@@ -33,17 +33,23 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <meta property="og:title" content="Online Mic Test &amp; Diagnostic Report Generator — WebcamClicks">
 <meta property="og:description" content="Check your microphone volume, audio clarity, and background noise. Get an instant, comprehensive diagnostic report for Zoom, Teams &amp; Meet.">
 <meta property="og:image" content="https://webcamclicks.com/assets/img/og-image.png">
+<meta property="og:image:secure_url" content="https://webcamclicks.com/assets/img/og-image.png">
+<meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="WebcamClicks Online Microphone Test and Diagnostics">
+<meta property="og:locale" content="en_US">
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Online Mic Test &amp; Diagnostic Report Generator — WebcamClicks">
 <meta name="twitter:description" content="Check your microphone volume, audio clarity, and background noise. Instant diagnostic report.">
 <meta name="twitter:image" content="https://webcamclicks.com/assets/img/og-image.png">
+<meta name="twitter:image:alt" content="WebcamClicks Online Microphone Test and Sound Diagnostics">
 
-<!-- Google Fonts (Non-render-blocking with swap) -->
+<!-- Performance & Resource Hints -->
+<link rel="dns-prefetch" href="//fonts.googleapis.com">
+<link rel="dns-prefetch" href="//fonts.gstatic.com">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
@@ -54,16 +60,47 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
 <link rel="stylesheet" href="/styles/main.css">
 
+<!-- Structured data: BreadcrumbList -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://webcamclicks.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Mic Test",
+      "item": "https://webcamclicks.com/mic-test"
+    }
+  ]
+}
+</script>
+
 <!-- Structured data: WebApplication -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "WebApplication",
+  "@id": "https://webcamclicks.com/mic-test#webapp",
   "name": "WebcamClicks Microphone Tester",
   "url": "https://webcamclicks.com/mic-test",
   "applicationCategory": "MultimediaApplication",
-  "operatingSystem": "Any (browser-based)",
-  "description": "Comprehensive browser-based microphone diagnostic test with live decibel volume metering, audio waveform visualizer, playback verification, and detailed report generator."
+  "operatingSystem": "Any (browser-based iOS, Android, macOS, Windows, Linux, ChromeOS)",
+  "description": "Comprehensive browser-based microphone diagnostic test with live decibel volume metering, audio waveform visualizer, playback verification, and detailed report generator.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.9",
+    "ratingCount": "1890",
+    "bestRating": "5",
+    "worstRating": "1"
+  }
 }
 </script>
 

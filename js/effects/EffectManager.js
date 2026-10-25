@@ -39,6 +39,10 @@ export class EffectManager {
   set(id) {
     const e = this.effects.get(id);
     if (!e) return false;
+    // Clean up previous effect (e.g. stop audio nodes, free resources)
+    if (this.current && typeof this.current.destroy === 'function') {
+      try { this.current.destroy(); } catch { /* ignore */ }
+    }
     this.current = e;
     if (this.onChange) this.onChange(e);
     return true;

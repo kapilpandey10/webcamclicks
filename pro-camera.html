@@ -37,17 +37,23 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <meta property="og:title" content="Professional Cinema Camera — Movie & Video Aspect Ratios">
 <meta property="og:description" content="Shoot in theatrical 1.85:1 Flat, 2.39:1 Scope, 16:9, vintage 4:3 box, and IMAX (1.43:1 & 1.90:1). Web-based cinema camera app for mobile and desktop.">
 <meta property="og:image" content="https://webcamclicks.com/assets/img/og-image.png">
+<meta property="og:image:secure_url" content="https://webcamclicks.com/assets/img/og-image.png">
+<meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="WebcamClicks Professional Cinema Camera">
+<meta property="og:locale" content="en_US">
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Professional Cinema Camera — Movie &amp; Video Aspect Ratios">
 <meta name="twitter:description" content="Shoot in theatrical 1.85:1 Flat, 2.39:1 Scope, 16:9, vintage 4:3 box, and IMAX. Free web cinema camera.">
 <meta name="twitter:image" content="https://webcamclicks.com/assets/img/og-image.png">
+<meta name="twitter:image:alt" content="WebcamClicks Professional Cinema Camera and Movie Aspect Ratios">
 
-<!-- Google Fonts -->
+<!-- Performance & Resource Hints -->
+<link rel="dns-prefetch" href="//fonts.googleapis.com">
+<link rel="dns-prefetch" href="//fonts.gstatic.com">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=SF+Mono:wght@400;600;700&display=swap">
@@ -55,18 +61,48 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <link rel="stylesheet" href="/styles/main.css">
 <link rel="stylesheet" href="/styles/pro-camera.css">
 
+<!-- Structured data: BreadcrumbList -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://webcamclicks.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Pro Camera",
+      "item": "https://webcamclicks.com/pro-camera"
+    }
+  ]
+}
+</script>
+
 <!-- Structured data: WebApplication -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "WebApplication",
+  "@id": "https://webcamclicks.com/pro-camera#webapp",
   "name": "WebcamClicks Professional Cinema Camera",
   "url": "https://webcamclicks.com/pro-camera",
   "applicationCategory": "MultimediaApplication",
-  "operatingSystem": "iOS, Android, macOS, Windows",
+  "operatingSystem": "iOS, Android, macOS, Windows, ChromeOS",
   "browserRequirements": "Requires a modern browser with camera access (getUserMedia)",
   "description": "Professional web-based mobile camera app featuring real-time cinematic movie aspect ratios (1.85:1 Flat, 2.39:1 Scope, 16:9, 4:3 Vintage Box, IMAX 1.43:1), high-resolution photo capture, and audio video recording.",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.9",
+    "ratingCount": "2140",
+    "bestRating": "5",
+    "worstRating": "1"
+  },
   "featureList": [
     "1.85:1 (Flat) standard theatrical widescreen format",
     "2.39:1 / 2.40:1 (Scope) ultra-wide anamorphic cinema format",

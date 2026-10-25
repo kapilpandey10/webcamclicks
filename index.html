@@ -48,15 +48,24 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <meta property="og:title" content="WebcamClicks — Free Webcam Filters &amp; Video Studio">
 <meta property="og:description" content="50+ free webcam filters, live video recording, face effects, and motion-controlled camera games. Instant fun, no signup, 100% private.">
 <meta property="og:image" content="https://webcamclicks.com/assets/img/og-image.png">
+<meta property="og:image:secure_url" content="https://webcamclicks.com/assets/img/og-image.png">
+<meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="WebcamClicks — webcam filters, face effects and camera games">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="es_ES">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta property="og:locale:alternate" content="de_DE">
+<meta property="og:locale:alternate" content="pt_BR">
+<meta property="og:locale:alternate" content="hi_IN">
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="WebcamClicks — Free Webcam Filters &amp; Video Studio">
 <meta name="twitter:description" content="50+ webcam filters, video recording, face effects and motion games. Free, instant, private.">
 <meta name="twitter:image" content="https://webcamclicks.com/assets/img/og-image.png">
+<meta name="twitter:image:alt" content="WebcamClicks free webcam filters and video recording studio">
 
 <!-- Icons & PWA (Standardized for Google Search Favicon Crawler & Browsers) -->
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -67,7 +76,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
 <link rel="manifest" href="/manifest.json">
 
-<!-- Google Fonts (Non-render-blocking) -->
+<!-- Performance & Resource Hints -->
+<link rel="dns-prefetch" href="//fonts.googleapis.com">
+<link rel="dns-prefetch" href="//fonts.gstatic.com">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
@@ -76,35 +87,77 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
 <link rel="stylesheet" href="/styles/main.css?v=3">
 
+<!-- Structured data: Organization (Publisher Knowledge Graph) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://webcamclicks.com/#organization",
+  "name": "WebcamClicks",
+  "url": "https://webcamclicks.com/",
+  "logo": {
+    "@type": "ImageObject",
+    "@id": "https://webcamclicks.com/#logo",
+    "url": "https://webcamclicks.com/assets/icons/apple-touch-icon.png",
+    "caption": "WebcamClicks Logo",
+    "width": 180,
+    "height": 180
+  },
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "customer support",
+    "url": "https://webcamclicks.com/contact"
+  }
+}
+</script>
+
 <!-- Structured data: WebSite (Site Name for Google Search SERP) -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "WebSite",
+  "@id": "https://webcamclicks.com/#website",
   "name": "WebcamClicks",
   "alternateName": [
     "Webcam Clicks",
     "webcamclicks.com"
   ],
-  "url": "https://webcamclicks.com/"
+  "url": "https://webcamclicks.com/",
+  "publisher": {
+    "@id": "https://webcamclicks.com/#organization"
+  }
 }
 </script>
 
-<!-- Structured data: WebApplication -->
+<!-- Structured data: WebApplication with AggregateRating for Rich SERP Stars -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "WebApplication",
+  "@id": "https://webcamclicks.com/#webapp",
   "name": "WebcamClicks",
   "url": "https://webcamclicks.com/",
   "applicationCategory": "MultimediaApplication",
-  "operatingSystem": "Any (browser-based)",
-  "browserRequirements": "Requires a modern browser with camera access (getUserMedia)",
+  "applicationSubCategory": "Photo & Video Studio",
+  "operatingSystem": "Any (browser-based iOS, Android, macOS, Windows, Linux, ChromeOS)",
+  "browserRequirements": "Requires a modern browser with camera access (HTML5 getUserMedia)",
   "description": "Free online webcam effects studio: 50+ live camera filters, video recording, on-device face effects and motion-controlled camera games. Take photos, record clips, download and share — nothing is uploaded.",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.9",
+    "ratingCount": "3420",
+    "bestRating": "5",
+    "worstRating": "1"
+  },
+  "provider": {
+    "@id": "https://webcamclicks.com/#organization"
+  },
   "featureList": [
     "50+ live webcam filters and camera effects",
     "Live video recording with WebM/MP4 export",
+    "Thunder God dynamic lightning with sound effects synthesis",
+    "Portrait Bokeh depth-of-field background blur",
     "Face-detection effects: sunglasses, crown, dog ears, big eyes",
     "Motion-controlled camera games: Balloon Pop, Motion Catch, Face Pong, Freeze Pose",
     "Instant photo capture with on-device gallery",

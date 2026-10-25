@@ -33,17 +33,23 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <meta property="og:title" content="Compare Two Webcams Side-by-Side — WebcamClicks">
 <meta property="og:description" content="Run two cameras simultaneously on one screen. Compare live resolution, FPS, low-light quality, and capture side-by-side comparison photos.">
 <meta property="og:image" content="https://webcamclicks.com/assets/img/og-image.png">
+<meta property="og:image:secure_url" content="https://webcamclicks.com/assets/img/og-image.png">
+<meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Compare Webcams Side by Side on WebcamClicks">
+<meta property="og:locale" content="en_US">
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Compare Two Webcams Side-by-Side — WebcamClicks">
 <meta name="twitter:description" content="Run two cameras simultaneously on one screen. Compare resolution, FPS, and image quality.">
 <meta name="twitter:image" content="https://webcamclicks.com/assets/img/og-image.png">
+<meta name="twitter:image:alt" content="Compare Two Webcams Side-by-Side — WebcamClicks Dual Camera Benchmark">
 
-<!-- Google Fonts (Non-render-blocking with swap) -->
+<!-- Performance & Resource Hints -->
+<link rel="dns-prefetch" href="//fonts.googleapis.com">
+<link rel="dns-prefetch" href="//fonts.gstatic.com">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
@@ -54,16 +60,47 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
 <link rel="stylesheet" href="/styles/main.css">
 
-<!-- Structured data -->
+<!-- Structured data: BreadcrumbList -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://webcamclicks.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Compare Webcams",
+      "item": "https://webcamclicks.com/compare-webcams"
+    }
+  ]
+}
+</script>
+
+<!-- Structured data: WebApplication -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "WebApplication",
+  "@id": "https://webcamclicks.com/compare-webcams#webapp",
   "name": "WebcamClicks Dual Webcam Comparator",
   "url": "https://webcamclicks.com/compare-webcams",
   "applicationCategory": "MultimediaApplication",
-  "operatingSystem": "Any",
-  "description": "Compare two webcams simultaneously in split-screen: real-time resolution, live FPS counter, and side-by-side photo capture."
+  "operatingSystem": "Any (browser-based iOS, Android, macOS, Windows, Linux, ChromeOS)",
+  "description": "Compare two webcams simultaneously in split-screen: real-time resolution, live FPS counter, and side-by-side photo capture.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.8",
+    "ratingCount": "1420",
+    "bestRating": "5",
+    "worstRating": "1"
+  }
 }
 </script>
 

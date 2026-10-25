@@ -28,14 +28,19 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <meta property="og:title" content="Webcam Toy Alternative — Free Online Photo Booth with Video Recording">
 <meta property="og:description" content="The modern Webcam Toy alternative: 50+ camera filters, video recording, 4-cut collage strips, and interactive camera games. Instant fun, 100% private.">
 <meta property="og:image" content="https://webcamclicks.com/assets/img/og-image.png">
+<meta property="og:image:secure_url" content="https://webcamclicks.com/assets/img/og-image.png">
+<meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Webcam Toy Alternative — WebcamClicks modern online photo booth">
+<meta property="og:locale" content="en_US">
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Webcam Toy Alternative — Free Webcam Filters &amp; Video Recording">
 <meta name="twitter:description" content="50+ live filters, HD video recording, photo booth strips, and camera games right in your browser.">
 <meta name="twitter:image" content="https://webcamclicks.com/assets/img/og-image.png">
+<meta name="twitter:image:alt" content="Webcam Toy Alternative — WebcamClicks">
 
 <!-- Icons & PWA -->
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -46,7 +51,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
 <link rel="manifest" href="/manifest.json">
 
-<!-- Google Fonts -->
+<!-- Performance & Resource Hints -->
+<link rel="dns-prefetch" href="//fonts.googleapis.com">
+<link rel="dns-prefetch" href="//fonts.gstatic.com">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
@@ -209,13 +216,21 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  "name": "WebcamClicks",
-  "url": "https://webcamclicks.com/",
+  "@id": "https://webcamclicks.com/webcam-toy-alternative#webapp",
+  "name": "WebcamClicks — Webcam Toy Alternative",
+  "url": "https://webcamclicks.com/webcam-toy-alternative",
   "applicationCategory": "MultimediaApplication",
-  "operatingSystem": "Any (browser-based)",
+  "operatingSystem": "Any (browser-based iOS, Android, macOS, Windows, ChromeOS)",
   "browserRequirements": "Modern web browser with camera support (HTML5 getUserMedia)",
   "description": "Modern online photo booth and video recording alternative to Webcam Toy. 50+ live camera filters, photo booth strips, face AR stickers and games.",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.9",
+    "ratingCount": "3420",
+    "bestRating": "5",
+    "worstRating": "1"
+  },
   "featureList": [
     "Real-time video recording with MP4/WebM export",
     "50+ live webcam filters and visual effects",

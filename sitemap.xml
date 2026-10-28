@@ -179,10 +179,50 @@
     <priority>0.85</priority>
   </url>
 
+  <!-- Guides & Tutorials Editorial Hub -->
+  <url>
+    <loc>https://webcamclicks.com/guides</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Phone as 4K Webcam Guide -->
+  <url>
+    <loc>https://webcamclicks.com/how-to-use-phone-as-webcam</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Fix Blurry Webcam Guide -->
+  <url>
+    <loc>https://webcamclicks.com/how-to-fix-blurry-webcam</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Webcam FOV & Optics Guide -->
+  <url>
+    <loc>https://webcamclicks.com/webcam-focal-length-and-fov-guide</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- History of Photo Booths -->
+  <url>
+    <loc>https://webcamclicks.com/history-of-photo-booths</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
   <!-- LLM Knowledge Base Manifest for AI Crawlers -->
   <url>
     <loc>https://webcamclicks.com/llms.txt</loc>
-    <lastmod>2026-10-25</lastmod>
+    <lastmod>2026-10-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>

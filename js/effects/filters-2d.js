@@ -104,6 +104,45 @@ import { animeEffect } from './filters/anime.js';
 import { discoLasersEffect } from './filters/disco_lasers.js';
 import { arcade8bitEffect } from './filters/arcade8bit.js';
 import { prismEffect } from './filters/prism.js';
+import { berryEffect } from './filters/berry.js';
+import { bloomEffect } from './filters/bloom.js';
+import { bulgeEffect } from './filters/bulge.js';
+import { citrusEffect } from './filters/citrus.js';
+import { cocktailEffect } from './filters/cocktail.js';
+import { colorGhostEffect } from './filters/color_ghost.js';
+import { crosshatchEffect } from './filters/crosshatch.js';
+import { dentEffect } from './filters/dent.js';
+import { dangerEffect } from './filters/danger.js';
+import { envyEffect } from './filters/envy.js';
+import { filmstripEffect } from './filters/filmstrip.js';
+import { fragmentEffect } from './filters/fragment.js';
+import { ghostEffect } from './filters/ghost.js';
+import { glazeEffect } from './filters/glaze.js';
+import { haloEffect } from './filters/halo.js';
+import { hotPinkEffect } from './filters/hot_pink.js';
+import { lsdEffect } from './filters/lsd.js';
+import { magazineEffect } from './filters/magazine.js';
+import { mintEffect } from './filters/mint.js';
+import { monoQuadEffect } from './filters/mono_quad.js';
+import { outlineEffect } from './filters/outline.js';
+import { pinchEffect } from './filters/pinch.js';
+import { popBoothEffect } from './filters/pop_booth.js';
+import { roseEffect } from './filters/rose.js';
+import { shuffleEffect } from './filters/shuffle.js';
+import { silkEffect } from './filters/silk.js';
+import { smokeEffect } from './filters/smoke.js';
+import { spectrumEffect } from './filters/spectrum.js';
+import { spiralEffect } from './filters/spiral.js';
+import { spyCamEffect } from './filters/spy_cam.js';
+import { stretchEffect } from './filters/stretch.js';
+import { switchEffect } from './filters/switch.js';
+import { trailEffect } from './filters/trail.js';
+import { trueBlueEffect } from './filters/true_blue.js';
+import { tunnelEffect } from './filters/tunnel.js';
+import { twistEffect } from './filters/twist.js';
+import { upsideDownEffect } from './filters/upside_down.js';
+import { wedgeEffect } from './filters/wedge.js';
+import { zincEffect } from './filters/zinc.js';
 
 export {
   cyberpunkHudEffect,
@@ -206,7 +245,46 @@ export {
   animeEffect,
   discoLasersEffect,
   arcade8bitEffect,
-  prismEffect
+  prismEffect,
+  berryEffect,
+  bloomEffect,
+  bulgeEffect,
+  citrusEffect,
+  cocktailEffect,
+  colorGhostEffect,
+  crosshatchEffect,
+  dentEffect,
+  dangerEffect,
+  envyEffect,
+  filmstripEffect,
+  fragmentEffect,
+  ghostEffect,
+  glazeEffect,
+  haloEffect,
+  hotPinkEffect,
+  lsdEffect,
+  magazineEffect,
+  mintEffect,
+  monoQuadEffect,
+  outlineEffect,
+  pinchEffect,
+  popBoothEffect,
+  roseEffect,
+  shuffleEffect,
+  silkEffect,
+  smokeEffect,
+  spectrumEffect,
+  spiralEffect,
+  spyCamEffect,
+  stretchEffect,
+  switchEffect,
+  trailEffect,
+  trueBlueEffect,
+  tunnelEffect,
+  twistEffect,
+  upsideDownEffect,
+  wedgeEffect,
+  zincEffect
 };
 
 export const defs2d = [
@@ -310,7 +388,46 @@ export const defs2d = [
   animeEffect,
   discoLasersEffect,
   arcade8bitEffect,
-  prismEffect
+  prismEffect,
+  berryEffect,
+  bloomEffect,
+  bulgeEffect,
+  citrusEffect,
+  cocktailEffect,
+  colorGhostEffect,
+  crosshatchEffect,
+  dentEffect,
+  dangerEffect,
+  envyEffect,
+  filmstripEffect,
+  fragmentEffect,
+  ghostEffect,
+  glazeEffect,
+  haloEffect,
+  hotPinkEffect,
+  lsdEffect,
+  magazineEffect,
+  mintEffect,
+  monoQuadEffect,
+  outlineEffect,
+  pinchEffect,
+  popBoothEffect,
+  roseEffect,
+  shuffleEffect,
+  silkEffect,
+  smokeEffect,
+  spectrumEffect,
+  spiralEffect,
+  spyCamEffect,
+  stretchEffect,
+  switchEffect,
+  trailEffect,
+  trueBlueEffect,
+  tunnelEffect,
+  twistEffect,
+  upsideDownEffect,
+  wedgeEffect,
+  zincEffect
 ];
 
 /** Register all Canvas 2D effects into an EffectManager instance. */

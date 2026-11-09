@@ -49,7 +49,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
 <link rel="stylesheet" href="/styles/main.css">
 
-<!-- Structured data: AboutPage -->
+<!-- Structured data: AboutPage & Founder Entity -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -57,10 +57,24 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   "name": "About WebcamClicks",
   "url": "https://webcamclicks.com/about",
   "description": "Learn about the mission, creators, and client-side privacy architecture behind WebcamClicks.",
+  "mainEntity": {
+    "@type": "Person",
+    "name": "Kapil Pandey",
+    "url": "https://pandeykapil.com.np",
+    "jobTitle": "Lead Software Engineer & Publisher",
+    "sameAs": [
+      "https://pandeykapil.com.np"
+    ]
+  },
   "publisher": {
     "@type": "Organization",
     "name": "WebcamClicks",
     "url": "https://webcamclicks.com/",
+    "founder": {
+      "@type": "Person",
+      "name": "Kapil Pandey",
+      "url": "https://pandeykapil.com.np"
+    },
     "logo": {
       "@type": "ImageObject",
       "url": "https://webcamclicks.com/assets/icons/icon.svg"
@@ -98,8 +112,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </p>
   </div>
 
-  <h2>1. Who We Are</h2>
-  <p><strong>WebcamClicks</strong> was created by an independent team of web engineers, creative coders, and multimedia enthusiasts who grew tired of clunky desktop software, intrusive mobile apps demanding excessive phone permissions, and legacy browser photo booths that haven't evolved in over a decade.</p>
+  <h2>1. Who We Are &amp; Founder Information</h2>
+  <p><strong>WebcamClicks</strong> was founded and built by <strong><a href="https://pandeykapil.com.np" target="_blank" rel="noopener">Kapil Pandey</a></strong>, a software engineer and web developer, alongside a collaborative group of creative coders and multimedia enthusiasts. We grew tired of clunky desktop software, intrusive mobile apps demanding excessive phone permissions, and legacy browser photo booths that haven't evolved in over a decade.</p>
   <p>We built WebcamClicks to demonstrate the extraordinary power of modern web standards. By combining modern <strong>HTML5 Canvas 2D</strong>, <strong>WebGL 2.0</strong>, <strong>WebRTC (getUserMedia)</strong>, and on-device neural networks (via <code>face-api.js</code> and TensorFlow.js WebAssembly backends), we deliver cinema-grade video filters, real-time face tracking, multi-camera benchmarks, and motion games directly in your browser.</p>
 
   <h2>2. Our Core Architectural Principles</h2>

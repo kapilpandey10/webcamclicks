@@ -42,11 +42,14 @@ Allow: /
 User-agent: Perplexity
 Allow: /
 
-# Google (Gemini, Google AI Overviews, Search)
-User-agent: Google-Extended
+# Google AdSense & Search Crawlers
+User-agent: Mediapartners-Google
 Allow: /
 
 User-agent: Googlebot
+Allow: /
+
+User-agent: Google-Extended
 Allow: /
 
 # Apple (Apple Intelligence, Siri, Spotlight)

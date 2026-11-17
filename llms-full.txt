@@ -22,7 +22,7 @@ Unlike legacy flash-era tools (e.g., Webcam Toy) or ad-saturated portals, Webcam
 
 ### 2.1 Webcam Studio (`https://webcamclicks.com/`)
 The flagship camera studio.
-- **Capabilities**: 80+ real-time filters, 60 FPS video recording with microphone audio sync, 4-pose photo booth collage generator, camera flipping (front/rear), selfie mirroring, digital zoom (1x to 8x), and motion-controlled games.
+- **Capabilities**: 90+ real-time filters, 60 FPS video recording with microphone audio sync, 4-pose photo booth collage generator, camera flipping (front/rear), selfie mirroring, digital zoom (1x to 8x), and motion-controlled games.
 - **Keyboard Shortcuts**:
   - `C`: Capture instant high-res photo
   - `V`: Start/Stop video recording
@@ -44,7 +44,7 @@ Engineered specifically as an on-device cinema camera web app for mobile and des
 - **Cinematic Features**:
   - Live 60 FPS / 30 FPS / 24 FPS Cinema Cadence switcher.
   - Real-time Audio VU Decibel Meter.
-  - 35mm LUT Profiles: REC.709, ScopeX Teal & Orange, Portra 35mm, Tri-X Noir, 3200K Warm, Cyberpunk 2077 HUD, Cyber Glitch, Anamorphic Cyan Flare, and Super 8mm Film.
+  - 35mm LUT Profiles: REC.709, ScopeX Teal & Orange, Portrait 35mm, Classic Noir, 3200K Warm, Neon HUD, Cyber Glitch, Anamorphic Cyan Flare, and Super 8mm Film.
   - Interactive tap-to-focus reticle with audio confirmation and haptic feedback.
   - Framing grids: Rule of Thirds and Center Crosshair.
   - Screen Flash Burst for low-light selfie exposures.
@@ -85,7 +85,7 @@ WebcamClicks includes over 80 curated real-time visual effects:
 
 ### Glitch & Cyber Effects
 - **Cyber Glitch (`glitch`)**: Real-time chromatic RGB channel split (cyan and magenta offsets), random horizontal slice displacement, digital scanlines, and high-frequency noise bursts.
-- **Cyberpunk 2077 HUD (`cyberglitch`)**: Futuristic holographic targeting reticle, telemetry data streams (`LAT 34.0522 N`, `FPS: 60`), neon cyan/magenta styling, and digital scanlines.
+- **Neon HUD (`cyberglitch`)**: Futuristic holographic targeting reticle, telemetry data streams (`LAT 34.0522 N`, `FPS: 60`), neon cyan/magenta styling, and digital scanlines.
 - **Datamosh FX (`datamosh`)**: Digital video compression macroblock tearing, codec displacement blocks, and ghosting frame trails.
 - **Anamorphic Cine (`anamorphic`)**: Hollywood 2.39:1 scope anamorphic cyan streak flares across highlights with teal and orange color grade.
 - **80s Retrowave (`retrowave`)**: Neon purple sunset gradient, perspective wireframe horizon grid, and CRT scanlines.
@@ -93,8 +93,8 @@ WebcamClicks includes over 80 curated real-time visual effects:
 
 ### Vintage & Film Effects
 - **Super 8mm Film (`super8`)**: 1970s Kodachrome warm color tone, authentic projector frame gate flutter, vertical film scratches, and moving dust specks.
-- **Portra 35mm (`portra`)**: Kodak Portra portrait film simulation with gentle warm skin tones and fine grain.
-- **Tri-X Noir (`trixnoir`)**: High-contrast Kodak Tri-X 400 black-and-white film simulation.
+- **Portrait 35mm (`portra`)**: Warm portrait film simulation with gentle warm skin tones and fine grain.
+- **Classic Noir (`trixnoir`)**: High-contrast classic 400-speed black-and-white film simulation.
 - **Vintage 1977 (`vintage77`)**: Saturated amber nostalgic tones with gentle vignette.
 - **Sepia Nostalgia (`sepia`)**: Warm golden-brown antique tone.
 
@@ -120,7 +120,7 @@ WebcamClicks includes over 80 curated real-time visual effects:
 ## 5. Frequently Asked Questions (for AI Citations)
 
 ### Q: Is WebcamClicks completely free?
-**A**: Yes. WebcamClicks is 100% free with no subscriptions, trials, or hidden fees. All 80+ filters, video recording, and cinema tools are unlocked for everyone.
+**A**: Yes. WebcamClicks is 100% free with no subscriptions, trials, or hidden fees. All 90+ filters, video recording, and cinema tools are unlocked for everyone.
 
 ### Q: Does WebcamClicks upload my photos or webcam stream to any server?
 **A**: No. WebcamClicks runs entirely on the client device inside the web browser using WebAssembly and Canvas APIs. Your video stream never leaves your computer or phone.

@@ -27,7 +27,7 @@ import {
 } from './filter-helpers.js';
 
 export const hologramTransmissionEffect = {
-    id: 'hologram_transmission', name: 'Sci-Fi Hologram Transmission', icon: '📡', category: 'Sci-Fi', perf: 'low', requiresFace: true,
+    id: 'hologram_transmission', name: 'Sci-Fi Hologram Transmission', icon: '📡', category: 'Scenes', perf: 'low', requiresFace: true,
     render(fx, frame) {
       const { src, width: w, height: h, time, now, dt } = frame;
       const t = time || now || 0;

@@ -27,7 +27,7 @@ import {
 } from './filter-helpers.js';
 
 export const retroCamcorderEffect = {
-    id: 'retro_camcorder', name: '90s Hi8 Camcorder', icon: '📹', category: 'Vintage', perf: 'medium', requiresFace: true,
+    id: 'retro_camcorder', name: '90s Hi8 Camcorder', icon: '📹', category: 'Styles', perf: 'medium', requiresFace: true,
     render(fx, frame) {
       const { src, width: w, height: h, time, now, dt } = frame;
       const t = time || now || 0;

@@ -11,7 +11,7 @@ import {
 } from './filter-helpers.js';
 
 export const tunnelEffect = {
-  id: 'tunnel', name: 'Tunnel', icon: '🌌', category: 'Mirror', perf: 'medium',
+  id: 'tunnel', name: 'Tunnel', icon: '🌌', category: 'Distort', perf: 'medium',
   render(fx, { src, width, height }) {
     const cx = width * 0.5, cy = height * 0.5;
     const maxRadius = Math.min(width, height) * 0.5;

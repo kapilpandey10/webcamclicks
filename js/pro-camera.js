@@ -68,10 +68,10 @@ const LUTS = {
   'tealorange': { name: 'SCOPEX', filter: 'contrast(1.15) saturate(1.2) hue-rotate(-12deg)' },
   'glitch': { name: 'GLITCH', filter: 'contrast(1.25) saturate(1.4)', custom: 'glitch' },
   'anamorphic': { name: 'FLARE', filter: 'contrast(1.18) saturate(1.25) hue-rotate(-10deg)', custom: 'anamorphic' },
-  'portra400': { name: 'PORTRA 35mm', filter: 'sepia(0.2) contrast(1.08) brightness(1.04) saturate(1.1)' },
+  'portra400': { name: 'PORTRAIT 35mm', filter: 'sepia(0.2) contrast(1.08) brightness(1.04) saturate(1.1)' },
   'super8': { name: 'SUPER 8', filter: 'sepia(0.35) contrast(1.2) brightness(1.05) saturate(1.25)', custom: 'super8' },
   'retrowave': { name: 'RETROWAVE', filter: 'contrast(1.25) saturate(1.45) hue-rotate(280deg)', custom: 'retrowave' },
-  'trixnoir': { name: 'TRI-X NOIR', filter: 'grayscale(1) contrast(1.4) brightness(0.96)' },
+  'trixnoir': { name: 'CLASSIC NOIR', filter: 'grayscale(1) contrast(1.4) brightness(0.96)' },
   'goldenhour': { name: '3200K WARM', filter: 'sepia(0.35) saturate(1.25) contrast(1.05)' },
   'cyberpunk': { name: 'CYBERPUNK', filter: 'contrast(1.25) saturate(1.4) hue-rotate(185deg)' }
 };

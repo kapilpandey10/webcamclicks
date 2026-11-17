@@ -27,7 +27,7 @@ import {
 } from './filter-helpers.js';
 
 export const animeImpactEffect = {
-    id: 'anime_impact', name: 'Manga Anime Impact', icon: '💥', category: 'Art', perf: 'medium', requiresFace: true,
+    id: 'anime_impact', name: 'Manga Anime Impact', icon: '💥', category: 'Scenes', perf: 'medium', requiresFace: true,
     render(fx, frame) {
       const { src, width: w, height: h, time, now, dt } = frame;
       const t = time || now || 0;

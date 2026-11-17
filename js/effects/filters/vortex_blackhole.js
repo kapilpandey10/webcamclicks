@@ -27,7 +27,7 @@ import {
 } from './filter-helpers.js';
 
 export const vortexBlackholeEffect = {
-    id: 'vortex_blackhole', name: 'Gargantua Black Hole', icon: '🕳️', category: 'Cosmic', perf: 'medium', requiresFace: true,
+    id: 'vortex_blackhole', name: 'Black Hole', icon: '🕳️', category: 'Scenes', perf: 'medium', requiresFace: true,
     render(fx, frame) {
       const { src, width: w, height: h, time, now, dt } = frame;
       const t = time || now || 0;

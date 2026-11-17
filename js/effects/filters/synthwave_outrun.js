@@ -27,7 +27,7 @@ import {
 } from './filter-helpers.js';
 
 export const synthwaveOutrunEffect = {
-    id: 'synthwave_outrun', name: 'Synthwave 1984', icon: '🌴', category: 'Vintage', perf: 'medium', requiresFace: true,
+    id: 'synthwave_outrun', name: 'Synthwave 1984', icon: '🌴', category: 'Scenes', perf: 'medium', requiresFace: true,
     render(fx, frame) {
       const { src, width: w, height: h, time, now, dt } = frame;
       const t = time || now || 0;

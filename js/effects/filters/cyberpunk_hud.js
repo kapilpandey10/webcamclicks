@@ -27,7 +27,7 @@ import {
 } from './filter-helpers.js';
 
 export const cyberpunkHudEffect = {
-    id: 'cyberpunk_hud', name: 'Cyberpunk HUD 2077', icon: '🤖', category: 'Sci-Fi', perf: 'medium', requiresFace: true,
+    id: 'cyberpunk_hud', name: 'Neon HUD', icon: '🤖', category: 'Scenes', perf: 'medium', requiresFace: true,
     render(fx, frame) {
       const { src, width: w, height: h, time, now, dt } = frame;
       const t = time || now || 0;

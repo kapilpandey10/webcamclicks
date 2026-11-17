@@ -87,7 +87,7 @@ export const portraitbokehEffect = {
   id: 'portraitbokeh',
   name: 'Portrait Bokeh',
   icon: '👤',
-  category: 'Portrait',
+  category: 'Styles',
   perf: 'low',
   requiresFace: true,
 

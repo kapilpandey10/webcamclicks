@@ -27,7 +27,7 @@ import {
 } from './filter-helpers.js';
 
 export const mirrorLeftEffect = {
-    id: 'mirrorLeft', name: 'Mirror Left', icon: '🪞', category: 'Mirror', perf: 'low',
+    id: 'mirrorLeft', name: 'Mirror', icon: '🪞', category: 'Distort', perf: 'low',
     render(fx, { src, width: w, height: h }) {
       const hw = w / 2;
       fx.drawImage(src, 0, 0, w, h);

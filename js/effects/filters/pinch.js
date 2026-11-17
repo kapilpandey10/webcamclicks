@@ -11,7 +11,7 @@ import {
 } from './filter-helpers.js';
 
 export const pinchEffect = {
-  id: 'pinch', name: 'Pinch', icon: '🤏', category: 'Mirror', perf: 'medium',
+  id: 'pinch', name: 'Pinch', icon: '🤏', category: 'Distort', perf: 'medium',
   render(fx, { src, width, height }) {
     const cx = width * 0.5, cy = height * 0.5;
     const radius = Math.min(width, height) * 0.45;

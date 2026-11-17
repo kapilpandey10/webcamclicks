@@ -27,7 +27,7 @@ import {
 } from './filter-helpers.js';
 
 export const filmNoir1940Effect = {
-    id: 'film_noir_1940', name: '1940s Film Noir Detective', icon: '🕵️', category: 'Cinema', perf: 'medium', requiresFace: true,
+    id: 'film_noir_1940', name: '1940s Film Noir Detective', icon: '🕵️', category: 'Styles', perf: 'medium', requiresFace: true,
     render(fx, frame) {
       const { src, width: w, height: h, time, now, dt } = frame;
       const t = time || now || 0;

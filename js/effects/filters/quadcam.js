@@ -27,7 +27,7 @@ import {
 } from './filter-helpers.js';
 
 export const quadcamEffect = {
-    id: 'quadcam', name: 'Quad Cam', icon: '🎛️', category: 'Mirror', perf: 'medium',
+    id: 'quadcam', name: 'Quad Cam', icon: '🎛️', category: 'Distort', perf: 'medium',
     render(fx, { src, width: w, height: h }) {
       const hw = w / 2;
       const hh = h / 2;

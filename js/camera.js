@@ -26,10 +26,9 @@ export class CameraManager {
     this._digitalZoom = 1;
     this.isDemo = false;
     this.demoImg = null;
+    this._lastVideoTime = -1;
+    this._forceRedraw = true;
 
-    /* Work canvas: the frame all effects/games read from.
-       NOTE: willReadFrequently is intentionally NOT set here so Mobile Safari
-       uses GPU hardware acceleration (Metal pipeline) at full 60 FPS. */
     this.work = makeCanvas(1280, 720);
     this.workCtx = this.work.getContext('2d');
     this.width = 1280;
@@ -37,10 +36,10 @@ export class CameraManager {
     this.nativeWidth = 1280;
     this.nativeHeight = 720;
 
-    /* Handle mobile orientation change & viewport resize */
     this._handleOrientation = () => {
       if (this.active && this.video && this.video.videoWidth) {
         this._computeWorkSize();
+        this._forceRedraw = true;
       }
     };
     window.addEventListener('resize', this._handleOrientation);
@@ -61,13 +60,16 @@ export class CameraManager {
     try {
       const all = await navigator.mediaDevices.enumerateDevices();
       this.devices = all.filter((d) => d.kind === 'videoinput');
-    } catch { this.devices = []; }
+    } catch {
+      this.devices = [];
+    }
     return this.devices;
   }
 
   async startDemo(imageSrc = '/assets/img/sample-portrait.jpg') {
     this.stopTracks();
     this.isDemo = true;
+    this._forceRedraw = true;
     return new Promise((resolve) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
@@ -78,6 +80,7 @@ export class CameraManager {
         this.nativeWidth = img.naturalWidth || 1280;
         this.nativeHeight = img.naturalHeight || 720;
         this._computeWorkSize();
+        this._forceRedraw = true;
         resolve(true);
       };
       img.onerror = () => {
@@ -102,6 +105,7 @@ export class CameraManager {
         this.nativeWidth = 1280;
         this.nativeHeight = 720;
         this._computeWorkSize();
+        this._forceRedraw = true;
         resolve(true);
       };
       img.src = imageSrc;
@@ -115,15 +119,15 @@ export class CameraManager {
     this.stopTracks();
     this.isDemo = false;
     this.demoImg = null;
+    this._lastVideoTime = -1;
+    this._forceRedraw = true;
 
     if (requestedResolution) {
       this.resolution = requestedResolution;
     }
 
     let idealW = 1920, idealH = 1080;
-    if (this.resolution === '7680x4320') {
-      idealW = 7680; idealH = 4320;
-    } else if (this.resolution === '3840x2160') {
+    if (this.resolution === '3840x2160' || this.resolution === '7680x4320') {
       idealW = 3840; idealH = 2160;
     } else if (this.resolution === '2560x1440') {
       idealW = 2560; idealH = 1440;
@@ -135,9 +139,6 @@ export class CameraManager {
       idealW = 640; idealH = 480;
     }
 
-    // On mobile devices (iPhone 14 Pro Max, iOS Safari), clamp stream to 1080p max.
-    // Querying raw sensor resolution (e.g. 4032x3024 12MP) forces iOS AVFoundation into
-    // still photo capture mode which throttles video frames down to 10 FPS.
     if (isMobile()) {
       idealW = Math.min(idealW, 1920);
       idealH = Math.min(idealH, 1080);
@@ -146,7 +147,7 @@ export class CameraManager {
     const videoConstraints = {
       width: { ideal: idealW },
       height: { ideal: idealH },
-      frameRate: { ideal: 60, min: 30 }
+      frameRate: { ideal: 60, min: 24 }
     };
     if (this.deviceId) videoConstraints.deviceId = { exact: this.deviceId };
     else videoConstraints.facingMode = { ideal: this.facing };
@@ -154,7 +155,6 @@ export class CameraManager {
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: videoConstraints });
     } catch (err) {
-      // If 60 FPS / 1080p requested failed, try standard 30fps 720p fallback
       try {
         const fallback = {
           width: { ideal: 1280 },
@@ -165,7 +165,6 @@ export class CameraManager {
         else fallback.facingMode = { ideal: this.facing };
         this.stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: fallback });
       } catch {
-        // Last-resort fallback: basic video stream (handles restricted mobile permissions or unusual drivers)
         try {
           this.stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
         } catch {
@@ -182,8 +181,6 @@ export class CameraManager {
     }
     await this._waitForMetadata();
 
-    // Natural mirroring: Front/selfie camera is mirrored by default (true).
-    // Rear/environment camera is unmirrored by default (false).
     const currentTrack = this.stream && this.stream.getVideoTracks()[0];
     if (currentTrack && currentTrack.getSettings) {
       const s = currentTrack.getSettings();
@@ -193,9 +190,9 @@ export class CameraManager {
 
     this._computeWorkSize();
     this.active = true;
+    this._forceRedraw = true;
     await this.listDevices();
 
-    // For desktop ONLY with ultra-high-res 4K webcams (Logitech Brio etc.):
     if (this.resolution === 'max' && this.stream && !isMobile()) {
       const track = this.stream.getVideoTracks()[0];
       if (track && track.getCapabilities) {
@@ -240,12 +237,17 @@ export class CameraManager {
         targetW = (caps && caps.width && caps.width.max) ? Math.min(caps.width.max, 3840) : 1920;
         targetH = (caps && caps.height && caps.height.max) ? Math.min(caps.height.max, 2160) : 1080;
       }
-    } else if (res === '7680x4320') { targetW = 7680; targetH = 4320; }
-    else if (res === '3840x2160') { targetW = 3840; targetH = 2160; }
-    else if (res === '2560x1440') { targetW = 2560; targetH = 1440; }
-    else if (res === '1920x1080') { targetW = 1920; targetH = 1080; }
-    else if (res === '1280x720') { targetW = 1280; targetH = 720; }
-    else if (res === '640x480') { targetW = 640; targetH = 480; }
+    } else if (res === '3840x2160' || res === '7680x4320') {
+      targetW = 3840; targetH = 2160;
+    } else if (res === '2560x1440') {
+      targetW = 2560; targetH = 1440;
+    } else if (res === '1920x1080') {
+      targetW = 1920; targetH = 1080;
+    } else if (res === '1280x720') {
+      targetW = 1280; targetH = 720;
+    } else if (res === '640x480') {
+      targetW = 640; targetH = 480;
+    }
 
     if (isMobile()) {
       targetW = Math.min(targetW, 1920);
@@ -257,11 +259,10 @@ export class CameraManager {
         await track.applyConstraints({
           width: { ideal: targetW },
           height: { ideal: targetH },
-          frameRate: { ideal: 60, min: 30 }
+          frameRate: { ideal: 60, min: 24 }
         });
       }
     } catch {
-      // If applying constraint in-place fails, restart cleanly
       try {
         await this.start(res);
       } catch {
@@ -270,6 +271,7 @@ export class CameraManager {
     }
 
     this._computeWorkSize();
+    this._forceRedraw = true;
     return true;
   }
 
@@ -288,6 +290,7 @@ export class CameraManager {
   async setZoom(level) {
     level = Math.max(1, Math.min(8, Number(level) || 1));
     this.zoom = level;
+    this._forceRedraw = true;
 
     const caps = this.getZoomCapabilities();
     if (caps && this.stream) {
@@ -305,7 +308,7 @@ export class CameraManager {
           this._digitalZoom = level / caps.max;
           return level;
         } catch {
-          // Hardware constraint failed, fall through to digital zoom
+          // Fall through to digital zoom
         }
       }
     }
@@ -318,18 +321,15 @@ export class CameraManager {
     if (this.isDemo) return 'Demo Portrait';
     const w = this.nativeWidth || (this.video && this.video.videoWidth) || this.width;
     const h = this.nativeHeight || (this.video && this.video.videoHeight) || this.height;
-    if (w >= 7600) return '8K UHD';
     if (w >= 3800) return '4K UHD';
     if (w >= 2500) return '2K QHD';
-    if (w >= 1900) return '1080p 60fps';
-    if (w >= 1200) return '720p 60fps';
+    if (w >= 1900) return '1080p FHD';
+    if (w >= 1200) return '720p HD';
     return `${w}×${h}`;
   }
 
   async flip() {
     await this.listDevices();
-    // On mobile devices (iOS Safari, Android Chrome), toggling facingMode between 'user' and 'environment'
-    // without locking deviceId provides the cleanest and most reliable front <-> rear switching.
     if (isMobile() || this.devices.length < 2) {
       this.facing = this.facing === 'user' ? 'environment' : 'user';
       this.deviceId = null;
@@ -337,7 +337,6 @@ export class CameraManager {
       return true;
     }
 
-    // On desktop computers with multiple distinct video inputs, cycle through device IDs:
     const ids = this.devices.map((d) => d.deviceId).filter(Boolean);
     if (ids.length >= 2) {
       const current = this.stream && this.stream.getVideoTracks()[0];
@@ -382,38 +381,53 @@ export class CameraManager {
       this.stream.getTracks().forEach((t) => t.stop());
       this.stream = null;
     }
-    try { this.video.srcObject = null; } catch { /* ignore */ }
+    try {
+      this.video.srcObject = null;
+    } catch { /* ignore */ }
   }
 
   toggleMirror() {
     this.mirror = !this.mirror;
+    this._forceRedraw = true;
     return this.mirror;
   }
 
   grabFrame() {
     if (!this.active) return null;
     if (this.isDemo && this.demoImg) {
-      const ctx = this.workCtx;
-      const { width: w, height: h } = this;
-      ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      if (this.mirror) {
-        ctx.translate(w, 0);
-        ctx.scale(-1, 1);
+      if (this._forceRedraw) {
+        const ctx = this.workCtx;
+        const { width: w, height: h } = this;
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        if (this.mirror) {
+          ctx.translate(w, 0);
+          ctx.scale(-1, 1);
+        }
+        drawCover(ctx, this.demoImg, w, h, false);
+        ctx.restore();
+        this._forceRedraw = false;
       }
-      drawCover(ctx, this.demoImg, w, h, false);
-      ctx.restore();
       return this.work;
     }
+
     if (!this.video) return null;
     if (this.video.readyState < 2 || !this.video.videoWidth || !this.video.videoHeight) {
       return null;
     }
 
-    // Dynamic resolution adjustment if camera reports dimensions after ready
     if (this.nativeWidth !== this.video.videoWidth || this.nativeHeight !== this.video.videoHeight) {
       this._computeWorkSize();
+      this._forceRedraw = true;
     }
+
+    // Avoid redundant video-to-canvas copy if the video timestamp hasn't advanced
+    const curTime = this.video.currentTime;
+    if (!this._forceRedraw && curTime === this._lastVideoTime && curTime > 0) {
+      return this.work;
+    }
+    this._lastVideoTime = curTime;
+    this._forceRedraw = false;
 
     const ctx = this.workCtx;
     const { width: w, height: h } = this;
@@ -465,14 +479,17 @@ export class CameraManager {
       if (this.video.videoWidth > 0 && this.video.readyState >= 2) return resolve();
       let done = false;
       let timer = null;
+      const cleanup = () => {
+        this.video.removeEventListener('loadedmetadata', onReady);
+        this.video.removeEventListener('canplay', onReady);
+        this.video.removeEventListener('playing', onReady);
+        this.video.removeEventListener('timeupdate', onReady);
+      };
       const onReady = () => {
         if (!done && this.video.videoWidth > 0) {
           done = true;
           clearTimeout(timer);
-          this.video.removeEventListener('loadedmetadata', onReady);
-          this.video.removeEventListener('canplay', onReady);
-          this.video.removeEventListener('playing', onReady);
-          this.video.removeEventListener('timeupdate', onReady);
+          cleanup();
           resolve();
         }
       };
@@ -483,10 +500,7 @@ export class CameraManager {
       timer = setTimeout(() => {
         if (!done) {
           done = true;
-          this.video.removeEventListener('loadedmetadata', onReady);
-          this.video.removeEventListener('canplay', onReady);
-          this.video.removeEventListener('playing', onReady);
-          this.video.removeEventListener('timeupdate', onReady);
+          cleanup();
           resolve();
         }
       }, 1500);

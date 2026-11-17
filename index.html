@@ -3,18 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<!-- Google Consent Mode v2 (Required for GDPR/EEA & AdSense/Analytics compliance) -->
+
+<!-- Google Consent Mode v2 (EEA/UK/CH denied by default for AdSense & GDPR compliance) -->
 <script>
 window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
+
+gtag('consent', 'default', {
+  'ad_storage': 'denied',
+  'ad_user_data': 'denied',
+  'ad_personalization': 'denied',
+  'analytics_storage': 'denied',
+  'region': [
+    'AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IS','IE',
+    'IT','LV','LI','LT','LU','MT','NL','NO','PL','PT','RO','SK','SI','ES','SE',
+    'GB','CH'
+  ],
+  'wait_for_update': 500
+});
+
 gtag('consent', 'default', {
   'ad_storage': 'granted',
   'ad_user_data': 'granted',
   'ad_personalization': 'granted',
-  'analytics_storage': 'granted',
-  'wait_for_update': 500
+  'analytics_storage': 'granted'
 });
 </script>
+
 <!-- Google Tag Manager -->
 <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -28,9 +43,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
 <script src="/js/consent.js" defer></script>
 
-<title>WebcamClicks — Free Webcam Filters &amp; Video Studio</title>
-<meta name="description" content="Free webcam filters, video recording &amp; fun camera games. Enjoy 50+ live face effects and photo booth collages — 100% private in your browser.">
-<meta name="keywords" content="webcam filters, record webcam video, camera effects, webcam games, face filters, online camera, photo booth online, webcam recorder free, funny webcam filters">
+<title>WebcamClicks — Free Online Webcam Filters, Photo Booth &amp; Video Studio</title>
+<meta name="description" content="Free online webcam filters, HD video recording, photo booth strips, and motion camera games. Enjoy 90+ live GPU face effects — 100% private in your browser.">
 <link rel="canonical" href="https://webcamclicks.com/">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
 <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
@@ -51,8 +65,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="WebcamClicks">
 <meta property="og:url" content="https://webcamclicks.com/">
-<meta property="og:title" content="WebcamClicks — Free Webcam Filters &amp; Video Studio">
-<meta property="og:description" content="50+ free webcam filters, live video recording, face effects, and motion-controlled camera games. Instant fun, no signup, 100% private.">
+<meta property="og:title" content="WebcamClicks — Free Online Webcam Filters &amp; Video Studio">
+<meta property="og:description" content="90+ free webcam filters, HD video recording, photo booth strips, face effects, and motion-controlled camera games. Instant, no signup, 100% private.">
 <meta property="og:image" content="https://webcamclicks.com/assets/img/og-image.png">
 <meta property="og:image:secure_url" content="https://webcamclicks.com/assets/img/og-image.png">
 <meta property="og:image:type" content="image/png">
@@ -68,12 +82,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="WebcamClicks — Free Webcam Filters &amp; Video Studio">
-<meta name="twitter:description" content="50+ webcam filters, video recording, face effects and motion games. Free, instant, private.">
+<meta name="twitter:title" content="WebcamClicks — Free Online Webcam Filters &amp; Video Studio">
+<meta name="twitter:description" content="90+ webcam filters, HD video recording, face effects, photo booth strips, and motion games. Free, instant, 100% private.">
 <meta name="twitter:image" content="https://webcamclicks.com/assets/img/og-image.png">
 <meta name="twitter:image:alt" content="WebcamClicks free webcam filters and video recording studio">
 
-<!-- Icons & PWA (Standardized for Google Search Favicon Crawler & Browsers) -->
+<!-- Icons & PWA -->
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="48x48" href="/assets/icons/favicon-48x48.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32x32.png">
@@ -83,17 +97,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <link rel="manifest" href="/manifest.json">
 
 <!-- Performance & Resource Hints -->
-<link rel="dns-prefetch" href="//fonts.googleapis.com">
-<link rel="dns-prefetch" href="//fonts.gstatic.com">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap"></noscript>
 
-<link rel="stylesheet" href="/styles/main.css?v=3">
+<link rel="stylesheet" href="/styles/main.css?v=4">
 
-<!-- Structured data: Organization (Publisher Knowledge Graph) -->
+<!-- Structured data: Organization -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -117,7 +129,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 }
 </script>
 
-<!-- Structured data: WebSite (Site Name for Google Search SERP) -->
+<!-- Structured data: WebSite -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -135,7 +147,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 }
 </script>
 
-<!-- Structured data: WebApplication with AggregateRating for Rich SERP Stars -->
+<!-- Structured data: WebApplication (Policy-compliant — no unverified hardcoded ratings) -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -146,35 +158,34 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   "applicationCategory": "MultimediaApplication",
   "applicationSubCategory": "Photo & Video Studio",
   "operatingSystem": "Any (browser-based iOS, Android, macOS, Windows, Linux, ChromeOS)",
-  "browserRequirements": "Requires a modern browser with camera access (HTML5 getUserMedia)",
-  "description": "Free online webcam effects studio: 50+ live camera filters, video recording, on-device face effects and motion-controlled camera games. Take photos, record clips, download and share — nothing is uploaded.",
-  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "aggregateRating": {
-    "@type": "AggregateRating",
-    "ratingValue": "4.9",
-    "ratingCount": "3420",
-    "bestRating": "5",
-    "worstRating": "1"
+  "browserRequirements": "Requires a modern browser with camera access (HTML5 getUserMedia & WebGL)",
+  "description": "Free online webcam effects studio with 90+ live GPU camera filters, HD video recording, photo booth collage strips, on-device face effects, and motion-controlled camera games. Everything runs privately in your browser with zero uploads.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
   },
   "provider": {
     "@id": "https://webcamclicks.com/#organization"
   },
   "featureList": [
-    "50+ live webcam filters and camera effects",
-    "Live video recording with WebM/MP4 export",
-    "Thunder God dynamic lightning with sound effects synthesis",
+    "90+ live GPU-accelerated webcam filters and cinema film presets",
+    "Live HD video recording up to 60 seconds with WebM/MP4 export",
+    "2, 3, 4-cut, 6, and 9-pose Photo Booth collage strip studio",
+    "Trending looks: Y2K Digicam, Direct Flash, Night Tungsten 800, Dreamcore, Risograph Print, Pixel Dither, Pixel Sort, Toon Shade",
+    "28 film and cinema styles with frame themes: Instant Film, 35mm Film Strip, Super 8, Teal & Orange letterbox, Silent Film, Tintype",
+    "Free Instagram photo border maker: batch white borders for 1:1, 4:5 and 9:16",
+    "Storm Caller dynamic lightning with synthesized sound effects",
     "Portrait Bokeh depth-of-field background blur",
-    "Face-detection effects: sunglasses, crown, dog ears, big eyes",
+    "On-device face-detection AR lenses: sunglasses, crown, dog ears, masks",
     "Motion-controlled camera games: Balloon Pop, Motion Catch, Face Pong, Freeze Pose",
-    "Instant photo capture with on-device gallery",
-    "One-click download and social sharing",
-    "100% private on-device processing"
+    "Instant photo capture with private on-device gallery and zero watermarks"
   ],
   "screenshot": "https://webcamclicks.com/assets/img/og-image.png"
 }
 </script>
 
-<!-- Structured data: FAQ -->
+<!-- Structured data: FAQPage -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -183,32 +194,50 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     {
       "@type": "Question",
       "name": "How do I use WebcamClicks with my webcam?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Click the Start camera button and allow camera access in your browser. Your live video appears instantly, and you can pick any of the 50+ filters, face effects, video recording, or games from the panel." }
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Click the Start camera button and allow camera access in your browser. Your live video appears instantly, and you can pick any of the 90+ filters, face effects, photo booth strips, video recording, or games from the studio panel."
+      }
     },
     {
       "@type": "Question",
       "name": "Can I record video clips with filters applied?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Yes! Click the Record button (or press V on your keyboard) to record video clips up to 60 seconds with your active visual effects. When finished, you can play back, download, or share the video right from your gallery." }
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Click the Record button (or press V on your keyboard) to record video clips up to 60 seconds with your active visual effects applied live. When finished, you can play back, download, or share the video directly from your gallery."
+      }
     },
     {
       "@type": "Question",
       "name": "Are my photos, videos, or camera feed stored online?",
-      "acceptedAnswer": { "@type": "Answer", "text": "No. Everything runs locally in your browser. Your camera feed is never recorded, uploaded or transmitted. Photos and videos you create stay in your browser's local session until you delete them, and downloads go straight to your device." }
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Everything runs locally in your browser. Your camera feed is never uploaded or transmitted to any server. Photos and videos you create stay in your browser's local session until you delete them, and downloads go straight to your device."
+      }
     },
     {
       "@type": "Question",
       "name": "Is WebcamClicks free?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Yes, WebcamClicks is completely free and requires no account, subscription, or payment." }
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, WebcamClicks is 100% free with unlimited photo captures, video recordings, and games — no account, watermark, or subscription required."
+      }
     },
     {
       "@type": "Question",
       "name": "Which camera games can I play?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Balloon Pop — pop floating balloons with your index finger. Motion Catch — steer a basket with your head to catch falling fruit. Face Pong — your face is the paddle in a brick-smashing ball game. Freeze Pose — hold perfectly still like a statue for 10 seconds. All 4 games are controlled purely by your camera." }
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Balloon Pop (pop floating balloons with your index finger), Motion Catch (steer a basket with your head to catch falling fruit), Face Pong (use your face as a paddle to smash bricks), and Freeze Pose (hold perfectly still like a statue for 10 seconds). All 4 games are controlled purely by your camera."
+      }
     },
     {
       "@type": "Question",
       "name": "Does it work on phones and tablets?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Yes. WebcamClicks works on modern phones, tablets and desktops with Chrome, Safari, Edge, Firefox or Samsung Internet. You can even switch between front and rear cameras on mobile using the flip button." }
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. WebcamClicks works on modern phones, tablets, Chromebooks, and desktops across Chrome, Safari, Edge, Firefox, and Samsung Internet. You can switch between front and rear cameras on mobile using the Flip button."
+      }
     }
   ]
 }
@@ -227,6 +256,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <a href="/pro-camera" class="keep pro-cam-nav-link" title="Professional Cinema Camera (Best for Mobile Devices)">🎬 Pro Camera <span class="nav-mobile-badge">📱 Best for mobile</span></a>
     <a href="#games">Games</a>
     <a href="/mic-test" class="keep">🎙️ Mic Test</a>
+    <a href="/filters">🎨 Filters</a>
+    <a href="/instagram-photo-border">🖼️ Photo Border</a>
     <a href="/guides" class="keep">📚 Guides</a>
     <a href="/webcam-toy-alternative" class="keep" style="color:var(--brand-2); font-weight:700;">🎯 Toy Alternative</a>
     <a href="/languages" class="keep lang-pill">🌐 Languages</a>
@@ -237,7 +268,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- ================= Hero ================= -->
 <section class="hero hero-clean">
   <h1 class="hero-clean-title">WebcamClicks <span>Free Webcam Filters &amp; Studio</span></h1>
-  <p class="hero-clean-sub">Over 100 trending webcam effects, AR face lenses, photo booth strips &amp; HD video recording — 100% on-device &amp; private.</p>
+  <p class="hero-clean-sub">90+ real-time GPU webcam effects, AR face lenses, 4-cut photo booth strips &amp; HD video recording — 100% on-device &amp; private.</p>
 
   <div class="hero-cta-single">
     <button class="hero-start-btn" id="hero-start-camera-btn" type="button" aria-label="Start Camera">
@@ -250,7 +281,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
 </section>
 
-<!-- ================= Camera app ================= -->
+<!-- ================= Camera App ================= -->
 <section id="camera" class="app">
   <div class="stage-column">
     <div class="camera-stage" id="camera-stage">
@@ -299,7 +330,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <button class="hud-btn" id="hud-btn-fullscreen" type="button" aria-label="Toggle fullscreen" title="Fullscreen">⛶</button>
       </div>
 
-      <!-- On-Camera Cinematic Countdown Overlay (Inside Preview Frame) -->
+      <!-- On-Camera Cinematic Countdown Overlay -->
       <div class="camera-countdown" id="camera-countdown" aria-hidden="true" style="display:none;">
         <div class="countdown-card">
           <svg class="countdown-svg" viewBox="0 0 160 160">
@@ -311,7 +342,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </div>
       </div>
 
-      <!-- Live Collage Multi-Shot HUD (Pose Progress Bar) -->
+      <!-- Live Collage Multi-Shot HUD -->
       <div class="collage-hud" id="collage-hud" style="display:none;">
         <div class="collage-hud-info">
           <span class="collage-hud-badge">🎞️ PHOTO BOOTH</span>
@@ -322,7 +353,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
 
       <div class="stage-overlay" id="stage-overlay">
-        <h2>📷 Webcam clicks &amp; 100+ live effects</h2>
+        <h2>📷 Webcam studio &amp; 90+ live effects</h2>
         <p>Private &amp; instant — camera access is requested only after you tap, or test instantly with Live Demo Mode.</p>
         <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
           <button class="btn btn-primary" id="start-btn" type="button">🎥 Start camera</button>
@@ -340,12 +371,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
     </div>
 
-    <!-- Pro Camera Studio Console -->
+    <!-- Pro Camera Studio Console (Desktop) -->
     <div class="camera-pro-console toolbar" id="camera-console" role="toolbar" aria-label="Camera controls">
-      
+
       <!-- Tier 1: Mode Switcher & Filter Refinements -->
       <div class="console-subbar">
-        <!-- Quick Creative Actions -->
         <div class="console-sub-group left">
           <button class="tool-sub" id="btn-random" type="button" title="Shuffle Random Effect (R)">
             🎲 <span class="sub-label">Random</span> <span class="kbd">R</span>
@@ -353,7 +383,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <button class="tool-sub" id="btn-fav" type="button" title="Add to Favorites (F)">
             ⭐ <span class="sub-label">Favorite</span> <span class="kbd">F</span>
           </button>
-          <button class="tool-sub" id="btn-split-compare" type="button" title="Toggle 50/50 Before & After Split Screen">
+          <button class="tool-sub" id="btn-split-compare" type="button" title="Toggle 50/50 Before &amp; After Split Screen">
             🌗 <span class="sub-label">Split</span>
           </button>
           <button class="tool-sub" id="btn-compare-hold" type="button" title="Press and hold to view unfiltered original">
@@ -361,7 +391,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           </button>
         </div>
 
-        <!-- Center: Camera Mode Selector -->
         <div class="console-mode-switcher" role="tablist" aria-label="Camera mode">
           <button class="mode-tab active" id="mode-seg-photo" type="button" role="tab" aria-selected="true">
             📸 Photo
@@ -384,24 +413,22 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           </button>
         </div>
 
-        <!-- Right: Effect Intensity & Help -->
         <div class="console-sub-group right">
           <div class="intensity-wrap" title="Adjust effect strength">
             <span class="intensity-label">✨ Strength</span>
             <input type="range" id="intensity" min="0" max="100" value="100" step="5" aria-label="Effect strength">
             <span class="intensity-val" id="intensity-val">100%</span>
           </div>
-          <button class="tool-sub" id="btn-help" type="button" title="Shortcuts & Help">
+          <button class="tool-sub" id="btn-help" type="button" title="Shortcuts &amp; Help">
             ❓ <span class="sub-label">Help</span>
           </button>
         </div>
       </div>
 
-      <!-- Tier 2: The Master Shutter Deck -->
+      <!-- Tier 2: Master Shutter Deck -->
       <div class="console-main-deck">
-        <!-- Left Wing: Gallery Access & Quick Mirrors -->
         <div class="deck-wing left">
-          <button class="deck-gallery-btn" id="btn-gallery" type="button" title="View Saved Photos & Videos">
+          <button class="deck-gallery-btn" id="btn-gallery" type="button" title="View Saved Photos &amp; Videos">
             <div class="gallery-icon-frame" id="deck-gallery-thumb">
               <span class="gallery-icon">🖼️</span>
             </div>
@@ -421,15 +448,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           </div>
         </div>
 
-        <!-- Center Hero: The Master Shutter & Action Trio -->
         <div class="deck-hero-center">
-          <!-- Quick Collage Burst Trigger (Secondary) -->
           <button class="action-secondary-btn" id="btn-collage" type="button" title="Shoot Photo Booth Multi-Shot">
             <span class="action-sec-icon">🎞️</span>
             <span class="action-sec-label">Booth</span>
           </button>
 
-          <!-- Master Camera Shutter (Primary 74px tactile button) -->
           <div class="master-shutter-container">
             <button class="camera-shutter-master" id="btn-capture" type="button" aria-label="Take Photo (C)">
               <div class="shutter-halo"></div>
@@ -442,7 +466,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <span class="shutter-hint">Press <kbd>C</kbd></span>
           </div>
 
-          <!-- Video Record Trigger (Secondary) -->
           <button class="action-secondary-btn rec-btn" id="btn-record" type="button" title="Record Video Clip (V)">
             <span class="action-sec-icon">⏺️</span>
             <span class="action-sec-label">Record</span>
@@ -450,16 +473,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           </button>
         </div>
 
-        <!-- Right Wing: Hardware & Camera Preferences -->
         <div class="deck-wing right">
           <select class="camera-res-select" id="quick-res-select" aria-label="Select camera resolution" title="Camera Sensor Resolution">
-            <option value="max">✨ Max (Auto)</option>
-            <option value="7680x4320">8K (Hardware dependent)</option>
-            <option value="3840x2160">4K (Hardware dependent)</option>
-            <option value="2560x1440">2K (2560×1440)</option>
+            <option value="max">✨ Auto Best</option>
+            <option value="3840x2160">4K UHD (Desktop)</option>
+            <option value="2560x1440">2K QHD (1440p)</option>
             <option value="1920x1080" selected>1080p FHD</option>
-            <option value="1280x720">720p HD</option>
-            <option value="640x480">480p SD</option>
+            <option value="1280x720">720p HD (Fast)</option>
+            <option value="640x480">480p SD (Lite)</option>
           </select>
           <div class="deck-quick-toggles">
             <button class="deck-toggle-btn" id="btn-flip" type="button" title="Flip Camera Front/Back">
@@ -468,7 +489,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <button class="deck-toggle-btn" id="btn-fullscreen" type="button" title="Toggle Fullscreen">
               ⛶
             </button>
-            <button class="deck-toggle-btn" id="btn-settings" type="button" title="Camera Settings & Preferences">
+            <button class="deck-toggle-btn" id="btn-settings" type="button" title="Camera Settings &amp; Preferences">
               ⚙️
             </button>
           </div>
@@ -480,12 +501,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     <!-- Mobile Native App Shutter Deck & Filter Wheel -->
     <div class="mobile-controls-deck" id="mobile-controls-deck" aria-label="Mobile camera controls">
-      <!-- Mode Switcher: Photo vs Collage vs Video vs Pro Cine -->
-      <div class="mobile-mode-switcher" role="tablist" aria-label="Camera mode">
-        <button class="mode-pill active" id="mode-photo" type="button" role="tab" aria-selected="true">📸 PHOTO</button>
-        <button class="mode-pill" id="mode-collage" type="button" role="tab" aria-selected="false">🎞️ COLLAGE</button>
-        <button class="mode-pill" id="mode-video" type="button" role="tab" aria-selected="false">📹 VIDEO</button>
-        <a href="/pro-camera" class="mode-pill pro-pill" role="tab" title="Open Professional Camera with Movie Aspect Ratios">🎬 PRO CINE</a>
+      <div class="mobile-mode-switcher">
+        <div role="tablist" aria-label="Camera mode" style="display:contents;">
+          <button class="mode-pill active" id="mode-photo" type="button" role="tab" aria-selected="true">📸 PHOTO</button>
+          <button class="mode-pill" id="mode-collage" type="button" role="tab" aria-selected="false">🎞️ COLLAGE</button>
+          <button class="mode-pill" id="mode-video" type="button" role="tab" aria-selected="false">📹 VIDEO</button>
+        </div>
+        <a href="/pro-camera" class="mode-pill pro-pill" title="Open Professional Camera with Movie Aspect Ratios">🎬 PRO CINE</a>
       </div>
 
       <!-- Quick Pose Count Selector for Mobile Collage -->
@@ -505,32 +527,27 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
       <!-- Native Shutter Action Bar -->
       <div class="mobile-shutter-bar">
-        <!-- Random filter (R on mobile) -->
         <button class="mobile-action-btn" id="btn-mobile-random" type="button" aria-label="Random filter">
           <div class="action-icon-circle random-dice">🎲</div>
           <span class="action-caption">Random</span>
         </button>
 
-        <!-- Gallery button with thumbnail preview -->
         <button class="mobile-action-btn" id="btn-mobile-gallery" type="button" aria-label="Open gallery">
           <div class="gallery-thumb-slot" id="mobile-gallery-preview">🖼️</div>
           <span class="action-caption">Gallery</span>
         </button>
 
-        <!-- Two-Stage Shutter Trigger -->
         <div class="shutter-wrapper">
           <button class="shutter-btn" id="btn-mobile-shutter" type="button" aria-label="Take photo">
             <span class="shutter-inner"></span>
           </button>
         </div>
 
-        <!-- Filters Bottom Sheet Trigger -->
         <button class="mobile-action-btn" id="btn-mobile-effects" type="button" aria-label="Browse all effects">
           <div class="action-icon-circle">✨</div>
           <span class="action-caption">Filters</span>
         </button>
 
-        <!-- Quick Camera Flip -->
         <button class="mobile-action-btn" id="btn-mobile-flip" type="button" aria-label="Flip camera">
           <div class="action-icon-circle">🔄</div>
           <span class="action-caption">Flip</span>
@@ -539,7 +556,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
   </div>
 
-  <!-- Effects panel (acts as bottom-sheet modal on mobile) -->
+  <!-- Effects Panel (Bottom-Sheet Modal on Mobile) -->
   <aside class="effects-panel" id="effects-panel" aria-label="Effects panel">
     <div class="sheet-handle-bar">
       <div class="sheet-handle"></div>
@@ -547,10 +564,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
     <div class="panel-head">
       <h3>🎨 Effects &amp; filters</h3>
-      <span class="panel-hint" id="panel-hint">100+ live effects</span>
+      <span class="panel-hint" id="panel-hint">90+ live effects</span>
     </div>
     <div class="filter-search-wrap" style="margin-bottom:10px;">
-      <input type="search" id="filter-search" class="filter-search-input" placeholder="🔍 Search 100+ filters (e.g. K-Pop, Y2K, Glow, VHS)..." aria-label="Search effects and filters">
+      <input type="search" id="filter-search" class="filter-search-input" placeholder="🔍 Search 90+ filters (e.g. K-Pop, Y2K, Glow, VHS)..." aria-label="Search effects and filters">
     </div>
     <div class="category-tabs" id="category-tabs"></div>
     <div class="filter-grid" id="filter-grid"></div>
@@ -567,10 +584,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
 
   <div class="showcase-grid">
-    <!-- Card 1: Original Clean Portrait -->
     <div class="showcase-card" data-effect="normal">
       <div class="showcase-img-wrap">
-        <img src="/assets/img/sample-portrait.jpg" alt="Natural webcam photo sample" loading="lazy" width="280" height="280">
+        <img src="/assets/img/sample-portrait.jpg" alt="Natural webcam photo sample" loading="lazy" decoding="async" width="280" height="280">
         <span class="showcase-tag">Original</span>
       </div>
       <div class="showcase-body">
@@ -580,10 +596,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
     </div>
 
-    <!-- Card 2: Comic Book Pop Art -->
     <div class="showcase-card" data-effect="comic">
       <div class="showcase-img-wrap">
-        <img src="/assets/img/sample-comic.jpg" alt="Comic book pop art effect sample" loading="lazy" width="280" height="280">
+        <img src="/assets/img/sample-comic.jpg" alt="Comic book pop art effect sample" loading="lazy" decoding="async" width="280" height="280">
         <span class="showcase-tag">Pop Art</span>
       </div>
       <div class="showcase-body">
@@ -593,23 +608,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
     </div>
 
-    <!-- Card 3: Vintage Polaroid 600 -->
     <div class="showcase-card" data-effect="polaroid">
       <div class="showcase-img-wrap">
-        <img src="/assets/img/sample-polaroid.jpg" alt="Polaroid 600 vintage effect sample" loading="lazy" width="280" height="280">
+        <img src="/assets/img/sample-polaroid.jpg" alt="Instant film vintage effect sample" loading="lazy" decoding="async" width="280" height="280">
         <span class="showcase-tag">Analog Film</span>
       </div>
       <div class="showcase-body">
-        <h3>🎞️ Polaroid 600</h3>
+        <h3>🎞️ Instant Film</h3>
         <p>Nostalgic warm analog tones with subtle instant-film fade.</p>
         <button class="showcase-try-btn" type="button" data-effect="polaroid">Try this effect ➔</button>
       </div>
     </div>
 
-    <!-- Card 4: Cyber Neon Glow -->
     <div class="showcase-card" data-effect="neon">
       <div class="showcase-img-wrap">
-        <img src="/assets/img/sample-neon.jpg" alt="Cyber neon glow effect sample" loading="lazy" width="280" height="280">
+        <img src="/assets/img/sample-neon.jpg" alt="Cyber neon glow effect sample" loading="lazy" decoding="async" width="280" height="280">
         <span class="showcase-tag">Cyberpunk</span>
       </div>
       <div class="showcase-body">
@@ -619,10 +632,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
     </div>
 
-    <!-- Card 5: Y2K Fisheye Lens -->
     <div class="showcase-card" data-effect="fisheye">
       <div class="showcase-img-wrap">
-        <img src="/assets/img/sample-fisheye.jpg" alt="Y2K fisheye lens effect sample" loading="lazy" width="280" height="280">
+        <img src="/assets/img/sample-fisheye.jpg" alt="Y2K fisheye lens effect sample" loading="lazy" decoding="async" width="280" height="280">
         <span class="showcase-tag">Y2K Lens</span>
       </div>
       <div class="showcase-body">
@@ -632,10 +644,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
     </div>
 
-    <!-- Card 6: Thermal Heat Vision -->
     <div class="showcase-card" data-effect="thermal">
       <div class="showcase-img-wrap">
-        <img src="/assets/img/sample-thermal.jpg" alt="Thermal heat vision effect sample" loading="lazy" width="280" height="280">
+        <img src="/assets/img/sample-thermal.jpg" alt="Thermal heat vision effect sample" loading="lazy" decoding="async" width="280" height="280">
         <span class="showcase-tag">Infrared</span>
       </div>
       <div class="showcase-body">
@@ -645,10 +656,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
     </div>
 
-    <!-- Card 7: B&W Silver Screen -->
     <div class="showcase-card" data-effect="grayscale">
       <div class="showcase-img-wrap">
-        <img src="/assets/img/sample-bw.jpg" alt="Black and white silver screen effect sample" loading="lazy" width="280" height="280">
+        <img src="/assets/img/sample-bw.jpg" alt="Black and white silver screen effect sample" loading="lazy" decoding="async" width="280" height="280">
         <span class="showcase-tag">Monochrome</span>
       </div>
       <div class="showcase-body">
@@ -660,11 +670,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
 </section>
 
-<!-- ================= Camera games ================= -->
+<!-- ================= Camera Games ================= -->
 <section id="games" class="games-section">
   <h2 class="section-title">🕹️ Camera games for all ages</h2>
-  <p class="muted">No controller needed — your face and body are the joystick. Games use on-device
-  face tracking and motion detection, and they work for kids and grown-ups alike.</p>
+  <p class="muted">No controller needed — your face and body are the joystick. Games use on-device face tracking and motion detection, and they work for kids and grown-ups alike.</p>
   <div class="games-grid" id="games-grid">
     <noscript>
       <article class="game-card">
@@ -695,11 +704,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
 </section>
 
-<!-- ================= Stats Ribbon ================= -->
+<!-- ================= Stats Ribbon & Vintage Suite ================= -->
 <div class="content-section" style="margin-top:24px;">
   <div class="stats-ribbon" aria-label="WebcamClicks Overview">
     <div class="stat-item">
-      <span class="stat-num">50+</span>
+      <span class="stat-num">100+</span>
       <span class="stat-label">Live Filters &amp; Lenses</span>
       <span class="stat-sub">Vintage, Cinema &amp; AR</span>
     </div>
@@ -716,111 +725,85 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="stat-item">
       <span class="stat-num">100%</span>
       <span class="stat-label">Private &amp; On-Device</span>
-      <span class="stat-sub">0 ms Lag · Zero Uploads</span>
+      <span class="stat-sub">GPU 60 FPS · Zero Uploads</span>
     </div>
   </div>
 
-  <!-- ================= Vintage Photo Shoot & Korean 4-Cut Studio ================= -->
+  <!-- Vintage Photo Shoot & Korean 4-Cut Studio -->
   <div class="vintage-showcase" id="vintage-shoot">
     <div class="mockup-strip" aria-label="Photo booth 4-cut collage strip sample">
       <div class="mockup-frame f1">
-        <img src="/assets/img/sample-portrait.jpg" alt="Natural portrait" loading="lazy" class="mf-photo">
+        <img src="/assets/img/sample-portrait.jpg" alt="Natural portrait" loading="lazy" decoding="async" width="280" height="210" class="mf-photo">
         <span class="mf-tag">Natural</span>
       </div>
       <div class="mockup-frame f2">
-        <img src="/assets/img/sample-polaroid.jpg" alt="Polaroid vintage" loading="lazy" class="mf-photo">
-        <span class="mf-tag">Polaroid</span>
+        <img src="/assets/img/sample-polaroid.jpg" alt="Instant film vintage" loading="lazy" decoding="async" width="280" height="210" class="mf-photo">
+        <span class="mf-tag">Instant</span>
       </div>
       <div class="mockup-frame f3">
-        <img src="/assets/img/sample-comic.jpg" alt="Pop art comic" loading="lazy" class="mf-photo">
+        <img src="/assets/img/sample-comic.jpg" alt="Pop art comic" loading="lazy" decoding="async" width="280" height="210" class="mf-photo">
         <span class="mf-tag">Comic Pop</span>
       </div>
       <div class="mockup-frame f4">
-        <img src="/assets/img/sample-bw.jpg" alt="Black and white" loading="lazy" class="mf-photo">
-        <span class="mf-tag">Tri-X B&amp;W</span>
+        <img src="/assets/img/sample-bw.jpg" alt="Black and white" loading="lazy" decoding="async" width="280" height="210" class="mf-photo">
+        <span class="mf-tag">Classic B&amp;W</span>
       </div>
       <div class="mockup-footer">WEBCAMCLICKS PHOTO BOOTH</div>
     </div>
+
     <div class="vintage-info">
       <span class="badge" style="background:rgba(245,158,11,0.2); color:#fef08a; padding:4px 12px; border-radius:999px; font-weight:700; font-size:0.78rem;">🎞️ VINTAGE PHOTO SHOOT SUITE</span>
       <h3>Analog Film &amp; 4-Cut Photo Booth</h3>
-      <p>Transform your camera into a 35mm film studio with warm halation bloom, real grain, and Korean-style 4-cut aesthetic strips. Tap any lens preset below to try it live:</p>
+      <p>Transform your camera into a 35mm film studio with warm halation bloom, organic film grain, and Korean-style 4-cut aesthetic strips. Tap any preset below to try it live:</p>
       <div class="vintage-pills" id="vintage-pills">
-        <a href="#effect=vintageshoot" class="v-pill">📸 Vintage Shoot</a>
-        <a href="#effect=cyberpunk_hud" class="v-pill">🤖 Cyberpunk HUD</a>
-        <a href="#effect=thunder_god" class="v-pill">⚡ Thor Thunder God</a>
-        <a href="#effect=vortex_blackhole" class="v-pill">🕳️ Gargantua Black Hole</a>
+        <a href="#effect=y2k_digicam" class="v-pill">📷 Y2K Digicam</a>
+        <a href="#effect=direct_flash" class="v-pill">⚡ Direct Flash</a>
+        <a href="#effect=polaroid" class="v-pill">📷 Instant Film</a>
+        <a href="#effect=film_strip" class="v-pill">🎞️ 35mm Film Strip</a>
+        <a href="#effect=super8" class="v-pill">🎬 Super 8</a>
+        <a href="#effect=portra400" class="v-pill">🎞️ Portrait 400</a>
+        <a href="#effect=hollywood" class="v-pill">🎬 Teal &amp; Orange</a>
+        <a href="#effect=goldenhour" class="v-pill">🌅 Golden Hour</a>
+        <a href="#effect=sunset_pink" class="v-pill">🌸 Sunset Pink</a>
+        <a href="#effect=trix400" class="v-pill">🖤 Classic B&amp;W 400</a>
+        <a href="#effect=oldmovie" class="v-pill">🎩 Silent Film</a>
+        <a href="#effect=daguerreotype" class="v-pill">🏛️ Tintype 1890</a>
+        <a href="#effect=night_tungsten" class="v-pill">🌃 Night Tungsten 800</a>
+        <a href="#effect=dreamcore" class="v-pill">🌫️ Dreamcore Glow</a>
+        <a href="#effect=risograph" class="v-pill">🖨️ Risograph Print</a>
+        <a href="#effect=toon_shade" class="v-pill">🎨 Toon Shade</a>
+        <a href="#effect=pixel_sort" class="v-pill">🌈 Pixel Sort</a>
+        <a href="#effect=cyberpunk_hud" class="v-pill">🤖 Neon HUD</a>
+        <a href="#effect=thunder_god" class="v-pill">⚡ Storm Caller</a>
+        <a href="#effect=vortex_blackhole" class="v-pill">🕳️ Black Hole</a>
+        <a href="#effect=synthwave_outrun" class="v-pill">🌴 Synthwave 1984</a>
+        <a href="#effect=retro_camcorder" class="v-pill">📹 90s Hi8 Camcorder</a>
         <a href="#effect=cyber_samurai" class="v-pill">👺 Cyber Samurai</a>
         <a href="#effect=steampunk_aviator" class="v-pill">🥽 Steampunk Goggles</a>
         <a href="#effect=astral_mandala" class="v-pill">🕉️ Astral Mandala</a>
-        <a href="#effect=retro_camcorder" class="v-pill">📹 90s Hi8 Camcorder</a>
-        <a href="#effect=synthwave_outrun" class="v-pill">🌴 Synthwave 1984</a>
-        <a href="#effect=celestial_nebula" class="v-pill">🌌 Celestial Nebula</a>
-        <a href="#effect=flir_thermal" class="v-pill">🎯 FLIR Predator</a>
-        <a href="#effect=film_noir_1940" class="v-pill">🕵️ Film Noir 1940</a>
-        <a href="#effect=golden_stardust" class="v-pill">✨ Golden Stardust</a>
-        <a href="#effect=portra400" class="v-pill">🎞️ Kodak Portra 400</a>
-        <a href="#effect=polaroid" class="v-pill">📷 Polaroid 1977</a>
-        <a href="#effect=trix400" class="v-pill">🖤 Tri-X 400 B&amp;W</a>
-        <a href="#effect=berry" class="v-pill">🍓 Berry</a>
-        <a href="#effect=bloom" class="v-pill">✨ Bloom</a>
-        <a href="#effect=bulge" class="v-pill">🔵 Bulge</a>
-        <a href="#effect=citrus" class="v-pill">🍋 Citrus</a>
-        <a href="#effect=cocktail" class="v-pill">🍹 Cocktail</a>
-        <a href="#effect=color_ghost" class="v-pill">👻 Color Ghost</a>
-        <a href="#effect=crosshatch" class="v-pill">✒️ Crosshatch</a>
-        <a href="#effect=dent" class="v-pill">🫥 Dent</a>
-        <a href="#effect=danger" class="v-pill">⚠️ Danger</a>
-        <a href="#effect=envy" class="v-pill">🟢 Envy</a>
-        <a href="#effect=filmstrip" class="v-pill">🎞️ Filmstrip</a>
-        <a href="#effect=fragment" class="v-pill">🧩 Fragment</a>
-        <a href="#effect=ghost" class="v-pill">👻 Ghost</a>
-        <a href="#effect=glaze" class="v-pill">🍩 Glaze</a>
-        <a href="#effect=halo" class="v-pill">😇 Halo</a>
-        <a href="#effect=hot_pink" class="v-pill">🌸 Hot Pink</a>
-        <a href="#effect=lsd" class="v-pill">🌀 LSD</a>
-        <a href="#effect=magazine" class="v-pill">📰 Magazine</a>
-        <a href="#effect=mint" class="v-pill">🌿 Mint</a>
-        <a href="#effect=mono_quad" class="v-pill">◻️ Mono Quad</a>
-        <a href="#effect=outline" class="v-pill">📐 Outline</a>
-        <a href="#effect=pinch" class="v-pill">🤏 Pinch</a>
-        <a href="#effect=pop_booth" class="v-pill">📸 Pop Booth</a>
-        <a href="#effect=rose" class="v-pill">🌹 Rose</a>
-        <a href="#effect=shuffle" class="v-pill">🔀 Shuffle</a>
-        <a href="#effect=silk" class="v-pill">🧶 Silk</a>
-        <a href="#effect=smoke" class="v-pill">💨 Smoke</a>
-        <a href="#effect=spectrum" class="v-pill">🌈 Spectrum</a>
-        <a href="#effect=spiral" class="v-pill">🌀 Spiral</a>
-        <a href="#effect=spy_cam" class="v-pill">🕵️ Spy Cam</a>
-        <a href="#effect=stretch" class="v-pill">🧍 Stretch</a>
-        <a href="#effect=switch" class="v-pill">🔘 Switch</a>
-        <a href="#effect=trail" class="v-pill">🌠 Trail</a>
-        <a href="#effect=true_blue" class="v-pill">🔵 True Blue</a>
-        <a href="#effect=tunnel" class="v-pill">🌌 Tunnel</a>
+        <a href="#effect=kaleidoscope" class="v-pill">🔮 Kaleidoscope</a>
         <a href="#effect=twist" class="v-pill">🔄 Twist</a>
-        <a href="#effect=upside_down" class="v-pill">🙃 Upside-Down</a>
-        <a href="#effect=wedge" class="v-pill">🧀 Wedge</a>
-        <a href="#effect=zinc" class="v-pill">🧊 Zinc</a>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <a href="#camera" class="btn btn-primary" style="padding:10px 20px; font-size:0.9rem;">🎥 Launch Live Camera</a>
+        <a href="/filters" class="btn" style="padding:10px 20px; font-size:0.9rem; background:rgba(255,255,255,0.08); color:#fef9c3; border-color:#4a3e35;">🎨 Browse all filters</a>
         <a href="/webcam-toy-alternative" class="btn" style="padding:10px 20px; font-size:0.9rem; background:rgba(255,255,255,0.08); color:#fef9c3; border-color:#4a3e35;">🎯 Compare with Webcam Toy</a>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ================= Features (SEO content) ================= -->
+<!-- ================= Features (SEO Content) ================= -->
 <section class="content-section">
   <h2 class="section-title">Why Creators &amp; Students Love WebcamClicks</h2>
   <div class="feature-grid">
     <article class="feature-card">
       <span class="fc-icon">🎨</span>
-      <h3>120+ Live Camera Filters &amp; Effects</h3>
-      <p>Real-time analog film, Cyberpunk HUD, Gargantua Black Hole, Thor Lightning, FLIR predator thermal, and 3D head-tracked interactive AR masks with fine-tune intensity control.</p>
+      <h3>90+ Live GPU Camera Filters</h3>
+      <p>Trending looks like Y2K Digicam, Direct Flash and Risograph Print, real analog film grades, cinematic sci-fi scenes, and head-tracked AR masks — all with smooth strength control.</p>
       <div class="feature-chips">
-        <span class="f-chip">🤖 Cyberpunk &amp; FLIR</span>
-        <span class="f-chip">⚡ Thor &amp; Black Hole</span>
+        <span class="f-chip">📷 Y2K &amp; Film Looks</span>
+        <span class="f-chip">⚡ Sci-Fi Scenes</span>
         <span class="f-chip">👺 3D AR Masks</span>
       </div>
     </article>
@@ -837,7 +820,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <article class="feature-card">
       <span class="fc-icon">🎞️</span>
       <h3>Photo Booth Collages</h3>
-      <p>Shoot 2, 3, 4, or 6-shot bursts with studio countdowns and export print-ready aesthetic strips.</p>
+      <p>Shoot 2, 3, 4, 6, or 9-shot bursts with studio countdowns and export print-ready aesthetic strips.</p>
       <div class="feature-chips">
         <span class="f-chip">📸 4-Cut Strips</span>
         <span class="f-chip">🎨 6 Frame Styles</span>
@@ -857,7 +840,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <article class="feature-card">
       <span class="fc-icon">🕹️</span>
       <h3>Body Motion Games</h3>
-      <p>No controllers needed — steer fruit baskets, smash pong balls with your chin, or pop balloons with your fingers.</p>
+      <p>No controllers needed — steer fruit baskets, smash pong balls with your face, or pop balloons with your fingers.</p>
       <div class="feature-chips">
         <span class="f-chip">🎈 Balloon Pop</span>
         <span class="f-chip">🏓 Face Pong</span>
@@ -870,42 +853,42 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p>All camera frames and video clips process strictly in browser memory. Zero cloud uploads.</p>
       <div class="feature-chips">
         <span class="f-chip">🛡️ Zero Uploads</span>
-        <span class="f-chip">⚡ WebRTC Memory</span>
+        <span class="f-chip">⚡ WebGL + WebRTC</span>
         <span class="f-chip">🏫 Chromebook Ready</span>
       </div>
     </article>
   </div>
 </section>
 
-<!-- ================= How it works ================= -->
+<!-- ================= How It Works ================= -->
 <section id="how" class="content-section">
   <h2 class="section-title">How It Works in 3 Quick Steps</h2>
   <div class="steps">
     <div class="step">
-      <h3>1. Enable Camera</h3>
-      <p>Click "Enable my camera" and approve access. Instant launch with front/back mobile camera flipping.</p>
+      <h3>1. Start Camera</h3>
+      <p>Click "Start camera" and approve browser access. Instant launch with front and rear mobile camera flipping.</p>
     </div>
     <div class="step">
       <h3>2. Pick Filter or Mode</h3>
-      <p>Choose from 50+ filters, switch to Collage Strip or Video Recording. Press <kbd>R</kbd> for random.</p>
+      <p>Choose from 90+ live filters, switch to Photo Booth Collage or Video Recording, or press <kbd>R</kbd> for a random look.</p>
     </div>
     <div class="step">
       <h3>3. Snap &amp; Export</h3>
-      <p>Press <kbd>C</kbd> to take photos, or <kbd>V</kbd> to record video. Download directly with zero watermarks.</p>
+      <p>Press <kbd>C</kbd> to take photos or <kbd>V</kbd> to record video. Download directly to your device with zero watermarks.</p>
     </div>
   </div>
 
-  <!-- Deep Technical SEO Specs Accordion (Clean for users, rich for bots) -->
+  <!-- Technical Specs Accordion -->
   <details class="specs-accordion">
     <summary>
       <span>⚙️ View Technical Specifications, Hotkeys &amp; Device Compatibility</span>
     </summary>
     <div class="specs-content">
-      <p><strong>Supported Resolutions:</strong> Auto Sensor Negotiation (resolutions up to 4K UHD or 8K Ultra HD depend on your physical camera hardware and browser support; standard webcams deliver 720p HD or 1080p FHD), 2K QHD, 1080p FHD, 720p HD, 480p SD.</p>
-      <p><strong>Supported Formats:</strong> High-res JPEG snapshots, WebM video with Opus audio, MP4 export, and PNG collage sheets.</p>
-      <p><strong>Browser Compatibility:</strong> Google Chrome, Safari (macOS &amp; iOS), Microsoft Edge, Mozilla Firefox, Opera, and Samsung Internet. Fully compatible with school Chromebooks, MacBook FaceTime HD cameras, and external USB webcams.</p>
+      <p><strong>Supported Resolutions:</strong> Auto Sensor Negotiation up to 4K UHD (desktop hardware dependent), 2K QHD (1440p), 1080p Full HD, 720p HD, and 480p SD.</p>
+      <p><strong>Supported Formats:</strong> High-resolution JPEG, PNG, and WebP snapshots; WebM and MP4 video clips with audio; print-ready PNG collage strips.</p>
+      <p><strong>Rendering Engine:</strong> GPU-accelerated WebGL 2.0 shaders with automatic HTML5 Canvas 2D fallback for smooth performance across iPhone, Android, Chromebooks, Mac, and Windows.</p>
       <p><strong>Keyboard Shortcuts:</strong> <kbd>C</kbd> = Capture Photo, <kbd>V</kbd> = Record Video, <kbd>R</kbd> = Random Effect, <kbd>F</kbd> = Favorite Effect, <kbd>M</kbd> = Mirror Flip, <kbd>G</kbd> = Launch Game, <kbd>Esc</kbd> = Exit Game.</p>
-      <p><strong>Privacy Guarantee:</strong> Built on HTML5 Canvas 2D and WebRTC getUserMedia. Your video feed is processed 100% in local memory and is never uploaded or monitored by external servers.</p>
+      <p><strong>Privacy Guarantee:</strong> Built on HTML5 WebRTC getUserMedia. Your video feed stays 100% in local device memory and is never uploaded or stored on external servers.</p>
     </div>
   </details>
 </section>
@@ -954,17 +937,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   <details>
     <summary>How do I use WebcamClicks with my webcam?</summary>
-    <p>Click the “Start camera” button and allow camera access in your browser. Camera access is only requested after you tap. Your live video appears instantly, and you can pick any of the 50+ filters, face effects, video recording, or games from the panel next to the camera.</p>
+    <p>Click the “Start camera” button and allow camera access in your browser. Camera access is only requested after you tap. Your live video appears instantly, and you can pick any of the 90+ filters, face effects, photo booth layouts, video recording, or games from the panel.</p>
   </details>
 
   <details>
     <summary>Can I record videos with filters and face stickers?</summary>
-    <p>Yes! Simply press the <strong>⏺️ Record</strong> button on the toolbar or press <strong>V</strong> on your keyboard. Your video recording captures whatever filter and face effects are on screen. Click Stop when finished to save it to your gallery or download it to your device.</p>
+    <p>Yes. Press the <strong>⏺️ Record</strong> button on the toolbar or press <strong>V</strong> on your keyboard. Your video recording captures whatever filter and face effects are active on screen. Click Stop when finished to save it to your gallery or download it to your device.</p>
   </details>
 
   <details>
     <summary>Are my photos or camera feed stored online?</summary>
-    <p>No. Everything runs locally in your browser via <a href="https://www.w3.org/TR/mediacapture-streams/" target="_blank" rel="noopener noreferrer">W3C WebRTC standards</a>. Your camera feed is never recorded, uploaded or transmitted to any server. Photos and video clips stay in your browser's local storage until you delete them, and downloads go straight to your device.</p>
+    <p>No. Everything runs locally in your browser via <a href="https://www.w3.org/TR/mediacapture-streams/" target="_blank" rel="noopener noreferrer">W3C WebRTC standards</a>. Your camera feed is never uploaded or transmitted to any server. Photos and video clips stay in your browser's local storage until you delete them, and downloads go straight to your device.</p>
   </details>
 
   <details>
@@ -979,7 +962,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   <details>
     <summary>Does it work on mobile phones and tablets?</summary>
-    <p>Yes. WebcamClicks works seamlessly on iPhone, iPad, Android smartphones, and tablets across Safari, Chrome, Samsung Internet, and Firefox. You can switch between front and rear cameras using the "Flip cam" button.</p>
+    <p>Yes. WebcamClicks works on iPhone, iPad, Android smartphones, and tablets across Safari, Chrome, Samsung Internet, and Firefox. Switch between front and rear cameras anytime using the Flip button.</p>
   </details>
 </section>
 </main>
@@ -1006,6 +989,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p class="footer-title">Tools</p>
       <ul>
         <li><a href="/">Webcam Filters</a></li>
+        <li><a href="/filters">🎨 Filter Gallery</a></li>
+        <li><a href="/instagram-photo-border">🖼️ Instagram Photo Border</a></li>
         <li><a href="/pro-camera">🎬 Pro Camera (Movie Ratios)</a></li>
         <li><a href="/webcam-toy-alternative">🎯 Webcam Toy Alternative</a></li>
         <li><a href="/mic-test">🎙️ Mic Test &amp; Report</a></li>
@@ -1056,7 +1041,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </p>
 </footer>
 
-<!-- ================= Gallery drawer ================= -->
+<!-- ================= Gallery Drawer ================= -->
 <div class="gallery-drawer" id="gallery-drawer" role="dialog" aria-modal="true" aria-label="Photo and video gallery">
   <div class="gallery-inner">
     <div class="gallery-head">
@@ -1073,16 +1058,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
 </div>
 
-<!-- ================= Help modal ================= -->
+<!-- ================= Help Modal ================= -->
 <div class="modal" id="help-modal" role="dialog" aria-modal="true" aria-label="Help">
   <div class="modal-card">
     <button class="modal-close" id="btn-help-close" type="button" aria-label="Close help">✕</button>
     <h2>❓ Help &amp; tips</h2>
     <h3>Getting started</h3>
     <ul>
-      <li>Click <strong>🎥 Enable my camera</strong> and allow access when your browser asks.</li>
-      <li>Pick any of the 50+ effects on the right (or below on mobile). Use the slider to mix the effect in.</li>
-      <li>Press <strong>📸 Capture</strong> to save a photo, or <strong>⏺️ Record</strong> to record a video clip.</li>
+      <li>Click <strong>🎥 Start camera</strong> and allow access when your browser asks.</li>
+      <li>Pick any of the 90+ effects on the right (or below on mobile). Use the slider to mix the effect in.</li>
+      <li>Press <strong>📷 Capture</strong> to save a photo, or <strong>⏺️ Record</strong> to record a video clip.</li>
     </ul>
     <h3>Keyboard shortcuts</h3>
     <table class="shortcut-table">
@@ -1101,7 +1086,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <li><strong>Camera blocked?</strong> Click the camera icon in the address bar and allow access, then reload.</li>
       <li><strong>Camera busy?</strong> Close apps like Zoom, Teams or Skype that may be using it.</li>
       <li><strong>No HTTPS?</strong> Camera needs a secure connection — always use https://webcamclicks.com.</li>
-      <li><strong>Face effects slow?</strong> Lower effect strength or close other tabs; face detection loads once and is cached.</li>
+      <li><strong>Face effects slow?</strong> Switch to 720p HD in Settings or close background tabs; face models load once and are cached.</li>
     </ul>
     <p class="panel-hint">Your privacy: the camera feed, photos and videos never leave your device.</p>
   </div>
@@ -1113,7 +1098,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <button class="modal-close" id="btn-settings-close" type="button" aria-label="Close settings">✕</button>
     <h2>⚙️ Camera Settings &amp; Preferences</h2>
     <p class="panel-hint" style="margin-bottom:18px;">Configure your camera hardware, capture timer, resolution, and recording formats. Click <strong>Save Preferences</strong> to confirm and remember your choices.</p>
-    
+
     <form id="camera-settings-form">
       <div class="form-grid">
         <div class="form-group">
@@ -1125,13 +1110,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <div class="form-group">
           <label class="form-label" for="pref-resolution">Target Resolution</label>
           <select id="pref-resolution" class="form-control">
-            <option value="max">✨ Max Sensor (Auto-Detect Highest Available)</option>
-            <option value="7680x4320">8K Ultra HD (7680 × 4320) — Hardware sensor dependent</option>
-            <option value="3840x2160">4K Ultra HD (3840 × 2160) — Hardware sensor dependent</option>
-            <option value="2560x1440">2K Quad HD (2560 × 1440) - 1440p</option>
+            <option value="max">✨ Auto Best (Detect Highest Stable)</option>
+            <option value="3840x2160">4K Ultra HD (3840 × 2160) — Desktop recommended</option>
+            <option value="2560x1440">2K Quad HD (2560 × 1440) — 1440p</option>
             <option value="1920x1080" selected>1080p Full HD (1920 × 1080)</option>
-            <option value="1280x720">720p HD (1280 × 720)</option>
-            <option value="640x480">480p SD (640 × 480) - Lightweight</option>
+            <option value="1280x720">720p HD (1280 × 720) — Fastest on mobile</option>
+            <option value="640x480">480p SD (640 × 480) — Lightweight</option>
           </select>
         </div>
         <div class="form-group">
@@ -1191,12 +1175,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <button class="modal-close" id="btn-close-photo-review" type="button" aria-label="Close preview and resume camera">✕</button>
     </div>
 
-    <!-- Full-Size Image Preview -->
     <div class="photo-review-preview">
-      <img id="photo-review-img" src="" alt="Captured webcam snapshot">
+      <img id="photo-review-img" alt="Captured webcam snapshot" decoding="async">
     </div>
 
-    <!-- Action Bar -->
     <div class="photo-review-actions">
       <button class="btn btn-primary" id="btn-download-photo" type="button">
         ⬇️ Download to Device
@@ -1234,27 +1216,24 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <button class="modal-close" id="btn-close-collage-modal" type="button" aria-label="Close collage modal">✕</button>
     </div>
 
-    <!-- Live Assembled Preview -->
     <div class="collage-preview-wrapper">
       <div class="collage-preview-container" id="collage-preview-container">
-        <img id="collage-preview-img" src="" alt="WebcamClicks Photo Booth Collage">
+        <img id="collage-preview-img" alt="WebcamClicks Photo Booth Collage" decoding="async">
       </div>
     </div>
 
-    <!-- Theme / Frame Selector -->
     <div class="collage-theme-picker">
       <span class="theme-label">Frame Style:</span>
       <div class="theme-buttons" id="collage-theme-buttons">
         <button class="theme-pill active" data-theme="white" type="button">⚪ Classic White</button>
         <button class="theme-pill" data-theme="vintage" type="button">🎞️ Vintage Film</button>
         <button class="theme-pill" data-theme="vintageshoot" type="button">📽️ Vintage Shoot</button>
-        <button class="theme-pill" data-theme="polaroid" type="button">📸 Polaroid 1977</button>
+        <button class="theme-pill" data-theme="polaroid" type="button">📸 Instant 1977</button>
         <button class="theme-pill" data-theme="pink" type="button">🌸 Blush Rose</button>
         <button class="theme-pill" data-theme="noir" type="button">🖤 Studio Noir</button>
       </div>
     </div>
 
-    <!-- Export Actions: Download, Google Drive, Share Online, Copy, Retake -->
     <div class="collage-actions">
       <button class="btn btn-primary" id="btn-download-collage" type="button">
         ⬇️ Download to Device
@@ -1275,7 +1254,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
 </div>
 
-<!-- Mobile Bottom App Navigation Bar (Persistent Native Feel) -->
+<!-- Mobile Bottom App Navigation Bar -->
 <nav class="mobile-bottom-nav" id="mobile-bottom-nav" aria-label="Mobile app navigation">
   <a href="#camera" class="mb-nav-item active" id="mb-nav-camera">
     <span class="mb-nav-icon">📷</span>
@@ -1302,60 +1281,71 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- ============ Hero CTA & Effect Showcase Interactions ============ -->
 <script>
 (function () {
-  /* 1. Hero Start Camera Button */
-  var heroStartBtn = document.getElementById('hero-start-camera-btn');
-  if (heroStartBtn) {
-    heroStartBtn.addEventListener('click', function () {
-      var stage = document.getElementById('camera');
-      if (stage && stage.scrollIntoView) {
-        stage.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-      if (typeof window.startWebcamClicksCamera === 'function') {
-        window.startWebcamClicksCamera();
-      } else {
-        window.__startCameraPending = true;
-        var heroText = document.getElementById('hero-start-btn-text');
-        if (heroText) heroText.textContent = 'Starting camera…';
-        var startBtn = document.getElementById('start-btn');
-        if (startBtn && !startBtn.disabled) startBtn.click();
-      }
-    });
-  }
+  function launchStudio(effectId) {
+    var stage = document.getElementById('camera');
+    if (stage && stage.scrollIntoView) {
+      stage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 
-  /* 2. Real Photo Effect Showcase Click Handler */
-  document.querySelectorAll('.showcase-card, .showcase-try-btn').forEach(function (el) {
-    el.addEventListener('click', function (e) {
-      var effectId = el.getAttribute('data-effect');
-      if (!effectId) {
-        var parentCard = el.closest('.showcase-card');
-        if (parentCard) effectId = parentCard.getAttribute('data-effect');
-      }
-      if (!effectId) return;
-
-      var stage = document.getElementById('camera');
-      if (stage && stage.scrollIntoView) {
-        stage.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-
+    if (effectId) {
       if (typeof window.webcamClicksSelectEffect === 'function') {
         window.webcamClicksSelectEffect(effectId);
       } else {
+        window.__pendingEffectId = effectId;
         try { history.replaceState(null, '', '#effect=' + effectId); } catch (_) {}
-        if (window.dispatchEvent) window.dispatchEvent(new HashChangeEvent('hashchange'));
       }
+    }
 
-      if (typeof window.startWebcamClicksCamera === 'function') {
-        window.startWebcamClicksCamera();
-      } else {
-        var startBtn = document.getElementById('start-btn');
-        if (startBtn && !startBtn.disabled) setTimeout(function () { startBtn.click(); }, 120);
+    // Trigger synchronously inside user gesture so iOS Safari allows getUserMedia + WebAudio
+    if (typeof window.startWebcamClicksCamera === 'function') {
+      window.startWebcamClicksCamera();
+    } else {
+      window.__startCameraPending = true;
+      var heroText = document.getElementById('hero-start-btn-text');
+      if (heroText) heroText.textContent = 'Loading studio…';
+    }
+  }
+
+  var heroStartBtn = document.getElementById('hero-start-camera-btn');
+  if (heroStartBtn) {
+    heroStartBtn.addEventListener('click', function () {
+      launchStudio(null);
+    });
+  }
+
+  // Delegated listener prevents double-firing on nested card + button clicks
+  var showcase = document.getElementById('effect-showcase');
+  if (showcase) {
+    showcase.addEventListener('click', function (e) {
+      var target = e.target.closest('.showcase-try-btn, .showcase-card');
+      if (!target) return;
+      var effectId = target.getAttribute('data-effect');
+      if (!effectId) {
+        var parentCard = target.closest('.showcase-card');
+        if (parentCard) effectId = parentCard.getAttribute('data-effect');
+      }
+      if (effectId) launchStudio(effectId);
+    });
+  }
+
+  // Smooth scroll when tapping any vintage effect pill
+  var vintagePills = document.getElementById('vintage-pills');
+  if (vintagePills) {
+    vintagePills.addEventListener('click', function (e) {
+      var link = e.target.closest('a.v-pill');
+      if (!link) return;
+      var href = link.getAttribute('href') || '';
+      var match = href.match(/#effect=([a-z0-9_-]+)/i);
+      if (match) {
+        e.preventDefault();
+        launchStudio(match[1]);
       }
     });
-  });
+  }
 })();
 </script>
 
-<!-- App (ES modules — served via HTTPS or localhost) -->
-<script type="module" src="/js/app.js?v=2"></script>
+<!-- App (ES modules — cache-busted for upgraded WebGL 2.0 studio) -->
+<script type="module" src="/js/app.js?v=3"></script>
 </body>
 </html>

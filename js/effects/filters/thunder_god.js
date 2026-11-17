@@ -276,9 +276,9 @@ function ensureClouds(w, h, count = 8) {
    ══════════════════════════════════════════════════════════════════════ */
 export const thunderGodEffect = {
   id: 'thunder_god',
-  name: 'Thor Thunder God',
+  name: 'Storm Caller',
   icon: '⚡',
-  category: 'Sci-Fi',
+  category: 'Scenes',
   perf: 'medium',
   requiresFace: false,
 

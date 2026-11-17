@@ -27,7 +27,7 @@ import {
 } from './filter-helpers.js';
 
 export const thermalEffect = {
-    id: 'thermal', name: 'Thermal', icon: '🌡️', category: 'Fun', perf: 'high',
+    id: 'thermal', name: 'Thermal', icon: '🌡️', category: 'Art', perf: 'high',
     render(fx, { src }) {
       pixelPass(fx, src, (d) => {
         for (let i = 0; i < d.length; i += 4) {

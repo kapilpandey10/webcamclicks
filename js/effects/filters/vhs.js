@@ -27,7 +27,7 @@ import {
 } from './filter-helpers.js';
 
 export const vhsEffect = {
-    id: 'vhs', name: 'VHS Tape', icon: '📼', category: 'Fun', perf: 'medium',
+    id: 'vhs', name: 'VHS Tape', icon: '📼', category: 'Styles', perf: 'medium',
     render(fx, { src, width: w, height: h, time }) {
       fx.drawImage(src, 0, 0, w, h);
       fx.globalCompositeOperation = 'lighter';

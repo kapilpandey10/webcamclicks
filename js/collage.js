@@ -56,7 +56,7 @@ export const COLLAGE_THEMES = {
   },
   polaroid: {
     id: 'polaroid',
-    name: '📸 Polaroid 1977',
+    name: '📸 Instant 1977',
     bg: '#fcfbf7',
     photoBg: '#f5f3ec',
     text: '#1c1917',

@@ -27,7 +27,7 @@ import {
 } from './filter-helpers.js';
 
 export const anamorphicEffect = {
-    id: 'anamorphic', name: 'Anamorphic Cine', icon: '💎', category: 'Classic', perf: 'low',
+    id: 'anamorphic', name: 'Anamorphic Cine', icon: '💎', category: 'Styles', perf: 'low',
     render(fx, { src, width: w, height: h, time: t }) {
       // Base frame with cinematic grade
       fx.save();

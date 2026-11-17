@@ -5,7 +5,7 @@ import { LM, cent } from '../../face/face-detection.js';
 import { scratch, geo, smoothGeo, passthrough } from './face-helpers.js';
 
 export const ironHudEffect = {
-    id: 'iron_hud', name: 'Mark-VII Tactical AR HUD', icon: '🪖', category: 'Face', perf: 'low', requiresFace: true,
+    id: 'iron_hud', name: 'Tactical AR HUD', icon: '🪖', category: 'Face', perf: 'low', requiresFace: true,
     render(fx, frame) {
       passthrough(fx, frame);
       const g = geo(frame);

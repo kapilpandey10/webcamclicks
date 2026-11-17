@@ -27,7 +27,7 @@ import {
 } from './filter-helpers.js';
 
 export const nightvisionEffect = {
-    id: 'nightvision', name: 'Night Vision', icon: '👁️', category: 'Fun', perf: 'high',
+    id: 'nightvision', name: 'Night Vision', icon: '👁️', category: 'Art', perf: 'high',
     render(fx, { src, width: w, height: h }) {
       pixelPass(fx, src, (d) => {
         for (let i = 0; i < d.length; i += 4) {

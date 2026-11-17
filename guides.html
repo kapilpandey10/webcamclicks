@@ -7,12 +7,25 @@
 <script>
 window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
+
+gtag('consent', 'default', {
+  'ad_storage': 'denied',
+  'ad_user_data': 'denied',
+  'ad_personalization': 'denied',
+  'analytics_storage': 'denied',
+  'region': [
+    'AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IS','IE',
+    'IT','LV','LI','LT','LU','MT','NL','NO','PL','PT','RO','SK','SI','ES','SE',
+    'GB','CH'
+  ],
+  'wait_for_update': 500
+});
+
 gtag('consent', 'default', {
   'ad_storage': 'granted',
   'ad_user_data': 'granted',
   'ad_personalization': 'granted',
-  'analytics_storage': 'granted',
-  'wait_for_update': 500
+  'analytics_storage': 'granted'
 });
 </script>
 <!-- Google Tag Manager -->
@@ -43,6 +56,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <meta property="og:site_name" content="WebcamClicks">
 <meta property="og:url" content="https://webcamclicks.com/guides">
 <meta property="og:title" content="Webcam Guides, Tutorials &amp; Technical Manuals — WebcamClicks">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Webcam Guides, Tutorials &amp; Technical Manuals — WebcamClicks">
+<meta name="twitter:description" content="Master your webcam setup with expert tutorials on phone webcam continuity, blur fixes, lighting setup, FOV optics, and camera troubleshooting.">
+<meta name="twitter:image" content="https://webcamclicks.com/assets/img/og-image.png">
 <meta property="og:description" content="Master your webcam setup with expert tutorials on phone webcam continuity, blur fixes, lighting setup, FOV optics, and camera troubleshooting.">
 <meta property="og:image" content="https://webcamclicks.com/assets/img/og-image.png">
 <meta property="og:image:width" content="1200">
@@ -93,6 +110,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <a href="/pro-camera" class="keep">🎬 Pro Camera</a>
     <a href="/mic-test">🎙️ Mic Test</a>
     <a href="/compare-webcams">Dual Compare</a>
+    <a href="/filters">🎨 Filters</a>
+    <a href="/instagram-photo-border">🖼️ Photo Border</a>
     <a href="/guides" class="keep" style="font-weight:700; color:var(--brand-2);">📚 Guides</a>
     <a href="/about">About Us</a>
   </nav>
@@ -217,7 +236,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <div style="margin-top: 60px; background: linear-gradient(135deg, rgba(236,72,153,0.1), rgba(99,102,241,0.1)); border: 1.5px solid var(--border-2); border-radius: var(--radius); padding: 36px 32px; text-align: center;">
     <h2 style="font-size: 1.8rem; margin: 0 0 10px; color: #0f172a;">Ready to Put These Tips into Action?</h2>
     <p style="font-size: 1rem; color: #475569; max-width: 600px; margin: 0 auto 24px; line-height: 1.6;">
-      Launch WebcamClicks to test your webcam resolution, experiment with 100+ creative film filters, record HD clips, or shoot Korean-style 4-cut aesthetic collage strips.
+      Launch WebcamClicks to test your webcam resolution, experiment with 90+ creative film filters, record HD clips, or shoot Korean-style 4-cut aesthetic collage strips.
     </p>
     <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
       <a href="/" class="btn btn-primary" style="padding: 12px 28px; font-size: 0.95rem;">🎥 Launch Webcam Studio</a>
@@ -236,6 +255,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p class="footer-title">Tools</p>
       <ul>
         <li><a href="/">Webcam Effects Studio</a></li>
+        <li><a href="/filters">🎨 Filter Gallery</a></li>
+        <li><a href="/instagram-photo-border">🖼️ Instagram Photo Border</a></li>
         <li><a href="/pro-camera">🎬 Pro Cinema Camera</a></li>
         <li><a href="/webcam-toy-alternative">🎯 Webcam Toy Alternative</a></li>
         <li><a href="/mic-test">🎙️ Mic Test &amp; Report</a></li>

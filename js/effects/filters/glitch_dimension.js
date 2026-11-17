@@ -91,7 +91,7 @@ export const glitchDimensionEffect = {
   id: 'glitch_dimension',
   name: 'Glitch Dimension',
   icon: '🌀',
-  category: 'Sci-Fi',
+  category: 'Scenes',
   perf: 'medium',
   requiresFace: false,
 

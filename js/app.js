@@ -5,9 +5,10 @@ import { $, $$, clamp, rand, storage, toast, FpsMeter, friendlyCameraError, make
 import { Sound } from './sound.js';
 import { CameraManager } from './camera.js';
 import { MotionDetector } from './motion.js';
-import { EffectManager } from './effects/EffectManager.js';
+import { EffectManager, resolveEffectId } from './effects/EffectManager.js';
 import { register2DFilters } from './effects/filters-2d.js';
 import { registerFaceEffects } from './effects/face-effects.js';
+import { gpuAccelerator } from './effects/webgl-filters.js';
 import { FaceTracker } from './face/face-detection.js';
 import { GameManager } from './games/GameManager.js';
 import { motionCatch } from './games/motion-game.js';
@@ -16,18 +17,18 @@ import { freezePose } from './games/freeze-game.js';
 import { balloonPop } from './games/balloon-pop.js';
 import { Gallery } from './gallery.js';
 import { shareImage, copyImage, shareVideoBlob } from './share.js';
-import { Recorder, downloadClip } from './recorder.js';
+import { Recorder } from './recorder.js';
 import { generateCollage, COLLAGE_THEMES } from './collage.js';
+import { registerSnapchatLenses } from './effects/snapchat-lenses.js';
 
 /* ============================ state ============================ */
 const settings = storage.get('wc_settings', { mirror: true, sound: true, intensity: 100, effect: 'normal' });
-const favs = new Set(storage.get('wc_favs', ['grayscale', 'sepia', 'sunglasses', 'crown', 'vhs', 'glitch']));
+const favs = new Set(storage.get('wc_favs', ['y2k_digicam', 'direct_flash', 'sunglasses', 'crown', 'vhs', 'portra400'])
+  .map((id) => resolveEffectId(id)));
 
 const camera = new CameraManager();
 const motion = new MotionDetector();
 const manager = new EffectManager();
-register2DFilters(manager);
-registerFaceEffects(manager);
 
 const tracker = new FaceTracker(onFaceStatus);
 const gallery = new Gallery(renderGallery);
@@ -38,16 +39,16 @@ let recordingAudioStream = null;
 
 let display = null;
 let dctx = null;
-let fpsMeter = new FpsMeter();
+const fpsMeter = new FpsMeter();
 let lastNow = 0;
-let running = false;
+let rafId = 0;
 let currentCategory = 'All';
 let gameMsgTimer = 0;
 let lastGameId = null;
 let pendingGame = null;
 let badgeTick = 0;
-let mobileMode = 'photo'; /* 'photo' | 'collage' | 'video' */
-let desktopMode = 'photo'; /* 'photo' | 'collage' | 'video' */
+let mobileMode = 'photo';
+let desktopMode = 'photo';
 let collagePoseCount = 4;
 let collagePoseSpec = '4';
 let collageActiveLayout = 'grid';
@@ -62,7 +63,6 @@ let countdownActive = false;
 let cancelCollageRequested = false;
 let currentReviewItem = null;
 
-/* DOM refs (filled in init) */
 const el = {};
 
 /* ============================ game engine ============================ */
@@ -73,7 +73,7 @@ const gameEngine = {
     const t = s == null ? '' : `🏆 ${s}`;
     if (el.hudScore.textContent !== t) el.hudScore.textContent = t;
   },
-  setLives() {},
+  setLives() { },
   message(title, sub, ms = 2500) {
     showGameMsg(title, sub, 'ok');
     clearTimeout(gameMsgTimer);
@@ -91,7 +91,7 @@ const gameEngine = {
   },
   onEnd(def, score, win) {
     if (el.gameHud) el.gameHud.classList.remove('on');
-    if (score == null) { hideGameMsg(); return; } /* user aborted */
+    if (score == null) { hideGameMsg(); return; }
     if (win) Sound.win(); else Sound.fail();
     showGameMsg(
       win ? '🎉 You win!' : 'Game over',
@@ -103,6 +103,12 @@ const gameEngine = {
 
 const gameMgr = new GameManager(gameEngine);
 gameMgr.registerAll([balloonPop, motionCatch, facePong, freezePose]);
+
+function ensureRenderLoop() {
+  if (!rafId) {
+    rafId = requestAnimationFrame(loop);
+  }
+}
 
 /* ============================ init ============================ */
 function init() {
@@ -155,7 +161,6 @@ function init() {
   el.prefMirror = $('#pref-mirror');
   el.prefSound = $('#pref-sound');
 
-  /* Mobile native app controls & HUD elements */
   el.cameraHudTop = $('#camera-hud-top');
   el.hudBtnFlip = $('#hud-btn-flip');
   el.hudBtnMirror = $('#hud-btn-mirror');
@@ -179,7 +184,6 @@ function init() {
   el.mbNavGames = $('#mb-nav-games');
   el.mbNavGallery = $('#mb-nav-gallery');
 
-  /* On-Camera Countdown & Photo Booth Collage Elements */
   el.cameraCountdown = $('#camera-countdown');
   el.countdownNum = $('#countdown-num');
   el.countdownCaption = $('#countdown-caption');
@@ -205,7 +209,6 @@ function init() {
   el.btnCopyCollage = $('#btn-copy-collage');
   el.btnRetakeCollage = $('#btn-retake-collage');
 
-  /* Single Photo Review Modal Elements */
   el.photoReviewModal = $('#photo-review-modal');
   el.btnClosePhotoReview = $('#btn-close-photo-review');
   el.btnResumeCamera = $('#btn-resume-camera');
@@ -239,6 +242,11 @@ function init() {
   wireEvents();
   readHash();
 
+  if (window.__pendingEffectId) {
+    setEffect(window.__pendingEffectId, { scrollCarousel: true });
+    window.__pendingEffectId = null;
+  }
+
   if (!storage.get('wc_visited', false)) {
     storage.set('wc_visited', true);
     if (isMobile()) {
@@ -252,7 +260,7 @@ function init() {
     setEffect(id, { scrollCarousel: true });
   };
 
-  requestAnimationFrame(loop);
+  ensureRenderLoop();
 
   window.startWebcamClicksCamera = () => {
     const stage = document.getElementById('camera');
@@ -261,6 +269,7 @@ function init() {
     }
     return startCamera();
   };
+
   if (window.__startCameraPending) {
     window.__startCameraPending = false;
     window.startWebcamClicksCamera();
@@ -275,7 +284,7 @@ async function tryAutostart() {
       const st = await navigator.permissions.query({ name: 'camera' });
       if (st && st.state === 'granted') startCamera();
     }
-  } catch { /* permission API unsupported — wait for the button */ }
+  } catch { /* wait for user tap */ }
 }
 
 function saveSettings() {
@@ -301,9 +310,8 @@ async function startCamera() {
     await camera.start(targetRes);
     display.width = camera.width;
     display.height = camera.height;
-    running = true;
     lastNow = 0;
-    requestAnimationFrame(loop);
+    ensureRenderLoop();
     if (el.startOverlay) el.startOverlay.style.display = 'none';
     if (el.stageError) el.stageError.style.display = 'none';
     if (heroBtnText) heroBtnText.textContent = 'Camera is active';
@@ -311,17 +319,9 @@ async function startCamera() {
     if (el.cameraZoomWidget) el.cameraZoomWidget.style.display = 'inline-flex';
     updateResolutionUI();
     await updateCameraSelectUI();
-    setEffect(settings.effect || 'normal', { save: false });
+    setEffect((manager.current && manager.current.id) || settings.effect || 'normal', { save: false });
     if (pendingGame) { startGame(pendingGame); pendingGame = null; }
     Sound.pop();
-
-    // Eagerly warmup face tracking in background so face effects work instantly with zero delay
-    setTimeout(() => {
-      tracker.ensureBase().then(() => {
-        tracker.ensureExpressions().catch(() => {});
-        tracker.ensureAge().catch(() => {});
-      }).catch(() => {});
-    }, 1200);
   } catch (err) {
     if (el.startBtn) {
       el.startBtn.disabled = false;
@@ -341,9 +341,8 @@ async function startDemoPortrait() {
     await camera.startDemo();
     display.width = camera.width;
     display.height = camera.height;
-    running = true;
     lastNow = 0;
-    requestAnimationFrame(loop);
+    ensureRenderLoop();
     if (el.startOverlay) el.startOverlay.style.display = 'none';
     if (el.stageError) el.stageError.style.display = 'none';
     const heroBtnText = $('#hero-start-btn-text');
@@ -351,15 +350,10 @@ async function startDemoPortrait() {
     if (el.fpsBadge) el.fpsBadge.style.display = '';
     if (el.cameraZoomWidget) el.cameraZoomWidget.style.display = 'inline-flex';
     updateResolutionUI();
-    setEffect(settings.effect || 'normal', { save: false });
+    setEffect((manager.current && manager.current.id) || settings.effect || 'normal', { save: false });
     if (pendingGame) { startGame(pendingGame); pendingGame = null; }
     Sound.pop();
     toast('✨ Live Demo Mode active — test any effect or game!', 3500);
-
-    // Warmup tracker
-    setTimeout(() => {
-      tracker.ensureBase().catch(() => {});
-    }, 800);
   } catch (err) {
     console.error('[WebcamClicks] demo portrait start err:', err);
   }
@@ -400,11 +394,11 @@ async function updateCameraSelectUI() {
 
 /* ============================ render loop ============================ */
 function loop(now) {
-  requestAnimationFrame(loop);
+  rafId = requestAnimationFrame(loop);
   if (!camera.active) return;
 
   try {
-    const dt = clamp(lastNow ? now - lastNow : 16.7, 0, 80);
+    const dt = clamp(lastNow ? now - lastNow : 16.7, 1, 80);
     lastNow = now;
 
     const src = camera.grabFrame();
@@ -432,6 +426,7 @@ function loop(now) {
       width: camera.width,
       height: camera.height,
       time: now,
+      now,
       dt,
       face: tracker,
       motion,
@@ -463,7 +458,6 @@ function loop(now) {
       dctx.drawImage(src, 0, 0, display.width, display.height);
       dctx.restore();
 
-      // Divider line
       dctx.save();
       dctx.strokeStyle = '#ffffff';
       dctx.lineWidth = 3;
@@ -474,7 +468,6 @@ function loop(now) {
       dctx.lineTo(display.width / 2, display.height);
       dctx.stroke();
 
-      // Badges
       dctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
       dctx.font = 'bold 12px "Outfit", sans-serif';
       dctx.textBaseline = 'top';
@@ -495,16 +488,13 @@ function loop(now) {
       manager.render(dctx, frame);
     }
 
-    // Burn professional watermark into recorded video stream
     if (isRecording) {
       drawWatermark(dctx, display.width, display.height);
     }
 
-    /* FPS badge (throttled by the meter itself) */
     const fps = fpsMeter.tick(now);
     if (fps && el.fpsBadge) el.fpsBadge.textContent = `${fps} fps`;
 
-    /* face badge ~4x/second */
     badgeTick = (badgeTick + 1) % 15;
     if (badgeTick === 0) updateFaceBadge();
   } catch (loopErr) {
@@ -514,11 +504,10 @@ function loop(now) {
 
 function ensureTrackerBase() {
   if (!tracker.loadedBase && !tracker._loadingBase) {
-    tracker.ensureBase().catch(() => {});
+    tracker.ensureBase().catch(() => { });
   }
 }
 
-/* ============================ face status ============================ */
 function onFaceStatus(status, err) {
   if (status === 'error' && err) {
     console.warn('[WebcamClicks] face detection failed:', err);
@@ -605,10 +594,14 @@ const EFFECT_SAMPLE_PHOTOS = {
   'trix400': '/assets/img/sample-bw.jpg',
   'contrast': '/assets/img/sample-bw.jpg'
 };
+registerSnapchatLenses(manager);
+register2DFilters(manager);
+registerFaceEffects(manager);
 
 const _thumbDataCache = new Map();
 let _samplePortraitImg = null;
 let _baseCanvas56 = null;
+let _thumbQueueRunning = false;
 
 function getSamplePortraitImage(cb) {
   if (typeof Image === 'undefined') return;
@@ -626,7 +619,7 @@ function getSamplePortraitImage(cb) {
         _baseCanvas56.height = 56;
         const bctx = _baseCanvas56.getContext('2d');
         bctx.drawImage(_samplePortraitImg, 0, 0, 56, 56);
-      } catch (_) {}
+      } catch (_) { }
       if (cb) cb(_samplePortraitImg);
     };
     _samplePortraitImg.src = SAMPLE_PORTRAIT_URL;
@@ -653,15 +646,60 @@ function getFilterThumbnailUrl(effect) {
     c.height = 56;
     const ctx = c.getContext('2d');
     ctx.drawImage(_baseCanvas56, 0, 0);
-    if (typeof effect.render === 'function') {
-      effect.render(ctx, { src: _baseCanvas56, width: 56, height: 56, now: 0 });
+
+    const usedGpu = gpuAccelerator.canAccelerate(effect.id) &&
+      gpuAccelerator.renderToContext(ctx, _baseCanvas56, 56, 56, effect.id, 1200);
+
+    if (!usedGpu && typeof effect.render === 'function') {
+      effect.render(ctx, {
+        src: _baseCanvas56,
+        width: 56,
+        height: 56,
+        time: 1200,
+        now: 1200,
+        dt: 16.7,
+        face: null
+      });
     }
-    const dataUrl = c.toDataURL('image/jpeg', 0.82);
+    const dataUrl = c.toDataURL('image/jpeg', 0.80);
     _thumbDataCache.set(effect.id, dataUrl);
     return dataUrl;
   } catch {
-    return '';
+    return SAMPLE_PORTRAIT_URL;
   }
+}
+
+/** Hydrate missing thumbnails in small non-blocking chunks to keep INP/TBT fast */
+function scheduleThumbnailHydration() {
+  if (_thumbQueueRunning) return;
+  getSamplePortraitImage(() => {
+    const pendingNodes = [
+      ...(el.filterGrid ? el.filterGrid.querySelectorAll('.filter-tile') : []),
+      ...(el.mobileFilterCarousel ? el.mobileFilterCarousel.querySelectorAll('.carousel-item') : [])
+    ];
+    let idx = 0;
+    _thumbQueueRunning = true;
+
+    function processBatch() {
+      const start = performance.now();
+      while (idx < pendingNodes.length && performance.now() - start < 8) {
+        const node = pendingNodes[idx++];
+        const id = node.dataset.id;
+        const img = node.querySelector('img');
+        if (img && !img.getAttribute('src')) {
+          const eff = manager.get(id);
+          const url = getFilterThumbnailUrl(eff);
+          if (url) img.src = url;
+        }
+      }
+      if (idx < pendingNodes.length) {
+        setTimeout(processBatch, 16);
+      } else {
+        _thumbQueueRunning = false;
+      }
+    }
+    processBatch();
+  });
 }
 
 function buildFilterGrid() {
@@ -697,20 +735,6 @@ function buildFilterGrid() {
     return;
   }
 
-  getSamplePortraitImage(() => {
-    if (el.filterGrid) {
-      el.filterGrid.querySelectorAll('.filter-tile').forEach((tile) => {
-        const id = tile.dataset.id;
-        const img = tile.querySelector('.ft-thumb-img');
-        if (img && !img.src) {
-          const eff = manager.get(id);
-          const u = getFilterThumbnailUrl(eff);
-          if (u) img.src = u;
-        }
-      });
-    }
-  });
-
   for (const effect of list) {
     const tile = document.createElement('button');
     tile.type = 'button';
@@ -729,8 +753,8 @@ function buildFilterGrid() {
     thumbImg.width = 48;
     thumbImg.height = 48;
 
-    const thumbUrl = getFilterThumbnailUrl(effect);
-    if (thumbUrl) thumbImg.src = thumbUrl;
+    const cachedUrl = EFFECT_SAMPLE_PHOTOS[effect.id] || _thumbDataCache.get(effect.id) || '';
+    if (cachedUrl) thumbImg.src = cachedUrl;
     thumbWrap.appendChild(thumbImg);
 
     const iconBadge = document.createElement('span');
@@ -759,26 +783,14 @@ function buildFilterGrid() {
     });
     el.filterGrid.appendChild(tile);
   }
+
+  scheduleThumbnailHydration();
 }
 
 function buildMobileCarousel() {
   if (!el.mobileFilterCarousel) return;
   el.mobileFilterCarousel.innerHTML = '';
   const list = manager.list();
-
-  getSamplePortraitImage(() => {
-    if (el.mobileFilterCarousel) {
-      el.mobileFilterCarousel.querySelectorAll('.carousel-item').forEach((ci) => {
-        const id = ci.dataset.id;
-        const img = ci.querySelector('.carousel-thumb-img');
-        if (img && !img.src) {
-          const eff = manager.get(id);
-          const u = getFilterThumbnailUrl(eff);
-          if (u) img.src = u;
-        }
-      });
-    }
-  });
 
   for (const eff of list) {
     const btn = document.createElement('button');
@@ -798,8 +810,8 @@ function buildMobileCarousel() {
     thumbImg.width = 38;
     thumbImg.height = 38;
 
-    const tUrl = getFilterThumbnailUrl(eff);
-    if (tUrl) thumbImg.src = tUrl;
+    const cachedUrl = EFFECT_SAMPLE_PHOTOS[eff.id] || _thumbDataCache.get(eff.id) || '';
+    if (cachedUrl) thumbImg.src = cachedUrl;
     iconDiv.appendChild(thumbImg);
 
     const nameSpan = document.createElement('span');
@@ -810,13 +822,16 @@ function buildMobileCarousel() {
     btn.addEventListener('click', () => {
       setEffect(eff.id, { scrollCarousel: true });
       Sound.click();
-      if (navigator.vibrate) try { navigator.vibrate(20); } catch {}
+      if (navigator.vibrate) try { navigator.vibrate(20); } catch { }
     });
     el.mobileFilterCarousel.appendChild(btn);
   }
+
+  scheduleThumbnailHydration();
 }
 
 function setEffect(id, opts = {}) {
+  id = resolveEffectId(id);
   const effect = manager.get(id);
   if (!effect) return;
 
@@ -836,7 +851,6 @@ function setEffect(id, opts = {}) {
   const tiles = el.filterGrid ? el.filterGrid.querySelectorAll('.filter-tile') : [];
   tiles.forEach((t) => t.classList.toggle('selected', t.dataset.id === id));
 
-  /* Sync mobile horizontal carousel */
   const carouselItems = el.mobileFilterCarousel ? el.mobileFilterCarousel.querySelectorAll('.carousel-item') : [];
   carouselItems.forEach((ci) => {
     const isCur = ci.dataset.id === id;
@@ -846,11 +860,10 @@ function setEffect(id, opts = {}) {
     }
   });
 
-  /* load ML models on demand for face effects */
   if (effect.requiresFace) {
     ensureTrackerBase();
-    if (effect.needsExpressions) tracker.ensureExpressions().catch(() => {});
-    if (effect.needsAge) tracker.ensureAge().catch(() => {});
+    if (effect.needsExpressions) tracker.ensureExpressions().catch(() => { });
+    if (effect.needsAge) tracker.ensureAge().catch(() => { });
     updateFaceBadge();
   } else {
     updateFaceBadge();
@@ -933,7 +946,7 @@ function updateRecordUI(recording, elapsedMs = 0) {
 
 async function toggleRecord() {
   if (!camera.active) {
-    toast('🎥 Enable the camera first to record video');
+    toast('🎥 Start the camera first to record video');
     return;
   }
   if (isRecording) {
@@ -954,7 +967,6 @@ async function startRecording() {
     return;
   }
 
-  // Attempt to capture microphone audio track if available and permitted
   let audioTrack = null;
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     try {
@@ -964,9 +976,7 @@ async function startRecording() {
         audioTrack = tracks[0];
         recordingAudioStream = audioStream;
       }
-    } catch {
-      // Microphone not available or denied; seamlessly proceed with video-only recording
-    }
+    } catch { /* proceed with video-only */ }
   }
 
   recorder.onTick = (elapsedMs) => {
@@ -978,7 +988,7 @@ async function startRecording() {
     if (recordingAudioStream) {
       try {
         recordingAudioStream.getTracks().forEach((t) => t.stop());
-      } catch {}
+      } catch { }
       recordingAudioStream = null;
     }
     toast('⚠️ Could not start video recording');
@@ -997,11 +1007,10 @@ async function stopRecording() {
   updateRecordUI(false);
   toast('⏳ Processing video...');
 
-  // Clean up microphone stream if captured
   if (recordingAudioStream) {
     try {
       recordingAudioStream.getTracks().forEach((t) => t.stop());
-    } catch {}
+    } catch { }
     recordingAudioStream = null;
   }
 
@@ -1029,12 +1038,6 @@ async function stopRecording() {
   }
 }
 
-/**
- * Performs a cinematic on-camera countdown overlay directly inside #camera-stage.
- * @param {number} seconds - Number of seconds (e.g. 3, 5, 10).
- * @param {string} caption - Optional text caption (e.g. "POSE 1 OF 4", "GET READY").
- * @returns {Promise<boolean>} Resolves true when finished, false if aborted.
- */
 async function runCameraCountdown(seconds = 3, caption = 'GET READY') {
   const overlay = el.cameraCountdown || $('#camera-countdown');
   const numEl = el.countdownNum || $('#countdown-num');
@@ -1084,7 +1087,7 @@ async function runCameraCountdown(seconds = 3, caption = 'GET READY') {
 }
 
 async function capture() {
-  if (!camera.active) { toast('🎥 Enable the camera first'); return; }
+  if (!camera.active) { toast('🎥 Start the camera first'); return; }
   if (countdownActive || collageActive) return;
 
   const timerSecs = settings.timer ? parseInt(settings.timer, 10) : 0;
@@ -1096,19 +1099,19 @@ async function capture() {
   Sound.shutter();
   if (el.flash) {
     el.flash.classList.remove('go');
-    void el.flash.offsetWidth; /* restart animation */
+    void el.flash.offsetWidth;
     el.flash.classList.add('go');
   }
   const item = gallery.captureFrom(display, manager.currentName || 'Normal');
   if (item) {
     openPhotoReviewModal(item);
-    toast('📸 Photo saved to gallery! Review what you look like below.', 3500);
+    toast('📸 Photo saved to gallery!', 3500);
   }
 }
 
 async function startCollageShoot(poseSpec = 4) {
   if (!camera.active) {
-    toast('🎥 Enable the camera first');
+    toast('🎥 Start the camera first');
     return;
   }
   if (countdownActive || collageActive || isRecording) return;
@@ -1116,6 +1119,7 @@ async function startCollageShoot(poseSpec = 4) {
   collageActive = true;
   cancelCollageRequested = false;
   collagePoses = [];
+  collagePoseSpec = String(poseSpec);
 
   let count = 4;
   let layout = 'grid';
@@ -1138,7 +1142,6 @@ async function startCollageShoot(poseSpec = 4) {
   collagePoseCount = count;
   collageActiveLayout = layout;
 
-  // Setup Collage HUD
   if (el.collageHud) {
     el.collageHud.style.display = 'flex';
     if (el.collageHudStep) el.collageHudStep.textContent = `Pose 1 of ${collagePoseCount}`;
@@ -1163,11 +1166,9 @@ async function startCollageShoot(poseSpec = 4) {
       el.collageHudStep.textContent = `Pose ${p + 1} of ${collagePoseCount}`;
     }
 
-    // 3-second on-camera countdown for each pose
     const ok = await runCameraCountdown(3, `POSE ${p + 1} OF ${collagePoseCount}`);
     if (!ok || cancelCollageRequested) break;
 
-    // Flash + Shutter sound
     Sound.shutter();
     if (el.flash) {
       el.flash.classList.remove('go');
@@ -1175,20 +1176,17 @@ async function startCollageShoot(poseSpec = 4) {
       el.flash.classList.add('go');
     }
 
-    // Capture high-res snapshot of current display canvas
     const snap = makeCanvas(display.width, display.height);
     const sctx = snap.getContext('2d');
     sctx.drawImage(display, 0, 0);
     collagePoses.push(snap);
 
-    // Fill thumb slot
     const slotEl = $(`#hud-slot-${p}`);
     if (slotEl) {
       slotEl.classList.add('filled');
       slotEl.innerHTML = `<img src="${snap.toDataURL('image/jpeg', 0.8)}" alt="Pose ${p + 1}">`;
     }
 
-    // If not the final pose, give user a brief 1.2s break to see their snapshot & prepare next pose
     if (p < collagePoseCount - 1) {
       await new Promise(r => setTimeout(r, 1200));
     }
@@ -1199,7 +1197,6 @@ async function startCollageShoot(poseSpec = 4) {
     return;
   }
 
-  // Final celebration & assembly
   Sound.motorPrint();
   Sound.win();
   if (el.collageHud) el.collageHud.style.display = 'none';
@@ -1225,10 +1222,7 @@ function finishCollageShoot() {
     title: 'WEBCAMCLICKS PHOTO BOOTH'
   });
 
-  // Add to gallery
   gallery.addPhoto(currentCollageResult.dataUrl, `Photo Booth (${collagePoses.length} Poses)`);
-
-  // Display in Modal
   openCollageModal();
   toast('🎉 Photo Booth Collage Complete! Saved to your gallery.', 4000);
 }
@@ -1237,7 +1231,6 @@ function openCollageModal() {
   if (!el.collageModal || !currentCollageResult) return;
   if (el.collagePreviewImg) el.collagePreviewImg.src = currentCollageResult.dataUrl;
 
-  // Sync theme buttons
   if (el.collageThemeButtons) {
     const pills = el.collageThemeButtons.querySelectorAll('.theme-pill');
     pills.forEach(p => p.classList.toggle('active', p.dataset.theme === collageTheme));
@@ -1255,6 +1248,8 @@ function setCollageTheme(themeKey) {
   collageTheme = themeKey;
   currentCollageResult = generateCollage(collagePoses, {
     theme: collageTheme,
+    layout: collageActiveLayout,
+    poses: collagePoseSpec,
     title: 'WEBCAMCLICKS PHOTO BOOTH'
   });
   if (el.collagePreviewImg) el.collagePreviewImg.src = currentCollageResult.dataUrl;
@@ -1271,23 +1266,17 @@ async function saveCollageToGoogleDrive() {
   const filename = `webcamclicks-photobooth-${timestamp()}.jpg`;
   const file = dataUrlToFile(currentCollageResult.dataUrl, filename);
 
-  // Try native Web Share (Android & iOS show Google Drive directly)
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
       await navigator.share({
         files: [file],
         title: 'My WebcamClicks Photo Booth Collage',
-        text: 'Created with WebcamClicks Photo Booth! Save to Google Drive or share with friends.'
+        text: 'Created with WebcamClicks Photo Booth!'
       });
       return;
-    } catch (err) {
-      if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) {
-        /* User dismissed share sheet - continue to web fallback */
-      }
-    }
+    } catch (_) { }
   }
 
-  // Desktop / Web Fallback: download file and open Google Drive in new tab
   downloadDataUrl(currentCollageResult.dataUrl, filename);
   window.open('https://drive.google.com/drive/u/0/my-drive', '_blank', 'noopener,noreferrer');
   toast('☁️ Collage downloaded! Drag it into Google Drive to save permanently.', 6000);
@@ -1337,9 +1326,7 @@ async function savePhotoToGoogleDrive(item) {
         text: 'Captured with WebcamClicks!'
       });
       return;
-    } catch (err) {
-      if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) {}
-    }
+    } catch (_) { }
   }
 
   downloadDataUrl(item.dataUrl, filename);
@@ -1409,6 +1396,7 @@ async function onSaveCameraSettings(e) {
   if (el.prefMirror) {
     settings.mirror = el.prefMirror.value === 'true';
     camera.mirror = settings.mirror;
+    camera._forceRedraw = true;
     setToolActive('#btn-mirror', camera.mirror);
   }
   if (el.prefSound) {
@@ -1437,7 +1425,7 @@ function renderGallery(items) {
   if (!items.length) {
     const p = document.createElement('p');
     p.className = 'gallery-empty';
-    p.textContent = 'No photos yet. Press 📸 Capture — your photos stay on this device only.';
+    p.textContent = 'No photos yet. Press 📷 Capture — your photos stay on this device only.';
     el.galleryGrid.appendChild(p);
     return;
   }
@@ -1550,7 +1538,7 @@ function startGame(id) {
   if (!def) return;
   if (!camera.active) {
     pendingGame = id;
-    toast('🎥 Enable the camera to play');
+    toast('🎥 Start the camera to play');
     startCamera();
     return;
   }
@@ -1683,15 +1671,15 @@ function setMobileMode(mode) {
     mobShutter.classList.toggle('collage-mode', mode === 'collage');
     mobShutter.setAttribute('aria-label',
       mode === 'video' ? 'Record video' :
-      mode === 'collage' ? `Start ${collagePoseCount}-pose photo booth collage` :
-      'Take photo'
+        mode === 'collage' ? `Start ${collagePoseCount}-pose photo booth collage` :
+          'Take photo'
     );
   }
   Sound.click();
 }
 
 async function onMobileShutter() {
-  if (navigator.vibrate) try { navigator.vibrate(25); } catch {}
+  if (navigator.vibrate) try { navigator.vibrate(25); } catch { }
   if (mobileMode === 'video') {
     await toggleRecord();
   } else if (mobileMode === 'collage') {
@@ -1724,8 +1712,8 @@ function setDesktopMode(mode) {
     shutter.classList.toggle('is-collage', mode === 'collage');
     shutter.setAttribute('aria-label',
       mode === 'video' ? 'Record video (C or V)' :
-      mode === 'collage' ? `Photo booth multi-shot (${collagePoseCount} poses)` :
-      'Take photo (C)'
+        mode === 'collage' ? `Photo booth multi-shot (${collagePoseCount} poses)` :
+          'Take photo (C)'
     );
     const glyph = shutter.querySelector('.shutter-glyph');
     if (glyph) {
@@ -1817,20 +1805,11 @@ function wireEvents() {
     if (n) n.addEventListener(ev, fn);
   };
 
-  const handleHeroStart = () => {
-    const stage = document.getElementById('camera');
-    if (stage && stage.scrollIntoView) {
-      stage.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    startCamera();
-  };
   on('#start-btn', 'click', startCamera);
   on('#demo-btn', 'click', startDemoPortrait);
-  on('#hero-start-camera-btn', 'click', handleHeroStart);
   on('#stage-retry', 'click', startCamera);
   on('#stage-demo-retry', 'click', startDemoPortrait);
 
-  /* Desktop Pro Camera Console */
   on('#btn-capture', 'click', onMasterCapture);
   on('#mode-seg-photo', 'click', () => setDesktopMode('photo'));
   on('#mode-seg-collage', 'click', () => setDesktopMode('collage'));
@@ -1908,7 +1887,6 @@ function wireEvents() {
   });
   on('#camera-settings-form', 'submit', onSaveCameraSettings);
 
-  /* Single Photo Review Modal */
   on('#btn-close-photo-review', 'click', closePhotoReviewModal);
   on('#btn-resume-camera', 'click', closePhotoReviewModal);
   on('#photo-review-modal', 'click', (e) => {
@@ -1943,7 +1921,6 @@ function wireEvents() {
     setTimeout(() => capture(), 350);
   });
 
-  /* Collage HUD & Modal */
   on('#btn-cancel-collage', 'click', abortCollageShoot);
   on('#btn-close-collage-modal', 'click', closeCollageModal);
   on('#collage-modal', 'click', (e) => {
@@ -1969,7 +1946,7 @@ function wireEvents() {
   on('#btn-copy-collage', 'click', copyCollageToClipboard);
   on('#btn-retake-collage', 'click', () => {
     closeCollageModal();
-    startCollageShoot(collagePoseCount);
+    startCollageShoot(collagePoseSpec || collagePoseCount);
   });
 
   on('#btn-mirror', 'click', () => {
@@ -1990,6 +1967,7 @@ function wireEvents() {
       const ok = await camera.flip();
       display.width = camera.width;
       display.height = camera.height;
+      updateMirrorUI();
       await updateCameraSelectUI();
       toast(ok ? '🔄 Switched camera' : '🔄 Only one camera found');
     } catch { toast('⚠️ Could not switch camera'); }
@@ -2012,7 +1990,6 @@ function wireEvents() {
   }
   on('#btn-fullscreen', 'click', toggleFullscreen);
 
-  /* Quick Resolution select in pro console */
   on('#quick-res-select', 'change', async (e) => {
     const res = e.target.value;
     settings.resolution = res;
@@ -2026,16 +2003,14 @@ function wireEvents() {
         display.height = camera.height;
         updateResolutionUI();
         toast(`📐 Resolution set to ${camera.getResolutionLabel()}`);
-      } catch (err) {
+      } catch {
         toast('⚠️ Could not switch to requested resolution');
       }
     }
   });
 
-  /* Click Resolution badge to open settings */
   on('#res-badge', 'click', openSettingsModal);
 
-  /* Viewfinder Zoom buttons (1X, 2X, 3X, 5X, 8X) */
   const zoomBtns = $$('.zoom-btn');
   zoomBtns.forEach((btn) => {
     btn.addEventListener('click', async () => {
@@ -2047,7 +2022,6 @@ function wireEvents() {
     });
   });
 
-  /* Mouse wheel / touchpad pinch zoom over viewfinder */
   if (el.stage) {
     el.stage.addEventListener('wheel', async (e) => {
       if (!camera.active) return;
@@ -2092,7 +2066,6 @@ function wireEvents() {
     }
   });
 
-  /* Mobile App Deck Wiring */
   on('#mode-photo', 'click', () => setMobileMode('photo'));
   on('#mode-collage', 'click', () => setMobileMode('collage'));
   on('#mode-video', 'click', () => setMobileMode('video'));
@@ -2121,11 +2094,11 @@ function wireEvents() {
   }
   on('#btn-mobile-random', 'click', () => {
     randomEffect();
-    if (navigator.vibrate) try { navigator.vibrate(25); } catch {}
+    if (navigator.vibrate) try { navigator.vibrate(25); } catch { }
   });
   on('#hud-btn-random', 'click', () => {
     randomEffect();
-    if (navigator.vibrate) try { navigator.vibrate(25); } catch {}
+    if (navigator.vibrate) try { navigator.vibrate(25); } catch { }
   });
   on('#btn-mobile-shutter', 'click', onMobileShutter);
   on('#btn-mobile-gallery', 'click', openGallery);
@@ -2144,7 +2117,6 @@ function wireEvents() {
     } catch { toast('⚠️ Could not switch camera'); }
   });
 
-  /* Floating Camera HUD (Top Overlay) */
   on('#hud-btn-flip', 'click', async () => {
     try {
       const ok = await camera.flip();
@@ -2173,7 +2145,6 @@ function wireEvents() {
   on('#hud-btn-settings', 'click', openSettingsModal);
   on('#hud-btn-fullscreen', 'click', toggleFullscreen);
 
-  /* Mobile Bottom App Navigation */
   on('#mb-nav-camera', 'click', (e) => {
     e.preventDefault();
     const stg = $('#camera');
@@ -2202,8 +2173,6 @@ function wireEvents() {
   updateSoundBtn();
 }
 
-/* ============================ boot ============================ */
 init();
 
-/* Debug handle (harmless in production, handy in the console) */
 window.WC = { camera, manager, tracker, motion, gameMgr, gallery, Sound };

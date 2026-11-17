@@ -3,6 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!-- Google Consent Mode v2 (denied by default in EEA/UK/CH until the visitor chooses) -->
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+
+gtag('consent', 'default', {
+  'ad_storage': 'denied',
+  'ad_user_data': 'denied',
+  'ad_personalization': 'denied',
+  'analytics_storage': 'denied',
+  'region': [
+    'AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IS','IE',
+    'IT','LV','LI','LT','LU','MT','NL','NO','PL','PT','RO','SK','SI','ES','SE',
+    'GB','CH'
+  ],
+  'wait_for_update': 500
+});
+
+gtag('consent', 'default', {
+  'ad_storage': 'granted',
+  'ad_user_data': 'granted',
+  'ad_personalization': 'granted',
+  'analytics_storage': 'granted'
+});
+</script>
 <!-- Google Tag Manager -->
 <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -101,13 +126,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   "browserRequirements": "Requires a modern browser with camera access (getUserMedia)",
   "description": "Professional web-based mobile camera app featuring real-time cinematic movie aspect ratios (1.85:1 Flat, 2.39:1 Scope, 16:9, 4:3 Vintage Box, IMAX 1.43:1), high-resolution photo capture, and audio video recording.",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "aggregateRating": {
-    "@type": "AggregateRating",
-    "ratingValue": "4.9",
-    "ratingCount": "2140",
-    "bestRating": "5",
-    "worstRating": "1"
-  },
   "featureList": [
     "1.85:1 (Flat) standard theatrical widescreen format",
     "2.39:1 / 2.40:1 (Scope) ultra-wide anamorphic cinema format",
@@ -115,7 +133,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     "4:3 (1.33:1) classic vintage box format",
     "IMAX (1.43:1 and 1.90:1) vertically immersive format",
     "Real-time audio VU decibel level meter",
-    "Cinematic LUT color grading: REC.709, ScopeX, Portra 35mm, Tri-X Noir",
+    "Cinematic LUT color grading: REC.709, ScopeX, Portrait 35mm, Classic Noir",
     "Tap-to-focus reticle with audio beep feedback",
     "Rule of Thirds and Center Crosshair framing guides",
     "100% private client-side on-device processing"
@@ -302,10 +320,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
               <button class="lut-chip" data-lut="tealorange" type="button">SCOPEX</button>
               <button class="lut-chip" data-lut="glitch" type="button">⚡ GLITCH</button>
               <button class="lut-chip" data-lut="anamorphic" type="button">💎 FLARE</button>
-              <button class="lut-chip" data-lut="portra400" type="button">PORTRA 35mm</button>
+              <button class="lut-chip" data-lut="portra400" type="button">PORTRAIT 35mm</button>
               <button class="lut-chip" data-lut="super8" type="button">🎞️ SUPER 8</button>
               <button class="lut-chip" data-lut="retrowave" type="button">🌆 RETROWAVE</button>
-              <button class="lut-chip" data-lut="trixnoir" type="button">TRI-X NOIR</button>
+              <button class="lut-chip" data-lut="trixnoir" type="button">CLASSIC NOIR</button>
               <button class="lut-chip" data-lut="goldenhour" type="button">3200K WARM</button>
               <button class="lut-chip" data-lut="cyberpunk" type="button">CYBERPUNK</button>
             </div>
@@ -459,6 +477,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="col">
         <strong>Tools &amp; Guides</strong>
         <a href="/">Webcam Studio</a>
+        <a href="/filters">🎨 Filter Gallery</a>
+        <a href="/instagram-photo-border">🖼️ Instagram Photo Border</a>
         <a href="/pro-camera">🎬 Pro Camera (Mobile)</a>
         <a href="/webcam-toy-alternative">Webcam Toy Alternative</a>
         <a href="/mic-test">Microphone Test</a>

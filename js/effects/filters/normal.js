@@ -27,7 +27,7 @@ import {
 } from './filter-helpers.js';
 
 export const normalEffect = {
-    id: 'normal', name: 'Normal', icon: '🎥', category: 'Classic', perf: 'low',
+    id: 'normal', name: 'Normal', icon: '🎥', category: 'Styles', perf: 'low',
     render(fx, { src, width, height }) {
       fx.drawImage(src, 0, 0, width, height);
     }

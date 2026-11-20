@@ -37,6 +37,16 @@ ICONS = {
   'text': '<path d="M4 6h16M4 12h10M4 18h13"/>',
   'qr': '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/>',
   'key': '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M15 8l2 2"/>',
+  'prompter': '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M7 8h10M7 11h7M12 16v4M8 20h8"/>',
+  'cc': '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 10.5a2 2 0 1 0 0 3M17 10.5a2 2 0 1 0 0 3"/>',
+  'music': '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+  'gif': '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 10H8v4h2v-1.5M13 10v4M16 14v-4h2M16 12h1.5"/>',
+  'wand': '<path d="m15 4 1 2 2 1-2 1-1 2-1-2-2-1 2-1zM5 19 16 8l1 1L6 20z"/><path d="M19 13l.6 1.2 1.2.6-1.2.6L19 17l-.6-1.2-1.2-.6 1.2-.6z"/>',
+  'image': '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="m21 16-5-5-8 9"/>',
+  'edit': '<path d="M6 3h8l4 4v6"/><path d="M14 3v4h4M6 3v18h6"/><path d="m14 21 1-3 5-5 2 2-5 5z"/>',
+  'lock': '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3M12 15v2"/>',
+  'info': '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+  'ocr': '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 9h8M8 12h8M8 15h5"/>',
   'palette': '<path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.8 1.6-1.6 0-.9-.7-1.3-.7-2.2 0-.8.7-1.4 1.5-1.4H17a4 4 0 0 0 4-4C21 6.9 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10" cy="7" r="1.2"/><circle cx="15" cy="7.5" r="1.2"/>',
 }
 def icon(k, size=22):
@@ -44,36 +54,49 @@ def icon(k, size=22):
 
 # ----------------------------------------------------------------------------- registry
 CATEGORIES = [
-  ('camera', 'Camera & video', 'Record, test and upgrade your webcam, all in the browser.'),
-  ('image', 'Photo & image', 'Convert, compress, resize and edit photos in bulk without uploading them.'),
-  ('pdf', 'PDF', 'Create, merge and split PDFs privately on your device.'),
-  ('file', 'File', 'Organise many files at once.'),
-  ('text', 'Text & writing', 'Count, clean and transform text.'),
+  ('camera', 'Camera & recording', 'Record, test and upgrade your webcam, all in the browser.'),
+  ('video', 'Video & audio', 'Caption, convert, compress and trim videos on your device.'),
+  ('image', 'Photo & image', 'Enhance, convert, compress and edit photos without uploading them.'),
+  ('pdf', 'PDF', 'Edit, convert, protect, merge and split PDFs privately on your device.'),
+  ('file', 'File', 'Inspect and organise files.'),
+  ('text', 'Text & OCR', 'Extract, count, clean and transform text.'),
   ('util', 'Everyday utilities', 'Small tools you reach for every week.'),
 ]
 # (slug/href, name, category, icon, description, new?)
 TOOLS = [
   ('/#camera', 'Webcam studio', 'camera', 'camera', '90+ live effects, photo booth strips and HD recording.', False),
   ('/#background', 'AI background changer', 'camera', 'person', 'Blur or replace your webcam background in real time.', False),
-  ('/screen-recorder', 'Screen recorder', 'camera', 'screen', 'Record your screen with mic and a webcam bubble.', True),
+  ('/screen-recorder', 'Screen recorder & editor', 'camera', 'screen', 'Record your screen, then edit with zooms, captions and music.', False),
+  ('/teleprompter', 'Teleprompter', 'camera', 'prompter', 'Scrolling script over your webcam, recorded on your device.', True),
   ('/webcam-test', 'Webcam test', 'camera', 'check', 'Real resolution, fps, lighting and a quality score.', False),
   ('/mic-test', 'Mic test', 'camera', 'mic', 'Check levels, noise and playback before a call.', False),
   ('/pro-camera', 'Pro camera', 'camera', 'film', 'Cinema aspect ratios and manual controls.', False),
   ('/compare-webcams', 'Compare two webcams', 'camera', 'compare', 'Side-by-side quality comparison.', False),
+  ('/auto-captions', 'Auto captions & subtitles', 'video', 'cc', 'Speech to captions in 35+ languages, SRT/VTT or burned in.', True),
+  ('/mp4-to-mp3', 'MP4 to MP3', 'video', 'music', 'Extract audio from video as MP3, WAV, M4A or FLAC.', True),
+  ('/video-compressor', 'Video compressor', 'video', 'compress', 'Shrink videos for email, WhatsApp and uploads.', True),
+  ('/video-trimmer', 'Video trimmer', 'video', 'scissors', 'Cut the start and end off a video, fast.', True),
+  ('/video-to-gif', 'Video to GIF', 'video', 'gif', 'Turn a clip into a looping GIF.', True),
+  ('/photo-enhancer', 'Photo enhancer', 'image', 'wand', 'Fix exposure, colour, noise and sharpness; 2× upscale.', True),
   ('/passport-photo', 'Passport photo maker', 'image', 'id', 'Official sizes for 10 countries at 300 DPI.', False),
-  ('/background-remover', 'Background remover', 'image', 'scissors', 'Remove the background from photos of people.', True),
-  ('/image-converter', 'Image converter', 'image', 'convert', 'Convert to JPG, PNG, WebP or AVIF in bulk.', True),
-  ('/image-compressor', 'Image compressor', 'image', 'compress', 'Shrink photos for email, web and uploads.', True),
-  ('/image-resizer', 'Image resizer', 'image', 'resize', 'Resize many images by pixels or percent.', True),
+  ('/background-remover', 'Background remover', 'image', 'scissors', 'AI cut-out with brush and eraser.', False),
+  ('/image-converter', 'Image converter', 'image', 'convert', 'Convert to JPG, PNG, WebP or AVIF in bulk.', False),
+  ('/image-compressor', 'Image compressor', 'image', 'compress', 'Shrink photos for email, web and uploads.', False),
+  ('/image-resizer', 'Image resizer', 'image', 'resize', 'Resize many images by pixels or percent.', False),
   ('/instagram-photo-border', 'Instagram photo border', 'image', 'frame', 'White borders for 1:1, 4:5 and 9:16.', False),
   ('/filters', 'Photo filters gallery', 'image', 'palette', 'Browse every live effect and film look.', False),
-  ('/jpg-to-pdf', 'JPG to PDF', 'pdf', 'pdf', 'Turn photos and scans into one PDF.', True),
-  ('/merge-pdf', 'Merge PDF', 'pdf', 'merge', 'Combine PDFs in the order you choose.', True),
-  ('/split-pdf', 'Split PDF', 'pdf', 'split', 'Extract pages or split a PDF into parts.', True),
-  ('/bulk-file-rename', 'Bulk file renamer', 'file', 'rename', 'Rename hundreds of files with patterns and numbering.', True),
-  ('/word-counter', 'Word counter', 'text', 'text', 'Words, characters, reading time and text tools.', True),
-  ('/qr-code-generator', 'QR code generator', 'util', 'qr', 'QR codes for links, Wi-Fi, contacts and more.', True),
-  ('/password-generator', 'Password generator', 'util', 'key', 'Strong random passwords with a strength meter.', True),
+  ('/pdf-editor', 'PDF editor', 'pdf', 'edit', 'Add text, signatures, highlights and white-out.', True),
+  ('/pdf-to-jpg', 'PDF to JPG', 'pdf', 'image', 'Turn PDF pages into JPG or PNG images.', True),
+  ('/jpg-to-pdf', 'JPG to PDF', 'pdf', 'pdf', 'Turn photos and scans into one PDF.', False),
+  ('/lock-pdf', 'Lock PDF (password)', 'pdf', 'lock', 'Protect a PDF with AES-256 encryption.', True),
+  ('/merge-pdf', 'Merge PDF', 'pdf', 'merge', 'Combine PDFs in the order you choose.', False),
+  ('/split-pdf', 'Split PDF', 'pdf', 'split', 'Extract pages or split a PDF into parts.', False),
+  ('/metadata-viewer', 'Metadata viewer & remover', 'file', 'info', 'See and remove EXIF, GPS and document data.', True),
+  ('/bulk-file-rename', 'Bulk file renamer', 'file', 'rename', 'Rename hundreds of files with patterns and numbering.', False),
+  ('/image-to-text', 'Image to text (OCR)', 'text', 'ocr', 'Extract text from photos, scans and PDFs in 38 languages.', True),
+  ('/word-counter', 'Word counter', 'text', 'text', 'Words, characters, reading time and text tools.', False),
+  ('/qr-code-generator', 'QR code generator', 'util', 'qr', 'QR codes for links, Wi-Fi, contacts and more.', False),
+  ('/password-generator', 'Password generator', 'util', 'key', 'Strong random passwords with a strength meter.', False),
 ]
 CAT_NAME = {c[0]: c[1] for c in CATEGORIES}
 
@@ -109,7 +132,7 @@ def footer():
         links = ''.join(f'<li><a href="{t[0]}">{html.escape(t[1])}</a></li>' for t in TOOLS if t[2] == cid)
         cols.append((cname, links))
     # merge small categories so the footer stays compact
-    merged = [cols[0], cols[1], ('PDF, file &amp; text', cols[2][1] + cols[3][1] + cols[4][1]), cols[5]]
+    merged = [cols[0], cols[1], cols[2], ('PDF, file &amp; text', cols[3][1] + cols[4][1] + cols[5][1] + cols[6][1])]
     blocks = ''.join(f'<div><h3>{n}</h3><ul>{l}</ul></div>' for n, l in merged)
     return f'''<footer class="site-footer">
   <div class="footer-cols footer-v2">
@@ -1019,6 +1042,9 @@ PAGES['screen-recorder'] = dict(
         ('How do I cut out a mistake?', 'Double-click the timeline at the start and at the end of the mistake to split it into its own clip, click that clip and press Delete. Playback and export skip it automatically.'),
         ('Why is exporting fast now?', 'The editor encodes frames directly with your computer\'s video encoder instead of replaying the video, and skips re-encoding frames where nothing changed. Older browsers without this feature fall back to real-time export.'),
         ('Why is there no system sound?', 'Share a browser tab (and tick "Share tab audio") in Chrome or Edge, or share the entire screen on Windows. macOS blocks system audio capture from browsers.')])
+
+# ----------------------------------------------------------------------------- media, PDF & OCR tools (2026-11 batch)
+exec(open(os.path.join(ROOT, 'scripts', 'tool_pages_v2.py'), encoding='utf-8').read())
 
 # ----------------------------------------------------------------------------- build tool pages
 def related_cards(slug, cat):

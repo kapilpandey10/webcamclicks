@@ -4,8 +4,52 @@
 export const LIBS = {
   jszip: { url: 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js', global: 'JSZip' },
   pdflib: { url: 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js', global: 'PDFLib' },
-  qrcode: { url: 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js', global: 'qrcode' }
+  qrcode: { url: 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js', global: 'qrcode' },
+  exifr: { url: 'https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js', global: 'exifr' },
+  tesseract: { url: 'https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js', global: 'Tesseract' },
+  mp3: { url: 'https://cdn.jsdelivr.net/npm/@mediabunny/mp3-encoder@1.62.1/dist/bundles/mediabunny-mp3-encoder.min.js', global: 'MediabunnyMp3Encoder' }
 };
+
+/* ES-module libraries (pinned, loaded only when a tool needs them) */
+export const ESM = {
+  mediabunny: 'https://cdn.jsdelivr.net/npm/mediabunny@1.62.1/dist/bundles/mediabunny.min.mjs',
+  pdfjs: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.5.438/build/pdf.min.mjs',
+  pdfjsWorker: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.5.438/build/pdf.worker.min.mjs',
+  pdflibCrypt: 'https://cdn.jsdelivr.net/npm/@cantoo/pdf-lib@2.11.1/dist/pdf-lib.esm.min.js',   // pdf-lib fork with encryption
+  transformers: 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.2/dist/transformers.min.js',
+  gifenc: 'https://cdn.jsdelivr.net/npm/gifenc@1.0.3/dist/gifenc.esm.js'
+};
+const esmCache = {};
+export function loadEsm(key) {
+  if (!esmCache[key]) esmCache[key] = import(/* webpackIgnore: true */ ESM[key]).catch((e) => { delete esmCache[key]; throw new Error(`Could not load a required component (${key}). Check your connection.`); });
+  return esmCache[key];
+}
+
+/** pdf.js, configured with its worker. */
+export async function loadPdfjs() {
+  const pdfjs = await loadEsm('pdfjs');
+  if (!pdfjs.GlobalWorkerOptions.workerSrc) pdfjs.GlobalWorkerOptions.workerSrc = ESM.pdfjsWorker;
+  return pdfjs;
+}
+
+/** mediabunny + (optionally) its MP3 encoder extension. */
+export async function loadMediabunny({ mp3 = false } = {}) {
+  const MB = await loadEsm('mediabunny');
+  if (mp3 && !window.__mp3Registered) {
+    window.Mediabunny = MB;   // the encoder bundle looks for this global
+    const ext = await loadLib('mp3');
+    ext.registerMp3Encoder();
+    window.__mp3Registered = true;
+  }
+  return MB;
+}
+
+/** Format seconds as 1:02:03 / 2:03. */
+export function fmtTime(s) {
+  s = Math.max(0, s);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = Math.floor(s % 60);
+  return h ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`;
+}
 
 const loading = {};
 /** Load a UMD library once and resolve with its global. */

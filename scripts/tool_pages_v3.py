@@ -264,3 +264,123 @@ PAGES['auto-reframe'] = dict(
         ('What if there are two people?', 'The largest (closest) face is followed. For two-person podcasts, the steady style switches between speakers less often; the blurred-background style keeps both in view.'),
         ('Will the quality drop?', 'A vertical crop of a 1080p video is 608 pixels wide, enlarged to 1080. For the sharpest result, record in 4K or choose “Original pixels”.'),
         ('Is my video uploaded?', 'No. Face detection and encoding run in your browser.')])
+
+# ------------------------------------------------------------------------------------------- thumbnail maker
+PAGES['youtube-thumbnail-maker'] = dict(
+  name='YouTube thumbnail maker', cat='image', script='thumbnail-maker.js', appcat='DesignApplication',
+  title='YouTube Thumbnail Maker — AI Cut-out, Best Frame Finder, Free | WebcamClicks',
+  desc='Make click-worthy YouTube thumbnails free: picks the best frame from your video, cuts you out with AI, adds a sticker outline, bold text and badges. 1280×720 under 2 MB. No upload.',
+  lead='Make a scroll-stopping thumbnail in a minute. Drop your video and WebcamClicks picks the sharpest frames with your face, cuts you out with AI, and lets you add a bold headline, a sticker outline, a badge and a background, all on your device.',
+  ui=f'''{DROP("image/*,video/*,.heic", "Drop your video or a photo", "MP4, MOV, WebM, JPG, PNG, HEIC · nothing is uploaded", multiple=False)}
+  <p class="t-status" id="t-status" role="status"></p>
+  <div id="tm-vidbox" class="tm-vidbox" hidden>
+    <h2>Suggested frames</h2>
+    <div class="tm-frames" id="tm-frames"></div>
+    <div class="tm-scrub"><video id="tm-video" muted playsinline preload="auto"></video>
+      <div><label class="t-field">Or pick any moment <input class="t-range" type="range" id="tm-seek" min="0" max="1" value="0"></label>
+      <button class="t-btn sm" id="tm-useframe" type="button">Use this frame</button></div></div>
+  </div>
+  <div class="tm-work" id="tm-work" hidden>
+    <div>
+      <canvas id="tm-canvas" class="tm-canvas" width="1280" height="720" aria-label="Thumbnail preview: drag the text or the person to move them"></canvas>
+      <div class="tm-templates" id="tm-templates" role="group" aria-label="Layouts">
+        <button type="button" class="t-btn sm" data-tpl="right" aria-pressed="true">Face right</button><button type="button" class="t-btn sm" data-tpl="left">Face left</button><button type="button" class="t-btn sm" data-tpl="center">Centred</button><button type="button" class="t-btn sm" data-tpl="bold">Bold colour</button>
+      </div>
+      <div class="tm-minirow"><canvas id="tm-mini" width="168" height="94"></canvas><p class="muted">How it looks in YouTube search and suggestions. Big, short text and a clear face win.</p></div>
+    </div>
+    <div class="t-panel tm-panel">
+      <h2>Headline</h2>
+      <label class="t-field">Text <small>Put *stars* around words to highlight them</small><textarea class="t-textarea" id="tm-text" rows="2">I TRIED IT FOR
+*30 DAYS*</textarea></label>
+      <div class="t-row">
+        <label class="t-field">Font <select class="t-select" id="tm-font"><option value="anton">Anton (tall)</option><option value="montserrat">Montserrat Black</option><option value="bangers">Bangers (comic)</option><option value="poppins">Poppins Bold</option><option value="marker">Marker</option></select></label>
+        <label class="t-field">Size <input class="t-range" type="range" id="tm-size" min="40" max="140" value="96"></label>
+      </div>
+      <div class="t-row cap-colors">
+        <label class="t-field"><span>Text</span><input type="color" id="tm-fill" value="#ffffff"></label>
+        <label class="t-field"><span>Highlight</span><input type="color" id="tm-hl" value="#ffe14d"></label>
+        <label class="t-field">Outline <input class="t-range" type="range" id="tm-stroke" min="0" max="14" value="7"></label>
+      </div>
+      <label class="t-check"><input type="checkbox" id="tm-upper" checked> CAPITALS</label>
+      <h2 style="margin-top:12px">You</h2>
+      <label class="t-check"><input type="checkbox" id="tm-cutout" checked> Cut me out (AI)</label>
+      <div class="t-row">
+        <label class="t-field">Size <input class="t-range" type="range" id="tm-scale" min="30" max="160" value="98"></label>
+        <label class="t-field">Sticker outline <input class="t-range" type="range" id="tm-outline" min="0" max="24" value="10"></label>
+      </div>
+      <div class="t-row cap-colors"><label class="t-field"><span>Outline</span><input type="color" id="tm-outlinec" value="#ffffff"></label><label class="t-check" style="align-self:end"><input type="checkbox" id="tm-flip"> Mirror</label></div>
+      <h2 style="margin-top:12px">Background</h2>
+      <label class="t-field">Style <select class="t-select" id="tm-bg"><option value="photo">The photo</option><option value="gradient">Gradient</option><option value="color">Solid colour</option></select></label>
+      <div class="t-row">
+        <label class="t-field">Blur <input class="t-range" type="range" id="tm-blur" min="0" max="100" value="45"></label>
+        <label class="t-field">Darken <input class="t-range" type="range" id="tm-dim" min="0" max="80" value="25"></label>
+      </div>
+      <div class="t-row cap-colors"><label class="t-field"><span>Colour 1</span><input type="color" id="tm-bgc1" value="#ff4d2e"></label><label class="t-field"><span>Colour 2</span><input type="color" id="tm-bgc2" value="#7c3aed"></label></div>
+      <div class="t-row"><label class="t-field">Badge <input class="t-input" id="tm-badge" placeholder="e.g. NEW, FREE, 2026" maxlength="14"></label><label class="t-field"><span>Badge colour</span><input type="color" id="tm-badgec" value="#d92d20"></label></div>
+      <div class="t-actions"><button class="t-btn primary" id="tm-jpg" type="button">⬇ Download JPG</button><button class="t-btn" id="tm-png" type="button">PNG</button></div>
+    </div>
+  </div>''',
+  article='''<h2>How to make a YouTube thumbnail</h2>
+<ol><li>Drop the video you're uploading. The six sharpest, best-lit frames with a clear face are suggested; pick one, or scrub to any moment. A photo works too.</li>
+<li>You are cut out of the background automatically and given a white sticker outline, the classic creator look. Drag to move, scroll to resize.</li>
+<li>Type a short headline. Put <code>*stars*</code> around the word that matters to colour it.</li>
+<li>Pick a layout, background and badge, check the small preview, then download a 1280×720 JPG.</li></ol>
+<h2>What makes thumbnails get clicked</h2>
+<ul><li><strong>A big, expressive face.</strong> Faces showing emotion catch the eye in a busy feed. Pick a frame where your expression matches the video.</li>
+<li><strong>Three to five words, huge.</strong> The thumbnail is usually seen at about 168×94 pixels. If the text isn't readable in the small preview, cut words.</li>
+<li><strong>Contrast.</strong> Bright text with a thick dark outline on a darkened or blurred background reads at any size.</li>
+<li><strong>Don't repeat the title.</strong> The thumbnail and title should work together: the title explains, the thumbnail creates curiosity.</li>
+<li><strong>Consistency.</strong> Using the same font, colours and layout across videos builds a recognisable channel.</li></ul>
+<h2>YouTube thumbnail size</h2>
+<p>YouTube recommends 1280×720 pixels (16:9), at least 640 pixels wide, as JPG, PNG or GIF under 2 MB. WebcamClicks always exports exactly 1280×720 and automatically keeps JPGs under 2 MB.</p>''' + PRIVACY,
+  faqs=[('Is this thumbnail maker free?', 'Yes, with no watermark, templates paywall or account.'),
+        ('Does the AI cut-out work on any photo?', 'It is trained to find people. For objects and pets, untick “Cut me out” and use the photo as the background, or prepare a cut-out with the background remover.'),
+        ('Can I use my own fonts?', 'The five fonts included are free for commercial use. Anton and Montserrat Black are the most popular thumbnail fonts.'),
+        ('Is my video uploaded?', 'No. Frames are analysed and the thumbnail is made on your device.')])
+
+# ------------------------------------------------------------------------------------------- PDF redaction
+PAGES['redact-pdf'] = dict(
+  name='Redact PDF', cat='pdf', script='pdf-redact.js', appcat='SecurityApplication',
+  title='Redact PDF — Permanently Black Out Text, Free & Private | WebcamClicks',
+  desc='Truly redact PDFs: black out names, e-mails, phone and card numbers, IBANs or any words. The hidden text is permanently removed and verified, not just covered. Free, no upload.',
+  lead='Black out confidential information so it is really gone. Draw boxes, or let WebcamClicks find e-mail addresses, phone numbers, card and bank numbers, ID numbers or any words you choose. Redacted pages are flattened and the saved file is checked, all on your device.',
+  ui=f'''{DROP("application/pdf,.pdf", "Drop a PDF to redact", "Contracts, statements, HR files, court documents · nothing is uploaded", multiple=False)}
+  <p class="t-status" id="t-status" role="status"></p>
+  <div class="t-grid" id="rd-work" hidden>
+    <div>
+      <p class="t-status" id="rd-info"></p>
+      <div class="rd-pages" id="rd-pages"></div>
+    </div>
+    <div class="t-panel rd-panel">
+      <h2>Find and mark</h2>
+      <label class="t-check"><input type="checkbox" id="rd-email" checked> E-mail addresses</label>
+      <label class="t-check"><input type="checkbox" id="rd-phone" checked> Phone numbers</label>
+      <label class="t-check"><input type="checkbox" id="rd-card" checked> Card numbers</label>
+      <label class="t-check"><input type="checkbox" id="rd-iban" checked> Bank accounts (IBAN)</label>
+      <label class="t-check"><input type="checkbox" id="rd-ids"> ID numbers (SSN, PAN, Aadhaar, NI)</label>
+      <label class="t-field">Words or names <small>Separate with commas</small><textarea class="t-textarea" id="rd-terms" rows="2" placeholder="e.g. John Smith, Project Falcon"></textarea></label>
+      <button class="t-btn" id="rd-find" type="button" style="width:100%">🔍 Find &amp; mark</button>
+      <ul class="rd-list" id="rd-list"></ul>
+      <h2 style="margin-top:14px">Redact</h2>
+      <label class="t-field">Look <select class="t-select" id="rd-style"><option value="black">Black boxes</option><option value="label">Black with “REDACTED”</option><option value="white">White (invisible)</option></select></label>
+      <label class="t-field">Quality of redacted pages <select class="t-select" id="rd-dpi"><option value="150">150 DPI (smaller)</option><option value="200" selected>200 DPI</option><option value="300">300 DPI (print)</option></select></label>
+      <label class="t-check"><input type="checkbox" id="rd-meta" checked> Also remove author &amp; document properties</label>
+      <p class="muted" id="rd-count" style="font-size:.84rem;margin:4px 0 8px"></p>
+      <div class="t-actions" style="margin-top:0"><button class="t-btn primary" id="rd-save" type="button" disabled>⬛ Redact &amp; download</button><button class="t-btn" id="rd-clear" type="button" disabled>Clear all</button></div>
+    </div>
+  </div>''',
+  article='''<h2>Why most "redactions" fail</h2>
+<p>Drawing a black rectangle over text in a PDF editor only hides it visually: the words are still in the file, and anyone can copy them out or remove the box. This has exposed court filings, government reports and company secrets. Real redaction must <strong>delete the underlying content</strong>.</p>
+<h2>How WebcamClicks redacts</h2>
+<ol><li>Every page you redact is rendered to an image at the quality you choose, with the boxes burned in, so there is no text, no hidden layer and no annotation left under the black.</li>
+<li>Pages without redactions are copied unchanged, so their text stays selectable and searchable.</li>
+<li>The saved file is opened again and checked: if any text were left on a redacted page, nothing would be saved.</li>
+<li>Optionally, the author, title and other document properties are removed too.</li></ol>
+<h2>How to redact a PDF</h2>
+<ol><li>Drop the PDF in.</li><li>Press <strong>Find &amp; mark</strong> to mark e-mails, phone numbers, card and bank numbers and IDs automatically, and type names or words to find. Drag on a page to mark anything else, such as signatures, photos or stamps.</li>
+<li>Review every page. Click ✕ on a box to keep that item, or “Keep” to unmark a whole group.</li><li>Press <strong>Redact &amp; download</strong>.</li></ol>
+<p>Tip: redacted pages become images, so their text is no longer searchable. If you need that, run the result through <a href="/image-to-text">Image to text (OCR)</a>; the redacted parts stay black. To check what else a PDF reveals, open it in the <a href="/metadata-viewer">metadata viewer</a>.</p>''' + PRIVACY,
+  faqs=[('Is the redaction permanent?', 'Yes. Redacted pages are rebuilt as images with the boxes burned in, and the result is checked to contain no text on those pages. There is nothing to un-hide.'),
+        ('Will the rest of my PDF change?', 'Pages without redactions are copied exactly as they were. Redacted pages look the same but are now images.'),
+        ('Can it find information in scanned PDFs?', 'Automatic finding needs a text layer. For scans, draw the boxes by hand; the result is just as permanent.'),
+        ('Is my document uploaded?', 'No. Everything happens in your browser, which is what you want for confidential files.')])

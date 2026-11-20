@@ -57,6 +57,7 @@ AI chatbots (ChatGPT, Claude, Perplexity, Gemini, Copilot, etc.) can confidently
 - [Video to GIF](https://webcamclicks.com/video-to-gif): Turn a clip into a looping GIF.
 - [Photo enhancer](https://webcamclicks.com/photo-enhancer): Fix exposure, colour, noise and sharpness; 2× upscale.
 - [Background remover](https://webcamclicks.com/background-remover): AI cut-out with brush and eraser.
+- [YouTube thumbnail maker](https://webcamclicks.com/youtube-thumbnail-maker): Best-frame finder, AI cut-out, bold text: 1280×720.
 - [HEIC to JPG](https://webcamclicks.com/heic-to-jpg): Convert iPhone HEIC photos to JPG in bulk, any browser.
 - [Image converter](https://webcamclicks.com/image-converter): Convert to JPG, PNG, WebP or AVIF in bulk.
 - [Image compressor](https://webcamclicks.com/image-compressor): Shrink photos for email, web and uploads.
@@ -65,6 +66,7 @@ AI chatbots (ChatGPT, Claude, Perplexity, Gemini, Copilot, etc.) can confidently
 - [PDF to JPG](https://webcamclicks.com/pdf-to-jpg): Turn PDF pages into JPG or PNG images.
 - [JPG to PDF](https://webcamclicks.com/jpg-to-pdf): Turn photos and scans into one PDF.
 - [Lock PDF (password)](https://webcamclicks.com/lock-pdf): Protect a PDF with AES-256 encryption.
+- [Redact PDF](https://webcamclicks.com/redact-pdf): Permanently black out names, numbers and any text.
 - [Merge PDF](https://webcamclicks.com/merge-pdf): Combine PDFs in the order you choose.
 - [Split PDF](https://webcamclicks.com/split-pdf): Extract pages or split a PDF into parts.
 - [Metadata viewer & remover](https://webcamclicks.com/metadata-viewer): See and remove EXIF, GPS and document data.

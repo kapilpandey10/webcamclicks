@@ -979,3 +979,22 @@ if '/styles/tools.css' not in s:
     s = re.sub(r'(<link rel="stylesheet" href="/styles/main\.css\?v=[^"]*">)', rf'\1\n<link rel="stylesheet" href="/styles/tools.css?v={V}">', s, count=1)
 open('index.html', 'w', encoding='utf-8').write(s)
 print('home tools section updated')
+
+
+# ----------------------------------------------------------------------------- content-hash cache busting
+# Every local stylesheet/script URL gets ?v=<hash of that file>, so a changed file always gets a
+# new URL and a browser can never pair new HTML with an old cached script (or the other way round).
+import hashlib
+_hash_cache = {}
+def asset_hash(rel):
+    if rel not in _hash_cache:
+        try: _hash_cache[rel] = hashlib.sha1(open(rel.lstrip('/'), 'rb').read()).hexdigest()[:10]
+        except FileNotFoundError: _hash_cache[rel] = V
+    return _hash_cache[rel]
+ASSET_RE = re.compile(r'((?:href|src)=")(/(?:styles|js)/[A-Za-z0-9_./-]+\.(?:css|js))(?:\?v=[^"]*)?"')
+changed = 0
+for f in sorted(glob.glob('*.html') + glob.glob('*/index.html')):
+    t = read(f)
+    n = ASSET_RE.sub(lambda m: f'{m.group(1)}{m.group(2)}?v={asset_hash(m.group(2))}"', t)
+    if n != t: open(f, 'w', encoding='utf-8').write(n); changed += 1
+print('asset versions updated on', changed, 'pages')

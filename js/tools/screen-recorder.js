@@ -130,7 +130,12 @@ function finishRecording() {
 }
 
 if (supported) {
-  R.start.addEventListener('click', startRecording);
+  R.start.addEventListener('click', () => {
+    startRecording().catch((e) => {
+      console.error('[WebcamClicks] screen recorder:', e);
+      setStatus(R.status, `Could not start recording: ${e && e.message ? e.message : e}. Try reloading the page (Ctrl/Cmd + Shift + R).`, 'err');
+    });
+  });
   R.stop.addEventListener('click', stopRecording);
   R.pause.addEventListener('click', () => {
     if (!rec) return;

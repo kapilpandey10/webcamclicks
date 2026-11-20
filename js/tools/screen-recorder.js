@@ -161,7 +161,11 @@ const UI = {
   aspect: $('#t-aspect'), bg: $('#t-bgsel'), bgColor: $('#t-bgcolor'), padding: $('#t-padding'), radius: $('#t-radius'), shadow: $('#t-shadow'),
   frame: $('#t-frame'), camShow: $('#t-cam-show'), camPos: $('#t-cam-pos'), camSize: $('#t-cam-size'), camShape: $('#t-cam-shape'), camWrap: $('#t-cam-settings'),
   speed: $('#t-speed'), res: $('#t-res'), exportBtn: $('#t-export'), exportBar: $('#t-export-bar'), exportFill: $('#t-export-fill'),
-  dlRaw: $('#t-dl-raw'), result: $('#t-ed-result'), dlFinal: $('#t-dl-final'), newRec: $('#t-new-rec')
+  dlRaw: $('#t-dl-raw'), result: $('#t-ed-result'), dlFinal: $('#t-dl-final'), newRec: $('#t-new-rec'),
+  sceneLane: $('#t-ed-scenes'), scenePanel: $('#t-scene-panel'), sceneInfo: $('#t-scene-info'), sceneSplit: $('#t-scene-split'),
+  sceneDel: $('#t-scene-del'), transStyle: $('#t-trans-style'), transDur: $('#t-trans-dur'), transDurVal: $('#t-trans-dur-val'),
+  autoEdit: $('#t-auto-edit'), zoomStrength: $('#t-zoom-strength'), zoomAmount: $('#t-zoom-amount'), introOutro: $('#t-intro-outro'),
+  introWrap: $('#t-intro-wrap'), scenesWrap: $('#t-scenes-wrap')
 };
 
 const BGS = {
@@ -224,8 +228,12 @@ async function openEditor({ mainBlob, camBlob, duration, surface, camOffset }) {
   E = {
     main, cam, mainBlob, camBlob, dur, vw, vh, surface, camOffset: camOffset || 0, dirty: true,
     trim: [0, dur], crop: { x: 0, y: 0, w: 1, h: 1 }, cropMode: false,
-    zooms: [], sel: null, audio: null, raf: 0, exporting: false
+    zooms: [], sel: null, audio: null, raf: 0, exporting: false, scenes: [], selScene: null, events: null
   };
+  defaultScenes();
+  UI.introWrap.hidden = !cam;
+  const note = document.getElementById('t-intro-note'); if (note) note.hidden = !cam;
+  UI.scenesWrap.hidden = !cam;
   UI.frame.value = autoFrame(surface, vw, vh);
   UI.aspect.value = vh > vw * 1.15 ? '9:16' : 'auto';
   UI.camWrap.hidden = !cam;
@@ -240,7 +248,7 @@ async function openEditor({ mainBlob, camBlob, duration, surface, camOffset }) {
   main.addEventListener('ended', () => { UI.play.textContent = '▶'; });
   renderTimeline();
   loop();
-  setStatus(UI.status, `${fmt(dur)} · ${vw}×${vh} · frame picked for your ${surface === 'browser' ? 'browser tab' : surface === 'window' ? 'window' : surface === 'monitor' ? 'screen' : 'recording'}. Try Auto zoom.`);
+  setStatus(UI.status, `${fmt(dur)} · ${vw}×${vh} · frame picked for your ${surface === 'browser' ? 'browser tab' : surface === 'window' ? 'window' : surface === 'monitor' ? 'screen' : 'recording'}. Try ✨ Auto edit, or edit everything by hand.`);
 }
 
 function closeEditor() {
@@ -287,24 +295,27 @@ function outputSize(maxLong) {
   return [Math.round(w / 2) * 2, Math.round(h / 2) * 2];
 }
 
-/** Screen rectangle (where the video goes) and frame rectangle inside an output of W×H. */
-function layoutFor(W, H) {
+/** The area inside the background padding. */
+function padBox(W, H) {
+  const pad = UI.bg.value === 'none' ? 0 : (+UI.padding.value / 100) * Math.min(W, H) * 1.2;
+  return { x: pad, y: pad, w: W - pad * 2, h: H - pad * 2, pad };
+}
+
+/** Screen rectangle (where the video goes) for a framed screen fitted inside a box. */
+function layoutIn(box) {
   const g = frameGeom(UI.frame.value);
   const ca = contentAspect();
-  const pad = UI.bg.value === 'none' ? 0 : (+UI.padding.value / 100) * Math.min(W, H) * 1.2;
-  const bw = W - pad * 2, bh = H - pad * 2;
-  const sw = Math.min(bw / g.wf, bh / (1 / ca + g.top + g.bottom + g.extra));
+  const sw = Math.max(1, Math.min(box.w / g.wf, box.h / (1 / ca + g.top + g.bottom + g.extra)));
   const sh = sw / ca;
   const totalH = sh + sw * (g.top + g.bottom + g.extra);
-  const sx = (W - sw) / 2;
-  const sy = (H - totalH) / 2 + sw * g.top;
-  return { sx, sy, sw, sh, g };
+  return { sx: box.x + (box.w - sw) / 2, sy: box.y + (box.h - totalH) / 2 + sw * g.top, sw, sh, g };
 }
+function layoutFor(W, H) { return layoutIn(padBox(W, H)); }
 
 function zoomAt(t) {
   let best = null, env = 0;
   for (const z of E.zooms) {
-    const ramp = Math.min(0.5, (z.end - z.start) / 3);
+    const ramp = Math.min(0.55, (z.end - z.start) / 3);
     const e = smooth(z.start, z.start + ramp, t) * (1 - smooth(z.end - ramp, z.end, t));
     if (e > env) { env = e; best = z; }
   }
@@ -430,35 +441,116 @@ function drawScreen(ctx, L, t) {
   ctx.restore();
 }
 
-function drawCam(ctx, W, H) {
-  if (!E.cam || !UI.camShow.checked || E.cam.readyState < 2) return;
+/* ----------------------------------------------------------- scenes (layouts over time) */
+
+export const LAYOUTS = {
+  bubble: 'Screen + bubble', screen: 'Screen only', split: 'Split screen', camera: 'Camera full'
+};
+const hasCam = () => !!(E && E.cam && UI.camShow.checked);
+
+function bubbleRect(W, H) {
   const size = (+UI.camSize.value / 100) * Math.min(W, H);
   const m = Math.min(W, H) * 0.04;
   const pos = UI.camPos.value;
-  const x = pos.includes('l') ? m : W - m - size;
-  const y = pos.includes('t') ? m : H - m - size;
   const shape = UI.camShape.value;
-  const r = shape === 'circle' ? size / 2 : shape === 'rounded' ? size * 0.22 : size * 0.04;
-  const vw = E.cam.videoWidth, vh = E.cam.videoHeight, s = Math.min(vw, vh);
+  return {
+    x: pos.includes('l') ? m : W - m - size, y: pos.includes('t') ? m : H - m - size, w: size, h: size,
+    r: shape === 'circle' ? size / 2 : shape === 'rounded' ? size * 0.22 : size * 0.04, border: 1
+  };
+}
+
+/** Where the screen and the camera go for a layout. */
+function sceneTargets(layout, W, H) {
+  const full = padBox(W, H);
+  const k = Math.min(W, H);
+  const cardR = k * 0.03;
+  const bubble = bubbleRect(W, H);
+  if (!hasCam() || layout === 'screen') return { screen: { box: full, a: 1 }, cam: { ...bubble, a: 0 } };
+  if (layout === 'camera') return { screen: { box: full, a: 0 }, cam: { x: full.x, y: full.y, w: full.w, h: full.h, r: full.pad ? cardR : 0, border: 0, a: 1 } };
+  if (layout === 'split') {
+    const gap = Math.max(full.pad * 0.6, k * 0.025);
+    if (W >= H) {
+      const cw = (full.w - gap) * 0.36;
+      return { screen: { box: { x: full.x, y: full.y, w: full.w - cw - gap, h: full.h }, a: 1 },
+               cam: { x: full.x + full.w - cw, y: full.y, w: cw, h: full.h, r: cardR, border: 0, a: 1 } };
+    }
+    const ch = (full.h - gap) * 0.42;
+    return { screen: { box: { x: full.x, y: full.y, w: full.w, h: full.h - ch - gap }, a: 1 },
+             cam: { x: full.x, y: full.y + full.h - ch, w: full.w, h: ch, r: cardR, border: 0, a: 1 } };
+  }
+  return { screen: { box: full, a: 1 }, cam: { ...bubble, a: 1 } };   // bubble
+}
+
+function mixTargets(A, B, p) {
+  const L = (a, b) => lerp(a, b, p);
+  const box = (a, b) => ({ x: L(a.x, b.x), y: L(a.y, b.y), w: L(a.w, b.w), h: L(a.h, b.h) });
+  // when the camera appears/disappears, keep its geometry from the visible side so it fades in place
+  const ca = A.cam.a < 0.01 ? B.cam : A.cam, cb = B.cam.a < 0.01 ? A.cam : B.cam;
+  return {
+    screen: { box: box(A.screen.box, B.screen.box), a: L(A.screen.a, B.screen.a) },
+    cam: { ...box(ca, cb), r: L(ca.r, cb.r), border: L(ca.border, cb.border), a: L(A.cam.a, B.cam.a) }
+  };
+}
+
+function sceneIndexAt(t) {
+  const sc = E.scenes;
+  for (let i = 0; i < sc.length; i++) if (t < sc[i].end) return i;
+  return sc.length - 1;
+}
+
+/** Resolve the scene at time t, including transitions. */
+function sceneAt(t, W, H) {
+  const sc = E.scenes, i = sceneIndexAt(t), cur = sc[i];
+  const d = +UI.transDur.value, style = UI.transStyle.value;
+  let A = cur, B = null, b = 0;
+  if (i > 0 && t < cur.start + d / 2) { A = sc[i - 1]; B = cur; b = cur.start; }
+  else if (i < sc.length - 1 && t > cur.end - d / 2) { A = cur; B = sc[i + 1]; b = cur.end; }
+  if (!B || A.layout === B.layout) return { single: sceneTargets(cur.layout, W, H) };
+  if (style === 'cut') return { single: sceneTargets(t >= b ? B.layout : A.layout, W, H) };
+  const p = smooth(b - d / 2, b + d / 2, t);
+  const TA = sceneTargets(A.layout, W, H), TB = sceneTargets(B.layout, W, H);
+  return style === 'fade' ? { TA, TB, p } : { single: mixTargets(TA, TB, p) };
+}
+
+function drawCamRect(ctx, c) {
+  if (!E.cam || E.cam.readyState < 2 || c.w < 2 || c.h < 2) return;
+  const vw = E.cam.videoWidth, vh = E.cam.videoHeight, ar = c.w / c.h;
+  let sw = vw, sh = vw / ar;
+  if (sh > vh) { sh = vh; sw = vh * ar; }
+  const sx = (vw - sw) / 2, sy = (vh - sh) / 2;
+  const m = Math.min(c.w, c.h);
+  const bw = c.border * Math.max(2, m * 0.025);
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = size * 0.12; ctx.shadowOffsetY = size * 0.03;
-  roundRect(ctx, x, y, size, size, r); ctx.fillStyle = '#fff'; ctx.fill();
+  if (UI.bg.value !== 'none' || c.border > 0.5) { ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = m * 0.1; ctx.shadowOffsetY = m * 0.025; }
+  roundRect(ctx, c.x, c.y, c.w, c.h, c.r);
+  ctx.fillStyle = bw > 0.5 ? '#fff' : '#000'; ctx.fill();
   ctx.shadowColor = 'transparent';
-  const bw = Math.max(2, size * 0.025);
-  roundRect(ctx, x + bw, y + bw, size - bw * 2, size - bw * 2, Math.max(0, r - bw)); ctx.clip();
-  ctx.translate(x + size, y); ctx.scale(-1, 1);   // mirror like a selfie
-  ctx.drawImage(E.cam, (vw - s) / 2, (vh - s) / 2, s, s, bw, bw, size - bw * 2, size - bw * 2);
+  roundRect(ctx, c.x + bw, c.y + bw, c.w - bw * 2, c.h - bw * 2, Math.max(0, c.r - bw)); ctx.clip();
+  ctx.translate(c.x + c.w, c.y); ctx.scale(-1, 1);   // mirror like a selfie
+  ctx.drawImage(E.cam, sx, sy, sw, sh, bw, bw, c.w - bw * 2, c.h - bw * 2);
   ctx.restore();
+}
+
+function drawScene(ctx, T, t, alpha = 1) {
+  let L = null;
+  if (T.screen.a * alpha > 0.01) {
+    ctx.save(); ctx.globalAlpha = T.screen.a * alpha;
+    L = layoutIn(T.screen.box);
+    drawFrameChrome(ctx, L);
+    drawScreen(ctx, L, t);
+    ctx.restore();
+  }
+  if (T.cam.a * alpha > 0.01) { ctx.save(); ctx.globalAlpha = T.cam.a * alpha; drawCamRect(ctx, T.cam); ctx.restore(); }
+  return T.screen.a * alpha > 0.5 ? L : null;
 }
 
 function renderFrame(ctx, W, H, t) {
   ctx.clearRect(0, 0, W, H);
   drawBackground(ctx, W, H);
-  const L = layoutFor(W, H);
-  drawFrameChrome(ctx, L);
-  drawScreen(ctx, L, t);
-  drawCam(ctx, W, H);
-  return L;
+  const S = sceneAt(t, W, H);
+  if (S.single) return drawScene(ctx, S.single, t);
+  const la = drawScene(ctx, S.TA, t, 1 - S.p), lb = drawScene(ctx, S.TB, t, S.p);
+  return S.p > 0.5 ? lb || la : la || lb;
 }
 
 /* crop mode: show the raw source frame with the crop rectangle */
@@ -496,6 +588,7 @@ function loop() {
     E.lastLayout = renderFrame(c.getContext('2d'), w, h, t);
   }
   UI.time.textContent = `${fmt(t)} / ${fmt(E.dur)}`;
+  if (!E.selScene && E.cam && E._lastSceneIdx !== sceneIndexAt(t)) { E._lastSceneIdx = sceneIndexAt(t); renderTimeline(); }
   UI.playhead.style.left = `${(t / E.dur) * 100}%`;
 }
 
@@ -521,32 +614,118 @@ function renderTimeline() {
   const d = E.dur;
   UI.trimShade.style.left = `${(E.trim[0] / d) * 100}%`;
   UI.trimShade.style.width = `${((E.trim[1] - E.trim[0]) / d) * 100}%`;
-  UI.zoomLane.innerHTML = E.zooms.map((z) => `<button type="button" class="ed-zoom${z === E.sel ? ' sel' : ''}${z.auto ? ' auto' : ''}" data-id="${z.id}"
-    style="left:${(z.start / d) * 100}%;width:${Math.max(0.6, ((z.end - z.start) / d) * 100)}%" title="Zoom ${z.scale.toFixed(1)}× · ${fmt(z.start)}–${fmt(z.end)}">${z.scale.toFixed(1)}×</button>`).join('');
-  UI.zoomCount.textContent = E.zooms.length ? `${E.zooms.length} zoom${E.zooms.length > 1 ? 's' : ''}` : 'No zooms yet';
+  UI.zoomLane.innerHTML = E.zooms.map((z) => `<div class="ed-block ed-zoom${z === E.sel ? ' sel' : ''}${z.auto ? ' auto' : ''}" data-kind="zoom" data-id="${z.id}"
+    style="left:${(z.start / d) * 100}%;width:${Math.max(0.6, ((z.end - z.start) / d) * 100)}%" title="Zoom ${z.scale.toFixed(2)}× · ${fmt(z.start)}–${fmt(z.end)} · drag to move, drag edges to resize">${z.scale.toFixed(1)}×</div>`).join('');
+  const icons = { bubble: '🫧', screen: '🖥', split: '◧', camera: '🎥' };
+  UI.sceneLane.innerHTML = E.scenes.map((sc) => `<div class="ed-block ed-scene sc-${sc.layout}${sc === E.selScene ? ' sel' : ''}" data-kind="scene" data-id="${sc.id}"
+    style="left:${(sc.start / d) * 100}%;width:${((sc.end - sc.start) / d) * 100}%" title="${LAYOUTS[sc.layout]} · ${fmt(sc.start)}–${fmt(sc.end)}">${icons[sc.layout]} ${LAYOUTS[sc.layout]}</div>`).join('');
+  UI.sceneLane.hidden = !E.cam;
+  UI.track.classList.toggle('has-scenes', !!E.cam);
+  UI.zoomCount.textContent = `${E.zooms.length ? `${E.zooms.length} zoom${E.zooms.length > 1 ? 's' : ''}` : 'No zooms'}${E.cam ? ` · ${E.scenes.length} scene${E.scenes.length > 1 ? 's' : ''}` : ''}`;
   UI.zoomPanel.hidden = !E.sel;
   if (E.sel) {
-    UI.zoomScale.value = E.sel.scale; UI.zoomScaleVal.textContent = `${E.sel.scale.toFixed(1)}×`;
+    UI.zoomScale.value = E.sel.scale; UI.zoomScaleVal.textContent = `${E.sel.scale.toFixed(2)}×`;
     UI.zoomStart.value = E.sel.start.toFixed(1); UI.zoomEnd.value = E.sel.end.toFixed(1);
   }
+  const cur = E.selScene || E.scenes[sceneIndexAt(E.main.currentTime)];
+  UI.sceneInfo.textContent = cur ? `${E.selScene ? 'Selected' : 'At playhead'}: ${fmt(cur.start)}–${fmt(cur.end)} · ${LAYOUTS[cur.layout]}` : '';
+  document.querySelectorAll('[data-layout]').forEach((b) => b.setAttribute('aria-pressed', String(!!cur && b.dataset.layout === cur.layout)));
+  UI.sceneDel.disabled = E.scenes.length < 2;
 }
 
 function seek(t) { if (!E) return; E.main.currentTime = clamp(t, 0, E.dur); syncCam(); }
 
-let scrubbing = false;
+/* track: scrub on empty space; drag blocks to move / drag edges to resize */
+let scrubbing = false, blockDrag = null;
 const trackTime = (e) => { const r = UI.track.getBoundingClientRect(); return clamp((e.clientX - r.left) / r.width, 0, 1) * E.dur; };
 UI.track.addEventListener('pointerdown', (e) => {
-  if (!E || e.target.closest('.ed-zoom')) return;
-  scrubbing = true; UI.track.setPointerCapture(e.pointerId); seek(trackTime(e));
+  if (!E) return;
+  UI.track.setPointerCapture(e.pointerId);
+  const el = e.target.closest('.ed-block');
+  if (!el) { scrubbing = true; seek(trackTime(e)); return; }
+  const kind = el.dataset.kind;
+  const item = (kind === 'zoom' ? E.zooms : E.scenes).find((x) => x.id === el.dataset.id);
+  const r = el.getBoundingClientRect();
+  const edge = e.clientX - r.left < 9 ? 'l' : r.right - e.clientX < 9 ? 'r' : 'move';
+  blockDrag = { kind, item, edge, x0: e.clientX, s0: item.start, e0: item.end, rw: UI.track.getBoundingClientRect().width, moved: false };
 });
-UI.track.addEventListener('pointermove', (e) => { if (scrubbing) seek(trackTime(e)); });
-['pointerup', 'pointercancel'].forEach((ev) => UI.track.addEventListener(ev, () => { scrubbing = false; }));
-UI.zoomLane.addEventListener('click', (e) => {
-  const b = e.target.closest('.ed-zoom'); if (!b || !E) return;
-  E.sel = E.zooms.find((z) => z.id === b.dataset.id) || null;
-  if (E.sel) seek(E.sel.start + Math.min(0.6, (E.sel.end - E.sel.start) / 2));
+UI.track.addEventListener('pointermove', (e) => {
+  if (!E) return;
+  if (scrubbing) { seek(trackTime(e)); return; }
+  if (!blockDrag) return;
+  const b = blockDrag, dt = ((e.clientX - b.x0) / b.rw) * E.dur;
+  if (Math.abs(e.clientX - b.x0) > 3) b.moved = true;
+  if (!b.moved) return;
+  if (b.kind === 'zoom') {
+    const z = b.item, len = b.e0 - b.s0;
+    if (b.edge === 'move') { z.start = clamp(b.s0 + dt, 0, E.dur - len); z.end = z.start + len; }
+    else if (b.edge === 'l') z.start = clamp(b.s0 + dt, 0, z.end - 0.5);
+    else z.end = clamp(b.e0 + dt, z.start + 0.5, E.dur);
+    z.auto = false; E.sel = z;
+  } else {
+    const sc = E.scenes, i = sc.indexOf(b.item);
+    // scene edges are shared boundaries: dragging one resizes the neighbour too
+    if (b.edge === 'l' && i > 0) { const v = clamp(b.s0 + dt, sc[i - 1].start + 0.5, b.item.end - 0.5); sc[i - 1].end = v; b.item.start = v; }
+    else if (b.edge === 'r' && i < sc.length - 1) { const v = clamp(b.e0 + dt, b.item.start + 0.5, sc[i + 1].end - 0.5); sc[i + 1].start = v; b.item.end = v; }
+    E.selScene = b.item;
+  }
+  E.sorted = false;
   renderTimeline();
 });
+['pointerup', 'pointercancel'].forEach((ev) => UI.track.addEventListener(ev, () => {
+  if (blockDrag && !blockDrag.moved) {
+    const it = blockDrag.item;
+    if (blockDrag.kind === 'zoom') { E.sel = it; E.selScene = null; seek(it.start + Math.min(0.6, (it.end - it.start) / 2)); }
+    else { E.selScene = E.selScene === it ? null : it; E.sel = null; seek(it.start + 0.05); }
+    renderTimeline();
+  }
+  if (blockDrag && blockDrag.kind === 'zoom') E.zooms.sort((a, b) => a.start - b.start);
+  scrubbing = false; blockDrag = null;
+}));
+
+/* scenes */
+let sid = 0;
+const newScene = (start, end, layout) => ({ id: `s${++sid}`, start, end, layout });
+function defaultScenes() { E.scenes = [newScene(0, E.dur, E.cam ? 'bubble' : 'screen')]; E.selScene = null; }
+
+document.querySelectorAll('[data-layout]').forEach((btn) => btn.addEventListener('click', () => {
+  if (!E) return;
+  const target = E.selScene || E.scenes[sceneIndexAt(E.main.currentTime)];
+  target.layout = btn.dataset.layout;
+  mergeScenes();
+  renderTimeline();
+}));
+UI.sceneSplit.addEventListener('click', () => {
+  if (!E) return;
+  const t = E.main.currentTime, i = sceneIndexAt(t), sc = E.scenes[i];
+  if (t - sc.start < 0.5 || sc.end - t < 0.5) { setStatus(UI.status, 'Move the playhead at least half a second inside a scene to split it.'); return; }
+  const second = newScene(t, sc.end, sc.layout);
+  sc.end = t;
+  E.scenes.splice(i + 1, 0, second);
+  E.selScene = second;
+  renderTimeline();
+  setStatus(UI.status, `Scene split at ${fmt(t)}. Pick a layout for the selected part.`);
+});
+UI.sceneDel.addEventListener('click', () => {
+  if (!E || E.scenes.length < 2) return;
+  const sc = E.selScene || E.scenes[sceneIndexAt(E.main.currentTime)];
+  const i = E.scenes.indexOf(sc);
+  if (i > 0) E.scenes[i - 1].end = sc.end; else E.scenes[1].start = 0;
+  E.scenes.splice(i, 1);
+  E.selScene = null;
+  renderTimeline();
+});
+/** Join neighbouring scenes that ended up with the same layout. */
+function mergeScenes() {
+  for (let i = E.scenes.length - 1; i > 0; i--) {
+    if (E.scenes[i].layout === E.scenes[i - 1].layout) {
+      E.scenes[i - 1].end = E.scenes[i].end;
+      if (E.selScene === E.scenes[i]) E.selScene = E.scenes[i - 1];
+      E.scenes.splice(i, 1);
+    }
+  }
+}
+UI.transDur.addEventListener('input', () => { UI.transDurVal.textContent = `${(+UI.transDur.value).toFixed(1)}s`; });
 
 UI.play.addEventListener('click', () => {
   if (!E) return;
@@ -599,7 +778,7 @@ function applyCropAspect() {
   E.crop = { x: clamp(c.x + (c.w - w) / 2, 0, 1 - w), y: clamp(c.y + (c.h - h) / 2, 0, 1 - h), w, h };
   placeCropBox();
 }
-UI.cropToggle.addEventListener('click', () => setCropMode(!E.cropMode));
+UI.cropToggle.addEventListener('click', () => { setCropMode(!E.cropMode); if (!E.cropMode && E.events && E.zooms.some((z) => z.auto)) { planAutoZooms(); renderTimeline(); } });
 UI.cropAspect.addEventListener('change', () => { if (!E.cropMode) setCropMode(true); applyCropAspect(); });
 UI.cropReset.addEventListener('click', () => { E.crop = { x: 0, y: 0, w: 1, h: 1 }; UI.cropAspect.value = 'free'; placeCropBox(); });
 
@@ -642,7 +821,7 @@ function addZoom(z) {
 
 UI.addZoom.addEventListener('click', () => {
   const t = E.main.currentTime;
-  E.sel = addZoom({ start: clamp(t, 0, E.dur - 1), end: clamp(t + 3, 1, E.dur), x: 0.5, y: 0.5, scale: 1.8 });
+  E.sel = addZoom({ start: clamp(t, 0, E.dur - 1), end: clamp(t + 3, 1, E.dur), x: 0.5, y: 0.5, scale: zoomScaleSetting() });
   renderTimeline();
   setStatus(UI.status, 'Zoom added. Click the preview where it should zoom in.');
 });
@@ -665,46 +844,71 @@ UI.canvas.addEventListener('click', (e) => {
   const x = vx0 + fx / z.s, y = vy0 + fy / z.s;
   if (!E.sel) {
     const t = E.main.currentTime;
-    E.sel = addZoom({ start: clamp(t - 0.3, 0, E.dur - 1), end: clamp(t + 2.7, 1, E.dur), x, y, scale: 1.8 });
+    E.sel = addZoom({ start: clamp(t - 0.3, 0, E.dur - 1), end: clamp(t + 2.7, 1, E.dur), x, y, scale: zoomScaleSetting() });
     setStatus(UI.status, 'Zoom added where you clicked. Adjust its strength and timing on the right.');
   } else { E.sel.x = clamp(x, 0, 1); E.sel.y = clamp(y, 0, 1); E.sel.auto = false; }
   renderTimeline();
 });
 
-/* Smart auto-zoom: play the recording fast off-screen, diff frames, zoom where localized changes happen */
-UI.autoZoom.addEventListener('click', async () => {
-  if (!E) return;
-  UI.autoZoom.disabled = true;
+/* ----------------------------------------------------------- smart auto-zoom (click-like moments only)
+   Browsers can't see real clicks outside the page, so we look for what a click does on screen:
+   a small area that suddenly changes after being still. Continuous change (typing, video,
+   animation) and large changes (scrolling, page loads) are ignored. */
+
+const STRENGTH = { subtle: 1.25, medium: 1.5, strong: 1.8 };
+const AMOUNT = { fewer: 3, normal: 0.8, more: 0.3 };   // minimum quiet seconds after one zoom ends before the next may start
+const zoomScaleSetting = () => STRENGTH[UI.zoomStrength.value] || 1.25;
+
+async function analyseActivity() {
+  if (E.events) return E.events;
   const v = makeVideo(E.mainBlob); v.muted = true;
   await once(v, 'loadedmetadata');
   const W = 192, H = Math.max(2, Math.round(192 * E.vh / E.vw));
+  const GW = 24, GH = Math.max(2, Math.round(24 * H / W)), cw = W / GW, ch = H / GH;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d', { willReadFrequently: true });
   let prev = null, lastT = -1;
+  const history = [];       // recent changed-cell grids (~1 s)
   const events = [];
   const sample = () => {
     const t = v.currentTime;
-    if (t - lastT < 0.25) return;
+    if (t - lastT < 0.2) return;
     lastT = t;
     g.drawImage(v, 0, 0, W, H);
     const d = g.getImageData(0, 0, W, H).data;
     if (prev) {
-      let n = 0, sx = 0, sy = 0, x0 = W, y0 = H, x1 = 0, y1 = 0;
+      const cells = new Uint16Array(GW * GH);
+      let n = 0;
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         const i = (y * W + x) * 4;
         if (Math.abs(d[i] - prev[i]) + Math.abs(d[i + 1] - prev[i + 1]) + Math.abs(d[i + 2] - prev[i + 2]) > 90) {
-          n++; sx += x; sy += y; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+          n++; cells[Math.min(GH - 1, (y / ch) | 0) * GW + Math.min(GW - 1, (x / cw) | 0)]++;
         }
       }
-      const frac = n / (W * H), bbox = ((x1 - x0 + 1) * (y1 - y0 + 1)) / (W * H);
-      // localized change (a click, a menu, typing) — not a full-page scroll or navigation
-      if (n && frac > 0.0006 && frac < 0.2 && bbox < 0.35) events.push({ t, x: sx / n / W, y: sy / n / H, bw: (x1 - x0 + 1) / W, bh: (y1 - y0 + 1) / H });
+      const changed = [];
+      for (let k = 0; k < cells.length; k++) if (cells[k] > cw * ch * 0.04) changed.push(k);
+      const frac = n / (W * H);
+      if (changed.length) {
+        let x0 = GW, y0 = GH, x1 = 0, y1 = 0, sx = 0, sy = 0;
+        changed.forEach((k) => { const cx = k % GW, cy = (k / GW) | 0; x0 = Math.min(x0, cx); x1 = Math.max(x1, cx); y0 = Math.min(y0, cy); y1 = Math.max(y1, cy); sx += cx; sy += cy; });
+        const bbox = ((x1 - x0 + 1) * (y1 - y0 + 1)) / (GW * GH);
+        // was this area already busy in the last second? then it's typing/animation, not a click
+        let overlap = 0;
+        for (const h of history) for (const k of changed) if (h.has(k)) overlap++;
+        const quietBefore = overlap <= changed.length * 0.15;
+        const fullBusyBefore = history.some((h) => h.size > GW * GH * 0.3);   // scroll / page change just happened
+        if (frac > 0.0006 && frac < 0.08 && bbox < 0.15 && quietBefore && !fullBusyBefore) {
+          events.push({ t, x: (sx / changed.length + 0.5) / GW, y: (sy / changed.length + 0.5) / GH });
+        }
+      }
+      history.push(new Set(changed));
+      if (history.length > 5) history.shift();
     }
     prev = d;
     UI.exportFill.style.width = `${clamp(t / E.dur, 0, 1) * 100}%`;
   };
   UI.exportBar.hidden = false;
-  setStatus(UI.status, 'Finding where things happen on screen…');
+  setStatus(UI.status, 'Looking for clicks on screen…');
   await new Promise((resolve) => {
     let stop = false;
     const tick = () => { if (stop) return; sample(); if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(tick); else requestAnimationFrame(tick); };
@@ -715,39 +919,66 @@ UI.autoZoom.addEventListener('click', async () => {
   });
   v.pause(); URL.revokeObjectURL(v.src);
   UI.exportBar.hidden = true;
+  E.events = events;
+  return events;
+}
 
-  // cluster events → zoom segments (in crop-normalized coordinates)
+/** Turn click-like moments into short, gentle zooms. Manual zooms are never touched. */
+function planAutoZooms() {
+  const scale = zoomScaleSetting(), minGap = AMOUNT[UI.zoomAmount.value] || 4;
   const c0 = E.crop;
-  const inCrop = events.filter((ev) => ev.x >= c0.x && ev.x <= c0.x + c0.w && ev.y >= c0.y && ev.y <= c0.y + c0.h && ev.t >= E.trim[0] && ev.t <= E.trim[1])
-    .map((ev) => ({ ...ev, x: (ev.x - c0.x) / c0.w, y: (ev.y - c0.y) / c0.h, bw: ev.bw / c0.w, bh: ev.bh / c0.h }));
-  const clusters = [];
-  for (const ev of inCrop) {
-    const last = clusters[clusters.length - 1];
-    if (last && ev.t - last.t1 < 1.2 && Math.hypot(ev.x - last.x, ev.y - last.y) < 0.22) {
-      last.t1 = ev.t; last.n++; last.x += (ev.x - last.x) / last.n; last.y += (ev.y - last.y) / last.n;
-      last.bw = Math.max(last.bw, ev.bw); last.bh = Math.max(last.bh, ev.bh);
-    } else clusters.push({ t0: ev.t, t1: ev.t, x: ev.x, y: ev.y, n: 1, bw: ev.bw, bh: ev.bh });
-  }
+  const evs = (E.events || [])
+    .filter((ev) => ev.x >= c0.x && ev.x <= c0.x + c0.w && ev.y >= c0.y && ev.y <= c0.y + c0.h && ev.t >= E.trim[0] && ev.t <= E.trim[1])
+    .map((ev) => ({ t: ev.t, x: (ev.x - c0.x) / c0.w, y: (ev.y - c0.y) / c0.h }));
   E.zooms = E.zooms.filter((z) => !z.auto);
-  let lastEnd = -Infinity, added = 0, lastZoom = null;
-  for (const cl of clusters) {
-    // activity moved somewhere else: end the previous zoom early so the camera can travel there
-    if (lastZoom && lastZoom.end > cl.t0 - 0.6) {
-      lastZoom.end = Math.max(lastZoom.start + 1.2, cl.t0 - 0.6);
-      lastEnd = lastZoom.end;
+  const manual = E.zooms.slice();
+  let last = null, added = 0;
+  for (const ev of evs) {
+    if (last && ev.t < last.end + 2 && Math.hypot(ev.x - last.x, ev.y - last.y) < 0.2) {
+      last.end = Math.min(Math.max(last.end, ev.t + 2), last.start + 6, E.trim[1]);   // another click in the same spot: hold the zoom instead of zooming out and in
+      continue;
     }
-    const start = Math.max(cl.t0 - 0.5, E.trim[0], lastEnd + 0.2);
-    const end = Math.min(Math.max(cl.t1 + 1.8, start + 2.2), E.trim[1]);
+    if (last && ev.t - 0.35 < last.end + minGap) continue;
+    const start = Math.max(E.trim[0], ev.t - 0.35), end = Math.min(E.trim[1], ev.t + 2.1);
     if (end - start < 1.2) continue;
-    const scale = clamp(0.55 / Math.max(cl.bw, cl.bh, 0.12), 1.4, 2.2);
-    if (E.zooms.some((z) => z.start < end && z.end > start)) continue;   // keep manual zooms
-    lastZoom = addZoom({ start, end, x: cl.x, y: cl.y, scale: Math.round(scale * 10) / 10, auto: true });
-    lastEnd = end; added++;
+    if (manual.some((z) => z.start < end && z.end > start)) continue;
+    last = addZoom({ start, end, x: ev.x, y: ev.y, scale, auto: true });
+    added++;
   }
   E.sel = null;
+  return added;
+}
+
+async function autoZoom() {
+  UI.autoZoom.disabled = UI.autoEdit.disabled = true;
+  try {
+    await analyseActivity();
+    const n = planAutoZooms();
+    renderTimeline();
+    setStatus(UI.status, n ? `Added ${n} gentle zoom${n > 1 ? 's' : ''} on click-like moments. Drag them on the timeline, or change Strength and Amount.` : 'No clear clicks found. Click the preview to add zooms exactly where you want.', n ? 'ok' : '');
+    return n;
+  } finally { UI.autoZoom.disabled = UI.autoEdit.disabled = false; }
+}
+UI.autoZoom.addEventListener('click', autoZoom);
+[UI.zoomStrength, UI.zoomAmount].forEach((el) => el.addEventListener('change', () => {
+  if (!E) return;
+  if (E.events) { const n = planAutoZooms(); renderTimeline(); setStatus(UI.status, `${n} auto zoom${n === 1 ? '' : 's'} updated.`); }
+  }));
+
+/* ----------------------------------------------------------- auto edit */
+UI.autoEdit.addEventListener('click', async () => {
+  if (!E) return;
+  // scenes: camera intro → screen with bubble → camera outro
+  if (E.cam && UI.introOutro.checked && E.dur >= 8) {
+    const intro = Math.min(4, Math.max(2, E.dur * 0.12)), outro = E.dur >= 14 ? Math.min(3, E.dur * 0.1) : 0;
+    const a = E.trim[0], b = E.trim[1];
+    E.scenes = [newScene(0, a + intro, 'camera'), newScene(a + intro, outro ? b - outro : E.dur, 'bubble')];
+    if (outro) E.scenes.push(newScene(b - outro, E.dur, 'camera'));
+  } else defaultScenes();
+  E.selScene = null;
+  const n = await autoZoom();
   renderTimeline();
-  setStatus(UI.status, added ? `Added ${added} auto zoom${added > 1 ? 's' : ''}. Click one on the timeline to adjust it, or press Delete to remove it.` : 'No focused activity found. Add zooms manually by clicking the preview.', added ? 'ok' : '');
-  UI.autoZoom.disabled = false;
+  setStatus(UI.status, `Auto edit done: ${E.cam ? `${E.scenes.length} scene${E.scenes.length > 1 ? 's' : ''}, ` : ''}${n} zoom${n === 1 ? '' : 's'}, ${UI.transStyle.value} transitions. Press play to preview, then tweak anything.`, 'ok');
 });
 
 /* ----------------------------------------------------------- settings */

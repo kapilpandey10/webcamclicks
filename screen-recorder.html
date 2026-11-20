@@ -228,17 +228,42 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
     <div class="sr-track" id="t-ed-track" aria-label="Timeline">
       <div class="sr-trim" id="t-ed-trim"></div>
-      <div class="sr-zooms" id="t-ed-zooms"></div>
+      <div class="sr-lane sr-scenes" id="t-ed-scenes" hidden></div>
+      <div class="sr-lane sr-zooms" id="t-ed-zooms"></div>
       <div class="sr-playhead" id="t-ed-playhead"></div>
     </div>
+    <div class="sr-legend"><span><i class="lg-scene"></i>Scenes</span><span><i class="lg-zoom"></i>Zooms (light = auto)</span><span>Drag a block to move it · drag its edges to resize</span></div>
     <p class="t-status" id="t-ed-status" role="status"></p>
-    <p class="sr-hint">Tip: click the preview to add a zoom right there. Space plays and pauses, ← → skip, Delete removes the selected zoom.</p>
+    <p class="sr-hint">Click the preview to add a zoom right there. Space plays or pauses, ← → skip, Delete removes the selected zoom.</p>
   </div>
   <aside class="sr-side">
+    <details open class="sr-auto"><summary>✨ Auto edit</summary>
+      <p class="sr-note" style="margin:0 0 10px">One click: gentle zooms on your clicks<span id="t-intro-note"> and camera scenes</span>, then fine-tune anything below.</p>
+      <div class="t-row">
+        <label class="t-field">Zoom strength <select class="t-select" id="t-zoom-strength"><option value="subtle" selected>Subtle (1.25×)</option><option value="medium">Medium (1.5×)</option><option value="strong">Strong (1.8×)</option></select></label>
+        <label class="t-field">Amount <select class="t-select" id="t-zoom-amount"><option value="fewer">Fewer</option><option value="normal" selected>Normal</option><option value="more">More</option></select></label>
+      </div>
+      <label class="t-check" id="t-intro-wrap" hidden><input type="checkbox" id="t-intro-outro" checked> Camera intro &amp; outro</label>
+      <button class="t-btn primary" id="t-auto-edit" type="button" style="width:100%">✨ Auto edit</button>
+    </details>
+    <details open id="t-scenes-wrap" hidden><summary>Scenes</summary>
+      <p class="sr-note" id="t-scene-info" style="margin:0 0 8px"></p>
+      <div class="sr-layouts">
+        <button type="button" data-layout="camera" aria-pressed="false"><span class="ly ly-camera"></span>Camera full</button>
+        <button type="button" data-layout="split" aria-pressed="false"><span class="ly ly-split"></span>Split screen</button>
+        <button type="button" data-layout="bubble" aria-pressed="false"><span class="ly ly-bubble"></span>Screen + bubble</button>
+        <button type="button" data-layout="screen" aria-pressed="false"><span class="ly ly-screen"></span>Screen only</button>
+      </div>
+      <div class="t-actions" style="margin-top:10px"><button class="t-btn sm" id="t-scene-split" type="button">✂ Split at playhead</button><button class="t-btn sm" id="t-scene-del" type="button">Delete scene</button></div>
+      <div class="t-row" style="margin-top:12px">
+        <label class="t-field">Transition <select class="t-select" id="t-trans-style"><option value="smooth" selected>Smooth</option><option value="fade">Fade</option><option value="cut">Cut</option></select></label>
+        <label class="t-field">Length <span id="t-trans-dur-val">0.6s</span><input class="t-range" type="range" id="t-trans-dur" min="0.2" max="1.5" step="0.1" value="0.6"></label>
+      </div>
+    </details>
     <details open><summary>Zoom</summary>
-      <div class="t-actions" style="margin-top:0"><button class="t-btn primary sm" id="t-auto-zoom" type="button">✨ Auto zoom</button><button class="t-btn sm" id="t-add-zoom" type="button">+ Zoom at playhead</button></div>
+      <div class="t-actions" style="margin-top:0"><button class="t-btn sm" id="t-auto-zoom" type="button">Auto zoom only</button><button class="t-btn sm" id="t-add-zoom" type="button">+ Zoom at playhead</button></div>
       <div id="t-zoom-panel" class="sr-zoom-panel" hidden>
-        <label class="t-field">Strength <span id="t-zoom-scale-val"></span><input class="t-range" type="range" id="t-zoom-scale" min="1.2" max="3" step="0.1" value="1.8"></label>
+        <label class="t-field">Strength <span id="t-zoom-scale-val"></span><input class="t-range" type="range" id="t-zoom-scale" min="1.1" max="2.5" step="0.05" value="1.25"></label>
         <div class="t-row"><label class="t-field">Start (s) <input class="t-input" type="number" id="t-zoom-start" step="0.1"></label><label class="t-field">End (s) <input class="t-input" type="number" id="t-zoom-end" step="0.1"></label></div>
         <p class="sr-note">Click the preview to move the zoom focus.</p>
         <button class="t-btn sm" id="t-zoom-del" type="button">Delete zoom</button>
@@ -306,12 +331,36 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 .sr-transport { display:flex; align-items:center; gap:12px; margin:12px 0 8px; }
 .sr-time { font:600 .9rem ui-monospace,Menlo,monospace; color:var(--ink-2); }
 .sr-zoomcount { margin-left:auto; font-size:.82rem; color:var(--ink-2); font-weight:600; }
-.sr-track { position:relative; height:56px; border-radius:12px; background:var(--surface-3); cursor:pointer; touch-action:none; overflow:hidden; }
+.sr-track { position:relative; height:44px; border-radius:12px; background:var(--surface-3); cursor:pointer; touch-action:none; overflow:hidden; }
+.sr-track.has-scenes { height:76px; }
+.sr-lane { position:absolute; left:0; right:0; height:26px; }
+.sr-scenes { top:8px; }
+.sr-track .sr-zooms { top:10px; height:24px; }
+.sr-track.has-scenes .sr-zooms { top:42px; }
+.ed-block { position:absolute; top:0; height:100%; border-radius:7px; font:800 .7rem/24px var(--font); color:#fff; cursor:grab; overflow:hidden; white-space:nowrap; padding:0 8px; box-sizing:border-box; user-select:none; touch-action:none; }
+.ed-block::before, .ed-block::after { content:""; position:absolute; top:4px; bottom:4px; width:3px; border-radius:2px; background:rgba(255,255,255,.7); }
+.ed-block::before { left:3px; } .ed-block::after { right:3px; }
+.ed-block:active { cursor:grabbing; }
+.ed-scene { border:2px solid #fff; line-height:22px; }
+.sc-camera { background:#7c3aed; } .sc-split { background:#0ea5e9; } .sc-bubble { background:#0e0e12; } .sc-screen { background:#5b5f6b; }
+.sr-legend { display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:6px; font-size:.76rem; color:var(--ink-3); }
+.sr-legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
+.lg-scene { background:#0e0e12; } .lg-zoom { background:var(--accent); }
+.sr-layouts { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.sr-layouts button { display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 6px; border:1px solid var(--line-strong); border-radius:12px; background:#fff; font:700 .78rem var(--font); color:var(--ink); cursor:pointer; }
+.sr-layouts button[aria-pressed="true"] { border-color:var(--ink); box-shadow:0 0 0 2px var(--ink); }
+.ly { position:relative; width:56px; height:34px; border-radius:5px; background:#dfe2e8; overflow:hidden; }
+.ly::before, .ly::after { content:""; position:absolute; }
+.ly-camera::before { inset:0; background:#7c3aed; }
+.ly-split::before { left:3px; top:3px; bottom:3px; width:30px; background:#5b5f6b; border-radius:2px; } .ly-split::after { right:3px; top:3px; bottom:3px; width:17px; background:#7c3aed; border-radius:2px; }
+.ly-bubble::before { inset:3px; background:#5b5f6b; border-radius:2px; } .ly-bubble::after { right:5px; bottom:5px; width:11px; height:11px; border-radius:50%; background:#7c3aed; border:1.5px solid #fff; }
+.ly-screen::before { inset:3px; background:#5b5f6b; border-radius:2px; }
+.sr-auto { border-color:var(--ink) !important; }
 .sr-trim { position:absolute; top:0; bottom:0; background:#fff; border:2px solid var(--ink); border-radius:12px; box-sizing:border-box; }
 .sr-zooms { position:absolute; left:0; right:0; top:26px; height:24px; }
-.ed-zoom { position:absolute; top:0; height:24px; border:0; border-radius:7px; background:var(--accent); color:#fff; font:800 .7rem var(--font); cursor:pointer; overflow:hidden; white-space:nowrap; padding:0 4px; }
-.ed-zoom.auto { background:#ff8a6f; }
-.ed-zoom.sel { outline:3px solid var(--ink); outline-offset:1px; }
+.ed-zoom { background:var(--accent); }
+.ed-zoom.auto { background:#ff9a82; }
+.ed-block.sel { outline:3px solid var(--ink); outline-offset:1px; z-index:2; }
 .sr-playhead { position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--ink); pointer-events:none; }
 .sr-hint { font-size:.8rem; color:var(--ink-3); margin:6px 0 0; }
 .sr-side details { border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:10px; background:#fff; }
@@ -332,7 +381,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <h2>Polish it in the built-in editor</h2>
 <p>When you stop recording, the editor opens with your video, ready to export in seconds or fine-tune:</p>
 <ul>
-<li><strong>Smart auto-zoom.</strong> Press <em>Auto zoom</em> and the editor finds the moments where something happens in a small area of the screen, like a menu opening, a button you clicked or text you typed, and smoothly zooms in there. Every zoom is a block on the timeline you can retime, strengthen or delete. Click anywhere on the preview to add your own zoom at that spot.</li>
+<li><strong>One-click Auto edit.</strong> Adds gentle zooms on your clicks and, if you recorded your webcam, a camera intro and outro with smooth transitions. Everything it creates can be changed.</li>
+<li><strong>Click-aware zoom.</strong> The editor looks for what a click does: a small area of the screen that suddenly reacts after being still, such as a menu opening or a button highlighting. Typing, videos and scrolling are ignored, and nearby clicks share one zoom so the picture doesn't chase every movement. Choose Subtle, Medium or Strong and Fewer, Normal or More, drag zooms on the timeline, or click the preview to add one exactly where you want.</li>
+<li><strong>Scenes with full control.</strong> Split the video at any moment and choose what viewers see in each part: your camera full screen, a split screen with you beside the screen, the screen with a webcam bubble, or the screen only. For example, camera full for the first 5 seconds, then split screen, then the screen with a bubble. Drag scene edges to retime them, and pick Smooth, Fade or Cut transitions.</li>
 <li><strong>Trim and crop.</strong> Cut the start and end, and crop away browser tabs, taskbars or a second monitor, freely or locked to 16:9, 9:16, 1:1 or 4:3.</li>
 <li><strong>Video size for every platform.</strong> 16:9 for YouTube and courses, 9:16 for Shorts, Reels and TikTok, 1:1 and 4:5 for feeds.</li>
 <li><strong>Backgrounds and device frames.</strong> Place your recording on a gradient, solid colour or blurred backdrop with padding, rounded corners and a soft shadow, inside a Mac or Windows window, a laptop, a monitor or a phone. The frame is chosen automatically from what you recorded (tab, window or screen) and your operating system.</li>
@@ -388,6 +439,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </a>
 </nav>
 
-<script type="module" src="/js/tools/screen-recorder.js?v=b105ee5883"></script>
+<script type="module" src="/js/tools/screen-recorder.js?v=12dd8d66cf"></script>
 </body>
 </html>

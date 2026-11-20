@@ -3430,3 +3430,21 @@ html.nav-lock, html.nav-lock body { overflow: hidden; }
 .site-nav .mega-col h3 a, .site-nav .mega-all { padding: 0; border-radius: 0; }
 .site-nav .mega-col h3 a:hover { background: none !important; color: var(--ink); }
 .site-nav .mega-col li a { white-space: normal; }
+
+/* ===================================================================== Mobile hardening (all pages) */
+@media (max-width: 860px) {
+  /* flex children may shrink below their content width (wide tables were stretching articles off-screen) */
+  main > * { min-width: 0; max-width: 100% !important; }
+  main table:not(.t-table), .pp-table-wrap { display: block; overflow-x: auto; }
+  /* iOS Safari zooms the page when a field under 16px is focused */
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]), select, textarea { font-size: 16px !important; }
+  .shortcut-table { display: block; overflow-x: auto; }
+  table { max-width: 100%; }
+  img, video, canvas, svg { max-width: 100%; }
+}
+@media (pointer: coarse) {
+  .t-btn.sm { min-height: 40px; }
+  .t-icon-btn { min-width: 40px; min-height: 40px; }
+  .pe-pagebar button { min-height: 36px; }
+  .tp-bar .t-btn { min-height: 42px; }
+}

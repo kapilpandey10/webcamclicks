@@ -130,18 +130,34 @@ TEMPLATE = read('passport-photo.html')
 HEAD_TOP = TEMPLATE[:TEMPLATE.index('<title>')]          # doctype, consent mode, GTM, AdSense, consent.js
 BODY_OPEN = TEMPLATE[TEMPLATE.index('<body>'):TEMPLATE.index('</header>') + len('</header>')]
 
-NAV = [('/#camera', 'Studio'), ('/tools', 'Tools'), ('/passport-photo', 'Passport photo'), ('/webcam-test', 'Webcam test'),
-       ('/mic-test', 'Mic test'), ('/filters', 'Filters'), ('/guides', 'Guides')]
+NAV = [('/#camera', 'Studio'), ('/passport-photo', 'Passport photo'), ('/guides', 'Guides')]
+NAV_RE = r'<!--nav-->.*?<!--/nav-->|<nav class="site-nav".*?</nav>\s*<a class="header-cta"[^>]*>[^<]*</a>'
+CHEV = '<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>'
+SEARCH_ICO = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>'
+
+def mega_menu():
+    cols = []
+    for cid, cname, _ in CATEGORIES:
+        items = ''.join(f'<li><a href="{t[0]}" data-desc="{html.escape(t[4], quote=True)}" data-cat="{html.escape(cname, quote=True)}">{icon(t[3], 18)}<span>{html.escape(t[1])}</span>{"<i>New</i>" if t[5] else ""}</a></li>' for t in TOOLS if t[2] == cid)
+        cols.append(f'<div class="mega-col"><h3><a href="/tools#{cid}">{cname}</a></h3><ul>{items}</ul></div>')
+    return ('<div class="mega" id="mega-tools" hidden><div class="mega-inner">'
+            f'<div class="mega-cols">{"".join(cols)}</div>'
+            f'<a class="mega-all" href="/tools">See all {len(TOOLS)} tools on one page →</a></div></div>')
 
 def header_nav(current_href, home=False):
     out = []
+    tools_cur = current_href == '/tools' or any(t[0] == current_href for t in TOOLS if not t[0].startswith('/#'))
+    out.append(f'    <div class="nav-item"><button type="button" class="nav-trigger" aria-expanded="false" aria-controls="mega-tools"{" data-current" if tools_cur else ""}>Tools {CHEV}</button>{mega_menu()}</div>')
     for href, label in NAV:
         h = '#camera' if (home and href == '/#camera') else href
         cur = href == current_href or (home and href == '/#camera')
         out.append(f'    <a href="{h}"{" aria-current=\"page\"" if cur else ""}>{label}</a>')
     cta = '#camera' if home else '/#camera'
-    return ('<nav class="site-nav" aria-label="Main navigation">\n' + '\n'.join(out) +
-            f'\n  </nav>\n  <a class="header-cta" href="{cta}">Open camera</a>')
+    return ('<!--nav--><nav class="site-nav" aria-label="Main navigation">\n' + '\n'.join(out) + '\n  </nav>\n'
+            f'  <button type="button" class="nav-search" data-open-search aria-label="Search tools">{SEARCH_ICO}<span>Search tools</span><kbd>Ctrl K</kbd></button>\n'
+            f'  <a class="header-cta" href="{cta}">Open camera</a>\n'
+            '  <button type="button" class="nav-burger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>\n'
+            f'  <script src="/js/nav.js?v={V}" defer></script><!--/nav-->')
 
 def footer():
     cols = []
@@ -174,7 +190,7 @@ def bottom_nav(current):
 
 def page(slug, title, desc, body, schema, script=None, current=None, extra_head=''):
     url = f'{SITE}/{slug}' if slug else f'{SITE}/'
-    body_open = re.sub(r'<nav class="site-nav".*?</nav>\s*<a class="header-cta"[^>]*>[^<]*</a>', lambda m: header_nav(current or f'/{slug}'), BODY_OPEN, count=1, flags=re.S)
+    body_open = re.sub(NAV_RE, lambda m: header_nav(current or f'/{slug}'), BODY_OPEN, count=1, flags=re.S)
     head = f'''<title>{title}</title>
 <meta name="description" content="{html.escape(desc, quote=True)}">
 <link rel="canonical" href="{url}">
@@ -1179,7 +1195,7 @@ for f in sorted(glob.glob('*.html')):
     s = read(f); o = s
     home = slug == 'index'
     cur = '/#camera' if home else f'/{slug}'
-    s = re.sub(r'<nav class="site-nav".*?</nav>\s*<a class="header-cta"[^>]*>[^<]*</a>', lambda m: header_nav(cur, home), s, count=1, flags=re.S)
+    s = re.sub(NAV_RE, lambda m: header_nav(cur, home), s, count=1, flags=re.S)
     s = re.sub(r'<footer class="site-footer">.*?</footer>', lambda m: FOOT, s, count=1, flags=re.S)
     if not home:   # index keeps its app-specific bar (gallery button)
         s = re.sub(r'<nav class="mobile-bottom-nav"[^>]*>.*?</nav>', lambda m: bottom_nav(cur), s, count=1, flags=re.S)

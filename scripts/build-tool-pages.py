@@ -259,34 +259,95 @@ for mode, slug, name, title, desc in [
 
 PAGES['background-remover'] = dict(
   name='Background remover', cat='image', script='bg-remover.js', appcat='PhotographyApplication',
-  title='Remove Background from Photos — Free, Private &amp; Bulk | WebcamClicks',
-  desc='Remove the background from photos of people in seconds. Get a transparent PNG or a white, coloured or blurred background. On-device AI, no uploads, no watermark.',
-  lead='Remove the background from portraits, profile pictures and product shots with people. Get a transparent PNG, or put the person on white, any colour or a blurred version of the original. The AI runs on your device.',
-  ui=f'''<div class="t-grid even">
+  title='Background Remover with Brush &amp; Eraser — Free, Private | WebcamClicks',
+  desc='Remove image backgrounds free: AI cut-out for people plus Erase and Restore brushes to fix edges, or go fully manual for objects and pets. Transparent PNG, white or colour background. No uploads.',
+  lead='AI removes the background from photos of people in seconds. Then fix any edge with the Erase and Restore brushes, or start fully manual to cut out objects, pets and products. Download a transparent PNG or a new background. Nothing is uploaded.',
+  ui=f'''<div class="t-grid bgr-grid">
     <div>
-      {DROP("image/*", "Drop photos of people here", "JPG, PNG or WebP · batch supported · nothing is uploaded")}
+      {DROP("image/*", "Drop photos here", "JPG, PNG or WebP · batch supported · nothing is uploaded")}
+      <label class="t-field" style="margin-top:14px">Start from
+        <select class="t-select" id="t-startfrom">
+          <option value="ai">AI cut-out (people)</option>
+          <option value="keep">Keep whole photo, then erase (manual)</option>
+          <option value="remove">Remove everything, then restore (manual)</option>
+        </select></label>
       <ul class="t-list" id="t-list"></ul>
       <p class="t-status" id="t-status" role="status"></p>
-    </div>
-    <div>
-      <div class="t-preview"><canvas id="t-preview-canvas" width="1" height="1" aria-label="Result preview"></canvas></div>
-      <div class="t-panel" style="margin-top:14px">
+      <div class="t-panel" style="margin-top:12px">
         <div class="t-row">
           <label class="t-field">New background <select class="t-select" id="t-out"><option value="transparent">Transparent (PNG)</option><option value="white">White</option><option value="color">Colour</option><option value="blur">Blurred original</option></select></label>
           <label class="t-field">Colour <input class="t-input" type="color" id="t-color" value="#2563eb" style="height:42px;padding:4px"></label>
         </div>
-        <label class="t-field">Edge: soft ↔ crisp <input class="t-range" type="range" id="t-edge" min="0" max="100" value="35"></label>
+        <label class="t-field">AI edge: soft ↔ crisp <input class="t-range" type="range" id="t-edge" min="0" max="100" value="35"></label>
         <div class="t-actions">
-          <button class="t-btn primary" id="t-run" type="button">Remove background</button>
+          <button class="t-btn primary" id="t-dl-one" type="button" disabled>Download this photo</button>
           <button class="t-btn" id="t-zip" type="button" disabled>Download all</button>
+          <button class="t-btn" id="t-run" type="button" hidden>Process</button>
           <button class="t-btn" id="t-clear" type="button">Clear</button>
         </div>
       </div>
     </div>
-  </div>''',
+    <div class="bgr-editor">
+      <div class="bgr-toolbar" role="toolbar" aria-label="Refine tools">
+        <div class="t-seg bgr-tools">
+          <button type="button" data-tool="view" aria-pressed="true" title="View / pan (V)">✋ View</button>
+          <button type="button" data-tool="erase" aria-pressed="false" title="Erase brush (E)">⌫ Erase</button>
+          <button type="button" data-tool="restore" aria-pressed="false" title="Restore brush (R)">✎ Restore</button>
+        </div>
+        <label class="bgr-ctl">Size <input class="t-range" type="range" id="t-brush" min="4" max="200" value="40"><span id="t-brush-val"></span></label>
+        <label class="bgr-ctl">Softness <input class="t-range" type="range" id="t-soft" min="0" max="100" value="30"></label>
+        <div class="bgr-btns">
+          <button class="t-icon-btn" id="t-undo" type="button" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>↶</button>
+          <button class="t-icon-btn" id="t-redo" type="button" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" disabled>↷</button>
+          <button class="t-btn sm" id="t-reset" type="button" disabled>Reset edits</button>
+          <span class="bgr-zoom"><button class="t-icon-btn" id="t-zoom-out" type="button" aria-label="Zoom out">−</button><button class="t-btn sm" id="t-zoom-fit" type="button" title="Fit to view"><span id="t-zoom-val">100%</span></button><button class="t-icon-btn" id="t-zoom-in" type="button" aria-label="Zoom in">+</button></span>
+          <label class="t-check" style="margin:0"><input type="checkbox" id="t-ghost" checked> Show removed areas</label>
+        </div>
+      </div>
+      <div class="bgr-stage" id="t-stage" data-tool="view">
+        <canvas id="t-preview-canvas" width="1" height="1" aria-label="Editable result preview"></canvas>
+        <div class="bgr-cursor" id="t-cursor" aria-hidden="true"></div>
+      </div>
+      <p class="bgr-hint" id="t-edit-hint"></p>
+    </div>
+  </div>
+  <style>
+  .bgr-grid {{ grid-template-columns: minmax(0, .9fr) minmax(0, 1.6fr); }}
+  .bgr-toolbar {{ display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: #fff; margin-bottom: 10px; }}
+  .bgr-tools {{ flex: 0 0 auto; }}
+  .bgr-tools button {{ flex: 0 0 auto; }}
+  .bgr-tools button[data-tool="erase"][aria-pressed="true"] {{ background: #d92d20; border-color: #d92d20; }}
+  .bgr-tools button[data-tool="restore"][aria-pressed="true"] {{ background: #067647; border-color: #067647; }}
+  .bgr-ctl {{ display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .84rem; }}
+  .bgr-ctl input {{ width: 110px; }}
+  .bgr-ctl span {{ min-width: 44px; color: var(--ink-2); font-weight: 600; }}
+  .bgr-btns {{ display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }}
+  .bgr-zoom {{ display: inline-flex; gap: 4px; align-items: center; }}
+  .bgr-stage {{ position: relative; height: min(68vh, 620px); overflow: auto; border-radius: 14px; border: 1px solid var(--line);
+    background: repeating-conic-gradient(#eef0f3 0 25%, #fff 0 50%) 0 0 / 18px 18px; display: grid; place-items: center; padding: 16px; touch-action: none; overscroll-behavior: contain; }}
+  .bgr-stage.zoomed {{ place-items: start; cursor: grab; }}
+  .bgr-stage canvas {{ max-width: 100%; max-height: 100%; height: auto; display: block; box-shadow: 0 2px 12px rgba(14,14,18,.12); }}
+  .bgr-stage[data-tool="erase"] canvas, .bgr-stage[data-tool="restore"] canvas {{ cursor: none; }}
+  .bgr-cursor {{ position: absolute; left: 0; top: 0; border-radius: 50%; pointer-events: none; opacity: 0; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.6); }}
+  .bgr-cursor[data-mode="erase"] {{ background: rgba(217,45,32,.18); }}
+  .bgr-cursor[data-mode="restore"] {{ background: rgba(6,118,71,.18); }}
+  .bgr-hint {{ margin: 8px 0 0; font-size: .84rem; color: var(--ink-2); }}
+  .t-item.sel {{ border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }}
+  @media (max-width: 860px) {{ .bgr-grid {{ grid-template-columns: 1fr; }} .bgr-stage {{ height: 60vh; }} }}
+  </style>''',
   article='''<h2>How the background remover works</h2>
 <p>This tool uses a compact segmentation model, the same family Google uses for video-call background effects, to decide for every pixel whether it belongs to a person. It runs inside your browser with WebAssembly and your graphics chip, so your photos are never uploaded. The model downloads once (about 250 KB plus the shared runtime) and is cached for next time.</p>
 <p>It is designed for <strong>photos of people</strong>: portraits, selfies, team photos, profile pictures and product shots that include a person. Objects without people, such as a lone mug on a table, aren't detected; use a dedicated object cut-out tool for those.</p>
+<h2>Refine with the brush and eraser</h2>
+<ul>
+<li><strong>Erase</strong> (E) paints away anything the AI kept by mistake, such as a chair back or a gap between arm and body.</li>
+<li><strong>Restore</strong> (R) paints back anything that was cut off, like a strand of hair, a hand or a held object. With <em>Show removed areas</em> on, removed parts appear as a faint red ghost so you can see exactly where to paint.</li>
+<li><strong>Size and softness:</strong> use a soft, large brush for hair and smooth edges and a small, hard brush for crisp outlines. Press <kbd>[</kbd> and <kbd>]</kbd> to change the size quickly.</li>
+<li><strong>Zoom</strong> in for detail with the + button or Ctrl/⌘ + scroll, and drag in View mode to move around.</li>
+<li><strong>Undo / redo</strong> with Ctrl+Z and Ctrl+Shift+Z. <em>Reset edits</em> returns to the AI result. Changing the AI edge setting keeps your brush edits.</li>
+</ul>
+<h3>Cut out objects, pets and products manually</h3>
+<p>The AI is trained on people. For anything else, set <strong>Start from</strong> to <em>Keep whole photo</em> and erase the background with a big brush, then zoom in to tidy the edges. Or choose <em>Remove everything</em> and paint the object back in with Restore, which is often faster when the object is small.</p>
 <h2>Getting a clean cut-out</h2>
 <ul>
 <li><strong>Contrast helps.</strong> A person in dark clothes against a light wall separates more cleanly than beige on beige.</li>
@@ -299,7 +360,8 @@ PAGES['background-remover'] = dict(
   faqs=[
     ('Is this background remover free?', 'Yes, with no watermark, sign-up or limits on how many photos you process.'),
     ('Are my photos uploaded?', 'No. The AI model runs in your browser and your photos never leave your device.'),
-    ('Does it work on objects and products?', 'It is trained to find people. Product photos that include a person (holding or wearing the item) work well; objects on their own usually do not.'),
+    ('Does it work on objects, pets and products?', 'The automatic cut-out is trained on people. For objects and pets, set Start from to "Keep whole photo" and remove the background with the Erase brush, or "Remove everything" and paint the subject back with Restore.'),
+    ('How do I fix hair or missing parts?', 'Choose Restore and paint over the missing area with a soft brush. Turn on "Show removed areas" to see what was cut away. Use Erase for leftovers of the old background.'),
     ('What resolution do I get?', 'Up to 2,400 pixels on the long side, which is enough for social media, documents and most print uses.'),
     ('Why does the edge look soft?', 'Hair and motion blur create partly transparent edges. Move the Edge slider toward "crisp" for a harder outline.'),
   ])

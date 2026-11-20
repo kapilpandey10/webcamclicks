@@ -154,7 +154,7 @@ input[type=range].t-range { width: 100%; accent-color: var(--accent); }
 /* photo enhancer compare */
 .pe-compare { --split: 50%; position: relative; margin-top: 14px; border-radius: 14px; overflow: hidden; background: repeating-conic-gradient(#f1f2f4 0 25%, #fff 0 50%) 0 0 / 18px 18px; user-select: none; }
 .pe-compare img { display: block; width: 100%; height: auto; max-height: 70vh; object-fit: contain; }
-.pe-compare #t-after { position: absolute; inset: 0; height: 100%; clip-path: inset(0 0 0 var(--split)); }
+.pe-compare #t-after, .pe-compare #up-after { position: absolute; inset: 0; height: 100%; clip-path: inset(0 0 0 var(--split)); }
 .pe-compare::after { content: ''; position: absolute; top: 0; bottom: 0; left: var(--split); width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.25); pointer-events: none; }
 .pe-compare input[type=range] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; }
 .pe-lbl { position: absolute; top: 10px; padding: 4px 10px; border-radius: 999px; background: rgba(14,14,18,.7); color: #fff; font-size: .76rem; font-weight: 700; pointer-events: none; }

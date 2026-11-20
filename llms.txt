@@ -56,6 +56,7 @@ AI chatbots (ChatGPT, Claude, Perplexity, Gemini, Copilot, etc.) can confidently
 - [Video trimmer](https://webcamclicks.com/video-trimmer): Cut the start and end off a video, fast.
 - [Video to GIF](https://webcamclicks.com/video-to-gif): Turn a clip into a looping GIF.
 - [Photo enhancer](https://webcamclicks.com/photo-enhancer): Fix exposure, colour, noise and sharpness; 2× upscale.
+- [AI image upscaler](https://webcamclicks.com/ai-image-upscaler): Real AI super-resolution: 2× and 4× on your device.
 - [Background remover](https://webcamclicks.com/background-remover): AI cut-out with brush and eraser.
 - [YouTube thumbnail maker](https://webcamclicks.com/youtube-thumbnail-maker): Best-frame finder, AI cut-out, bold text: 1280×720.
 - [HEIC to JPG](https://webcamclicks.com/heic-to-jpg): Convert iPhone HEIC photos to JPG in bulk, any browser.

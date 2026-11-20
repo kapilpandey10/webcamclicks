@@ -384,3 +384,46 @@ PAGES['redact-pdf'] = dict(
         ('Will the rest of my PDF change?', 'Pages without redactions are copied exactly as they were. Redacted pages look the same but are now images.'),
         ('Can it find information in scanned PDFs?', 'Automatic finding needs a text layer. For scans, draw the boxes by hand; the result is just as permanent.'),
         ('Is my document uploaded?', 'No. Everything happens in your browser, which is what you want for confidential files.')])
+
+# ------------------------------------------------------------------------------------------- AI upscaler
+PAGES['ai-image-upscaler'] = dict(
+  name='AI image upscaler', cat='image', script='ai-upscaler.js', appcat='PhotographyApplication',
+  title='AI Image Upscaler — Enlarge Photos 2× & 4× Free, No Upload | WebcamClicks',
+  desc='Upscale photos 2× or 4× with real AI super-resolution (Swin2SR) running in your browser. Restores detail, removes JPEG artifacts. Free, no sign-up, nothing uploaded.',
+  lead='Enlarge small, old or compressed photos with an AI super-resolution model that runs on your device. It rebuilds sharp edges and fine detail instead of just stretching pixels, and can clean up JPEG blockiness at the same time.',
+  ui=f'''<div class="t-grid">
+    <div>
+      {DROP("image/*,.heic,.heif", "Drop a photo to upscale", "JPG, PNG, WebP, HEIC · nothing is uploaded", multiple=False)}
+      <div class="pe-compare" id="up-compare" hidden style="--split:50%">
+        <img id="up-before" alt="Before"><img id="up-after" alt="After">
+        <span class="pe-lbl l">Before</span><span class="pe-lbl r">AI upscaled</span>
+        <input type="range" id="up-split" min="0" max="100" value="50" aria-label="Compare before and after">
+      </div>
+      <p class="t-status" id="up-info"></p>
+      <p class="t-status" id="t-status" role="status"></p>
+      <div class="sr-progress" id="up-bar" hidden><div id="up-fill"></div></div>
+    </div>
+    <div class="t-panel">
+      <h2>AI model</h2>
+      <label class="t-field">Photo type <select class="t-select" id="up-model"><option value="photo">Photo, real-world (4×)</option><option value="jpeg">Compressed / blocky JPEG (4×)</option><option value="sharp">Graphics, screenshots, text (2×)</option></select></label>
+      <p class="cap-model" id="up-model-status" aria-live="polite"></p>
+      <label class="t-field">Output size <select class="t-select" id="up-out"><option value="0">Full (4× or 2×)</option><option value="3">3×</option><option value="2">2×</option></select></label>
+      <button class="t-btn primary" id="up-run" type="button" disabled style="width:100%">✨ Upscale again</button>
+      <h2 style="margin-top:14px">Save</h2>
+      <label class="t-field">Format <select class="t-select" id="up-fmt"><option value="image/png">PNG (best quality)</option><option value="image/jpeg">JPG (smaller)</option><option value="image/webp">WebP</option></select></label>
+      <button class="t-btn" id="up-dl" type="button" disabled style="width:100%">⬇ Download</button>
+    </div>
+  </div>''',
+  article='''<h2>How AI upscaling differs from resizing</h2>
+<p>Ordinary resizing (in Paint, Photoshop's bicubic or any website resizer) estimates new pixels by averaging their neighbours, so an enlarged photo looks soft and blocky. An <strong>AI super-resolution</strong> model has learned from millions of image pairs what sharp detail looks like, and redraws edges, hair, text and textures at the new size. WebcamClicks uses <strong>Swin2SR</strong>, a transformer-based model from the research community, converted to run in your browser.</p>
+<h2>Which model to choose</h2>
+<ul><li><strong>Photo, real-world (4×)</strong> is trained on real camera noise and blur: best for old phone photos, webcam snapshots and pictures saved from chats.</li>
+<li><strong>Compressed JPEG (4×)</strong> also removes the blocky 8×8 artifacts of heavily compressed images, such as screenshots of screenshots or images from social media.</li>
+<li><strong>Graphics, screenshots, text (2×)</strong> keeps lines and lettering crisp for logos, UI screenshots and diagrams.</li></ul>
+<p>Need 2× from a photo? Choose the 4× photo model with output size 2×: the result is usually sharper than a 2× model.</p>
+<h2>Speed and limits</h2>
+<p>The model (about 20–60 MB) downloads in the background when you open the page and is then cached. With a graphics chip (WebGPU), a typical photo takes seconds; on the processor alone, larger photos can take a minute or two. To keep memory in check, very large photos are processed at up to about 1.2 megapixels for 4× (giving roughly 19 megapixels out). For quick fixes of exposure and colour without enlarging, use the <a href="/photo-enhancer">photo enhancer</a>.</p>''' + PRIVACY,
+  faqs=[('Is the AI upscaler free?', 'Yes, with no credits, watermark or sign-up.'),
+        ('Are my photos uploaded?', 'No. The AI model runs in your browser; only the model itself is downloaded once.'),
+        ('Can it make a blurry photo sharp?', 'It restores detail when a photo is small or slightly soft. It cannot recover a photo that is badly out of focus or shaken.'),
+        ('Does it invent details?', 'Like every AI upscaler it fills in plausible fine detail, so very small faces or text may not be exactly what the camera saw. Use it for display and print, not as evidence.')])

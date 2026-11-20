@@ -90,6 +90,7 @@ TOOLS = [
   ('/video-trimmer', 'Video trimmer', 'video', 'scissors', 'Cut the start and end off a video, fast.', True),
   ('/video-to-gif', 'Video to GIF', 'video', 'gif', 'Turn a clip into a looping GIF.', True),
   ('/photo-enhancer', 'Photo enhancer', 'image', 'wand', 'Fix exposure, colour, noise and sharpness; 2× upscale.', True),
+  ('/ai-image-upscaler', 'AI image upscaler', 'image', 'upscale', 'Real AI super-resolution: 2× and 4× on your device.', True),
   ('/passport-photo', 'Passport photo maker', 'image', 'id', 'Official sizes for 10 countries at 300 DPI.', False),
   ('/background-remover', 'Background remover', 'image', 'scissors', 'AI cut-out with brush and eraser.', False),
   ('/youtube-thumbnail-maker', 'YouTube thumbnail maker', 'image', 'thumb', 'Best-frame finder, AI cut-out, bold text: 1280×720.', True),

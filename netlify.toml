@@ -15,17 +15,19 @@
 [[headers]]
   for = "/assets/*"
   [headers.values]
-    Cache-Control = "public, max-age=604800, immutable"
+    Cache-Control = "public, max-age=86400"
 
+# JS/CSS filenames are not content-hashed, so browsers must revalidate on each visit
+# (Netlify answers with a cheap 304 when unchanged). Prevents new HTML + stale CSS after a deploy.
 [[headers]]
   for = "/js/*"
   [headers.values]
-    Cache-Control = "public, max-age=86400"
+    Cache-Control = "public, max-age=0, must-revalidate"
 
 [[headers]]
   for = "/styles/*"
   [headers.values]
-    Cache-Control = "public, max-age=86400"
+    Cache-Control = "public, max-age=0, must-revalidate"
 
 # Canonical 301 Redirects: www to non-www
 [[redirects]]

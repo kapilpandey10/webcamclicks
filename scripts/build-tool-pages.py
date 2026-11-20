@@ -678,8 +678,8 @@ PAGES['password-generator'] = dict(
 
 PAGES['screen-recorder'] = dict(
   name='Screen recorder', cat='camera', script='screen-recorder.js', appcat='MultimediaApplication',
-  title='Screen Recorder with Auto Zoom, Crop &amp; Device Frames — Free | WebcamClicks',
-  desc='Free online screen recorder with a built-in editor: smart auto-zoom, trim, crop, 16:9 / 9:16 / 1:1 export, gradient backgrounds, Mac, Windows, laptop and phone frames, webcam bubble. No install, no watermark.',
+  title='Free Screen Recorder &amp; Video Editor: Auto Zoom, Noise Removal, Music, Text | WebcamClicks',
+  desc='Free online screen recorder with a CapCut-style editor: split and cut clips, smart auto-zoom, noise removal, voice enhance, royalty-free music with auto-ducking, text and titles, transitions, colour looks, device frames. Fast export, no watermark.',
   lead='Record your screen, a window or a tab with your voice and webcam. Then polish it in the built-in editor: smart auto-zoom, trim, crop, beautiful backgrounds, a device frame that matches your computer, and a movable webcam bubble. Export for YouTube, Shorts or Reels. Nothing is uploaded.',
   ui=r"""<div id="t-rec-panel">
   <div class="t-grid">
@@ -720,19 +720,38 @@ PAGES['screen-recorder'] = dict(
     <div class="sr-transport">
       <button class="t-btn dark sm" id="t-ed-play" type="button" aria-label="Play or pause">▶</button>
       <span class="sr-time" id="t-ed-time">00:00 / 00:00</span>
+      <span class="sr-tools">
+        <button class="sr-tool" id="t-split" type="button" title="Split at playhead (S) · or double-click the timeline">✂ Split</button>
+        <button class="sr-tool" id="t-clip-del" type="button" title="Cut the selected clip (Delete)" disabled>🗑 Delete clip</button>
+        <button class="sr-tool" id="t-undo" type="button" title="Undo (Ctrl+Z)" disabled>↶</button>
+        <button class="sr-tool" id="t-redo" type="button" title="Redo (Ctrl+Shift+Z)" disabled>↷</button>
+      </span>
       <span class="sr-zoomcount" id="t-zoom-count"></span>
     </div>
     <div class="sr-track" id="t-ed-track" aria-label="Timeline">
-      <div class="sr-trim" id="t-ed-trim"></div>
+      <canvas class="sr-thumbs" id="t-ed-thumbs" width="1" height="1" aria-hidden="true"></canvas>
+      <div class="sr-lane sr-clips" id="t-ed-clips"></div>
+      <div class="sr-lane sr-wavelane" id="t-ed-wavelane"><canvas id="t-ed-wave" width="1" height="1" aria-hidden="true"></canvas></div>
       <div class="sr-lane sr-scenes" id="t-ed-scenes" hidden></div>
       <div class="sr-lane sr-zooms" id="t-ed-zooms"></div>
+      <div class="sr-lane sr-texts" id="t-ed-texts" hidden></div>
+      <div class="sr-trim" id="t-ed-trim"></div>
       <div class="sr-playhead" id="t-ed-playhead"></div>
     </div>
-    <div class="sr-legend"><span><i class="lg-scene"></i>Scenes</span><span><i class="lg-zoom"></i>Zooms (light = auto)</span><span>Drag a block to move it · drag its edges to resize</span></div>
+    <div class="sr-legend"><span><i class="lg-clip"></i>Clips</span><span><i class="lg-wave"></i>Audio</span><span><i class="lg-scene"></i>Scenes</span><span><i class="lg-zoom"></i>Zooms</span><span><i class="lg-text"></i>Text</span><span>Double-click to split · drag blocks to move, edges to resize</span></div>
     <p class="t-status" id="t-ed-status" role="status"></p>
-    <p class="sr-hint">Click the preview to add a zoom right there. Space plays or pauses, ← → skip, Delete removes the selected zoom.</p>
+    <p class="sr-hint">Shortcuts: Space play/pause · S split · Delete cut clip or remove selected · Ctrl+Z undo · ← → skip · click the preview to add a zoom.</p>
   </div>
   <aside class="sr-side">
+    <div class="sr-tabs" role="tablist" aria-label="Editor tools">
+      <button type="button" role="tab" data-tab-btn="edit">✂<span>Edit</span></button>
+      <button type="button" role="tab" data-tab-btn="audio">♪<span>Audio</span></button>
+      <button type="button" role="tab" data-tab-btn="text">T<span>Text</span></button>
+      <button type="button" role="tab" data-tab-btn="effects">✦<span>Effects</span></button>
+      <button type="button" role="tab" data-tab-btn="layout">▣<span>Layout</span></button>
+      <button type="button" role="tab" data-tab-btn="export">⬇<span>Export</span></button>
+    </div>
+    <div data-pane="edit">
     <details open class="sr-auto"><summary>✨ Auto edit</summary>
       <p class="sr-note" style="margin:0 0 10px">One click: gentle zooms on your clicks<span id="t-intro-note"> and camera scenes</span>, then fine-tune anything below.</p>
       <div class="t-row">
@@ -742,19 +761,9 @@ PAGES['screen-recorder'] = dict(
       <label class="t-check" id="t-intro-wrap" hidden><input type="checkbox" id="t-intro-outro" checked> Camera intro &amp; outro</label>
       <button class="t-btn primary" id="t-auto-edit" type="button" style="width:100%">✨ Auto edit</button>
     </details>
-    <details open id="t-scenes-wrap" hidden><summary>Scenes</summary>
-      <p class="sr-note" id="t-scene-info" style="margin:0 0 8px"></p>
-      <div class="sr-layouts">
-        <button type="button" data-layout="camera" aria-pressed="false"><span class="ly ly-camera"></span>Camera full</button>
-        <button type="button" data-layout="split" aria-pressed="false"><span class="ly ly-split"></span>Split screen</button>
-        <button type="button" data-layout="bubble" aria-pressed="false"><span class="ly ly-bubble"></span>Screen + bubble</button>
-        <button type="button" data-layout="screen" aria-pressed="false"><span class="ly ly-screen"></span>Screen only</button>
-      </div>
-      <div class="t-actions" style="margin-top:10px"><button class="t-btn sm" id="t-scene-split" type="button">✂ Split at playhead</button><button class="t-btn sm" id="t-scene-del" type="button">Delete scene</button></div>
-      <div class="t-row" style="margin-top:12px">
-        <label class="t-field">Transition <select class="t-select" id="t-trans-style"><option value="smooth" selected>Smooth</option><option value="fade">Fade</option><option value="cut">Cut</option></select></label>
-        <label class="t-field">Length <span id="t-trans-dur-val">0.6s</span><input class="t-range" type="range" id="t-trans-dur" min="0.2" max="1.5" step="0.1" value="0.6"></label>
-      </div>
+    <details open><summary>Clips</summary>
+      <p class="sr-note" id="t-clip-info" style="margin:0 0 8px"></p>
+      <p class="sr-note" style="margin:0">Double-click the timeline (or press S) to split. Select a clip and press Delete to cut it: the video jumps over it in playback and export. Undo anything with Ctrl+Z.</p>
     </details>
     <details open><summary>Zoom</summary>
       <div class="t-actions" style="margin-top:0"><button class="t-btn sm" id="t-auto-zoom" type="button">Auto zoom only</button><button class="t-btn sm" id="t-add-zoom" type="button">+ Zoom at playhead</button></div>
@@ -771,6 +780,84 @@ PAGES['screen-recorder'] = dict(
       <div class="t-row" style="margin-top:12px"><label class="t-field">Crop shape <select class="t-select" id="t-crop-aspect"><option value="free">Free</option><option value="16:9">16:9</option><option value="9:16">9:16</option><option value="1:1">1:1</option><option value="4:3">4:3</option></select></label>
         <div class="t-field">&nbsp;<button class="t-btn sm" id="t-crop-toggle" type="button">Edit crop</button></div></div>
       <button class="t-btn sm" id="t-crop-reset" type="button">Reset crop</button>
+    </details>
+    </div>
+    <div data-pane="audio" hidden>
+      <details open><summary>Voice</summary>
+        <label class="t-field">Volume <span id="t-voice-vol-val">100%</span><input class="t-range" type="range" id="t-voice-vol" min="0" max="200" value="100"></label>
+        <label class="t-check"><input type="checkbox" id="t-voice-mute"> Mute original audio</label>
+        <label class="t-check"><input type="checkbox" id="t-clean"> Remove background noise</label>
+        <label class="t-field">Noise removal strength <input class="t-range" type="range" id="t-clean-str" min="10" max="100" value="60" disabled></label>
+        <label class="t-check"><input type="checkbox" id="t-enhance"> Enhance voice (clarity, compression, loudness)</label>
+        <p class="t-status" id="t-audio-status" role="status" style="font-size:.8rem;margin:4px 0 0"></p>
+      </details>
+      <details open><summary>Background music</summary>
+        <label class="t-field">Track <select class="t-select" id="t-music">
+          <option value="none">None</option><option value="lofi">Lo-fi chill (generated)</option><option value="upbeat">Upbeat (generated)</option>
+          <option value="ambient">Ambient (generated)</option><option value="corporate">Corporate (generated)</option><option value="cinematic">Cinematic (generated)</option>
+          <option value="file">Your own audio file…</option></select></label>
+        <input type="file" id="t-music-file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac" hidden>
+        <label class="t-field">Music volume <span id="t-music-vol-val">25%</span><input class="t-range" type="range" id="t-music-vol" min="0" max="100" value="25"></label>
+        <label class="t-check"><input type="checkbox" id="t-music-mute"> Mute music</label>
+        <label class="t-check"><input type="checkbox" id="t-duck" checked> Auto-duck music while you talk</label>
+        <div class="t-row">
+          <label class="t-field">Fade in (s) <input class="t-input" type="number" id="t-fade-in" min="0" max="10" step="0.5" value="1"></label>
+          <label class="t-field">Fade out (s) <input class="t-input" type="number" id="t-fade-out" min="0" max="10" step="0.5" value="2"></label>
+        </div>
+        <p class="sr-note">Generated tracks are composed in your browser, so they're royalty-free. Only import music you have the rights to use. Downloading audio from YouTube isn't supported: it breaks YouTube's terms and most of it is copyrighted.</p>
+      </details>
+    </div>
+    <div data-pane="text" hidden>
+      <details open><summary>Add text</summary>
+        <div class="sr-presets">
+          <button type="button" data-text-preset="title" aria-pressed="true"><b>Aa</b>Title</button>
+          <button type="button" data-text-preset="lower" aria-pressed="false"><b>▬</b>Lower third</button>
+          <button type="button" data-text-preset="caption" aria-pressed="false"><b>❝</b>Caption</button>
+          <button type="button" data-text-preset="label" aria-pressed="false"><b>●</b>Label</button>
+          <button type="button" data-text-preset="callout" aria-pressed="false"><b>➜</b>Callout</button>
+        </div>
+        <button class="t-btn primary" id="t-text-add" type="button" style="width:100%;margin-top:10px">+ Add text at playhead</button>
+      </details>
+      <details open id="t-text-panel" hidden><summary>Edit text</summary>
+        <label class="t-field">Text <textarea class="t-textarea" id="t-text-val" rows="2" style="min-height:64px"></textarea></label>
+        <label class="t-field" id="t-text-sub-wrap">Second line <input class="t-input" id="t-text-sub"></label>
+        <div class="t-row">
+          <label class="t-field">Style <select class="t-select" id="t-text-style"></select></label>
+          <label class="t-field">Position <select class="t-select" id="t-text-pos"></select></label>
+        </div>
+        <div class="t-row">
+          <label class="t-field">Animation <select class="t-select" id="t-text-anim"></select></label>
+          <label class="t-field">Colour <input class="t-input" type="color" id="t-text-color" value="#ffffff" style="height:42px;padding:4px"></label>
+        </div>
+        <div class="t-row"><label class="t-field">Start (s) <input class="t-input" type="number" id="t-text-start" step="0.1"></label><label class="t-field">End (s) <input class="t-input" type="number" id="t-text-end" step="0.1"></label></div>
+        <button class="t-btn sm" id="t-text-del" type="button">Delete text</button>
+      </details>
+    </div>
+    <div data-pane="effects" hidden>
+      <details open><summary>Colour look</summary>
+        <label class="t-field">Preset <select class="t-select" id="t-look"></select></label>
+        <label class="t-field">Brightness <input class="t-range" type="range" id="t-fx-b" min="-100" max="100" value="0"></label>
+        <label class="t-field">Contrast <input class="t-range" type="range" id="t-fx-c" min="-100" max="100" value="0"></label>
+        <label class="t-field">Saturation <input class="t-range" type="range" id="t-fx-s" min="-100" max="100" value="0"></label>
+        <label class="t-field">Warmth <input class="t-range" type="range" id="t-fx-w" min="-100" max="100" value="0"></label>
+        <label class="t-field">Vignette <input class="t-range" type="range" id="t-fx-v" min="0" max="100" value="0"></label>
+        <button class="t-btn sm" id="t-fx-reset" type="button">Reset look</button>
+      </details>
+    </div>
+    <div data-pane="layout" hidden>
+    <details open id="t-scenes-wrap" hidden><summary>Scenes</summary>
+      <p class="sr-note" id="t-scene-info" style="margin:0 0 8px"></p>
+      <div class="sr-layouts">
+        <button type="button" data-layout="camera" aria-pressed="false"><span class="ly ly-camera"></span>Camera full</button>
+        <button type="button" data-layout="split" aria-pressed="false"><span class="ly ly-split"></span>Split screen</button>
+        <button type="button" data-layout="bubble" aria-pressed="false"><span class="ly ly-bubble"></span>Screen + bubble</button>
+        <button type="button" data-layout="screen" aria-pressed="false"><span class="ly ly-screen"></span>Screen only</button>
+      </div>
+      <div class="t-actions" style="margin-top:10px"><button class="t-btn sm" id="t-scene-split" type="button">✂ Split at playhead</button><button class="t-btn sm" id="t-scene-del" type="button">Delete scene</button></div>
+      <div class="t-row" style="margin-top:12px">
+        <label class="t-field">Transition <select class="t-select" id="t-trans-style"><option value="smooth" selected>Smooth move</option></select></label>
+        <label class="t-field">Length <span id="t-trans-dur-val">0.6s</span><input class="t-range" type="range" id="t-trans-dur" min="0.2" max="1.5" step="0.1" value="0.6"></label>
+      </div>
     </details>
     <details open><summary>Background &amp; frame</summary>
       <div class="t-row">
@@ -795,6 +882,8 @@ PAGES['screen-recorder'] = dict(
       </div>
       <label class="t-field">Size <input class="t-range" type="range" id="t-cam-size" min="12" max="40" value="22"></label>
     </details>
+    </div>
+    <div data-pane="export" hidden>
     <details open><summary>Export</summary>
       <div class="t-row">
         <label class="t-field">Resolution <select class="t-select" id="t-res"><option value="720">720p</option><option value="1080" selected>1080p</option><option value="1440">1440p</option></select></label>
@@ -806,6 +895,7 @@ PAGES['screen-recorder'] = dict(
       <p class="sr-note">Fast export uses your computer's video encoder and skips frames where nothing changes, so most recordings export several times faster than their length, even in a background tab.</p>
       <button class="t-btn sm" id="t-new-rec" type="button" style="margin-top:6px">New recording</button>
     </details>
+    </div>
   </aside>
 </div>
 <style>
@@ -816,7 +906,7 @@ PAGES['screen-recorder'] = dict(
 .sr-cd {{ position:absolute; inset:0; z-index:2; display:grid; place-items:center; font:800 7rem/1 var(--font); color:#fff; background:rgba(14,14,18,.55); }}
 .sr-timer {{ margin:0 0 12px; font:800 2rem/1 ui-monospace,Menlo,monospace; letter-spacing:-.02em; }}
 .sr-note {{ font-size:.8rem; color:var(--ink-2); margin:8px 0 0; line-height:1.5; }}
-.sr-editor {{ display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:20px; align-items:start; }}
+.sr-editor {{ display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:20px; align-items:start; }}
 .sr-stage {{ position:relative; background:repeating-conic-gradient(#eef0f3 0 25%,#fff 0 50%) 0 0/18px 18px; border-radius:14px; border:1px solid var(--line); padding:12px; display:grid; place-items:center; }}
 .sr-stage canvas {{ max-width:100%; max-height:62vh; height:auto; display:block; border-radius:6px; cursor:crosshair; }}
 .sr-stage.cropping canvas {{ cursor:default; }}
@@ -824,10 +914,32 @@ PAGES['screen-recorder'] = dict(
 .sr-crop span {{ position:absolute; width:16px; height:16px; background:#fff; border:2px solid var(--accent); border-radius:4px; }}
 .sr-crop [data-h=tl] {{ left:-8px; top:-8px; cursor:nwse-resize; }} .sr-crop [data-h=tr] {{ right:-8px; top:-8px; cursor:nesw-resize; }}
 .sr-crop [data-h=bl] {{ left:-8px; bottom:-8px; cursor:nesw-resize; }} .sr-crop [data-h=br] {{ right:-8px; bottom:-8px; cursor:nwse-resize; }}
-.sr-transport {{ display:flex; align-items:center; gap:12px; margin:12px 0 8px; }}
-.sr-time {{ font:600 .9rem ui-monospace,Menlo,monospace; color:var(--ink-2); }}
-.sr-zoomcount {{ margin-left:auto; font-size:.82rem; color:var(--ink-2); font-weight:600; }}
+.sr-transport {{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin:12px 0 8px; }}
+.sr-time {{ font:600 .9rem ui-monospace,Menlo,monospace; color:var(--ink-2); white-space:nowrap; }}
+.sr-zoomcount {{ margin-left:auto; font-size:.82rem; color:var(--ink-2); font-weight:600; white-space:nowrap; }}
 .sr-track {{ position:relative; height:44px; border-radius:12px; background:var(--surface-3); cursor:pointer; touch-action:none; overflow:hidden; }}
+.sr-tools {{ display:flex; flex-wrap:wrap; gap:6px; margin-left:8px; }}
+.sr-tool {{ border:1px solid var(--line-strong); background:#fff; border-radius:9px; padding:6px 10px; font:700 .8rem var(--font); color:var(--ink); cursor:pointer; white-space:nowrap; }}
+.sr-tool:hover:not([disabled]) {{ border-color:var(--ink); }}
+.sr-tool[disabled] {{ opacity:.4; cursor:default; }}
+.sr-thumbs {{ position:absolute; left:0; width:100%; border-radius:8px; opacity:.9; pointer-events:none; image-rendering:auto; }}
+.sr-clips {{ z-index:1; }}
+.ed-clip {{ background:transparent; border:2px solid rgba(255,255,255,.9); box-shadow:inset 0 0 0 1px rgba(14,14,18,.35); border-radius:8px; color:#fff; text-shadow:0 1px 2px #000; line-height:36px; }}
+.ed-clip::before, .ed-clip::after {{ display:none; }}
+.ed-clip.del {{ background:repeating-linear-gradient(135deg, rgba(14,14,18,.78) 0 8px, rgba(14,14,18,.6) 8px 16px); }}
+.ed-clip.sel {{ border-color:var(--accent); box-shadow:0 0 0 2px var(--accent); outline:none; }}
+.sr-wavelane {{ background:#e8eefc; border-radius:7px; overflow:hidden; }}
+.sr-wavelane canvas {{ width:100%; height:100%; display:block; }}
+.ed-text {{ background:#7c3aed; }}
+.lg-clip {{ background:#94a3b8; }} .lg-wave {{ background:#3b82f6; }} .lg-text {{ background:#7c3aed; }}
+.sr-tabs {{ display:grid; grid-template-columns:repeat(6,1fr); gap:4px; padding:4px; border:1px solid var(--line); border-radius:14px; background:#fff; margin-bottom:10px; position:sticky; top:72px; z-index:3; }}
+.sr-tabs button {{ display:flex; flex-direction:column; align-items:center; gap:2px; border:0; background:none; border-radius:10px; padding:7px 2px; font:800 1rem var(--font); color:var(--ink-2); cursor:pointer; }}
+.sr-tabs button span {{ font-size:.66rem; font-weight:700; }}
+.sr-tabs button[aria-selected="true"] {{ background:var(--ink); color:#fff; }}
+.sr-presets {{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }}
+.sr-presets button {{ display:flex; flex-direction:column; align-items:center; gap:3px; padding:9px 4px; border:1px solid var(--line-strong); border-radius:10px; background:#fff; font:700 .72rem var(--font); cursor:pointer; color:var(--ink); }}
+.sr-presets button b {{ font-size:1rem; }}
+.sr-presets button[aria-pressed="true"] {{ border-color:var(--ink); box-shadow:0 0 0 2px var(--ink); }}
 .sr-track.has-scenes {{ height:76px; }}
 .sr-lane {{ position:absolute; left:0; right:0; height:26px; }}
 .sr-scenes {{ top:8px; }}
@@ -852,12 +964,12 @@ PAGES['screen-recorder'] = dict(
 .ly-bubble::before {{ inset:3px; background:#5b5f6b; border-radius:2px; }} .ly-bubble::after {{ right:5px; bottom:5px; width:11px; height:11px; border-radius:50%; background:#7c3aed; border:1.5px solid #fff; }}
 .ly-screen::before {{ inset:3px; background:#5b5f6b; border-radius:2px; }}
 .sr-auto {{ border-color:var(--ink) !important; }}
-.sr-trim {{ position:absolute; top:0; bottom:0; background:#fff; border:2px solid var(--ink); border-radius:12px; box-sizing:border-box; }}
+.sr-trim {{ position:absolute; top:0; bottom:0; border:2px solid var(--ink); border-radius:12px; box-sizing:border-box; pointer-events:none; z-index:2; }}
 .sr-zooms {{ position:absolute; left:0; right:0; top:26px; height:24px; }}
 .ed-zoom {{ background:var(--accent); }}
 .ed-zoom.auto {{ background:#ff9a82; }}
 .ed-block.sel {{ outline:3px solid var(--ink); outline-offset:1px; z-index:2; }}
-.sr-playhead {{ position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--ink); pointer-events:none; }}
+.sr-playhead {{ position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--accent); pointer-events:none; z-index:4; box-shadow:0 0 0 1px #fff; }}
 .sr-hint {{ font-size:.8rem; color:var(--ink-3); margin:6px 0 0; }}
 .sr-side details {{ border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:10px; background:#fff; }}
 .sr-side summary {{ font-weight:800; cursor:pointer; margin-bottom:10px; }}
@@ -875,6 +987,11 @@ PAGES['screen-recorder'] = dict(
 <h2>Polish it in the built-in editor</h2>
 <p>When you stop recording, the editor opens with your video, ready to export in seconds or fine-tune:</p>
 <ul>
+<li><strong>Split and cut like a video editor.</strong> Double-click the timeline (or press S) to split the recording into clips, select a clip and press Delete to cut it. Mistakes, pauses and "umm"s are gone. Undo anything with Ctrl+Z.</li>
+<li><strong>Studio-quality audio.</strong> Remove background noise such as fans, hiss and hum (it learns the noise from your quiet moments), enhance your voice with clarity, compression and loudness levelling, set volume or mute the original sound.</li>
+<li><strong>Background music that ducks under your voice.</strong> Pick a generated, royalty-free track (lo-fi, upbeat, ambient, corporate or cinematic) or import your own file. The music automatically gets quieter while you talk and fades in and out.</li>
+<li><strong>Text and titles.</strong> Titles, lower thirds with your name, captions, labels and callouts, with fade, pop, slide-up or typewriter animations, each on its own timeline track.</li>
+<li><strong>Looks and transitions.</strong> Vivid, Cinematic, Warm, Cool, B&amp;W, Vintage or Soft colour looks with brightness, contrast, saturation, warmth and vignette, plus smooth, fade, dip-to-black, slide, zoom, circle-wipe and blur transitions between scenes.</li>
 <li><strong>One-click Auto edit.</strong> Adds gentle zooms on your clicks and, if you recorded your webcam, a camera intro and outro with smooth transitions. Everything it creates can be changed.</li>
 <li><strong>Click-aware zoom.</strong> The editor looks for what a click does: a small area of the screen that suddenly reacts after being still, such as a menu opening or a button highlighting. Typing, videos and scrolling are ignored, and nearby clicks share one zoom so the picture doesn't chase every movement. Choose Subtle, Medium or Strong and Fewer, Normal or More, drag zooms on the timeline, or click the preview to add one exactly where you want.</li>
 <li><strong>Scenes with full control.</strong> Split the video at any moment and choose what viewers see in each part: your camera full screen, a split screen with you beside the screen, the screen with a webcam bubble, or the screen only. For example, camera full for the first 5 seconds, then split screen, then the screen with a bubble. Drag scene edges to retime them, and pick Smooth, Fade or Cut transitions.</li>
@@ -897,6 +1014,9 @@ PAGES['screen-recorder'] = dict(
   faqs=[('Is there a time limit or watermark?', 'No. Record as long as your device has free storage, with no watermark.'),
         ('Is my recording uploaded?', 'No. The video is recorded in your browser and saved directly to your device.'),
         ('Can I record on my phone?', 'Mobile browsers do not allow websites to capture the screen. Use the built-in screen recorder on iPhone or Android instead.'),
+        ('Can I import audio from a YouTube link?', 'No. YouTube does not allow its videos or music to be downloaded by other sites, and most of it is copyrighted, so using it would get your video muted or removed. Use the built-in royalty-free generated music, or import an audio file you own or have licensed.'),
+        ('How does noise removal work?', 'The editor finds the quietest moments of your recording, learns what the background noise sounds like, and removes that sound everywhere while keeping your voice. It runs on your device; nothing is uploaded.'),
+        ('How do I cut out a mistake?', 'Double-click the timeline at the start and at the end of the mistake to split it into its own clip, click that clip and press Delete. Playback and export skip it automatically.'),
         ('Why is exporting fast now?', 'The editor encodes frames directly with your computer\'s video encoder instead of replaying the video, and skips re-encoding frames where nothing changed. Older browsers without this feature fall back to real-time export.'),
         ('Why is there no system sound?', 'Share a browser tab (and tick "Share tab audio") in Chrome or Edge, or share the entire screen on Windows. macOS blocks system audio capture from browsers.')])
 

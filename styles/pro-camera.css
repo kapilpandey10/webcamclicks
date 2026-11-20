@@ -9,15 +9,15 @@
   --pro-surface: #0e1117;
   --pro-surface-2: #161a23;
   --pro-border: rgba(255, 255, 255, 0.12);
-  --pro-border-glow: rgba(236, 72, 153, 0.35);
+  --pro-border-glow: rgba(255, 77, 46, 0.35);
   --pro-text: #f8fafc;
   --pro-muted: #94a3b8;
-  --pro-accent: #ec4899;
+  --pro-accent: #ff4d2e;
   --pro-accent-cyan: #06b6d4;
   --pro-amber: #f59e0b;
   --pro-rec-red: #ef4444;
   --pro-rec-glow: rgba(239, 68, 68, 0.55);
-  --pro-font: 'Outfit', -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  --pro-font: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
   --pro-mono: "SF Mono", Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
@@ -43,7 +43,7 @@ html, body {
   justify-content: space-between;
   gap: 16px;
   padding: 12px 24px;
-  background: linear-gradient(90deg, rgba(236, 72, 153, 0.18) 0%, rgba(14, 165, 233, 0.15) 100%);
+  background: linear-gradient(90deg, rgba(255, 77, 46, 0.18) 0%, rgba(14, 165, 233, 0.15) 100%);
   border-bottom: 1px solid var(--pro-border);
   color: #f1f5f9;
   font-size: 0.88rem;
@@ -62,8 +62,8 @@ html, body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(236, 72, 153, 0.25);
-  border: 1px solid rgba(236, 72, 153, 0.4);
+  background: rgba(255, 77, 46, 0.25);
+  border: 1px solid rgba(255, 77, 46, 0.4);
   color: #ffffff;
   font-weight: 700;
   padding: 3px 10px;
@@ -147,7 +147,7 @@ html, body {
     0 0 0 4px #262a33,
     0 0 0 6px #12151c,
     0 25px 60px -10px rgba(0, 0, 0, 0.9),
-    0 0 100px -20px rgba(236, 72, 153, 0.25);
+    0 0 100px -20px rgba(255, 77, 46, 0.25);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -331,7 +331,7 @@ html, body {
   padding: 10px 22px;
   border-radius: 999px;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(236, 72, 153, 0.4);
+  box-shadow: 0 4px 16px rgba(255, 77, 46, 0.4);
 }
 
 /* ---------------- Top Status & Pro Control Bar ---------------- */
@@ -404,7 +404,7 @@ html, body {
 }
 
 .ratio-selector-pill:hover, .ratio-selector-pill:active {
-  background: rgba(236, 72, 153, 0.25);
+  background: rgba(255, 77, 46, 0.25);
   border-color: var(--pro-accent);
   transform: scale(1.03);
 }
@@ -999,7 +999,7 @@ html, body {
 }
 
 .ratio-card.active {
-  background: rgba(236, 72, 153, 0.15);
+  background: rgba(255, 77, 46, 0.15);
   border-color: var(--pro-accent);
 }
 
@@ -1148,7 +1148,7 @@ html, body {
   font-size: 0.75rem;
   padding: 2px 8px;
   border-radius: 6px;
-  background: rgba(236, 72, 153, 0.2);
+  background: rgba(255, 77, 46, 0.2);
   color: var(--pro-accent);
 }
 

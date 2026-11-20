@@ -118,7 +118,7 @@ function renderBordered(source, iw, ih, opts, targetWidth) {
   g.fillStyle = col.text;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.font = `500 ${L.font}px Outfit, "Helvetica Neue", Arial, sans-serif`;
+  g.font = `500 ${L.font}px Inter, "Helvetica Neue", Arial, sans-serif`;
   if ('letterSpacing' in g) g.letterSpacing = `${(L.font * 0.16).toFixed(1)}px`;
   const captionY = L.y + L.h + (L.H - (L.y + L.h)) / 2;
   g.fillText(CREDIT, L.W / 2, captionY);
@@ -376,7 +376,7 @@ function init() {
   });
 
   // Make sure the caption font is ready before the first render
-  if (document.fonts && document.fonts.load) document.fonts.load('500 20px Outfit').then(renderAllPreviews).catch(() => {});
+  if (document.fonts && document.fonts.load) document.fonts.load('500 20px Inter').then(renderAllPreviews).catch(() => {});
   updateToolbar();
 }
 

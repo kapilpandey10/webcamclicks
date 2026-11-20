@@ -389,7 +389,7 @@ export class ProCameraApp {
         ctx.fillRect(0, y, vw, 1);
       }
       const sunset = ctx.createLinearGradient(0, vh * 0.65, 0, vh);
-      sunset.addColorStop(0, 'rgba(236, 72, 153, 0)');
+      sunset.addColorStop(0, 'rgba(255, 77, 46, 0)');
       sunset.addColorStop(1, 'rgba(168, 85, 247, 0.28)');
       ctx.fillStyle = sunset;
       ctx.fillRect(0, vh * 0.65, vw, vh * 0.35);

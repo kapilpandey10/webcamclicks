@@ -235,12 +235,12 @@ export class MicrophoneTester {
     /* Background delicate gradient */
     const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
     bgGrad.addColorStop(0, '#ffffff');
-    bgGrad.addColorStop(1, '#fdf2f8');
+    bgGrad.addColorStop(1, '#fff4f1');
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, w, h);
 
     /* Center line */
-    ctx.strokeStyle = 'rgba(236, 72, 153, 0.12)';
+    ctx.strokeStyle = 'rgba(255, 77, 46, 0.12)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(0, h / 2);
@@ -265,7 +265,7 @@ export class MicrophoneTester {
 
     /* Oscilloscope Waveform */
     ctx.lineWidth = 2.5;
-    ctx.strokeStyle = '#db2777';
+    ctx.strokeStyle = '#c93a1d';
     ctx.beginPath();
 
     const sliceWidth = w / bufferLength;

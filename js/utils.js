@@ -159,7 +159,7 @@ export function drawWatermark(ctx, width, height, options = {}) {
   const padY = Math.round(fontSize * 0.45);
   const radius = Math.round(fontSize * 0.55);
 
-  ctx.font = `600 ${fontSize}px "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  ctx.font = `600 ${fontSize}px "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
   const text = options.text || '📷 webcamclicks.com';
   const textW = ctx.measureText(text).width;
   const badgeW = textW + padX * 2;

@@ -1,13 +1,17 @@
 {
-  "name": "WebcamClicks — Free Webcam Effects, Filters & Camera Games",
+  "name": "WebcamClicks — Free Webcam Studio, AI Background & Passport Photos",
   "short_name": "WebcamClicks",
-  "description": "Take photos and play games with your webcam. 90+ free camera filters, face effects and motion games — right in your browser.",
+  "description": "Free private webcam studio in your browser: AI background replacement, 90+ live effects, passport photo maker, webcam and mic tests.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f5f3f6",
-  "theme_color": "#e0448c",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "orientation": "any",
-  "categories": ["entertainment", "photo", "games"],
+  "categories": [
+    "entertainment",
+    "photo",
+    "games"
+  ],
   "icons": [
     {
       "src": "/assets/icons/favicon-48x48.png",

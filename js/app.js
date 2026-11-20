@@ -119,9 +119,10 @@ function init() {
   el.canvas = $('#stage-canvas');
   display = el.canvas;
   dctx = display.getContext('2d');
-  initBackgroundUI(bgReplacer, {
+  const bgUI = initBackgroundUI(bgReplacer, {
     onChange: (b) => { if (b.kind !== 'off') toast(`🧍 Background: ${b.name}`); }
   });
+  window.webcamClicksOpenBackground = () => { if (bgUI) bgUI.open(true); };
 
   el.startOverlay = $('#stage-overlay');
   el.startBtn = $('#start-btn');
@@ -449,7 +450,7 @@ function loop(now) {
       dctx.drawImage(src, 0, 0, display.width, display.height);
       dctx.save();
       dctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
-      dctx.font = 'bold 13px "Outfit", sans-serif';
+      dctx.font = 'bold 13px "Inter", sans-serif';
       dctx.textBaseline = 'top';
       const txt = '👁️ ORIGINAL (UNFILTERED)';
       const tw = dctx.measureText(txt).width + 16;
@@ -469,7 +470,7 @@ function loop(now) {
       dctx.save();
       dctx.strokeStyle = '#ffffff';
       dctx.lineWidth = 3;
-      dctx.shadowColor = 'rgba(236, 72, 153, 0.8)';
+      dctx.shadowColor = 'rgba(255, 77, 46, 0.8)';
       dctx.shadowBlur = 8;
       dctx.beginPath();
       dctx.moveTo(display.width / 2, 0);
@@ -477,7 +478,7 @@ function loop(now) {
       dctx.stroke();
 
       dctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
-      dctx.font = 'bold 12px "Outfit", sans-serif';
+      dctx.font = 'bold 12px "Inter", sans-serif';
       dctx.textBaseline = 'top';
       const pad = 6;
       const origW = dctx.measureText('ORIGINAL').width + pad * 2;
@@ -487,7 +488,7 @@ function loop(now) {
 
       const filtText = (manager.current && manager.current.name ? manager.current.name.toUpperCase() : 'FILTERED');
       const filtW = dctx.measureText(filtText).width + pad * 2;
-      dctx.fillStyle = 'rgba(236, 72, 153, 0.85)';
+      dctx.fillStyle = 'rgba(255, 77, 46, 0.85)';
       dctx.fillRect(display.width / 2 + 12, 12, filtW, 22);
       dctx.fillStyle = '#ffffff';
       dctx.fillText(filtText, display.width / 2 + 12 + pad, 16);

@@ -9,12 +9,12 @@ import { dimStage } from './GameManager.js';
 
 /* ---------- Balloon color palettes (translucent latex with 3D gloss) ---------- */
 const BALLOON_THEMES = [
-  { name: 'ruby', base: '#e11d48', light: '#fda4af', dark: '#881337', rim: '#f43f5e' },
+  { name: 'ruby', base: '#e23d1f', light: '#fda4af', dark: '#881337', rim: '#ff4d2e' },
   { name: 'blue', base: '#2563eb', light: '#93c5fd', dark: '#1e3a8a', rim: '#3b82f6' },
   { name: 'emerald', base: '#059669', light: '#6ee7b7', dark: '#064e3b', rim: '#10b981' },
   { name: 'purple', base: '#7c3aed', light: '#c4b5fd', dark: '#4c1d95', rim: '#8b5cf6' },
   { name: 'amber', base: '#d97706', light: '#fde68a', dark: '#78350f', rim: '#f59e0b' },
-  { name: 'pink', base: '#db2777', light: '#fbcfe8', dark: '#831843', rim: '#ec4899' },
+  { name: 'pink', base: '#c93a1d', light: '#ffd9cf', dark: '#7a2412', rim: '#ff4d2e' },
   { name: 'gold', base: '#ca8a04', light: '#fef08a', dark: '#713f12', rim: '#eab308', special: true }
 ];
 
@@ -334,7 +334,7 @@ export const balloonPop = {
         vRot: rand(-14, 14),
         size: rand(4, 9),
         aspect: 0.6,
-        color: pick(['#fff', '#fde047', '#38bdf8', '#f472b6', '#4ade80', '#a78bfa']),
+        color: pick(['#fff', '#fde047', '#38bdf8', '#ff7a5f', '#4ade80', '#a78bfa']),
         life: rand(500, 950), age: 0, isShard: false
       });
     }

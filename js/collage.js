@@ -12,7 +12,7 @@ export const COLLAGE_THEMES = {
     text: '#1e293b',
     subtext: '#64748b',
     border: '#e2e8f0',
-    accent: '#ec4899'
+    accent: '#ff4d2e'
   },
   vintage: {
     id: 'vintage',
@@ -27,12 +27,12 @@ export const COLLAGE_THEMES = {
   pink: {
     id: 'pink',
     name: 'Blush Rose',
-    bg: '#fdf2f8',
-    photoBg: '#fce7f3',
-    text: '#831843',
-    subtext: '#be185d',
-    border: '#fbcfe8',
-    accent: '#db2777'
+    bg: '#fff4f1',
+    photoBg: '#ffe9e3',
+    text: '#7a2412',
+    subtext: '#a8301a',
+    border: '#ffd9cf',
+    accent: '#c93a1d'
   },
   noir: {
     id: 'noir',
@@ -42,7 +42,7 @@ export const COLLAGE_THEMES = {
     text: '#f8fafc',
     subtext: '#94a3b8',
     border: '#334155',
-    accent: '#f43f5e'
+    accent: '#ff4d2e'
   },
   vintageshoot: {
     id: 'vintageshoot',
@@ -203,7 +203,7 @@ export function generateCollage(poses, opts = {}) {
       roundRect(ctx, px + 12, py + 12, 34, 26, 6);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 14px "Outfit", sans-serif';
+      ctx.font = 'bold 14px "Inter", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(`#${i + 1}`, px + 29, py + 25);
@@ -239,7 +239,7 @@ export function generateCollage(poses, opts = {}) {
       roundRect(ctx, px + 14, py + 14, 34, 26, 6);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 14px "Outfit", sans-serif';
+      ctx.font = 'bold 14px "Inter", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(`#${i + 1}`, px + 31, py + 27);
@@ -280,7 +280,7 @@ export function generateCollage(poses, opts = {}) {
       roundRect(ctx, px + 14, py + 14, 34, 26, 6);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 14px "Outfit", sans-serif';
+      ctx.font = 'bold 14px "Inter", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(`#${i + 1}`, px + 31, py + 27);
@@ -293,7 +293,7 @@ export function generateCollage(poses, opts = {}) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = theme.accent;
-  ctx.font = '800 13px "Outfit", sans-serif';
+  ctx.font = '800 13px "Inter", sans-serif';
   ctx.letterSpacing = '3px';
   ctx.fillText('✨ SPECIAL MOMENTS ✨', cw / 2, margin + headerHeight / 2 - 4);
   ctx.restore();
@@ -304,13 +304,13 @@ export function generateCollage(poses, opts = {}) {
   ctx.textAlign = 'center';
 
   // Brand Name
-  ctx.font = '800 21px "Outfit", sans-serif';
+  ctx.font = '800 21px "Inter", sans-serif';
   ctx.fillStyle = theme.text;
   ctx.letterSpacing = '2px';
   ctx.fillText(brandName, cw / 2, footY - 14);
 
   // Subtext / Date
-  ctx.font = '600 13px "Outfit", sans-serif';
+  ctx.font = '600 13px "Inter", sans-serif';
   ctx.fillStyle = theme.subtext;
   ctx.letterSpacing = '1px';
   ctx.fillText(`${dateFormatted} · WEBCAMCLICKS.COM · 100% PRIVATE`, cw / 2, footY + 14);

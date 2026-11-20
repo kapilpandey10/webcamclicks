@@ -87,8 +87,8 @@ export class CameraManager {
         const synth = makeCanvas(1280, 720);
         const sctx = synth.getContext('2d');
         const grad = sctx.createLinearGradient(0, 0, 1280, 720);
-        grad.addColorStop(0, '#fce7f3');
-        grad.addColorStop(1, '#fbcfe8');
+        grad.addColorStop(0, '#ffe9e3');
+        grad.addColorStop(1, '#ffd9cf');
         sctx.fillStyle = grad;
         sctx.fillRect(0, 0, 1280, 720);
         sctx.fillStyle = '#f8d7da';
@@ -96,7 +96,7 @@ export class CameraManager {
         sctx.ellipse(640, 360, 180, 240, 0, 0, Math.PI * 2);
         sctx.fill();
         sctx.fillStyle = '#1e293b';
-        sctx.font = 'bold 36px "Outfit", sans-serif';
+        sctx.font = 'bold 36px "Inter", sans-serif';
         sctx.textAlign = 'center';
         sctx.fillText('✨ Live Demo Portrait', 640, 360);
         this.demoImg = synth;

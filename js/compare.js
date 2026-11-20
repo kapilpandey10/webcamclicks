@@ -197,7 +197,7 @@ export class DualWebcamComparator {
     ctx.fillStyle = '#0f172a';
     ctx.fillRect(0, 0, totalW, 60);
 
-    ctx.font = 'bold 20px Outfit, sans-serif';
+    ctx.font = 'bold 20px Inter, sans-serif';
     ctx.fillStyle = '#ffffff';
     ctx.fillText(`WebcamClicks Dual Comparison — ${new Date().toLocaleDateString()}`, 24, 38);
 
@@ -224,7 +224,7 @@ export class DualWebcamComparator {
     ctx.restore();
 
     // Divider line
-    ctx.strokeStyle = '#ec4899';
+    ctx.strokeStyle = '#ff4d2e';
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.moveTo(scaledWA, 60);
@@ -237,7 +237,7 @@ export class DualWebcamComparator {
     ctx.fillRect(scaledWA + 16, targetH + 60 - 52, scaledWB - 32, 40);
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 15px Outfit, sans-serif';
+    ctx.font = 'bold 15px Inter, sans-serif';
     ctx.fillText(`${labelA}: ${wA}×${hA}`, 26, targetH + 60 - 27);
     ctx.fillText(`${labelB}: ${wB}×${hB}`, scaledWA + 26, targetH + 60 - 27);
 

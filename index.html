@@ -43,14 +43,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
 <script src="/js/consent.js" defer></script>
 
-<title>WebcamClicks — Free Online Webcam Filters, Photo Booth &amp; Video Studio</title>
-<meta name="description" content="Free online webcam filters, HD video recording, photo booth strips, and motion camera games. Enjoy 90+ live GPU face effects — 100% private in your browser.">
+<title>WebcamClicks — Free Webcam Studio: AI Background, 90+ Effects &amp; Passport Photos</title>
+<meta name="description" content="Free online webcam studio: replace or blur your background with AI, 90+ live effects, passport photos, photo booth strips and HD recording. Runs privately in your browser.">
 <link rel="canonical" href="https://webcamclicks.com/">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
 <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
 <meta name="bingbot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
 <link rel="alternate" type="text/plain" href="https://webcamclicks.com/llms.txt" title="LLM Knowledge Manifest">
-<meta name="theme-color" content="#ec4899">
+<meta name="theme-color" content="#ffffff">
 
 <!-- Alternate language annotations (hreflang) -->
 <link rel="alternate" hreflang="x-default" href="https://webcamclicks.com/">
@@ -99,9 +99,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- Performance & Resource Hints -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
 
 <link rel="stylesheet" href="/styles/main.css?v=4">
 
@@ -250,35 +250,60 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
 
 <header class="site-header">
-  <a class="logo" href="/">📷 <span>Webcam<em>Clicks</em></span></a>
+  <a class="logo" href="/" aria-label="WebcamClicks home"><span class="logo-mark" aria-hidden="true"></span><span class="logo-word">webcam<b>clicks</b></span></a>
   <nav class="site-nav" aria-label="Main navigation">
-    <a href="#camera" class="keep">Camera</a>
-    <a href="/pro-camera" class="keep pro-cam-nav-link" title="Professional Cinema Camera (Best for Mobile Devices)">🎬 Pro Camera <span class="nav-mobile-badge">📱 Best for mobile</span></a>
-    <a href="#games">Games</a>
-    <a href="/webcam-test" class="keep">✅ Webcam Test</a>
-    <a href="/mic-test" class="keep">🎙️ Mic Test</a>
-    <a href="/filters">🎨 Filters</a>
-    <a href="/instagram-photo-border">🖼️ Photo Border</a>
-    <a href="/guides" class="keep">📚 Guides</a>
-    <a href="/webcam-toy-alternative" class="keep" style="color:var(--brand-2); font-weight:700;">🎯 Toy Alternative</a>
-    <a href="/languages" class="keep lang-pill">🌐 Languages</a>
+    <a href="#camera" aria-current="page">Studio</a>
+    <a href="/pro-camera">Pro camera</a>
+    <a href="/passport-photo">Passport photo</a>
+    <a href="/webcam-test">Webcam test</a>
+    <a href="/mic-test">Mic test</a>
+    <a href="/filters">Filters</a>
+    <a href="/guides">Guides</a>
   </nav>
+  <a class="header-cta" href="#camera">Open camera</a>
 </header>
 
 <main>
 <!-- ================= Hero ================= -->
-<section class="hero hero-clean">
-  <h1 class="hero-clean-title">WebcamClicks <span>Free Webcam Filters &amp; Studio</span></h1>
-  <p class="hero-clean-sub">90+ real-time GPU webcam effects, AR face lenses, 4-cut photo booth strips &amp; HD video recording — 100% on-device &amp; private.</p>
-
-  <div class="hero-cta-single">
-    <button class="hero-start-btn" id="hero-start-camera-btn" type="button" aria-label="Start Camera">
-      <span class="btn-icon">Ready? Smile! 🎥</span>
-      <span class="btn-text" id="hero-start-btn-text">Start camera</span>
-    </button>
-    <div class="hero-clean-note">
-      <span class="note-shield">🔒</span> <strong>100% Private</strong> — Video runs directly in your browser and is never uploaded.
+<section class="hero hero-v2">
+  <div class="hv2-copy">
+    <p class="hv2-eyebrow"><span class="dot" aria-hidden="true"></span> Free · No sign-up · Runs on your device</p>
+    <h1 class="hv2-title">Your webcam,<br><span>upgraded.</span></h1>
+    <p class="hv2-sub">Swap or blur your background with AI, shoot with 90+ live effects, make passport photos and test your setup, all in your browser. Your video is never uploaded.</p>
+    <div class="hv2-ctas">
+      <button class="hero-start-btn hv2-primary" id="hero-start-camera-btn" type="button">
+        <span class="btn-text" id="hero-start-btn-text">Open camera</span> <span aria-hidden="true">→</span>
+      </button>
+      <a class="hv2-secondary" href="/passport-photo">Make a passport photo →</a>
     </div>
+    <ul class="hv2-trust">
+      <li>No watermark</li>
+      <li>Works on phone &amp; laptop</li>
+      <li>Private by design</li>
+    </ul>
+  </div>
+  <div class="hv2-tools" aria-label="Tools">
+    <button class="hv2-tool feature" type="button" data-open-bg>
+      <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/><path d="M3 4h4M3 4v4M21 4h-4M21 4v4M3 20v-3M21 20v-3" opacity=".6"/></svg></span>
+      <span><strong>AI background</strong><br><span class="d">Blur, white studio, neon night or your own photo. Every effect works on top.</span></span>
+      <span class="tag">New</span>
+    </button>
+    <a class="hv2-tool" href="/passport-photo">
+      <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.2"/><path d="M5.8 16.5c.6-1.6 1.8-2.4 3.2-2.4s2.6.8 3.2 2.4M14.5 10h4M14.5 13.5h3"/></svg></span>
+      <strong>Passport photo</strong><span class="d">Official sizes for 10 countries, 300 DPI print sheets.</span><span class="tag">New</span>
+    </a>
+    <a class="hv2-tool" href="#camera" data-launch>
+      <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg></span>
+      <strong>90+ live effects</strong><span class="d">Film looks, face lenses, warp tunnel and art styles.</span>
+    </a>
+    <a class="hv2-tool" href="/webcam-test">
+      <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.7 2.7L16.5 9.5"/></svg></span>
+      <strong>Webcam test</strong><span class="d">Real resolution, fps, lighting and sharpness score.</span>
+    </a>
+    <a class="hv2-tool" href="/mic-test">
+      <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></span>
+      <strong>Mic test</strong><span class="d">Levels, noise and playback before your call.</span>
+    </a>
   </div>
 </section>
 
@@ -1260,23 +1285,23 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- Mobile Bottom App Navigation Bar -->
 <nav class="mobile-bottom-nav" id="mobile-bottom-nav" aria-label="Mobile app navigation">
   <a href="#camera" class="mb-nav-item active" id="mb-nav-camera">
-    <span class="mb-nav-icon">📷</span>
-    <span class="mb-nav-label">Camera</span>
+    <svg class="mb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></svg>
+    <span class="mb-nav-label">Studio</span>
   </a>
-  <a href="/pro-camera" class="mb-nav-item" id="mb-nav-pro-cam" style="color:var(--brand-2); font-weight:800;">
-    <span class="mb-nav-icon">🎬</span>
-    <span class="mb-nav-label">Pro Cam</span>
+  <a href="/passport-photo" class="mb-nav-item">
+    <svg class="mb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.2"/><path d="M5.8 16.5c.6-1.6 1.8-2.4 3.2-2.4s2.6.8 3.2 2.4M14.5 10h4M14.5 13.5h3"/></svg>
+    <span class="mb-nav-label">Passport</span>
   </a>
-  <a href="/webcam-toy-alternative" class="mb-nav-item" id="mb-nav-toy-alt">
-    <span class="mb-nav-icon">🎯</span>
-    <span class="mb-nav-label">Toy Alt</span>
+  <a href="/webcam-test" class="mb-nav-item">
+    <svg class="mb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.7 2.7L16.5 9.5"/></svg>
+    <span class="mb-nav-label">Cam test</span>
   </a>
   <a href="/mic-test" class="mb-nav-item" id="mb-nav-mic">
-    <span class="mb-nav-icon">🎙️</span>
-    <span class="mb-nav-label">Mic Test</span>
+    <svg class="mb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>
+    <span class="mb-nav-label">Mic test</span>
   </a>
   <button type="button" class="mb-nav-item" id="mb-nav-gallery">
-    <span class="mb-nav-icon">🖼️</span>
+    <svg class="mb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="m21 16-5-5-8 9"/></svg>
     <span class="mb-nav-label">Gallery</span>
   </button>
 </nav>
@@ -1308,6 +1333,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       if (heroText) heroText.textContent = 'Loading studio…';
     }
   }
+
+  document.addEventListener('click', function (e) {
+    var bgCard = e.target.closest('[data-open-bg]');
+    var launch = e.target.closest('[data-launch]');
+    if (!bgCard && !launch) return;
+    e.preventDefault();
+    launchStudio(null);
+    if (bgCard) {
+      var tries = 0;
+      (function openBg() {
+        if (typeof window.webcamClicksOpenBackground === 'function') window.webcamClicksOpenBackground();
+        else if (tries++ < 40) setTimeout(openBg, 100);
+      })();
+    }
+  });
 
   var heroStartBtn = document.getElementById('hero-start-camera-btn');
   if (heroStartBtn) {

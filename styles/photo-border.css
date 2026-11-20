@@ -4,7 +4,7 @@
   --pb-muted: #5b6475;
   --pb-line: #e6e8ee;
   --pb-soft: #f6f7fb;
-  --pb-accent: #db2777;
+  --pb-accent: #c93a1d;
   --pb-accent-2: #8b5cf6;
   background: #fbfbfd;
 }
@@ -13,7 +13,7 @@
 .pb-crumbs a { color: inherit; }
 
 .pb-hero { text-align: center; max-width: 760px; margin: 18px auto 30px; }
-.pb-kicker { display: inline-block; font-size: .78rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--pb-accent); background: #fdf2f8; padding: 6px 14px; border-radius: 999px; }
+.pb-kicker { display: inline-block; font-size: .78rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--pb-accent); background: #fff4f1; padding: 6px 14px; border-radius: 999px; }
 .pb-hero h1 { font-size: clamp(2rem, 4.6vw, 3rem); line-height: 1.12; margin: 14px 0 12px; letter-spacing: -0.02em; }
 .pb-hero p { font-size: 1.08rem; line-height: 1.65; color: var(--pb-muted); margin: 0; }
 
@@ -67,7 +67,7 @@
 }
 .pb-btn:hover { border-color: #cfd3dc; }
 .pb-btn:disabled { opacity: .55; cursor: default; }
-.pb-btn-primary { border: 0; color: #fff; background: linear-gradient(135deg, var(--pb-accent), var(--pb-accent-2)); box-shadow: 0 6px 16px rgba(219,39,119,.25); }
+.pb-btn-primary { border: 0; color: #fff; background: linear-gradient(135deg, var(--pb-accent), var(--pb-accent-2)); box-shadow: 0 6px 16px rgba(201, 58, 29,.25); }
 .pb-btn-sm { min-height: 32px; padding: 4px 12px; font-size: .82rem; }
 .pb-icon-btn { width: 32px; height: 32px; border: 1px solid var(--pb-line); border-radius: 9px; background: #fff; color: var(--pb-muted); cursor: pointer; font-size: .8rem; }
 .pb-icon-btn:hover { color: #b91c1c; border-color: #fecaca; }
@@ -100,7 +100,7 @@
 .pb-mock { position: relative; width: 250px; height: 260px; }
 .pb-mock-card { position: absolute; left: 30px; top: 10px; width: 170px; padding: 12px 12px 0; background: #fff; box-shadow: 0 14px 34px rgba(15,23,42,.16); transform: rotate(-4deg); text-align: center; }
 .pb-mock-2 { left: 70px; top: 30px; transform: rotate(5deg); }
-.pb-mock-photo { aspect-ratio: 4 / 5; background: linear-gradient(160deg, #fbcfe8, #c4b5fd 55%, #93c5fd); }
+.pb-mock-photo { aspect-ratio: 4 / 5; background: linear-gradient(160deg, #ffd9cf, #c4b5fd 55%, #93c5fd); }
 .pb-mock-2 .pb-mock-photo { background: linear-gradient(160deg, #fde68a, #fca5a5 55%, #f0abfc); }
 .pb-mock-card span { display: block; padding: 10px 0 12px; font-size: .58rem; letter-spacing: .16em; color: #8a8f99; }
 

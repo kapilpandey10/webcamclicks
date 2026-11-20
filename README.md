@@ -1,5 +1,7 @@
 # WebcamClicks
 
+Brand: clean light & bold. Ink `#0e0e12` on white, coral accent `#ff4d2e`, Inter. Tokens live at the top of `styles/main.css`; the "BRAND 2026 LAYER" at the end restyles shared components.
+
 Free online webcam effects, filters, face-detection tools and camera games — all running
 100% in the browser at **https://webcamclicks.com**.
 
@@ -10,6 +12,8 @@ Free online webcam effects, filters, face-detection tools and camera games — a
 | Camera engine | `getUserMedia` + dual-canvas pipeline (work + display), mirror, flip camera, FPS monitor |
 | Effects | 94 effects: Canvas 2D + WebGL filters in Styles, Trending, Scenes, Art and Distort, plus 27 face lenses |
 | Face effects | 12+ effects powered by face-api.js (glasses, crown, dog ears, mustache, big eyes, blur background, emotion bubble, age/gender badge, face mesh, fire breath, confetti smile) |
+| AI background | `js/segmentation/`: on-device MediaPipe selfie segmentation (models in `assets/models/mediapipe`), blur / studio / scenes / colour / your photo; runs before effects |
+| Passport photo | `/passport-photo` (`js/passport.js`): background removal, head measurement, crop to 10 document specs at 300 DPI, compliance checks, 4x6 and A4 sheets |
 | Webcam test | `/webcam-test`: measures real resolution, fps, exposure, clipping, contrast, sharpness and colour cast, then scores it out of 100 with fixes (`js/webcam-test.js`) |
 | Games | Balloon Pop, Motion Catch, Face Pong, Freeze Pose — controlled by your face or motion |
 | Photo tools | Capture, flash, gallery (localStorage), download PNG/JPEG, Web Share, clipboard copy |

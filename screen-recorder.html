@@ -147,6 +147,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   },
   {
    "@type": "Question",
+   "name": "Why is exporting fast now?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "The editor encodes frames directly with your computer's video encoder instead of replaying the video, and skips re-encoding frames where nothing changed. Older browsers without this feature fall back to real-time export."
+   }
+  },
+  {
+   "@type": "Question",
    "name": "Why is there no system sound?",
    "acceptedAnswer": {
     "@type": "Answer",
@@ -307,7 +315,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="sr-progress" id="t-export-bar" hidden><div id="t-export-fill"></div></div>
       <div class="t-actions"><button class="t-btn primary" id="t-export" type="button">Export video</button><button class="t-btn sm" id="t-dl-raw" type="button">Download original</button></div>
       <div class="t-actions" id="t-ed-result" hidden><button class="t-btn dark" id="t-dl-final" type="button">⬇ Download edited video</button></div>
-      <p class="sr-note">Export plays the video once in real time (faster at higher speeds). Keep this tab visible.</p>
+      <p class="sr-note">Fast export uses your computer's video encoder and skips frames where nothing changes, so most recordings export several times faster than their length, even in a background tab.</p>
       <button class="t-btn sm" id="t-new-rec" type="button" style="margin-top:6px">New recording</button>
     </details>
   </aside>
@@ -397,10 +405,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <ul><li><strong>System audio</strong> is available when sharing a browser tab in Chrome and Edge, or the whole screen on Windows. macOS doesn't let browsers capture system audio from a full screen or window.</li>
 <li>Test your microphone level with the <a href="/mic-test">mic test</a> before an important recording.</li>
 <li>Use headphones to stop speaker sound echoing into your microphone.</li></ul>
-<h2>Formats</h2>
-<p>Recordings are saved as MP4 where your browser supports it (recent Chrome, Edge and Safari) and as WebM otherwise. WebM plays in all modern browsers, VLC and YouTube uploads; convert it to MP4 with any video editor if you need to.</p>
+<h2>Fast export and formats</h2>
+<p>Exporting doesn't replay your video. The editor decodes the recording, draws each edited frame and hands it to your computer's built-in video encoder (WebCodecs), which is usually hardware-accelerated. Moments where nothing changes on screen are stored once instead of 30 times a second, so a typical tutorial exports several times faster than its length and keeps going if you switch tabs. Sped-up exports keep voices at their natural pitch.</p>
+<p>Edited videos are saved as MP4 (H.264) where your browser can encode it, otherwise WebM. Older browsers without WebCodecs fall back to real-time export, which takes as long as the video. Keep that tab visible.</p>
   </article>
-  <section class="t-faq"><h2>Frequently asked questions</h2><details><summary>Is there a time limit or watermark?</summary><p>No. Record as long as your device has free storage, with no watermark.</p></details><details><summary>Is my recording uploaded?</summary><p>No. The video is recorded in your browser and saved directly to your device.</p></details><details><summary>Can I record on my phone?</summary><p>Mobile browsers do not allow websites to capture the screen. Use the built-in screen recorder on iPhone or Android instead.</p></details><details><summary>Why is there no system sound?</summary><p>Share a browser tab (and tick "Share tab audio") in Chrome or Edge, or share the entire screen on Windows. macOS blocks system audio capture from browsers.</p></details></section>
+  <section class="t-faq"><h2>Frequently asked questions</h2><details><summary>Is there a time limit or watermark?</summary><p>No. Record as long as your device has free storage, with no watermark.</p></details><details><summary>Is my recording uploaded?</summary><p>No. The video is recorded in your browser and saved directly to your device.</p></details><details><summary>Can I record on my phone?</summary><p>Mobile browsers do not allow websites to capture the screen. Use the built-in screen recorder on iPhone or Android instead.</p></details><details><summary>Why is exporting fast now?</summary><p>The editor encodes frames directly with your computer's video encoder instead of replaying the video, and skips re-encoding frames where nothing changed. Older browsers without this feature fall back to real-time export.</p></details><details><summary>Why is there no system sound?</summary><p>Share a browser tab (and tick "Share tab audio") in Chrome or Edge, or share the entire screen on Windows. macOS blocks system audio capture from browsers.</p></details></section>
   <section class="t-related"><h2>More free tools</h2><div class="t-related-grid"><a class="tool-card" href="/#camera"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></svg></span><span><strong>Webcam studio</strong><span class="d">90+ live effects, photo booth strips and HD recording.</span></span></a><a class="tool-card" href="/#background"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/><path d="M3 4h4M3 4v4M21 4h-4M21 4v4" opacity=".6"/></svg></span><span><strong>AI background changer</strong><span class="d">Blur or replace your webcam background in real time.</span></span></a><a class="tool-card" href="/webcam-test"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.7 2.7L16.5 9.5"/></svg></span><span><strong>Webcam test</strong><span class="d">Real resolution, fps, lighting and a quality score.</span></span></a><a class="tool-card" href="/mic-test"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></span><span><strong>Mic test</strong><span class="d">Check levels, noise and playback before a call.</span></span></a><a class="tool-card" href="/pro-camera"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 9h4M3 15h4M17 9h4M17 15h4"/></svg></span><span><strong>Pro camera</strong><span class="d">Cinema aspect ratios and manual controls.</span></span></a><a class="tool-card" href="/compare-webcams"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="8" height="14" rx="1.5"/><rect x="13" y="5" width="8" height="14" rx="1.5"/></svg></span><span><strong>Compare two webcams</strong><span class="d">Side-by-side quality comparison.</span></span></a><a class="tool-card" href="/background-remover"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="7" r="2.5"/><circle cx="6" cy="17" r="2.5"/><path d="M8 8.5 20 18M8 15.5 20 6"/></svg></span><span><strong>Background remover <span class="new">New</span></strong><span class="d">Remove the background from photos of people.</span></span></a><a class="tool-card" href="/image-converter"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h12l-3-3M20 17H8l3 3"/></svg></span><span><strong>Image converter <span class="new">New</span></strong><span class="d">Convert to JPG, PNG, WebP or AVIF in bulk.</span></span></a></div></section>
 </main>
 <footer class="site-footer">
@@ -439,6 +448,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </a>
 </nav>
 
-<script type="module" src="/js/tools/screen-recorder.js?v=12dd8d66cf"></script>
+<script type="module" src="/js/tools/screen-recorder.js?v=0898a6a112"></script>
 </body>
 </html>

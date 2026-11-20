@@ -175,6 +175,13 @@ const BGS = {
 
 let E = null;   // editor state
 
+/* Frame sources for drawing. Normally the playing <video> elements; during fast export they are
+   decoded frames (VideoFrame / canvas) handed in by the encoder loop. */
+let SRC = null;
+const mainSrc = () => (SRC ? SRC.main : E.main);
+const camSrc = () => (SRC ? SRC.cam : (E.cam && E.cam.readyState >= 2 ? E.cam : null));
+const dimsOf = (s) => [s.videoWidth || s.displayWidth || s.width, s.videoHeight || s.displayHeight || s.height];
+
 function platform() {
   const p = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
   return /mac|iphone|ipad/i.test(p) ? 'mac' : /win/i.test(p) ? 'windows' : 'linux';
@@ -339,7 +346,7 @@ function drawBackground(ctx, W, H) {
     blurCanvas = blurCanvas || document.createElement('canvas');
     blurCanvas.width = 64; blurCanvas.height = Math.round(64 * H / W);
     const b = blurCanvas.getContext('2d');
-    b.drawImage(E.main, 0, 0, blurCanvas.width, blurCanvas.height);
+    b.drawImage(mainSrc(), 0, 0, blurCanvas.width, blurCanvas.height);
     ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(blurCanvas, 0, 0, W, H);
     ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(0, 0, W, H); ctx.restore();
@@ -417,7 +424,8 @@ function screenRadius(L) {
   return (+UI.radius.value / 100) * Math.min(L.sw, L.sh);
 }
 
-function drawScreen(ctx, L, t) {
+/** part: 'all' | 'under' (shadow only, cacheable) | 'over' (video only) */
+function drawScreen(ctx, L, t, part = 'all') {
   const z = zoomAt(t);
   const cx = E.crop.x * E.vw, cy = E.crop.y * E.vh, cw = E.crop.w * E.vw, ch = E.crop.h * E.vh;
   const w = cw / z.s, h = ch / z.s;
@@ -434,10 +442,11 @@ function drawScreen(ctx, L, t) {
     ctx.arcTo(L.sx + L.sw, L.sy + L.sh, L.sx + L.sw - br, L.sy + L.sh, br); ctx.lineTo(L.sx + br, L.sy + L.sh);
     ctx.arcTo(L.sx, L.sy + L.sh, L.sx, L.sy + L.sh - br, br); ctx.closePath();
   } else roundRect(ctx, L.sx, L.sy, L.sw, L.sh, r);
-  if (shadow) { ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = L.sw * 0.04; ctx.shadowOffsetY = L.sw * 0.012; ctx.fillStyle = '#000'; ctx.fill(); ctx.restore(); }
+  if (shadow && part !== 'over') { ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = L.sw * 0.04; ctx.shadowOffsetY = L.sw * 0.012; ctx.fillStyle = '#000'; ctx.fill(); ctx.restore(); }
+  if (part === 'under') { ctx.restore(); return; }
   ctx.clip();
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(E.main, x, y, w, h, L.sx, L.sy, L.sw, L.sh);
+  ctx.drawImage(mainSrc(), x, y, w, h, L.sx, L.sy, L.sw, L.sh);
   ctx.restore();
 }
 
@@ -512,45 +521,102 @@ function sceneAt(t, W, H) {
   return style === 'fade' ? { TA, TB, p } : { single: mixTargets(TA, TB, p) };
 }
 
-function drawCamRect(ctx, c) {
-  if (!E.cam || E.cam.readyState < 2 || c.w < 2 || c.h < 2) return;
-  const vw = E.cam.videoWidth, vh = E.cam.videoHeight, ar = c.w / c.h;
+function drawCamRect(ctx, c, part = 'all') {
+  const cam = camSrc();
+  if (c.w < 2 || c.h < 2 || (!cam && part !== 'under') || (!E.cam)) return;
+  const [vw, vh] = cam ? dimsOf(cam) : [1, 1], ar = c.w / c.h;
   let sw = vw, sh = vw / ar;
   if (sh > vh) { sh = vh; sw = vh * ar; }
   const sx = (vw - sw) / 2, sy = (vh - sh) / 2;
   const m = Math.min(c.w, c.h);
   const bw = c.border * Math.max(2, m * 0.025);
   ctx.save();
-  if (UI.bg.value !== 'none' || c.border > 0.5) { ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = m * 0.1; ctx.shadowOffsetY = m * 0.025; }
-  roundRect(ctx, c.x, c.y, c.w, c.h, c.r);
-  ctx.fillStyle = bw > 0.5 ? '#fff' : '#000'; ctx.fill();
-  ctx.shadowColor = 'transparent';
+  if (part !== 'over') {
+    if (UI.bg.value !== 'none' || c.border > 0.5) { ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = m * 0.1; ctx.shadowOffsetY = m * 0.025; }
+    roundRect(ctx, c.x, c.y, c.w, c.h, c.r);
+    ctx.fillStyle = bw > 0.5 ? '#fff' : '#000'; ctx.fill();
+    ctx.shadowColor = 'transparent';
+    if (part === 'under') { ctx.restore(); return; }
+  }
   roundRect(ctx, c.x + bw, c.y + bw, c.w - bw * 2, c.h - bw * 2, Math.max(0, c.r - bw)); ctx.clip();
   ctx.translate(c.x + c.w, c.y); ctx.scale(-1, 1);   // mirror like a selfie
-  ctx.drawImage(E.cam, sx, sy, sw, sh, bw, bw, c.w - bw * 2, c.h - bw * 2);
+  ctx.drawImage(cam, sx, sy, sw, sh, bw, bw, c.w - bw * 2, c.h - bw * 2);
   ctx.restore();
 }
 
-function drawScene(ctx, T, t, alpha = 1) {
+function drawScene(ctx, T, t, alpha = 1, part = 'all') {
   let L = null;
   if (T.screen.a * alpha > 0.01) {
     ctx.save(); ctx.globalAlpha = T.screen.a * alpha;
     L = layoutIn(T.screen.box);
-    drawFrameChrome(ctx, L);
-    drawScreen(ctx, L, t);
+    if (part !== 'over') drawFrameChrome(ctx, L);
+    drawScreen(ctx, L, t, part);
     ctx.restore();
   }
-  if (T.cam.a * alpha > 0.01) { ctx.save(); ctx.globalAlpha = T.cam.a * alpha; drawCamRect(ctx, T.cam); ctx.restore(); }
+  if (T.cam.a * alpha > 0.01) { ctx.save(); ctx.globalAlpha = T.cam.a * alpha; drawCamRect(ctx, T.cam, part); ctx.restore(); }
   return T.screen.a * alpha > 0.5 ? L : null;
 }
 
+/* Static layers (background, device frame, shadows, camera plate) only change when the scene
+   or style changes, so they are drawn once into an "underlay" and reused — shadows are costly. */
+const underlays = new Map();
+function styleKey() {
+  return [UI.frame.value, UI.bg.value, UI.bgColor.value, UI.padding.value, UI.radius.value, UI.shadow.checked, UI.camShape.value,
+    E.crop.w.toFixed(4), E.crop.h.toFixed(4)].join('|');
+}
+function targetsKey(T) {
+  const r = (v) => Math.round(v * 10) / 10;
+  const b = T.screen.box, c = T.cam;
+  return [r(b.x), r(b.y), r(b.w), r(b.h), r(T.screen.a), r(c.x), r(c.y), r(c.w), r(c.h), r(c.r), r(c.border), r(c.a)].join(',');
+}
+
 function renderFrame(ctx, W, H, t) {
+  const S = sceneAt(t, W, H);
+  if (S.single && UI.bg.value !== 'blur') {
+    const key = `${W}x${H}|${styleKey()}|${targetsKey(S.single)}`;
+    let u = underlays.get(`${W}x${H}`);
+    if (!u || u.key !== key) {
+      u = u || { canvas: document.createElement('canvas') };
+      u.canvas.width = W; u.canvas.height = H;
+      const g = u.canvas.getContext('2d');
+      drawBackground(g, W, H);
+      drawScene(g, S.single, t, 1, 'under');
+      u.key = key;
+      underlays.set(`${W}x${H}`, u);
+      if (underlays.size > 3) underlays.delete(underlays.keys().next().value);
+    }
+    ctx.globalCompositeOperation = 'copy';
+    ctx.drawImage(u.canvas, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    return drawScene(ctx, S.single, t, 1, 'over');
+  }
   ctx.clearRect(0, 0, W, H);
   drawBackground(ctx, W, H);
-  const S = sceneAt(t, W, H);
   if (S.single) return drawScene(ctx, S.single, t);
   const la = drawScene(ctx, S.TA, t, 1 - S.p), lb = drawScene(ctx, S.TB, t, S.p);
   return S.p > 0.5 ? lb || la : la || lb;
+}
+
+/** Tiny content fingerprint of a frame (48×27, quantised) so visually identical frames match
+    even when the recorder stamped them as new frames. */
+let sigCanvas = null, sigCtx = null;
+function contentSig(img) {
+  if (!sigCanvas) { sigCanvas = document.createElement('canvas'); sigCanvas.width = 48; sigCanvas.height = 27; sigCtx = sigCanvas.getContext('2d', { willReadFrequently: true }); }
+  sigCtx.drawImage(img, 0, 0, 48, 27);
+  const d = sigCtx.getImageData(0, 0, 48, 27).data;
+  let h1 = 2166136261, h2 = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = ((d[i] >> 4) << 8) | ((d[i + 1] >> 4) << 4) | (d[i + 2] >> 4);   // ignore tiny compression noise
+    h1 = Math.imul(h1 ^ v, 16777619); h2 = (h2 + v * (i + 1)) | 0;
+  }
+  return `${h1 >>> 0}:${h2 >>> 0}`;
+}
+
+/** A cheap fingerprint of everything that changes between frames (used to skip identical frames). */
+function frameKey(t, mainTs, camTs) {
+  const z = zoomAt(t), S = sceneAt(t, 2, 2);
+  const sk = S.single ? targetsKey(S.single) : `${targetsKey(S.TA)}>${targetsKey(S.TB)}@${S.p.toFixed(3)}`;
+  return `${mainTs}|${camTs}|${z.s.toFixed(4)},${z.x.toFixed(4)},${z.y.toFixed(4)}|${sk}`;
 }
 
 /* crop mode: show the raw source frame with the crop rectangle */
@@ -994,34 +1060,183 @@ UI.bgColor.closest('.t-field').hidden = true;
 
 /* ----------------------------------------------------------- export */
 
-UI.exportBtn.addEventListener('click', async () => {
-  if (!E || E.exporting) return;
-  if (E.cropMode) setCropMode(false);
-  const [W, H] = outputSize();
+/* Fast export (default): decode frames directly, render each output frame, hardware-encode with
+   WebCodecs and mux to MP4/WebM with mediabunny. No playback, so it runs much faster than real
+   time and keeps going in a background tab. Falls back to real-time export when unsupported. */
+
+const MEDIABUNNY_URL = 'https://cdn.jsdelivr.net/npm/mediabunny@1.62.1/dist/bundles/mediabunny.min.mjs';
+const EXPORT_FPS = 30;
+let mbPromise = null;
+const loadMediabunny = () => (mbPromise = mbPromise || import(/* webpackIgnore: true */ MEDIABUNNY_URL).catch((e) => { mbPromise = null; throw e; }));
+
+/** Time-stretch audio without changing pitch (WSOLA), so 1.5× speech still sounds natural. */
+function stretchAudio(channels, speed) {
+  if (Math.abs(speed - 1) < 1e-3) return channels;
+  const N = 1024, Hs = N / 2, tol = 256;
+  const win = new Float32Array(N);
+  for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / N);
+  const len = channels[0].length, outLen = Math.floor(len / speed) + N;
+  const out = channels.map(() => new Float32Array(outLen));
+  const mono = new Float32Array(len);
+  channels.forEach((c) => { for (let i = 0; i < len; i++) mono[i] += c[i] / channels.length; });
+  let prevIn = 0;
+  for (let outPos = 0; ; outPos += Hs) {
+    const nominal = Math.round(outPos * speed);
+    if (nominal + N + tol >= len) break;
+    let best = 0;
+    if (outPos > 0) {
+      const target = prevIn + Hs;
+      let bestScore = -Infinity;
+      for (let off = -tol; off <= tol; off += 4) {
+        const st = nominal + off;
+        if (st < 0 || st + N >= len || target + N >= len) continue;
+        let sc = 0;
+        for (let k = 0; k < Hs; k += 4) sc += mono[target + k] * mono[st + k];
+        if (sc > bestScore) { bestScore = sc; best = off; }
+      }
+    }
+    const in0 = Math.max(0, nominal + best);
+    for (let c = 0; c < channels.length; c++) {
+      const src = channels[c], dst = out[c];
+      for (let k = 0; k < N; k++) dst[outPos + k] += src[in0 + k] * win[k];
+    }
+    prevIn = in0;
+  }
+  return out.map((c) => c.subarray(0, Math.floor(len / speed)));
+}
+
+async function fastExport(W, H, onProgress) {
+  if (typeof VideoEncoder === 'undefined' || typeof VideoFrame === 'undefined') throw new Error('WebCodecs not available');
+  const MB = await loadMediabunny();
+  const speed = +UI.speed.value, [t0, t1] = E.trim;
+  let fmt = 'mp4';
+  let vcodec = await MB.getFirstEncodableVideoCodec(['avc', 'vp9', 'av1'], { width: W, height: H });
+  if (!vcodec) { fmt = 'webm'; vcodec = await MB.getFirstEncodableVideoCodec(['vp9', 'vp8', 'av1'], { width: W, height: H }); }
+  if (!vcodec) throw new Error('No video encoder available');
+
+  const input = new MB.Input({ source: new MB.BlobSource(E.mainBlob), formats: MB.ALL_FORMATS });
+  const vtrack = await input.getPrimaryVideoTrack();
+  const atrack = await input.getPrimaryAudioTrack();
+  if (!vtrack) throw new Error('No video track');
+  let camTrack = null;
+  if (E.camBlob && hasCam()) camTrack = await new MB.Input({ source: new MB.BlobSource(E.camBlob), formats: MB.ALL_FORMATS }).getPrimaryVideoTrack();
+
+  const canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  const output = new MB.Output({
+    format: fmt === 'mp4' ? new MB.Mp4OutputFormat({ fastStart: 'in-memory' }) : new MB.WebMOutputFormat(),
+    target: new MB.BufferTarget()
+  });
+  const bitrate = W * H > 2e6 ? 12_000_000 : W * H > 9e5 ? 8_000_000 : 5_000_000;
+  const vsource = new MB.CanvasSource(canvas, { codec: vcodec, bitrate, keyFrameInterval: 2 });
+  output.addVideoTrack(vsource, { frameRate: EXPORT_FPS });
+  let asource = null;
+  if (atrack) {
+    const acodec = await MB.getFirstEncodableAudioCodec(fmt === 'mp4' ? ['aac', 'opus'] : ['opus', 'vorbis']);
+    if (acodec) { asource = new MB.AudioBufferSource({ codec: acodec, bitrate: 128_000 }); output.addAudioTrack(asource); }
+  }
+  await output.start();
+
+  // ---- video: walk decoded frames in order, emit a frame every 1/30 s of output time
+  const firstTs = await vtrack.getFirstTimestamp().catch(() => 0);   // align with the <video> element's timeline
+  const mainIt = new MB.VideoSampleSink(vtrack).samples(firstTs + Math.max(0, t0 - 0.5), firstTs + t1 + 0.5);
+  const camFirst = camTrack ? await camTrack.getFirstTimestamp().catch(() => 0) : 0;
+  const camIt = camTrack ? new MB.VideoSampleSink(camTrack).samples() : null;
+  let cur = null, next = (await mainIt.next()).value || null;
+  let camCur = null, camNext = camIt ? (await camIt.next()).value || null : null;
+  const total = Math.max(1, Math.ceil(((t1 - t0) / speed) * EXPORT_FPS));
+  const started = performance.now();
+  let lastKey = '', heldFrom = 0, lastK = -1, sigFor = null, curSig = '';
+  try {
+    for (let k = 0; k < total; k++) {
+      const ts = t0 + (k / EXPORT_FPS) * speed;
+      while (next && next.timestamp - firstTs <= ts + 1e-4) { if (cur) cur.close(); cur = next; next = (await mainIt.next()).value || null; }
+      if (!cur && next) { cur = next; next = (await mainIt.next()).value || null; }
+      if (camIt) {
+        const tc = ts - E.camOffset;
+        while (camNext && camNext.timestamp - camFirst <= tc + 1e-4) { if (camCur) camCur.close(); camCur = camNext; camNext = (await camIt.next()).value || null; }
+      }
+      if (!cur) break;
+      if (cur !== sigFor) { curSig = contentSig(cur.toCanvasImageSource()); sigFor = cur; }
+      const fk = frameKey(ts, curSig, camCur && hasCam() ? camCur.timestamp : '');
+      // Screen recordings are mostly still. A frame identical to the previous one is not
+      // re-rendered or re-encoded: the held frame simply lasts longer (variable frame rate,
+      // capped at 1 s so every player and editor stays happy).
+      if (fk !== lastKey || k - heldFrom >= EXPORT_FPS) {
+        if (k > 0) await vsource.add(heldFrom / EXPORT_FPS, (k - heldFrom) / EXPORT_FPS);   // flush the held frame
+        if (fk !== lastKey) {
+          SRC = { main: cur.toCanvasImageSource(), cam: camCur ? camCur.toCanvasImageSource() : null };
+          renderFrame(ctx, W, H, ts);
+          SRC = null;
+          lastKey = fk;
+        }
+        heldFrom = k;
+      }
+      lastK = k;
+      if (k % 15 === 0) onProgress(k / total * (asource ? 0.92 : 1), performance.now() - started, ts - t0);
+    }
+    if (lastK >= 0) await vsource.add(heldFrom / EXPORT_FPS, (lastK + 1 - heldFrom) / EXPORT_FPS);   // last held frame
+  } finally {
+    SRC = null;
+    [cur, next, camCur, camNext].forEach((x) => x && x.close && x.close());
+    if (mainIt.return) await mainIt.return();
+    if (camIt && camIt.return) await camIt.return();
+  }
+  vsource.close();
+
+  // ---- audio: decode the trimmed range, stretch if sped up, encode
+  if (asource) {
+    const aFirst = await atrack.getFirstTimestamp().catch(() => 0);
+    const chunks = [];
+    let sr = 48000, chs = 1;
+    for await (const wb of new MB.AudioBufferSink(atrack).buffers(aFirst + t0, aFirst + t1)) {
+      chunks.push(wb); sr = wb.buffer.sampleRate; chs = Math.max(chs, wb.buffer.numberOfChannels);
+    }
+    const len = Math.max(1, Math.round((t1 - t0) * sr));
+    let data = Array.from({ length: chs }, () => new Float32Array(len));
+    for (const wb of chunks) {
+      const off = Math.round((wb.timestamp - aFirst - t0) * sr);
+      for (let c = 0; c < chs; c++) {
+        const src = wb.buffer.getChannelData(Math.min(c, wb.buffer.numberOfChannels - 1));
+        for (let i = Math.max(0, -off); i < src.length && off + i < len; i++) data[c][off + i] = src[i];
+      }
+    }
+    onProgress(0.94, performance.now() - started, t1 - t0);
+    data = stretchAudio(data, speed);
+    const step = sr * 5;   // feed in 5 s chunks
+    for (let pos = 0; pos < data[0].length; pos += step) {
+      const n = Math.min(step, data[0].length - pos);
+      const buf = new AudioBuffer({ length: n, numberOfChannels: chs, sampleRate: sr });
+      for (let c = 0; c < chs; c++) buf.copyToChannel(data[c].subarray(pos, pos + n), c);
+      await asource.add(buf);
+    }
+    asource.close();
+  }
+  await output.finalize();
+  return new Blob([output.target.buffer], { type: fmt === 'mp4' ? 'video/mp4' : 'video/webm' });
+}
+
+/* Real-time export (fallback for browsers without WebCodecs). */
+async function realtimeExport(W, H, onProgress) {
   const canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
   const audio = ensureAudio();
   if (audio.ctx && audio.ctx.state === 'suspended') await audio.ctx.resume();
   const stream = canvas.captureStream(30);
   if (audio.dest) audio.dest.stream.getAudioTracks().forEach((t) => stream.addTrack(t));
-  const mimeType = pickMime(true);
   const bitrate = W * H > 2e6 ? 12_000_000 : W * H > 9e5 ? 8_000_000 : 5_000_000;
   let mr;
-  try { mr = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: bitrate }); } catch (_) { mr = new MediaRecorder(stream); }
+  try { mr = new MediaRecorder(stream, { mimeType: pickMime(true), videoBitsPerSecond: bitrate }); } catch (_) { mr = new MediaRecorder(stream); }
   const chunks = [];
   mr.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
-
-  E.exporting = true;
-  UI.exportBtn.disabled = true; UI.exportBar.hidden = false; UI.result.hidden = true;
-  setStatus(UI.status, 'Exporting… keep this tab open and visible until it finishes.');
   E.main.pause(); E.main.currentTime = E.trim[0];
   await once(E.main, 'seeked');
   syncCam();
   const speed = +UI.speed.value;
   E.main.playbackRate = speed;
   if (E.cam) E.cam.playbackRate = speed;
-
   const finished = new Promise((resolve) => { mr.onstop = resolve; });
+  const started = performance.now();
   renderFrame(ctx, W, H, E.main.currentTime);
   mr.start(1000);
   await E.main.play();
@@ -1030,7 +1245,7 @@ UI.exportBtn.addEventListener('click', async () => {
       const t = E.main.currentTime;
       syncCam();
       renderFrame(ctx, W, H, t);
-      UI.exportFill.style.width = `${clamp((t - E.trim[0]) / (E.trim[1] - E.trim[0]), 0, 1) * 100}%`;
+      onProgress(clamp((t - E.trim[0]) / (E.trim[1] - E.trim[0]), 0, 1), performance.now() - started, t - E.trim[0]);
       if (t >= E.trim[1] || E.main.ended) return resolve();
       requestAnimationFrame(step);
     };
@@ -1039,14 +1254,42 @@ UI.exportBtn.addEventListener('click', async () => {
   E.main.pause(); if (E.cam) E.cam.pause();
   mr.stop();
   await finished;
+  return new Blob(chunks, { type: mr.mimeType || 'video/webm' });
+}
+
+UI.exportBtn.addEventListener('click', async () => {
+  if (!E || E.exporting) return;
+  if (E.cropMode) setCropMode(false);
+  const [W, H] = outputSize();
+  E.exporting = true;
+  E.main.pause(); UI.play.textContent = '▶';
+  UI.exportBtn.disabled = true; UI.exportBar.hidden = false; UI.result.hidden = true; UI.exportFill.style.width = '0%';
+  const progress = (f, ms, videoSecs) => {
+    UI.exportFill.style.width = `${clamp(f, 0, 1) * 100}%`;
+    const x = ms > 500 && videoSecs > 0 ? ` · ${(videoSecs * 1000 / ms).toFixed(1)}× faster than real time` : '';
+    setStatus(UI.status, `Exporting… ${Math.round(clamp(f, 0, 1) * 100)}%${x}`);
+  };
+  const t0 = performance.now();
+  let blob = null, mode = 'fast';
+  try {
+    setStatus(UI.status, 'Preparing fast export…');
+    blob = await fastExport(W, H, progress);
+  } catch (e) {
+    console.warn('[WebcamClicks] fast export unavailable, using real-time export:', e);
+    mode = 'realtime';
+    setStatus(UI.status, 'Exporting in real time (your browser lacks the fast video encoder). Keep this tab visible.');
+    try { blob = await realtimeExport(W, H, progress); }
+    catch (e2) { setStatus(UI.status, `Export failed: ${e2.message || e2}`, 'err'); }
+  }
   E.exporting = false;
   UI.exportBtn.disabled = false; UI.exportBar.hidden = true;
-  const blob = new Blob(chunks, { type: mr.mimeType || 'video/webm' });
+  if (!blob) return;
   const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
   UI.dlFinal.onclick = () => downloadBlob(blob, `screen-recording-${W}x${H}.${ext}`);
   UI.result.hidden = false;
   E.dirty = false;
-  setStatus(UI.status, `Export ready: ${W}×${H} · ${formatBytes(blob.size)} · ${ext.toUpperCase()}.`, 'ok');
+  const secs = (performance.now() - t0) / 1000;
+  setStatus(UI.status, `Export ready in ${secs < 60 ? `${secs.toFixed(1)} s` : `${Math.floor(secs / 60)} min ${Math.round(secs % 60)} s`}: ${W}×${H} · ${formatBytes(blob.size)} · ${ext.toUpperCase()}${mode === 'fast' ? '' : ' (real-time mode)'}.`, 'ok');
 });
 
 UI.newRec.addEventListener('click', () => {

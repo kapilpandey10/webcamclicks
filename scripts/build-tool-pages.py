@@ -803,7 +803,7 @@ PAGES['screen-recorder'] = dict(
       <div class="sr-progress" id="t-export-bar" hidden><div id="t-export-fill"></div></div>
       <div class="t-actions"><button class="t-btn primary" id="t-export" type="button">Export video</button><button class="t-btn sm" id="t-dl-raw" type="button">Download original</button></div>
       <div class="t-actions" id="t-ed-result" hidden><button class="t-btn dark" id="t-dl-final" type="button">⬇ Download edited video</button></div>
-      <p class="sr-note">Export plays the video once in real time (faster at higher speeds). Keep this tab visible.</p>
+      <p class="sr-note">Fast export uses your computer's video encoder and skips frames where nothing changes, so most recordings export several times faster than their length, even in a background tab.</p>
       <button class="t-btn sm" id="t-new-rec" type="button" style="margin-top:6px">New recording</button>
     </details>
   </aside>
@@ -891,11 +891,13 @@ PAGES['screen-recorder'] = dict(
 <ul><li><strong>System audio</strong> is available when sharing a browser tab in Chrome and Edge, or the whole screen on Windows. macOS doesn't let browsers capture system audio from a full screen or window.</li>
 <li>Test your microphone level with the <a href="/mic-test">mic test</a> before an important recording.</li>
 <li>Use headphones to stop speaker sound echoing into your microphone.</li></ul>
-<h2>Formats</h2>
-<p>Recordings are saved as MP4 where your browser supports it (recent Chrome, Edge and Safari) and as WebM otherwise. WebM plays in all modern browsers, VLC and YouTube uploads; convert it to MP4 with any video editor if you need to.</p>''',
+<h2>Fast export and formats</h2>
+<p>Exporting doesn't replay your video. The editor decodes the recording, draws each edited frame and hands it to your computer's built-in video encoder (WebCodecs), which is usually hardware-accelerated. Moments where nothing changes on screen are stored once instead of 30 times a second, so a typical tutorial exports several times faster than its length and keeps going if you switch tabs. Sped-up exports keep voices at their natural pitch.</p>
+<p>Edited videos are saved as MP4 (H.264) where your browser can encode it, otherwise WebM. Older browsers without WebCodecs fall back to real-time export, which takes as long as the video. Keep that tab visible.</p>''',
   faqs=[('Is there a time limit or watermark?', 'No. Record as long as your device has free storage, with no watermark.'),
         ('Is my recording uploaded?', 'No. The video is recorded in your browser and saved directly to your device.'),
         ('Can I record on my phone?', 'Mobile browsers do not allow websites to capture the screen. Use the built-in screen recorder on iPhone or Android instead.'),
+        ('Why is exporting fast now?', 'The editor encodes frames directly with your computer\'s video encoder instead of replaying the video, and skips re-encoding frames where nothing changed. Older browsers without this feature fall back to real-time export.'),
         ('Why is there no system sound?', 'Share a browser tab (and tick "Share tab audio") in Chrome or Edge, or share the entire screen on Windows. macOS blocks system audio capture from browsers.')])
 
 # ----------------------------------------------------------------------------- build tool pages

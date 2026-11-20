@@ -35,6 +35,14 @@ ICONS = {
   'split': '<path d="M12 3v6M12 9l-6 6v6M12 9l6 6v6"/>',
   'rename': '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>',
   'text': '<path d="M4 6h16M4 12h10M4 18h13"/>',
+  'scan': '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="8" width="3" height="3"/><rect x="13" y="8" width="3" height="3"/><rect x="8" y="13" width="3" height="3"/><path d="M14 14h2v2"/>',
+  'docscan': '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M9 7h4l3 3v7H9z"/><path d="M11 13h3M11 15h3"/>',
+  'voice': '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/><path d="M2 9v4M22 9v4" opacity=".6"/>',
+  'silence': '<path d="M3 12h2M6 8v8M9 5v14M12 12h1"/><path d="M15 6v12M18 9v6M21 11v2"/><path d="M11 3v18" stroke-dasharray="2 2" opacity=".7"/>',
+  'reframe': '<rect x="2" y="6" width="20" height="12" rx="2" opacity=".55"/><rect x="8.5" y="3" width="7" height="18" rx="1.5"/><circle cx="12" cy="10" r="1.6" fill="currentColor"/>',
+  'thumb': '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M6 9h6M6 12h4"/><circle cx="16" cy="12.5" r="2.5"/><path d="M13 19c.6-2 1.7-3 3-3s2.4 1 3 3"/>',
+  'redact': '<path d="M6 3h9l4 4v14H6z"/><rect x="8.5" y="9" width="8" height="2.4" fill="currentColor"/><rect x="8.5" y="13.5" width="5" height="2.4" fill="currentColor"/>',
+  'upscale': '<rect x="3" y="11" width="10" height="10" rx="1.5"/><path d="M14 3h7v7M21 3l-8 8"/>',
   'qr': '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/>',
   'key': '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M15 8l2 2"/>',
   'prompter': '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M7 8h10M7 11h7M12 16v4M8 20h8"/>',
@@ -68,8 +76,10 @@ TOOLS = [
   ('/#background', 'AI background changer', 'camera', 'person', 'Blur or replace your webcam background in real time.', False),
   ('/screen-recorder', 'Screen recorder & editor', 'camera', 'screen', 'Record your screen, then edit with zooms, captions and music.', False),
   ('/teleprompter', 'Teleprompter', 'camera', 'prompter', 'Scrolling script over your webcam, recorded on your device.', True),
+  ('/document-scanner', 'Document scanner', 'camera', 'docscan', 'Scan pages with your camera: auto-crop, shadow removal, PDF.', True),
   ('/webcam-test', 'Webcam test', 'camera', 'check', 'Real resolution, fps, lighting and a quality score.', False),
   ('/mic-test', 'Mic test', 'camera', 'mic', 'Check levels, noise and playback before a call.', False),
+  ('/voice-recorder', 'Voice recorder', 'camera', 'voice', 'Record your voice; remove noise and hum; save MP3.', True),
   ('/pro-camera', 'Pro camera', 'camera', 'film', 'Cinema aspect ratios and manual controls.', False),
   ('/compare-webcams', 'Compare two webcams', 'camera', 'compare', 'Side-by-side quality comparison.', False),
   ('/auto-captions', 'Auto captions & subtitles', 'video', 'cc', 'Speech to captions in 35+ languages, SRT/VTT or burned in.', True),
@@ -80,6 +90,7 @@ TOOLS = [
   ('/photo-enhancer', 'Photo enhancer', 'image', 'wand', 'Fix exposure, colour, noise and sharpness; 2× upscale.', True),
   ('/passport-photo', 'Passport photo maker', 'image', 'id', 'Official sizes for 10 countries at 300 DPI.', False),
   ('/background-remover', 'Background remover', 'image', 'scissors', 'AI cut-out with brush and eraser.', False),
+  ('/heic-to-jpg', 'HEIC to JPG', 'image', 'convert', 'Convert iPhone HEIC photos to JPG in bulk, any browser.', True),
   ('/image-converter', 'Image converter', 'image', 'convert', 'Convert to JPG, PNG, WebP or AVIF in bulk.', False),
   ('/image-compressor', 'Image compressor', 'image', 'compress', 'Shrink photos for email, web and uploads.', False),
   ('/image-resizer', 'Image resizer', 'image', 'resize', 'Resize many images by pixels or percent.', False),
@@ -95,6 +106,7 @@ TOOLS = [
   ('/bulk-file-rename', 'Bulk file renamer', 'file', 'rename', 'Rename hundreds of files with patterns and numbering.', False),
   ('/image-to-text', 'Image to text (OCR)', 'text', 'ocr', 'Extract text from photos, scans and PDFs in 38 languages.', True),
   ('/word-counter', 'Word counter', 'text', 'text', 'Words, characters, reading time and text tools.', False),
+  ('/qr-scanner', 'QR & barcode scanner', 'util', 'scan', 'Scan QR codes and barcodes with your camera or an image.', True),
   ('/qr-code-generator', 'QR code generator', 'util', 'qr', 'QR codes for links, Wi-Fi, contacts and more.', False),
   ('/password-generator', 'Password generator', 'util', 'key', 'Strong random passwords with a strength meter.', False),
 ]
@@ -218,10 +230,11 @@ def image_tool(mode):
       'convert': 'Convert photos between JPG, PNG, WebP and AVIF in bulk. Drop in as many images as you like, choose a format and download them one by one or as a ZIP.',
       'compress': 'Make photos smaller for email, websites and upload limits without visible quality loss. Compress dozens of images at once and see exactly how much space you saved.',
       'resize': 'Resize many images at once to an exact width, height, longest side or percentage. Perfect for websites, marketplaces, forms and social media.',
+      'heic': 'Convert iPhone and iPad photos from HEIC to JPG (or PNG and WebP) in bulk, in any browser. Drop a whole camera roll, download a ZIP, and the photos never leave your device.',
     }[mode]
     ui = f'''<div class="t-grid">
     <div>
-      {DROP("image/*", "Drop images here or click to choose", "JPG, PNG, WebP, AVIF, GIF, BMP · paste with Ctrl+V · nothing is uploaded")}
+      {DROP("image/*,.heic,.heif" if mode == "heic" else "image/*,.heic,.heif", "Drop HEIC photos here" if mode == "heic" else "Drop images here or click to choose", "HEIC and HEIF from iPhone, iPad and Samsung · batch supported · nothing is uploaded" if mode == "heic" else "JPG, PNG, WebP, AVIF, HEIC, GIF, BMP · paste with Ctrl+V · nothing is uploaded")}
       <ul class="t-list" id="t-list" aria-live="polite"></ul>
       <p class="t-status" id="t-status" role="status"></p>
     </div>
@@ -237,7 +250,7 @@ def image_tool(mode):
       <label class="t-field">Size <span style="display:flex;gap:8px;align-items:center"><input class="t-input" type="number" id="t-resize-val" min="1" value="1280"><span id="t-resize-unit">px</span></span></label>
       <label class="t-field">Background for transparent images (JPG) <input class="t-input" type="color" id="t-bg" value="#ffffff" style="height:42px;padding:4px"></label>
       <div class="t-actions">
-        <button class="t-btn primary" id="t-run" type="button">{ {"convert": "Convert", "compress": "Compress", "resize": "Resize"}[mode] } images</button>
+        <button class="t-btn primary" id="t-run" type="button">{ {"convert": "Convert", "compress": "Compress", "resize": "Resize", "heic": "Convert"}[mode] } images</button>
         <button class="t-btn" id="t-zip" type="button" disabled>Download all</button>
         <button class="t-btn" id="t-clear" type="button">Clear</button>
       </div>
@@ -264,7 +277,7 @@ FAQ_IMAGE = [
   ('Are my images uploaded to a server?', 'No. Conversion, compression and resizing run entirely in your browser. Your photos never leave your device, which is also why it works offline once the page has loaded.'),
   ('Is there a limit on the number or size of images?', 'There is no fixed limit. Batches of hundreds of photos work fine on a laptop; very large images (above about 50 megapixels) may be slow on older phones.'),
   ('Will converting reduce the quality?', 'JPG, WebP and AVIF are lossy formats, so each re-encode discards some detail. At 80–90% quality the difference is invisible for most photos. PNG is lossless.'),
-  ('Can I convert HEIC to JPG?', 'Yes in Safari on Mac, iPhone and iPad, which can decode HEIC. Chrome and Firefox cannot read HEIC files yet.'),
+  ('Can I convert HEIC to JPG?', 'Yes, in every modern browser. Safari decodes HEIC itself; in Chrome, Edge and Firefox a HEIC decoder (libheif) loads automatically the first time you add an iPhone photo. Our dedicated HEIC to JPG converter is set up for exactly this.'),
   ('Does it keep transparency?', 'PNG, WebP and AVIF keep transparent areas. JPG has no transparency, so transparent areas are filled with the background colour you choose.'),
 ]
 
@@ -279,6 +292,28 @@ for mode, slug, name, title, desc in [
     lead, ui = image_tool(mode)
     PAGES[slug] = dict(name=name, title=title, desc=desc, cat='image', lead=lead, ui=ui, mode=mode, script='image-tools.js',
                        article=ART_IMAGE, faqs=FAQ_IMAGE, appcat='MultimediaApplication')
+
+_lead, _ui = image_tool('heic')
+PAGES['heic-to-jpg'] = dict(name='HEIC to JPG', cat='image', script='image-tools.js', mode='heic', appcat='MultimediaApplication',
+  title='HEIC to JPG Converter — Bulk, Free, No Upload | WebcamClicks',
+  desc='Convert iPhone HEIC photos to JPG, PNG or WebP in bulk, in any browser. Keeps the right orientation, full resolution and colours. Free, private: nothing is uploaded.',
+  lead=_lead, ui=_ui,
+  article='''<h2>How to convert HEIC to JPG</h2>
+<ol><li>Drop your HEIC photos into the box. You can add hundreds at once, straight from AirDrop, iCloud Photos downloads or a USB cable.</li>
+<li>JPG at 92% quality is selected: visually identical to the original and accepted everywhere. Choose PNG for lossless copies or WebP for smaller files.</li>
+<li>Optionally resize, for example to a longest side of 2048 px for e-mail or web forms.</li>
+<li>Press <strong>Convert images</strong> and download them one by one or all together as a ZIP.</li></ol>
+<h2>What is HEIC, and why convert it?</h2>
+<p>Since iOS 11, iPhones save photos as <strong>HEIC</strong> (High Efficiency Image Container), which uses the HEVC video codec to make files about half the size of a JPG of the same quality. The catch: Windows without the paid HEVC extension, most websites, upload forms, older Android phones, and many printing services and editors can't open HEIC. Converting to JPG makes your photos open everywhere.</p>
+<p>Tip: to make your iPhone take JPGs from now on, go to <em>Settings › Camera › Formats</em> and choose <em>Most Compatible</em>. To keep HEIC on the phone but send JPGs, AirDrop and Mail convert automatically when the receiver needs it.</p>
+<h2>Private by design</h2>
+<p>Online HEIC converters usually upload your photos to their server. Here the decoder (libheif, compiled to WebAssembly) runs inside your browser, so your personal photos never leave your device. The converted JPGs also contain no location data, which makes them safe to share. Want to see what your originals reveal? Open one in the <a href="/metadata-viewer">metadata viewer</a>.</p>''',
+  faqs=[('Is this HEIC to JPG converter free?', 'Yes, with no limits, sign-up or watermark.'),
+        ('Will I lose quality?', 'At 92% JPG quality the difference is invisible. For a perfect copy choose PNG, which is lossless but much larger.'),
+        ('Does it work on Windows and Android?', 'Yes. In Chrome, Edge and Firefox a HEIC decoder loads automatically the first time (about 3 MB, then cached).'),
+        ('Are my photos uploaded?', 'No. Everything runs on your device.'),
+        ('Do converted photos keep the date and location?', 'No, the JPGs are saved without metadata, so your location is not shared. The photos keep their correct orientation.'),
+        ('Can I convert Live Photos?', 'The still photo of a Live Photo is a normal HEIC and converts fine. The short video part is a separate MOV file.')])
 
 PAGES['background-remover'] = dict(
   name='Background remover', cat='image', script='bg-remover.js', appcat='PhotographyApplication',
@@ -1045,6 +1080,7 @@ PAGES['screen-recorder'] = dict(
 
 # ----------------------------------------------------------------------------- media, PDF & OCR tools (2026-11 batch)
 exec(open(os.path.join(ROOT, 'scripts', 'tool_pages_v2.py'), encoding='utf-8').read())
+exec(open(os.path.join(ROOT, 'scripts', 'tool_pages_v3.py'), encoding='utf-8').read())
 
 # ----------------------------------------------------------------------------- build tool pages
 def related_cards(slug, cat):

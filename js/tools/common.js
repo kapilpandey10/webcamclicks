@@ -17,7 +17,9 @@ export const ESM = {
   pdfjsWorker: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.5.438/build/pdf.worker.min.mjs',
   pdflibCrypt: 'https://cdn.jsdelivr.net/npm/@cantoo/pdf-lib@2.11.1/dist/pdf-lib.esm.min.js',   // pdf-lib fork with encryption
   transformers: 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.2/dist/transformers.min.js',
-  gifenc: 'https://cdn.jsdelivr.net/npm/gifenc@1.0.3/dist/gifenc.esm.js'
+  gifenc: 'https://cdn.jsdelivr.net/npm/gifenc@1.0.3/dist/gifenc.esm.js',
+  heic: 'https://cdn.jsdelivr.net/npm/heic-to@1.6.7/dist/heic-to.js',   // libheif (HEVC) compiled to WebAssembly
+  zxing: 'https://cdn.jsdelivr.net/npm/zxing-wasm@3.1.6/dist/es/reader/index.js'
 };
 const esmCache = {};
 export function loadEsm(key) {
@@ -178,10 +180,21 @@ export function canvasToBlob(canvas, type, quality) {
   return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Encoding failed'))), type, quality));
 }
 
-/** Decode any browser-supported image file, honouring EXIF orientation. */
+/** HEIC/HEIF by name, type or contents ("ftyp" box with a HEIF brand). */
+export async function isHeic(file) {
+  if (/\.(heic|heif|hif)$/i.test(file.name || '') || /hei[cf]/i.test(file.type || '')) return true;
+  try { const b = new Uint8Array(await file.slice(4, 12).arrayBuffer()); const s = String.fromCharCode(...b); return s.startsWith('ftyp') && /heic|heix|hevc|hevx|mif1|msf1|heim|heis/.test(s.slice(4)); } catch (_) { return false; }
+}
+
+/** Decode any image file (HEIC included), honouring EXIF orientation. */
 export async function decodeImage(file) {
   if ('createImageBitmap' in window) {
     try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch (_) { /* fall through */ }
+  }
+  // iPhone HEIC/HEIF: only Safari decodes it natively; elsewhere use libheif (WebAssembly), loaded on demand
+  if (await isHeic(file)) {
+    const { heicTo } = await loadEsm('heic');
+    return heicTo({ blob: file, type: 'bitmap' });
   }
   return new Promise((resolve, reject) => {
     const img = new Image();

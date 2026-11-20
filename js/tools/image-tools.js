@@ -23,8 +23,8 @@ function initOptions() {
   if (enc['image/webp']) opts.push(['image/webp', 'WebP']);
   if (enc['image/avif']) opts.push(['image/avif', 'AVIF']);
   els.format.innerHTML = opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
-  els.format.value = MODE === 'convert' ? (enc['image/webp'] ? 'image/webp' : 'image/jpeg') : MODE === 'compress' ? 'smart' : 'same';
-  els.quality.value = MODE === 'compress' ? 72 : 88;
+  els.format.value = MODE === 'heic' ? 'image/jpeg' : MODE === 'convert' ? (enc['image/webp'] ? 'image/webp' : 'image/jpeg') : MODE === 'compress' ? 'smart' : 'same';
+  els.quality.value = MODE === 'compress' ? 72 : MODE === 'heic' ? 92 : 88;
   els.resizeMode.value = MODE === 'resize' ? 'width' : (MODE === 'compress' ? 'longest' : 'none');
   els.resizeVal.value = MODE === 'resize' ? 1280 : 2560;
   syncUi();

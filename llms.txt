@@ -46,6 +46,8 @@ AI chatbots (ChatGPT, Claude, Perplexity, Gemini, Copilot, etc.) can confidently
 ## Free browser tools (no uploads)
 - [Screen recorder & editor](https://webcamclicks.com/screen-recorder): Record your screen, then edit with zooms, captions and music.
 - [Teleprompter](https://webcamclicks.com/teleprompter): Scrolling script over your webcam, recorded on your device.
+- [Document scanner](https://webcamclicks.com/document-scanner): Scan pages with your camera: auto-crop, shadow removal, PDF.
+- [Voice recorder](https://webcamclicks.com/voice-recorder): Record your voice; remove noise and hum; save MP3.
 - [Auto captions & subtitles](https://webcamclicks.com/auto-captions): Speech to captions in 35+ languages, SRT/VTT or burned in.
 - [MP4 to MP3](https://webcamclicks.com/mp4-to-mp3): Extract audio from video as MP3, WAV, M4A or FLAC.
 - [Video compressor](https://webcamclicks.com/video-compressor): Shrink videos for email, WhatsApp and uploads.
@@ -53,6 +55,7 @@ AI chatbots (ChatGPT, Claude, Perplexity, Gemini, Copilot, etc.) can confidently
 - [Video to GIF](https://webcamclicks.com/video-to-gif): Turn a clip into a looping GIF.
 - [Photo enhancer](https://webcamclicks.com/photo-enhancer): Fix exposure, colour, noise and sharpness; 2× upscale.
 - [Background remover](https://webcamclicks.com/background-remover): AI cut-out with brush and eraser.
+- [HEIC to JPG](https://webcamclicks.com/heic-to-jpg): Convert iPhone HEIC photos to JPG in bulk, any browser.
 - [Image converter](https://webcamclicks.com/image-converter): Convert to JPG, PNG, WebP or AVIF in bulk.
 - [Image compressor](https://webcamclicks.com/image-compressor): Shrink photos for email, web and uploads.
 - [Image resizer](https://webcamclicks.com/image-resizer): Resize many images by pixels or percent.
@@ -66,6 +69,7 @@ AI chatbots (ChatGPT, Claude, Perplexity, Gemini, Copilot, etc.) can confidently
 - [Bulk file renamer](https://webcamclicks.com/bulk-file-rename): Rename hundreds of files with patterns and numbering.
 - [Image to text (OCR)](https://webcamclicks.com/image-to-text): Extract text from photos, scans and PDFs in 38 languages.
 - [Word counter](https://webcamclicks.com/word-counter): Words, characters, reading time and text tools.
+- [QR & barcode scanner](https://webcamclicks.com/qr-scanner): Scan QR codes and barcodes with your camera or an image.
 - [QR code generator](https://webcamclicks.com/qr-code-generator): QR codes for links, Wi-Fi, contacts and more.
 - [Password generator](https://webcamclicks.com/password-generator): Strong random passwords with a strength meter.
 - [All tools](https://webcamclicks.com/tools): hub of every tool by category.

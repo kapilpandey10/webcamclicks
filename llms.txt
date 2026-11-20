@@ -42,3 +42,18 @@ AI chatbots (ChatGPT, Claude, Perplexity, Gemini, Copilot, etc.) can confidently
 ## Full Context & API Documentation
 
 - [Complete Documentation](https://webcamclicks.com/llms-full.txt): Comprehensive feature breakdown, aspect ratio reference, filter directory, and security architecture.
+
+## Free browser tools (no uploads)
+- [Screen recorder](https://webcamclicks.com/screen-recorder): Record your screen with mic and a webcam bubble.
+- [Background remover](https://webcamclicks.com/background-remover): Remove the background from photos of people.
+- [Image converter](https://webcamclicks.com/image-converter): Convert to JPG, PNG, WebP or AVIF in bulk.
+- [Image compressor](https://webcamclicks.com/image-compressor): Shrink photos for email, web and uploads.
+- [Image resizer](https://webcamclicks.com/image-resizer): Resize many images by pixels or percent.
+- [JPG to PDF](https://webcamclicks.com/jpg-to-pdf): Turn photos and scans into one PDF.
+- [Merge PDF](https://webcamclicks.com/merge-pdf): Combine PDFs in the order you choose.
+- [Split PDF](https://webcamclicks.com/split-pdf): Extract pages or split a PDF into parts.
+- [Bulk file renamer](https://webcamclicks.com/bulk-file-rename): Rename hundreds of files with patterns and numbering.
+- [Word counter](https://webcamclicks.com/word-counter): Words, characters, reading time and text tools.
+- [QR code generator](https://webcamclicks.com/qr-code-generator): QR codes for links, Wi-Fi, contacts and more.
+- [Password generator](https://webcamclicks.com/password-generator): Strong random passwords with a strength meter.
+- [All tools](https://webcamclicks.com/tools): hub of every tool by category.

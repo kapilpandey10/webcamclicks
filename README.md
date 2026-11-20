@@ -20,6 +20,19 @@ Free online webcam effects, filters, face-detection tools and camera games — a
 | Monetization | Google AdSense auto-ads + 4 manual responsive slots (configured in `index.html`) |
 | SEO | Pre-rendered content, FAQ schema, JSON-LD, sitemap.xml, robots.txt, Open Graph, canonical URLs, privacy & terms pages |
 
+## Tools hub
+
+`/tools` lists every tool by category. The new tool pages, the hub, the shared footer/nav and the
+home-page "Free everyday tools" section are generated from one registry:
+
+```bash
+python3 scripts/build-tool-pages.py
+```
+
+Edit `TOOLS` / `PAGES` in that script, re-run it, and commit the regenerated HTML. Tool logic lives in
+`js/tools/` (shared helpers in `common.js`) and styles in `styles/tools.css`. Libraries load on demand
+from jsDelivr at pinned versions: jszip 3.10.1, pdf-lib 1.17.1, qrcode-generator 1.4.4.
+
 ## Run locally
 
 Camera access requires `localhost` or HTTPS. ES modules require a server (not `file://`):

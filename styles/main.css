@@ -3341,3 +3341,11 @@ a:hover { color: var(--accent-hover); }
 @media (max-width: 980px) {
   main > .hero + *:not(#camera):not(.content-section) { order: 2 !important; }
 }
+/* footer v2: brand column + tool categories */
+.site-footer .footer-cols.footer-v2 { display: grid; grid-template-columns: 1.4fr repeat(5, minmax(0, 1fr)); gap: 28px; }
+.footer-v2 .footer-brand p { margin: 12px 0 0; line-height: 1.6; font-size: .88rem; max-width: 26em; }
+.footer-v2 .footer-brand p a { font-weight: 700; color: var(--ink); }
+.footer-v2 h3 { margin: 4px 0 12px; }
+.footer-v2 li { margin-bottom: 7px; font-size: .86rem; }
+@media (max-width: 1000px) { .site-footer .footer-cols.footer-v2 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .footer-v2 .footer-brand { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .site-footer .footer-cols.footer-v2 { grid-template-columns: 1fr 1fr; gap: 22px; } }

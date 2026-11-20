@@ -139,8 +139,8 @@ PAGES['video-to-gif'] = dict(
 PAGES['auto-captions'] = dict(
   name='Auto captions & subtitles', cat='video', script='auto-captions.js', appcat='MultimediaApplication',
   title='Auto Caption Generator — Free AI Subtitles, SRT & Burned-in | WebcamClicks',
-  desc='Generate captions and subtitles for any video with on-device AI (Whisper). 35+ languages, translate, edit, download SRT/VTT or burn captions into the video. No upload.',
-  lead='Turn speech into captions automatically with an AI speech model that runs in your browser. Edit any line, translate, style the captions, then download an SRT/VTT subtitle file or a video with the captions burned in.',
+  desc='Free AI caption generator with word-by-word timing and 12 animated styles (bold pop, karaoke, highlight box, one word). 35+ languages, SRT/VTT, burn-in. No upload.',
+  lead='Drop a video and get perfectly timed captions, word by word, from an AI speech model that runs in your browser. Pick a trending animated style, edit any line, translate, then download subtitles or a video with the captions burned in.',
   ui=f'''<div class="t-grid">
     <div>
       {DROP(VIDEO_ACCEPT, "Drop a video or audio file", "MP4, MOV, WebM, MP3, M4A, WAV · nothing is uploaded", multiple=False)}
@@ -162,14 +162,21 @@ PAGES['auto-captions'] = dict(
         <label class="t-field">Accuracy <select class="t-select" id="cap-model"><option value="fast">Fast (≈40 MB)</option><option value="balanced" selected>Balanced (≈80 MB)</option><option value="accurate">Accurate (≈250 MB)</option></select></label>
         <label class="t-field">Captions in <select class="t-select" id="cap-task"><option value="transcribe">Same language</option><option value="translate">Translate to English</option></select></label>
       </div>
+      <label class="t-check"><input type="checkbox" id="cap-auto" checked> Generate automatically when I add a video</label>
       <button class="t-btn primary" id="cap-run" type="button" disabled style="width:100%">✨ Generate captions</button>
-      <p class="muted" style="font-size:.8rem;margin:8px 0 0">The speech model downloads once, then works offline. A graphics chip (WebGPU) makes it several times faster.</p>
+      <p class="cap-model" id="cap-model-status" aria-live="polite"></p>
       <h2 style="margin-top:18px">2 · Style</h2>
+      <div class="cap-styles" id="cap-styles" role="radiogroup" aria-label="Caption style"></div>
       <div class="t-row">
-        <label class="t-field">Style <select class="t-select" id="cap-style"><option value="classic">Classic box</option><option value="bold">Bold outline</option><option value="yellow">Yellow</option><option value="minimal">Minimal shadow</option><option value="brand">Coral box</option></select></label>
-        <label class="t-field">Position <select class="t-select" id="cap-pos"><option value="bottom">Bottom</option><option value="middle">Middle</option><option value="top">Top</option></select></label>
+        <label class="t-field">Words per caption <select class="t-select" id="cap-group"><option value="auto">Style default</option><option value="1">1 word</option><option value="2">2 words</option><option value="3">Up to 3 words</option><option value="short">Short line</option><option value="lines">Full subtitle (2 lines)</option></select></label>
+        <label class="t-field">Size <input class="t-range" type="range" id="cap-size" min="30" max="120" value="70"></label>
       </div>
-      <label class="t-field">Size <input class="t-range" type="range" id="cap-size" min="30" max="90" value="52"></label>
+      <label class="t-field">Position (top ↔ bottom) <input class="t-range" type="range" id="cap-pos" min="8" max="92" value="72"></label>
+      <div class="t-row cap-colors">
+        <label class="t-field"><span>Text</span><input type="color" id="cap-fillc" value="#ffffff"></label>
+        <label class="t-field"><span>Spoken word</span><input type="color" id="cap-activec" value="#ffe14d"></label>
+        <label class="t-check" style="align-self:end"><input type="checkbox" id="cap-upper"> CAPITALS</label>
+      </div>
       <div class="t-row"><label class="t-field">Shift all (s) <input class="t-input" type="number" id="cap-shift" step="0.1" value="0.5"></label><div class="t-field">&nbsp;<button class="t-btn sm" id="cap-shift-btn" type="button">Apply shift</button></div></div>
       <h2 style="margin-top:18px">3 · Translate</h2>
       <div id="cap-tr-wrap">
@@ -191,6 +198,17 @@ PAGES['auto-captions'] = dict(
 <li><strong>Choose the spoken language</strong> or leave it on automatic, and pick Fast, Balanced or Accurate. Accurate is noticeably better for accents, names and noisy audio but downloads a bigger model once.</li>
 <li><strong>Check the captions.</strong> Play the video: the captions appear exactly as they will in the final file. Click any line to jump there and fix a word or a timestamp.</li>
 <li><strong>Translate</strong> if you need another language, then <strong>export</strong> an SRT/VTT file or burn the captions into an MP4.</li></ol>
+<h2>Animated caption styles, timed word by word</h2>
+<p>The speech model reports when every single word is spoken, so captions can highlight each word the moment it is said, the look that keeps viewers watching on TikTok, Reels and Shorts. Choose from 12 styles:</p>
+<ul><li><strong>Bold pop</strong>: heavy white capitals with a black outline; the spoken word turns yellow and springs up.</li>
+<li><strong>Karaoke</strong>: words fill with colour as they are said.</li>
+<li><strong>Highlight box</strong>: a coloured box jumps from word to word.</li>
+<li><strong>One word</strong>: one big word at a time in changing colours, for fast-paced edits.</li>
+<li><strong>Gradient, Comic, Neon and Marker</strong> for a more playful look.</li>
+<li><strong>Coral bar, Typewriter, Classic subtitle and Minimal</strong> for interviews, tutorials and films.</li></ul>
+<p>Set how many words appear at once (one, two, three, a short line or a full two-line subtitle), the size, the colours and the position, and see it live on your video before exporting. Burned-in captions keep the animation exactly as previewed.</p>
+<h2>Fast, because the AI is ready before you need it</h2>
+<p>When you open this page, the speech model starts downloading quietly in the background (unless your device has Data Saver turned on), and a small note shows the progress. By the time you have chosen a video, it is usually ready, and captions start automatically when you add the file. The model is stored by your browser, so later visits work instantly and even offline.</p>
 <h2>SRT, VTT or burned-in captions?</h2>
 <ul><li><strong>SRT</strong> is the universal subtitle file: upload it to YouTube, Facebook, LinkedIn or Vimeo next to your video, or load it in VLC. Viewers can switch captions on and off, and platforms index the text for search.</li>
 <li><strong>VTT</strong> is the web standard used by HTML5 video players and many course platforms.</li>
@@ -200,6 +218,7 @@ PAGES['auto-captions'] = dict(
 <p>Tip: clear audio gives the best captions. Use the <a href="/mic-test">mic test</a> before recording, and the noise removal in the <a href="/screen-recorder">screen recorder's editor</a> for noisy rooms.</p>''',
   faqs=[('Is the caption generator really free and private?', 'Yes. The AI model runs in your browser, so your video is never uploaded and there are no per-minute fees or watermarks.'),
         ('How accurate are the captions?', 'Very good for clear speech in major languages, especially with the Accurate model. Always skim the result: names, jargon and overlapping speakers may need a quick fix in the editor.'),
+        ('Does it time each word?', 'Yes. Captions are timed word by word, so styles like Bold pop and Karaoke highlight each word exactly when it is spoken. If a model can\'t provide word timings on your device, the words are spread over the detected speech instead.'),
         ('How long does it take?', 'With a graphics chip (WebGPU), a 10-minute video usually takes one to three minutes on the Balanced model. Without one it runs on the processor and is slower; use the Fast model for long videos.'),
         ('Can I translate captions into Spanish, Hindi or other languages?', 'Yes, in Chrome 138 or newer on a computer, which has an on-device translator. In other browsers you can transcribe in the original language or translate to English.'),
         ('Can I upload the SRT to YouTube?', 'Yes. In YouTube Studio open Subtitles, choose your video, then Add > Upload file > With timing, and select the SRT.')])
@@ -358,16 +377,17 @@ PAGES['pdf-to-jpg'] = dict(
 # ------------------------------------------------------------------------------------------- PDF editor
 PAGES['pdf-editor'] = dict(
   name='PDF editor', cat='pdf', script='pdf-editor.js', appcat='BusinessApplication',
-  title='Free PDF Editor Online — Add Text, Sign, Highlight, White-out | WebcamClicks',
-  desc='Edit PDFs free in your browser: add text, fill forms, sign, draw, highlight, white-out, add images, rotate or delete pages. No upload, no watermark, no sign-up.',
-  lead='Fill in forms, sign contracts, add notes, highlight, cover text with white-out, insert images and rotate or delete pages. Everything is written into a real PDF on your device.',
+  title='Free PDF Editor — Edit Existing Text, Sign, Fill & Annotate | WebcamClicks',
+  desc='Edit the existing text in a PDF, matched to its font, size and colour. Also add text, sign, highlight, white-out, insert images, rotate or delete pages. Free, no upload.',
+  lead='Change the words already in your PDF: click a line and type, and the new text matches the original font, size and colour. Fill in forms, sign, highlight, add images and rotate or delete pages too. Everything happens on your device.',
   ui=f'''{DROP("application/pdf,.pdf", "Drop a PDF to edit", "Nothing is uploaded · works offline once loaded", multiple=False)}
   <p class="t-status" id="t-status" role="status"></p>
   <div id="pe-editor" class="pe-editor" hidden>
     <div class="pe-toolbar">
       <div class="pe-tools" id="pe-tools" role="toolbar" aria-label="PDF tools">
         <button type="button" data-tool="select" aria-pressed="true">↖ Select</button>
-        <button type="button" data-tool="text" aria-pressed="false">T Text</button>
+        <button type="button" data-tool="edittext" aria-pressed="false" class="pe-hot">Aa Edit text</button>
+        <button type="button" data-tool="text" aria-pressed="false">T Add text</button>
         <button type="button" data-tool="sign" aria-pressed="false">✍ Sign</button>
         <button type="button" data-tool="draw" aria-pressed="false">✎ Draw</button>
         <button type="button" data-tool="highlight" aria-pressed="false">▮ Highlight</button>
@@ -397,7 +417,8 @@ PAGES['pdf-editor'] = dict(
     </div>
   </div>''',
   article='''<h2>What you can do</h2>
-<ul><li><strong>Fill in forms:</strong> choose <em>Text</em> and click where you want to type. Drag the box to line it up and set the size in points.</li>
+<ul><li><strong>Edit existing text:</strong> choose <em>Edit text</em> and every line of text on the page becomes clickable. Click a line, put the cursor where you want and type. WebcamClicks detects the original font style (sans-serif, serif or monospace, bold, italic), the size and the text and background colours, and when you save, the old words are removed from the page and the new ones written in their place, so copying and searching the PDF find your new wording.</li>
+<li><strong>Fill in forms:</strong> choose <em>Text</em> and click where you want to type. Drag the box to line it up and set the size in points.</li>
 <li><strong>Sign documents:</strong> <em>Sign</em> lets you draw your signature or type your name; place it, then drag the corner to resize.</li>
 <li><strong>Highlight</strong> important passages and add <strong>boxes</strong> to draw attention.</li>
 <li><strong>White-out</strong> covers text or images with a white box. Note: it hides content visually; for confidential redaction, also remove the hidden text (see below).</li>
@@ -410,7 +431,8 @@ PAGES['pdf-editor'] = dict(
 <h2>Important: white-out is not redaction</h2>
 <p>A white box covers what's underneath, but the original text is still inside the file and can be copied out. To truly remove sensitive text, white it out here, then use <a href="/pdf-to-jpg">PDF to JPG</a> and <a href="/jpg-to-pdf">JPG to PDF</a> to flatten the pages into images.</p>''' + PRIVACY,
   faqs=[('Is this PDF editor free?', 'Yes, with no watermark, page limit or account.'),
-        ('Can I edit the existing text in a PDF?', 'Not directly. PDFs store text as positioned glyphs, not paragraphs. The reliable way is to white-out the old text and type the new text on top, which this editor does.'),
+        ('Can I edit the existing text in a PDF?', 'Yes. Choose Edit text and click any line. The replacement uses a matching standard font (Helvetica, Times or Courier in the right weight), size and colour. The exact original typeface is only reused if it is a standard one, so a custom brand font will look slightly different. Scanned PDFs have no text to edit: run them through Image to text (OCR) first.'),
+        ('Is the old text really removed?', 'In most PDFs, yes: the old words are taken out of the page, and the editor re-checks the saved file to make sure nothing else changed. If a page is built in an unusual way, the old text is covered with the exact background colour instead, which looks identical on screen and in print.'),
         ('Is it safe for contracts and IDs?', 'Yes. The file never leaves your device. Close the tab and nothing remains.'),
         ('Can I sign a PDF on my phone?', 'Yes. Tap Sign and draw with your finger, then place and resize the signature.'),
         ('Why can\'t I open my PDF?', 'Encrypted PDFs need to be unlocked first. Damaged files may also fail to open.')])
@@ -500,12 +522,12 @@ PAGES['image-to-text'] = dict(
 # ------------------------------------------------------------------------------------------- metadata
 PAGES['metadata-viewer'] = dict(
   name='Metadata viewer & remover', cat='file', script='metadata.js', appcat='UtilitiesApplication',
-  title='Metadata Viewer & Remover — EXIF, GPS, PDF & Video Info | WebcamClicks',
-  desc='See hidden metadata in photos (EXIF, GPS location, camera), PDFs (author, software) and videos (codec, tags), then remove it before sharing. Free, private, no upload.',
-  lead='See the hidden information inside your files: where and when a photo was taken, which phone took it, who wrote a PDF and with what software, and the codecs and tags in a video. Then remove it with one click before you share.',
+  title='Metadata Viewer & Remover — Photos, PDF, Word, Excel, Video | WebcamClicks',
+  desc='See everything hidden in your files: GPS, camera, author, last editor, company, editing time, comments, AI markers, fonts, links. Photos, PDF, Word, Excel, video. Remove it free.',
+  lead='See everything your files reveal about you: where a photo was taken and with which phone, who wrote and last edited a document, the company, total editing time, comment authors, hidden sheets, earlier versions, AI-generation markers and more. Then remove it with one click before you share.',
   ui=f'''<div class="t-grid">
     <div>
-      {DROP("", "Drop a photo, PDF, video or audio file", "JPG, HEIC, PNG, TIFF, PDF, MP4, MOV, MP3 and more · nothing is uploaded", multiple=False)}
+      {DROP("", "Drop any file", "Photos, PDF, Word, Excel, PowerPoint, OpenDocument, EPUB, ZIP, SVG, fonts, video, audio · nothing is uploaded", multiple=False)}
       <p class="t-status" id="t-summary"></p>
       <div class="md-out" id="t-out"></div>
       <p class="t-status" id="t-status" role="status"></p>
@@ -522,15 +544,21 @@ PAGES['metadata-viewer'] = dict(
   article='''<h2>What is metadata, and why remove it?</h2>
 <p>Most files carry hidden information alongside their content. A photo from your phone usually records the <strong>exact GPS location</strong> where it was taken, the date and time, the phone model and sometimes its serial number. A PDF can contain the author's name, the company, the software and the editing history. Video files store the device, location and creation date. Posting such files online can reveal your home address, your daily routine or confidential details.</p>
 <h2>What this tool reads</h2>
-<ul><li><strong>Photos:</strong> EXIF (camera, lens, exposure, date), GPS with a map link, IPTC captions and credits, XMP editing data, colour profiles and PNG text chunks. Works with JPG, HEIC, PNG, WebP and TIFF.</li>
-<li><strong>PDFs:</strong> title, author, subject, keywords, creating application, producer, created and modified dates, page size, encryption and whether an XMP metadata stream is present.</li>
+<p>Every file gets a <strong>real type check</strong> (from its contents, so a renamed file is caught) and <strong>SHA-256 and SHA-1 fingerprints</strong> to prove a file hasn't changed. Then, depending on the file:</p>
+<ul><li><strong>Photos:</strong> EXIF (camera, lens, serial numbers, exposure, date), GPS with a map link, IPTC captions and credits, XMP editing history, maker notes, colour profiles, JPEG comments, PNG text chunks, the <em>embedded thumbnail</em> (which can show a photo before it was cropped) and <em>AI markers</em>: Content Credentials (C2PA), declared AI generation, and the prompt and settings that Stable Diffusion tools save inside images. Works with JPG, HEIC, PNG, WebP, TIFF and camera raw files.</li>
+<li><strong>PDFs:</strong> every document property including custom ones, the full XMP record (editing history, document IDs), fonts, images, links, comments and their authors, form fields and values, attachments, layers, digital signatures, JavaScript, hidden editor data and how many times the file was saved (earlier versions can often be recovered).</li>
+<li><strong>Word, Excel and PowerPoint:</strong> author, last editor, company, manager, template path, total editing time, revision count, last printed, custom properties, the names and accounts of everyone who commented or made tracked changes, deleted text still in the file, hidden sheets, hidden slides, speaker notes, external links and file paths, macros, embedded files and the preview thumbnail. Also OpenDocument (LibreOffice) and EPUB e-books.</li>
+<li><strong>ZIP archives, SVG, HTML and fonts:</strong> file lists with dates, archive comments, editor data such as Inkscape file paths, generator comments, meta tags and font designer and licence details.</li>
 <li><strong>Video and audio:</strong> container, duration, bitrate, codecs, resolution, frame rate, sample rate, language and tags such as title, artist, date and recording device.</li></ul>
 <h2>How removal works</h2>
 <ul><li><strong>Photos</strong> are re-saved from their pixels at high quality, which drops every metadata block while keeping the picture the right way up.</li>
-<li><strong>PDFs</strong> have their document properties and XMP stream deleted; pages are untouched.</li>
+<li><strong>PDFs</strong> have their document properties, XMP, editor data, comment authors and earlier saved versions removed; pages are untouched.</li>
+<li><strong>Office and OpenDocument files</strong> lose their author, last editor, company, template, editing time, custom properties and comment author names; the content is unchanged.</li>
 <li><strong>Videos and audio</strong> are copied into a new file without tags. The audio and video streams aren't re-encoded, so there is no quality loss.</li></ul>
 <p>Social networks like Instagram and Facebook strip photo metadata on upload, but email, WhatsApp documents, cloud links, forums and your own website often don't. When in doubt, clean it here first.</p>''' + PRIVACY,
   faqs=[('Does removing metadata reduce photo quality?', 'Photos are re-saved at 95% quality, which is visually identical. PDFs and videos are not re-compressed at all.'),
+        ('Can it show who edited a Word or Excel file?', 'Yes. It lists the author, the last person to save it, the company, the template, total editing time and everyone who left comments or tracked changes, often with their account e-mail. Removing metadata replaces those names with “Author”.'),
+        ('Can it tell if an image was made by AI?', 'It shows the markers AI tools leave: Content Credentials (C2PA), the IPTC “AI-generated” source type, and the prompts and settings some generators save inside PNG files. Images without these markers may still be AI-generated, because the markers are easy to strip.'),
         ('Can it remove GPS from iPhone HEIC photos?', 'It can read HEIC everywhere. Removing metadata requires the browser to decode the image, which works in Safari; in other browsers, convert to JPG first with the image converter.'),
         ('Is my file uploaded?', 'No. Everything is read and cleaned in your browser.'),
         ('Why does my file have no metadata?', 'Screenshots, images saved from social networks and files already cleaned usually contain little or none, which is good for privacy.')])

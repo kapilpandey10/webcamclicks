@@ -268,3 +268,33 @@ input[type=range].t-range { width: 100%; accent-color: var(--accent); }
   .cue-times .t-input { width: 98px; }
   .pe-tools button { padding: 7px 8px; font-size: .78rem; }
 }
+
+/* caption style picker */
+.cap-styles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0 0 14px; }
+.cap-tile { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 6px; border: 2px solid transparent; border-radius: 12px; background: #fff; cursor: pointer; font: inherit; text-align: center; box-shadow: 0 0 0 1px var(--line); }
+.cap-tile:hover { box-shadow: 0 0 0 1px var(--ink-3); }
+.cap-tile[aria-checked="true"] { border-color: var(--accent); box-shadow: none; }
+.cap-tile-prev { display: grid; place-items: center; height: 46px; border-radius: 8px; background: linear-gradient(135deg, #3a3f4b, #16181d); font-size: 15px; line-height: 1.1; overflow: hidden; white-space: nowrap; }
+.cap-tile small { font-size: .72rem; font-weight: 700; color: var(--ink-2); }
+.cap-model { font-size: .8rem; color: var(--ink-3); margin: 8px 0 0; min-height: 1.2em; }
+.cap-model[data-state="ready"] { color: var(--ok); font-weight: 600; }
+.cap-model[data-state="downloading"] { color: var(--ink-2); }
+.cap-colors { grid-template-columns: auto auto 1fr; align-items: end; }
+.cap-colors input[type=color] { width: 54px; height: 34px; padding: 0; border: 1px solid var(--line-strong); border-radius: 8px; background: #fff; }
+@media (max-width: 480px) { .cap-styles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* PDF editor: edit existing text */
+.pe-tools button.pe-hot { border-color: var(--accent); color: var(--accent-ink); }
+.pe-tools button.pe-hot[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pe-tline { position: absolute; pointer-events: auto; cursor: text; border-radius: 2px; outline: 1px dashed rgba(255, 77, 46, .45); outline-offset: 1px; }
+.pe-tline:hover { background: rgba(255, 77, 46, .12); outline: 1.5px solid var(--accent); }
+.pe-edit { white-space: pre; padding: 0; margin: 0; overflow: visible; outline: none; }
+.pe-pages[data-tool="edittext"] .pe-edit, .pe-edit.sel { outline: 1.5px solid var(--accent); outline-offset: 1px; }
+.pe-pages[data-tool="edittext"] .pe-sheet { cursor: default; }
+
+/* metadata: counts, thumbnails, long values */
+.md-count { margin: 0; font-size: .82rem; color: var(--ink-3); font-weight: 600; }
+.md-group h3 small { font-weight: 600; color: var(--ink-3); margin-left: 4px; }
+.md-group .md-more { margin: 8px 14px 12px; }
+.md-thumb { display: block; max-width: 220px; max-height: 220px; border-radius: 8px; border: 1px solid var(--line); background: #fff; }
+.md-group td { white-space: normal; }

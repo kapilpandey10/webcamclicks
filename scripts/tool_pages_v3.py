@@ -268,74 +268,84 @@ PAGES['auto-reframe'] = dict(
 # ------------------------------------------------------------------------------------------- thumbnail maker
 PAGES['youtube-thumbnail-maker'] = dict(
   name='YouTube thumbnail maker', cat='image', script='thumbnail-maker.js', appcat='DesignApplication',
-  title='YouTube Thumbnail Maker — AI Cut-out, Best Frame Finder, Free | WebcamClicks',
-  desc='Make click-worthy YouTube thumbnails free: picks the best frame from your video, cuts you out with AI, adds a sticker outline, bold text and badges. 1280×720 under 2 MB. No upload.',
-  lead='Make a scroll-stopping thumbnail in a minute. Drop your video and WebcamClicks picks the sharpest frames with your face, cuts you out with AI, and lets you add a bold headline, a sticker outline, a badge and a background, all on your device.',
-  ui=f'''{DROP("image/*,video/*,.heic", "Drop your video or a photo", "MP4, MOV, WebM, JPG, PNG, HEIC · nothing is uploaded", multiple=False)}
-  <p class="t-status" id="t-status" role="status"></p>
-  <div id="tm-vidbox" class="tm-vidbox" hidden>
-    <h2>Suggested frames</h2>
-    <div class="tm-frames" id="tm-frames"></div>
-    <div class="tm-scrub"><video id="tm-video" muted playsinline preload="auto"></video>
-      <div><label class="t-field">Or pick any moment <input class="t-range" type="range" id="tm-seek" min="0" max="1" value="0"></label>
-      <button class="t-btn sm" id="tm-useframe" type="button">Use this frame</button></div></div>
+  title='YouTube Thumbnail Maker — Free Editor with Templates & AI Cut-out | WebcamClicks',
+  desc='Free YouTube thumbnail editor: 14 templates, save your own, layers, 10 bold fonts, 3D text, outlines, glow, arrows, emoji, AI cut-out and best-frame finder. 1280×720, no upload.',
+  lead='A real thumbnail editor in your browser. Start from 14 proven layouts or your own saved templates, drop your video to get the best frame and an AI cut-out of you, then control every layer: fonts, 3D text, outlines, glow, arrows, shapes, emoji and backgrounds. Nothing is uploaded.',
+  ui=f'''<div class="tb-top">
+    {DROP("image/*,video/*,.heic", "Add your photo or video", "We pick the best frame and cut you out with AI · nothing is uploaded", multiple=False)}
+    <p class="t-status" id="t-status" role="status"></p>
   </div>
-  <div class="tm-work" id="tm-work" hidden>
-    <div>
-      <canvas id="tm-canvas" class="tm-canvas" width="1280" height="720" aria-label="Thumbnail preview: drag the text or the person to move them"></canvas>
-      <div class="tm-templates" id="tm-templates" role="group" aria-label="Layouts">
-        <button type="button" class="t-btn sm" data-tpl="right" aria-pressed="true">Face right</button><button type="button" class="t-btn sm" data-tpl="left">Face left</button><button type="button" class="t-btn sm" data-tpl="center">Centred</button><button type="button" class="t-btn sm" data-tpl="bold">Bold colour</button>
+  <div id="tb-vidbox" class="tm-vidbox" hidden>
+    <h2>Best frames from your video</h2>
+    <div class="tm-frames" id="tb-frames"></div>
+    <div class="tm-scrub"><video id="tb-video" muted playsinline preload="auto"></video>
+      <div><label class="t-field">Or pick any moment <input class="t-range" type="range" id="tb-seek" min="0" max="1" step="0.04" value="0"></label>
+      <button class="t-btn sm" id="tb-useframe" type="button">Use this frame</button></div></div>
+  </div>
+  <div class="tb-app">
+    <div class="tb-left">
+      <div class="tb-toolbar" role="toolbar" aria-label="Add and arrange">
+        <button class="t-btn sm" id="tb-add-text" type="button">T Text</button>
+        <button class="t-btn sm" id="tb-add-image" type="button">🖼 Image</button>
+        <details class="tb-menu"><summary class="t-btn sm">◼ Shape</summary><div class="tb-pop" id="tb-shapes"><button type="button" data-shape="rect">▬ Bar / box</button><button type="button" data-shape="arrow">➜ Arrow</button><button type="button" data-shape="circle">● Circle</button><button type="button" data-shape="ring">◯ Ring</button><button type="button" data-shape="burst">✸ Burst</button><button type="button" data-shape="line">— Line</button></div></details>
+        <details class="tb-menu"><summary class="t-btn sm">😀 Emoji</summary><div class="tb-pop tb-emoji" id="tb-emoji"></div></details>
+        <span class="tb-sep"></span>
+        <button class="t-icon-btn" id="tb-dup" type="button" title="Duplicate (Ctrl+D)" aria-label="Duplicate">⧉</button>
+        <button class="t-icon-btn" id="tb-fwd" type="button" title="Bring forward" aria-label="Bring forward">⬆</button>
+        <button class="t-icon-btn" id="tb-back" type="button" title="Send backward" aria-label="Send backward">⬇</button>
+        <button class="t-icon-btn" id="tb-del" type="button" title="Delete (Del)" aria-label="Delete">🗑</button>
+        <span class="tb-sep"></span>
+        <button class="t-icon-btn" id="tb-undo" type="button" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
+        <button class="t-icon-btn" id="tb-redo" type="button" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">↷</button>
       </div>
-      <div class="tm-minirow"><canvas id="tm-mini" width="168" height="94"></canvas><p class="muted">How it looks in YouTube search and suggestions. Big, short text and a clear face win.</p></div>
+      <div class="tb-stage" id="tb-stage"><canvas id="tb-canvas" width="1280" height="720"></canvas><canvas id="tb-overlay" width="1280" height="720" aria-label="Thumbnail editor: click to select, drag to move, corners to resize, dot to rotate"></canvas></div>
+      <div class="tb-under">
+        <label class="t-check" style="margin:0"><input type="checkbox" id="tb-safe" checked> Show where YouTube puts the video length</label>
+        <span class="muted tb-keys">Drag · corners resize (Shift = stretch) · dot rotates · arrows nudge · two fingers pinch</span>
+      </div>
+      <div class="tb-previews">
+        <figure><canvas id="tb-mini" width="168" height="94"></canvas><figcaption>Search results size</figcaption></figure>
+        <figure class="tb-darkfig"><div class="tb-yt"><canvas id="tb-dark" width="246" height="138"></canvas><div><b>Your video title goes here</b><small>Your channel · 12K views · 2 hours ago</small></div></div><figcaption>Dark-mode home feed</figcaption></figure>
+      </div>
+      <input type="file" id="tb-imgin" accept="image/*,.heic,.heif" hidden>
     </div>
-    <div class="t-panel tm-panel">
-      <h2>Headline</h2>
-      <label class="t-field">Text <small>Put *stars* around words to highlight them</small><textarea class="t-textarea" id="tm-text" rows="2">I TRIED IT FOR
-*30 DAYS*</textarea></label>
-      <div class="t-row">
-        <label class="t-field">Font <select class="t-select" id="tm-font"><option value="anton">Anton (tall)</option><option value="montserrat">Montserrat Black</option><option value="bangers">Bangers (comic)</option><option value="poppins">Poppins Bold</option><option value="marker">Marker</option></select></label>
-        <label class="t-field">Size <input class="t-range" type="range" id="tm-size" min="40" max="140" value="96"></label>
+    <div class="tb-right">
+      <div class="tb-tabs" role="tablist"><button type="button" role="tab" data-tab="design" aria-selected="true">Design</button><button type="button" role="tab" data-tab="layers" aria-selected="false">Layers</button><button type="button" role="tab" data-tab="templates" aria-selected="false">Templates</button><button type="button" role="tab" data-tab="export" aria-selected="false">Export</button></div>
+      <div class="tb-panel" data-panel="design"><div id="tb-props"></div></div>
+      <div class="tb-panel" data-panel="layers" hidden><ul class="tb-layers" id="tb-layers"></ul><p class="muted tb-hint">Top of the list = in front. Lock a layer so it can't be moved by accident.</p></div>
+      <div class="tb-panel" data-panel="templates" hidden>
+        <label class="t-check"><input type="checkbox" id="tb-keeptext" checked> Keep my headline when switching</label>
+        <h3>Styles</h3><div class="tb-tpls" id="tb-tpls"></div>
+        <h3>My templates</h3><div class="tb-tpls" id="tb-mytpls"></div>
+        <div class="tb-savebox"><input class="t-input" id="tb-tplname" placeholder="Name, e.g. My channel style" maxlength="40"><button class="t-btn sm primary" id="tb-savetpl" type="button">Save current design</button></div>
+        <label class="t-btn sm" style="cursor:pointer;margin-top:8px">Import a template file<input type="file" id="tb-tplimport" accept=".json,application/json" hidden></label>
       </div>
-      <div class="t-row cap-colors">
-        <label class="t-field"><span>Text</span><input type="color" id="tm-fill" value="#ffffff"></label>
-        <label class="t-field"><span>Highlight</span><input type="color" id="tm-hl" value="#ffe14d"></label>
-        <label class="t-field">Outline <input class="t-range" type="range" id="tm-stroke" min="0" max="14" value="7"></label>
+      <div class="tb-panel" data-panel="export" hidden>
+        <p>1280 × 720 px, the size YouTube recommends. JPG is kept under YouTube's 2 MB limit automatically.</p>
+        <div class="t-actions"><button class="t-btn primary" id="tb-jpg" type="button">⬇ Download JPG</button><button class="t-btn" id="tb-png" type="button">PNG</button></div>
+        <p class="muted tb-hint">Your design is saved automatically in this browser, so you can close the tab and continue later.</p>
       </div>
-      <label class="t-check"><input type="checkbox" id="tm-upper" checked> CAPITALS</label>
-      <h2 style="margin-top:12px">You</h2>
-      <label class="t-check"><input type="checkbox" id="tm-cutout" checked> Cut me out (AI)</label>
-      <div class="t-row">
-        <label class="t-field">Size <input class="t-range" type="range" id="tm-scale" min="30" max="160" value="98"></label>
-        <label class="t-field">Sticker outline <input class="t-range" type="range" id="tm-outline" min="0" max="24" value="10"></label>
-      </div>
-      <div class="t-row cap-colors"><label class="t-field"><span>Outline</span><input type="color" id="tm-outlinec" value="#ffffff"></label><label class="t-check" style="align-self:end"><input type="checkbox" id="tm-flip"> Mirror</label></div>
-      <h2 style="margin-top:12px">Background</h2>
-      <label class="t-field">Style <select class="t-select" id="tm-bg"><option value="photo">The photo</option><option value="gradient">Gradient</option><option value="color">Solid colour</option></select></label>
-      <div class="t-row">
-        <label class="t-field">Blur <input class="t-range" type="range" id="tm-blur" min="0" max="100" value="45"></label>
-        <label class="t-field">Darken <input class="t-range" type="range" id="tm-dim" min="0" max="80" value="25"></label>
-      </div>
-      <div class="t-row cap-colors"><label class="t-field"><span>Colour 1</span><input type="color" id="tm-bgc1" value="#ff4d2e"></label><label class="t-field"><span>Colour 2</span><input type="color" id="tm-bgc2" value="#7c3aed"></label></div>
-      <div class="t-row"><label class="t-field">Badge <input class="t-input" id="tm-badge" placeholder="e.g. NEW, FREE, 2026" maxlength="14"></label><label class="t-field"><span>Badge colour</span><input type="color" id="tm-badgec" value="#d92d20"></label></div>
-      <div class="t-actions"><button class="t-btn primary" id="tm-jpg" type="button">⬇ Download JPG</button><button class="t-btn" id="tm-png" type="button">PNG</button></div>
     </div>
   </div>''',
   article='''<h2>How to make a YouTube thumbnail</h2>
-<ol><li>Drop the video you're uploading. The six sharpest, best-lit frames with a clear face are suggested; pick one, or scrub to any moment. A photo works too.</li>
-<li>You are cut out of the background automatically and given a white sticker outline, the classic creator look. Drag to move, scroll to resize.</li>
-<li>Type a short headline. Put <code>*stars*</code> around the word that matters to colour it.</li>
-<li>Pick a layout, background and badge, check the small preview, then download a 1280×720 JPG.</li></ol>
+<ol><li><strong>Pick a style</strong> in Templates: reaction, versus, how-to, before/after, top list, podcast, gaming, breaking news, money, challenge, minimal, travel or a blank canvas.</li>
+<li><strong>Add your video or photo.</strong> The sharpest, best-lit frames with a clear face are suggested, and you are cut out of the background automatically and placed into the template.</li>
+<li><strong>Make it yours.</strong> Click any element to edit it: drag to move, pull a corner to resize, use the dot to rotate. Change the words (put <code>*stars*</code> around a word to colour it), fonts, colours, outlines, 3D depth, glow and shadows on the Design tab.</li>
+<li><strong>Add more</strong>: a second photo, arrows, circles, bars, burst stickers and emoji from the toolbar.</li>
+<li><strong>Check the small previews</strong> (search results and the dark home feed), then download a 1280×720 JPG.</li></ol>
+<h2>Save your channel's style as a template</h2>
+<p>Successful channels use the same look on every video so viewers recognise them instantly. Design one thumbnail you love, then press <em>Save current design</em> on the Templates tab. Next time, open your template, drop the new video, change the headline, done. Templates are stored in your browser; use ⬇ to download a template file to share with your editor or use on another computer.</p>
 <h2>What makes thumbnails get clicked</h2>
-<ul><li><strong>A big, expressive face.</strong> Faces showing emotion catch the eye in a busy feed. Pick a frame where your expression matches the video.</li>
-<li><strong>Three to five words, huge.</strong> The thumbnail is usually seen at about 168×94 pixels. If the text isn't readable in the small preview, cut words.</li>
-<li><strong>Contrast.</strong> Bright text with a thick dark outline on a darkened or blurred background reads at any size.</li>
-<li><strong>Don't repeat the title.</strong> The thumbnail and title should work together: the title explains, the thumbnail creates curiosity.</li>
-<li><strong>Consistency.</strong> Using the same font, colours and layout across videos builds a recognisable channel.</li></ul>
-<h2>YouTube thumbnail size</h2>
-<p>YouTube recommends 1280×720 pixels (16:9), at least 640 pixels wide, as JPG, PNG or GIF under 2 MB. WebcamClicks always exports exactly 1280×720 and automatically keeps JPGs under 2 MB.</p>''' + PRIVACY,
+<ul><li><strong>A big, expressive face</strong> taking up a third of the frame.</li>
+<li><strong>Three to five words, huge</strong>, readable in the 168×94 search preview.</li>
+<li><strong>Contrast</strong>: bright text with a thick outline, on a darkened, blurred or colourful background.</li>
+<li><strong>One focal point</strong>: an arrow or circle pointing at the thing the video is about.</li>
+<li><strong>Keep the bottom-right clear</strong>: YouTube covers it with the video length (toggle the overlay to check).</li></ul>''' + PRIVACY,
   faqs=[('Is this thumbnail maker free?', 'Yes, with no watermark, templates paywall or account.'),
         ('Does the AI cut-out work on any photo?', 'It is trained to find people. For objects and pets, untick “Cut me out” and use the photo as the background, or prepare a cut-out with the background remover.'),
-        ('Can I use my own fonts?', 'The five fonts included are free for commercial use. Anton and Montserrat Black are the most popular thumbnail fonts.'),
+        ('Which fonts are included?', 'Ten free-for-commercial-use fonts favoured by creators, including Anton, Bebas Neue, Montserrat Black, Bangers, Luckiest Guy, Oswald and Archivo Black.'),
+        ('Can I save my own template?', 'Yes. Save any design to My templates (stored in your browser) and download it as a file to share or back up.'),
+        ('Does it work on a phone?', 'Yes. Tap to select, drag to move, pinch with two fingers to resize and rotate.'),
         ('Is my video uploaded?', 'No. Frames are analysed and the thumbnail is made on your device.')])
 
 # ------------------------------------------------------------------------------------------- PDF redaction

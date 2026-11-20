@@ -20,6 +20,8 @@ import { shareImage, copyImage, shareVideoBlob } from './share.js';
 import { Recorder } from './recorder.js';
 import { generateCollage, COLLAGE_THEMES } from './collage.js';
 import { registerSnapchatLenses } from './effects/snapchat-lenses.js';
+import { BackgroundReplacer } from './segmentation/background.js';
+import { initBackgroundUI } from './segmentation/background-ui.js';
 
 /* ============================ state ============================ */
 const settings = storage.get('wc_settings', { mirror: true, sound: true, intensity: 100, effect: 'normal' });
@@ -27,6 +29,7 @@ const favs = new Set(storage.get('wc_favs', ['y2k_digicam', 'direct_flash', 'sun
   .map((id) => resolveEffectId(id)));
 
 const camera = new CameraManager();
+const bgReplacer = new BackgroundReplacer();
 const motion = new MotionDetector();
 const manager = new EffectManager();
 
@@ -116,6 +119,9 @@ function init() {
   el.canvas = $('#stage-canvas');
   display = el.canvas;
   dctx = display.getContext('2d');
+  initBackgroundUI(bgReplacer, {
+    onChange: (b) => { if (b.kind !== 'off') toast(`🧍 Background: ${b.name}`); }
+  });
 
   el.startOverlay = $('#stage-overlay');
   el.startBtn = $('#start-btn');
@@ -401,8 +407,10 @@ function loop(now) {
     const dt = clamp(lastNow ? now - lastNow : 16.7, 1, 80);
     lastNow = now;
 
-    const src = camera.grabFrame();
-    if (!src) return;
+    const raw = camera.grabFrame();
+    if (!raw) return;
+    // AI background replacement runs before effects so every filter applies on top (skipped in games)
+    const src = gameMgr.active ? raw : bgReplacer.apply(raw, now);
 
     if (display.width !== camera.width || display.height !== camera.height) {
       display.width = camera.width;

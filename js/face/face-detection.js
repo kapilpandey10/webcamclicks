@@ -4,7 +4,8 @@
 import { isMobile, lerp, clamp } from '../utils.js';
 
 const SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
-const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
+// Self-hosted, version-locked model weights (was an unpinned @master CDN path).
+const MODEL_URL = '/assets/models/face-api';
 
 /* 68-point landmark index groups */
 export const LM = {

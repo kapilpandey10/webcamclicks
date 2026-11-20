@@ -66,7 +66,7 @@ export class CameraManager {
     return this.devices;
   }
 
-  async startDemo(imageSrc = '/assets/img/sample-portrait.jpg') {
+  async startDemo(imageSrc = '/assets/img/sample-portrait.webp') {
     this.stopTracks();
     this.isDemo = true;
     this._forceRedraw = true;

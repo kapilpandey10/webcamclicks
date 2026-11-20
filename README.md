@@ -10,6 +10,7 @@ Free online webcam effects, filters, face-detection tools and camera games — a
 | Camera engine | `getUserMedia` + dual-canvas pipeline (work + display), mirror, flip camera, FPS monitor |
 | Effects | 94 effects: Canvas 2D + WebGL filters in Styles, Trending, Scenes, Art and Distort, plus 27 face lenses |
 | Face effects | 12+ effects powered by face-api.js (glasses, crown, dog ears, mustache, big eyes, blur background, emotion bubble, age/gender badge, face mesh, fire breath, confetti smile) |
+| Webcam test | `/webcam-test`: measures real resolution, fps, exposure, clipping, contrast, sharpness and colour cast, then scores it out of 100 with fixes (`js/webcam-test.js`) |
 | Games | Balloon Pop, Motion Catch, Face Pong, Freeze Pose — controlled by your face or motion |
 | Photo tools | Capture, flash, gallery (localStorage), download PNG/JPEG, Web Share, clipboard copy |
 | Monetization | Google AdSense auto-ads + 4 manual responsive slots (configured in `index.html`) |
@@ -34,9 +35,12 @@ GitHub Pages, or classic shared hosting). No build step, no dependencies to inst
 
 ### Checklist before going live
 
-1. **AdSense**: replace every `ca-pub-XXXXXXXXXXXXXXXX` and `data-ad-slot="XXXXXXXXXX"`
-   placeholder in `index.html`, `ads.txt`, and `privacy.html` / `terms.html` with your real
-   AdSense publisher ID and ad unit slot IDs.
+1. **AdSense consent (required for EEA/UK/CH ads)**: in AdSense go to *Privacy & messaging →
+   European regulations*, create and publish the Google consent message (a certified CMP using IAB
+   TCF v2.2). `js/consent.js` already skips its own banner for European visitors and leaves consent
+   to that message. Optionally also publish the *US state regulations* message.
+   **Auto ads**: in *Ads → By site → Edit*, use *Page exclusions* or *Excluded areas* so ads are never
+   placed inside the camera studio controls (`/`, `/pro-camera`, `/webcam-test`, `/mic-test`).
 2. **Open Graph image**: `assets/img/og-image.png` is a generated placeholder — replace it
    with your own 1200x630 branding if you like (keep the same filename).
 3. **Domain**: point `webcamclicks.com` DNS at your host (Netlify: add domain in dashboard

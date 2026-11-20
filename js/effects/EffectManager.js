@@ -117,6 +117,11 @@ export class EffectManager {
     return !!(this.current && this.current.requiresFace);
   }
 
+  /** Effect uses the face position when available but works without it (no face badge). */
+  get followsFace() {
+    return !!(this.current && this.current.followsFace);
+  }
+
   get requiresMotion() {
     return !!(this.current && this.current.requiresMotion);
   }
@@ -155,7 +160,7 @@ export class EffectManager {
       try {
         // Use WebGL GPU shader acceleration whenever available for pixel/distortion filters
         const usedGpu = gpuAccelerator.canAccelerate(e.id) &&
-          gpuAccelerator.renderToContext(fx, src, w, h, e.id, nowMs);
+          gpuAccelerator.renderToContext(fx, src, w, h, e.id, nowMs, frame);
 
         if (!usedGpu) {
           e.render(fx, frame);

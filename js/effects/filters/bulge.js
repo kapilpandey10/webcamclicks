@@ -12,25 +12,28 @@ import {
 
 export const bulgeEffect = {
   id: 'bulge', name: 'Bulge', icon: '🔵', category: 'Distort', perf: 'medium',
+  followsFace: true,
+  description: 'Face-tracked magnifying bubble: your face swells like a funhouse mirror and the bubble follows you.',
   render(fx, { src, width, height }) {
     const cx = width * 0.5, cy = height * 0.5;
     const radius = Math.min(width, height) * 0.45;
     const strength = 0.8;
-    pixelPass(fx, src, (data, w, h) => {
+    pixelPass(fx, src, (data, w, h, srcData) => {
+      const r = radius * (w / width);   // radius in working-buffer pixels
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
           const dx = x - cx * (w / width);
           const dy = y - cy * (h / height);
           const dist = Math.hypot(dx, dy);
-          if (dist < radius) {
+          if (dist < r) {
             const factor = Math.pow(1 - dist / radius, 2) * strength;
-            const nx = cx * (w / width) + dx * (1 + factor);
-            const ny = cy * (h / height) + dy * (1 + factor);
+            const nx = cx * (w / width) + dx * (1 - factor);
+            const ny = cy * (h / height) + dy * (1 - factor);
             const sx = clamp(Math.round(nx), 0, w - 1);
             const sy = clamp(Math.round(ny), 0, h - 1);
             const i = (sy * w + sx) * 4;
             const j = (y * w + x) * 4;
-            data[j] = data[i]; data[j+1] = data[i+1]; data[j+2] = data[i+2]; data[j+3] = data[i+3];
+            data[j] = srcData[i]; data[j+1] = srcData[i+1]; data[j+2] = srcData[i+2]; data[j+3] = srcData[i+3];
           }
         }
       }

@@ -28,6 +28,8 @@ import {
 
 export const kaleidoscopeEffect = {
     id: 'kaleidoscope', name: 'Kaleidoscope', icon: '🔮', category: 'Art', perf: 'medium',
+  followsFace: true,
+  description: 'Rotating 10-way mandala built from your face, with seamless mirrored tiles.',
     render(fx, { src, width: w, height: h, time }) {
       const cx = w / 2;
       const cy = h / 2;

@@ -414,7 +414,7 @@ function loop(now) {
       motion.update(src);
     }
 
-    const faceWanted = manager.requiresFace || gameMgr.needsFace;
+    const faceWanted = manager.requiresFace || manager.followsFace || gameMgr.needsFace;
     if (faceWanted) {
       ensureTrackerBase();
       tracker.detect(src);
@@ -860,7 +860,7 @@ function setEffect(id, opts = {}) {
     }
   });
 
-  if (effect.requiresFace) {
+  if (effect.requiresFace || effect.followsFace) {
     ensureTrackerBase();
     if (effect.needsExpressions) tracker.ensureExpressions().catch(() => { });
     if (effect.needsAge) tracker.ensureAge().catch(() => { });

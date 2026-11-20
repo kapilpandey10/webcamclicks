@@ -18,6 +18,8 @@ const FRAGMENT_SHADER = `
   uniform vec2 uRes;
   uniform float uTime;
   uniform int uMode;
+  uniform vec2 uCenter;   // effect centre in UV space (follows the face when tracked)
+  uniform float uFaceR;   // face radius as a fraction of frame height
 
   float luma(vec3 c) {
     return dot(c, vec3(0.2126, 0.7152, 0.0722));
@@ -27,6 +29,15 @@ const FRAGMENT_SHADER = `
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
     p3 += dot(p3, p3.yzx + 33.33);
     return fract((p3.x + p3.y) * p3.z);
+  }
+
+  // Mirrored repeat keeps out-of-range lookups seamless instead of smearing edge pixels
+  vec2 mirrorUv(vec2 uv) {
+    return 1.0 - abs(mod(uv, 2.0) - 1.0);
+  }
+
+  vec3 sampleMirror(vec2 uv) {
+    return texture2D(uTex, clamp(mirrorUv(uv), 0.001, 0.999)).rgb;
   }
 
   vec3 sampleClamped(vec2 uv) {
@@ -70,59 +81,70 @@ const FRAGMENT_SHADER = `
     float dist = length(centered);
     float angle = atan(centered.y, centered.x);
 
-    // 1: Optical Y2K Fisheye with Radial Chromatic Aberration
+    vec2 asp = vec2(aspect, 1.0);
+    vec2 cUv = uCenter;                       // centre in UV
+    vec2 dc = (uv - cUv) * asp;               // aspect-correct offset from centre
+    float dcl = length(dc);
+
+    // 1: Y2K Fisheye — whole-frame barrel lens (no edge smear) + chromatic fringing + lens vignette
     if (uMode == 1) {
-      vec2 p = (uv - 0.5) * 2.0;
-      float r2 = dot(p, p);
-      float k = 0.42;
-      vec2 uvR = (p * (1.0 + k * r2 * 1.05)) * 0.5 + 0.5;
-      vec2 uvG = (p * (1.0 + k * r2 * 1.00)) * 0.5 + 0.5;
-      vec2 uvB = (p * (1.0 + k * r2 * 0.95)) * 0.5 + 0.5;
-      vec3 col = vec3(sampleClamped(uvR).r, sampleClamped(uvG).g, sampleClamped(uvB).b);
-      float vig = smoothstep(1.38, 0.88, length(p));
-      gl_FragColor = vec4(col * vig, 1.0);
+      float rmax = length(asp) * 0.5;
+      float rn = dist / rmax;                   // 0 centre … 1 corners
+      vec2 dir = centered / max(dist, 1e-5);
+      float k = 0.58;
+      float rsG = rn * (1.0 - k + k * rn * rn);
+      float rsR = rn * (1.0 - k * 0.97 + k * 0.97 * rn * rn);
+      float rsB = rn * (1.0 - k * 1.03 + k * 1.03 * rn * rn);
+      vec3 col = vec3(
+        sampleClamped(dir * rsR * rmax / asp + 0.5).r,
+        sampleClamped(dir * rsG * rmax / asp + 0.5).g,
+        sampleClamped(dir * rsB * rmax / asp + 0.5).b
+      );
+      col = (col - 0.5) * 1.08 + 0.52;          // a little digicam punch
+      float vig = mix(0.42, 1.0, smoothstep(1.02, 0.5, rn));
+      float flare = 0.06 * smoothstep(0.35, 0.0, length(uv - vec2(0.78, 0.18)));
+      gl_FragColor = vec4(clamp(col * vig + flare, 0.0, 1.0), 1.0);
       return;
     }
 
-    // 2: Bulge
+    // 2: Bulge — face-tracked magnifying bubble
     if (uMode == 2) {
-      float radius = 0.48;
-      if (dist < radius) {
-        float f = pow(1.0 - dist / radius, 2.0) * 0.55;
-        centered *= (1.0 - f);
-        uv = centered / vec2(aspect, 1.0) + 0.5;
+      float radius = clamp(uFaceR * 2.2, 0.34, 0.58);
+      vec2 o = dc;
+      if (dcl < radius) {
+        float t = dcl / radius;
+        o *= 1.0 - 0.86 * (1.0 - t) * (1.0 - t);
       }
-      gl_FragColor = vec4(sampleClamped(uv), 1.0);
+      vec3 col = sampleClamped(cUv + o / asp);
+      // faint glassy rim so the bubble reads as an object
+      float rim = smoothstep(0.035, 0.0, abs(dcl - radius)) * 0.10;
+      gl_FragColor = vec4(col + rim, 1.0);
       return;
     }
 
-    // 3: Dent / Pinch
+    // 3: Pinch — face-tracked squeeze
     if (uMode == 3) {
-      float radius = 0.45;
-      if (dist < radius) {
-        float f = pow(1.0 - dist / radius, 2.0) * 0.65;
-        centered *= (1.0 + f);
-        uv = centered / vec2(aspect, 1.0) + 0.5;
+      float radius = clamp(uFaceR * 1.9, 0.30, 0.55);
+      vec2 o = dc;
+      if (dcl < radius) {
+        float t = dcl / radius;
+        o *= 1.0 + 1.15 * (1.0 - t) * (1.0 - t);
       }
-      gl_FragColor = vec4(sampleClamped(uv), 1.0);
+      gl_FragColor = vec4(sampleClamped(cUv + o / asp), 1.0);
       return;
     }
 
-    // 4: Swirl / Twist / Spiral
+    // 4: Twist — breathing whirlpool around the face
     if (uMode == 4) {
-      float radius = 0.52;
-      if (dist < radius) {
-        float pct = (radius - dist) / radius;
-        float theta = pct * pct * 4.2;
-        float s = sin(theta);
-        float c = cos(theta);
-        centered = vec2(
-          dot(centered, vec2(c, -s)),
-          dot(centered, vec2(s,  c))
-        );
-        uv = centered / vec2(aspect, 1.0) + 0.5;
+      float radius = clamp(uFaceR * 2.2, 0.36, 0.62);
+      vec2 o = dc;
+      if (dcl < radius) {
+        float pct = 1.0 - dcl / radius;
+        float theta = pct * pct * (3.4 + 1.8 * sin(uTime * 1.2));
+        float sn = sin(theta), cs = cos(theta);
+        o = vec2(o.x * cs - o.y * sn, o.x * sn + o.y * cs);
       }
-      gl_FragColor = vec4(sampleClamped(uv), 1.0);
+      gl_FragColor = vec4(sampleClamped(cUv + o / asp), 1.0);
       return;
     }
 
@@ -136,14 +158,65 @@ const FRAGMENT_SHADER = `
       return;
     }
 
-    // 6: Kaleidoscope (8-way mirror star)
+    // 6: Kaleidoscope — rotating 10-way mandala centred on the face, seamless mirrored tiles
     if (uMode == 6) {
-      float segments = 8.0;
-      float segAngle = 6.2831853 / segments;
-      float a = mod(angle + 3.14159265, segAngle);
-      a = abs(a - segAngle * 0.5);
-      vec2 kUv = vec2(cos(a), sin(a)) * dist / vec2(aspect, 1.0) + 0.5;
-      gl_FragColor = vec4(sampleClamped(kUv), 1.0);
+      float segments = 10.0;
+      float seg = 6.2831853 / segments;
+      float a = atan(dc.y, dc.x) + uTime * 0.22;
+      a = mod(a, seg);
+      a = abs(a - seg * 0.5);
+      float zoom = 0.85 + 0.12 * sin(uTime * 0.5);
+      vec2 k = vec2(cos(a - 1.5708), sin(a - 1.5708)) * dcl * zoom;   // wedge points up into the face
+      vec3 col = sampleMirror(cUv + k / asp);
+      float vig = smoothstep(0.95, 0.25, dist);
+      col = mix(col * 0.55, col, vig);
+      col = mix(vec3(luma(col)), col, 1.18);
+      gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+      return;
+    }
+
+    // 19: Warp Tunnel — your face in a window at the end of an endless neon tunnel
+    if (uMode == 19) {
+      float R0 = clamp(uFaceR * 1.35, 0.20, 0.36) * (1.0 + 0.025 * sin(uTime * 2.2));
+      float r = dcl;
+      float ang = atan(dc.y, dc.x);
+      vec3 pink = vec3(1.0, 0.18, 0.62);
+      vec3 cyan = vec3(0.10, 0.92, 1.0);
+      vec3 neon = mix(pink, cyan, 0.5 + 0.5 * sin(ang * 2.0 + uTime * 1.3));
+      if (r < R0) {
+        vec3 face = sampleClamped(uv);
+        float inner = smoothstep(R0, R0 - 0.05, r);
+        face *= mix(0.72, 1.0, inner);
+        float rim = smoothstep(0.012, 0.0, abs(r - R0 + 0.006));
+        gl_FragColor = vec4(clamp(face + neon * rim * 1.2, 0.0, 1.0), 1.0);
+        return;
+      }
+      float depth = R0 / r;                       // 1 at the window, → small at screen edges
+      float z = 1.0 / depth;                      // perspective distance along the tunnel
+      float travel = uTime * 0.9;
+      // tunnel walls are the camera image wrapped around the tube and streaming toward you
+      float u = ang / 6.2831853 + 0.5;
+      vec3 wall = vec3(0.0);
+      for (int i = 0; i < 3; i++) {               // short radial motion blur for speed
+        float zi = z * 0.55 - travel + float(i) * 0.035;
+        wall += sampleMirror(vec2(u * 2.0, zi * 0.5));
+      }
+      wall /= 3.0;
+      wall = mix(vec3(luma(wall)), wall, 0.75) * vec3(0.78, 0.82, 1.0);
+      // light pours out of the window; walls fade into darkness near the viewer
+      float light = pow(depth, 0.8);
+      vec3 col = wall * mix(0.18, 1.0, light);
+      // neon rings flying past at even spacing in depth
+      float ringPos = fract(z * 0.9 - travel * 1.2);
+      float ringW = 0.06 * depth + 0.012;
+      float ring = smoothstep(ringW, 0.0, abs(ringPos - 0.5) - 0.0);
+      col += neon * ring * (0.35 + 0.9 * light);
+      // ribs along the tube
+      float rib = smoothstep(0.02, 0.0, abs(fract(u * 12.0) - 0.5) - 0.47) * 0.25 * light;
+      col += neon * rib;
+      // glow spilling out of the window
+      col += neon * exp(-(r - R0) * 22.0) * 0.55;
+      gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
       return;
     }
 
@@ -197,20 +270,36 @@ const FRAGMENT_SHADER = `
       return;
     }
 
-    // 11: Watercolor Painting
+    // 11: Watercolor — Kuwahara paint strokes + pigment edges + paper grain
     if (uMode == 11) {
-      vec2 px = 2.5 / uRes;
-      vec3 blur = (
-        base +
-        sampleClamped(uv + vec2(px.x, 0.0)) +
-        sampleClamped(uv - vec2(px.x, 0.0)) +
-        sampleClamped(uv + vec2(0.0, px.y)) +
-        sampleClamped(uv - vec2(0.0, px.y))
-      ) * 0.2;
-      vec3 quant = floor(blur * 7.0 + 0.5) / 7.0;
-      quant = mix(vec3(luma(quant)), quant, 1.35);
-      float edge = smoothstep(0.15, 0.50, sobelEdge(uv, 1.5));
-      gl_FragColor = vec4(quant * (1.0 - edge * 0.28), 1.0);
+      vec2 px = max(1.6, uRes.y / 300.0) / uRes;
+      vec3 m0 = vec3(0.0), m1 = vec3(0.0), m2 = vec3(0.0), m3 = vec3(0.0);
+      vec3 s0 = vec3(0.0), s1 = vec3(0.0), s2 = vec3(0.0), s3 = vec3(0.0);
+      for (int j = 0; j <= 3; j++) {
+        for (int i = 0; i <= 3; i++) {
+          vec2 o = vec2(float(i), float(j)) * px;
+          vec3 c0 = sampleClamped(uv + vec2(-o.x, -o.y)); m0 += c0; s0 += c0 * c0;
+          vec3 c1 = sampleClamped(uv + vec2( o.x, -o.y)); m1 += c1; s1 += c1 * c1;
+          vec3 c2 = sampleClamped(uv + vec2(-o.x,  o.y)); m2 += c2; s2 += c2 * c2;
+          vec3 c3 = sampleClamped(uv + vec2( o.x,  o.y)); m3 += c3; s3 += c3 * c3;
+        }
+      }
+      m0 /= 16.0; m1 /= 16.0; m2 /= 16.0; m3 /= 16.0;
+      float v0 = dot(abs(s0 / 16.0 - m0 * m0), vec3(1.0));
+      float v1 = dot(abs(s1 / 16.0 - m1 * m1), vec3(1.0));
+      float v2 = dot(abs(s2 / 16.0 - m2 * m2), vec3(1.0));
+      float v3 = dot(abs(s3 / 16.0 - m3 * m3), vec3(1.0));
+      vec3 paint = m0; float best = v0;
+      if (v1 < best) { best = v1; paint = m1; }
+      if (v2 < best) { best = v2; paint = m2; }
+      if (v3 < best) { best = v3; paint = m3; }
+      paint = mix(vec3(luma(paint)), paint, 1.25);            // pigment saturation
+      paint = mix(paint, vec3(1.0), 0.10);                     // translucent wash
+      float edge = smoothstep(0.12, 0.55, sobelEdge(uv, 2.0));
+      paint *= 1.0 - edge * 0.32;                               // pigment pooling at edges
+      float paper = 0.93 + 0.07 * hash12(floor(gl_FragCoord.xy / 2.0));
+      vec3 col = paint * paper * vec3(1.0, 0.985, 0.95);
+      gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
       return;
     }
 
@@ -318,7 +407,8 @@ export const WEBGL_EFFECT_MODES = {
   sketch: 10,
   watercolor: 11,
   popart: 12,
-  nightvision: 13
+  nightvision: 13,
+  tunnel: 19
 };
 
 class WebGLFilterAccelerator {
@@ -378,6 +468,8 @@ class WebGLFilterAccelerator {
       this.uRes = gl.getUniformLocation(prog, 'uRes');
       this.uTime = gl.getUniformLocation(prog, 'uTime');
       this.uMode = gl.getUniformLocation(prog, 'uMode');
+      this.uCenter = gl.getUniformLocation(prog, 'uCenter');
+      this.uFaceR = gl.getUniformLocation(prog, 'uFaceR');
       this.supported = true;
     } catch {
       this.supported = false;
@@ -389,6 +481,7 @@ class WebGLFilterAccelerator {
     gl.shaderSource(s, src);
     gl.compileShader(s);
     if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      console.warn('[WebcamClicks] shader compile failed:', gl.getShaderInfoLog(s));
       gl.deleteShader(s);
       return null;
     }
@@ -399,7 +492,23 @@ class WebGLFilterAccelerator {
     return this.supported && Object.prototype.hasOwnProperty.call(WEBGL_EFFECT_MODES, effectId);
   }
 
-  renderToContext(targetCtx, srcCanvas, width, height, effectId, timeMs = 0) {
+  /** Smoothed effect centre (UV) and face radius (fraction of height) from the face tracker. */
+  _faceTarget(frame, width, height) {
+    if (!frame) return { x: 0.5, y: 0.47, r: 0.22 };   // thumbnails: fixed centre, don't disturb live smoothing
+    const box = frame.face && frame.face.box;
+    let tx = 0.5, ty = 0.47, tr = 0.22;
+    if (box && box.width > 12 && width > 0 && height > 0) {
+      tx = (box.x + box.width / 2) / width;
+      ty = (box.y + box.height * 0.48) / height;
+      tr = Math.max(box.width, box.height) / height * 0.5;
+    }
+    const s = this._center || (this._center = { x: tx, y: ty, r: tr });
+    const k = 0.18;   // smoothing so the effect glides instead of jittering with detection noise
+    s.x += (tx - s.x) * k; s.y += (ty - s.y) * k; s.r += (tr - s.r) * k;
+    return s;
+  }
+
+  renderToContext(targetCtx, srcCanvas, width, height, effectId, timeMs = 0, frame = null) {
     const mode = WEBGL_EFFECT_MODES[effectId];
     if (!this.supported || !mode) return false;
 
@@ -417,6 +526,9 @@ class WebGLFilterAccelerator {
     gl.uniform2f(this.uRes, width, height);
     gl.uniform1f(this.uTime, (timeMs || 0) * 0.001);
     gl.uniform1i(this.uMode, mode);
+    const c = this._faceTarget(frame, width, height);
+    gl.uniform2f(this.uCenter, c.x, c.y);
+    gl.uniform1f(this.uFaceR, c.r);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 

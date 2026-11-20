@@ -28,6 +28,19 @@ export function ensureScratch(w, h) {
 
 /** Read src pixels into `fn(data,w,h)`, then blit the result onto fx.
  *  Uses adaptive downsampled pixel buffer on mobile/high-res displays for 60 FPS. */
+let PASS_COPY = new Uint8ClampedArray(0);
+/** Callbacks that declare a 4th parameter receive an untouched copy of the frame, so
+    displacement filters can read source pixels without seeing ones they already wrote. */
+function withCopy(fn, data, w, h) {
+  if (fn.length >= 4) {
+    if (PASS_COPY.length !== data.length) PASS_COPY = new Uint8ClampedArray(data.length);
+    PASS_COPY.set(data);
+    fn(data, w, h, PASS_COPY);
+  } else {
+    fn(data, w, h);
+  }
+}
+
 export function pixelPass(fx, src, fn) {
   const w = fx.canvas.width;
   const h = fx.canvas.height;
@@ -40,7 +53,7 @@ export function pixelPass(fx, src, fn) {
     const sc = ensureScratch(sw, sh);
     sc.gx.drawImage(src, 0, 0, sw, sh);
     const img = sc.gx.getImageData(0, 0, sw, sh);
-    fn(img.data, sw, sh);
+    withCopy(fn, img.data, sw, sh);
     sc.gx.putImageData(img, 0, 0);
     fx.drawImage(sc, 0, 0, sw, sh, 0, 0, w, h);
     return;
@@ -49,7 +62,7 @@ export function pixelPass(fx, src, fn) {
   const sc = ensureScratch(w, h);
   sc.gx.drawImage(src, 0, 0, w, h);
   const img = sc.gx.getImageData(0, 0, w, h);
-  fn(img.data, w, h);
+  withCopy(fn, img.data, w, h);
   fx.putImageData(img, 0, 0);
 }
 

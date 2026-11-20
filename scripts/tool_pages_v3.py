@@ -175,3 +175,92 @@ PAGES['voice-recorder'] = dict(
         ('Does it work on iPhone and Android?', 'Yes, in Safari and Chrome. Keep the screen on while recording.'),
         ('How long can I record?', 'As long as you like. Very long recordings (over an hour) take a while to clean on older phones.'),
         ('Can it remove echo?', 'It reduces background noise and hum very well, but room echo is hard to remove after recording. Record in a furnished room for the best sound.')])
+
+# ------------------------------------------------------------------------------------------- silence remover
+PAGES['silence-remover'] = dict(
+  name='Silence remover', cat='video', script='silence-remover.js', appcat='MultimediaApplication',
+  title='Silence Remover — Auto Jump Cuts for Videos, Free Online | WebcamClicks',
+  desc='Automatically remove silences and pauses from talking videos, lectures and podcasts. Adjustable threshold, preview, smooth cuts, MP4 or MP3 export. Free, private, no upload.',
+  lead='Cut the dead air out of talking-head videos, tutorials, lectures and podcasts automatically. WebcamClicks finds every pause, shows you exactly what will be cut, and exports a tighter, faster-paced video with clean jump cuts, all on your device.',
+  ui=f'''{DROP("video/*,audio/*", "Drop a video or audio recording", "MP4, MOV, WebM, MP3, M4A, WAV · nothing is uploaded", multiple=False)}
+  <p class="t-status" id="t-status" role="status"></p>
+  <div id="sl-work" hidden>
+    <div class="t-grid">
+      <div>
+        <video id="sl-video" class="vt-video" controls playsinline preload="metadata"></video>
+        <p class="t-status" id="sl-info"></p>
+        <canvas id="sl-wave" class="sl-wave" title="Click to jump"></canvas>
+        <p class="sl-stats" id="sl-stats"></p>
+        <label class="t-check"><input type="checkbox" id="sl-preview" checked> Preview with silences skipped</label>
+        <div class="sr-progress" id="sl-bar" hidden><div id="sl-fill"></div></div>
+      </div>
+      <div class="t-panel">
+        <h2>What counts as silence</h2>
+        <label class="t-field">Quieter than <span id="sl-thr-val"></span><input class="t-range" type="range" id="sl-thr" min="-70" max="-15" step="1" value="-40"><small>Set automatically from your recording's background noise.</small></label>
+        <label class="t-field">For at least <span id="sl-min-val"></span><input class="t-range" type="range" id="sl-min" min="0.2" max="3" step="0.05" value="0.6"><small>Shorter = snappier edit; longer keeps natural pauses.</small></label>
+        <label class="t-field">Keep around speech <span id="sl-pad-val"></span><input class="t-range" type="range" id="sl-pad" min="0" max="0.5" step="0.01" value="0.12"><small>A little padding stops words being clipped.</small></label>
+        <label class="t-field">Resolution <select class="t-select" id="sl-res"><option value="0">Same as original</option><option value="1080">1080p</option><option value="720" selected>720p (faster)</option></select></label>
+        <button class="t-btn primary" id="sl-run" type="button" disabled style="width:100%">✂ Remove silences &amp; export</button>
+      </div>
+    </div>
+  </div>''',
+  article='''<h2>How to remove silences from a video</h2>
+<ol><li>Drop your recording in. The sound is analysed in seconds and every pause is marked in red on the waveform.</li>
+<li>The threshold is set automatically from the background noise of your recording. Raise it to cut more, lower it if quiet words are being treated as silence.</li>
+<li>Choose how long a pause must be before it is cut, and how much breathing room to keep around speech.</li>
+<li>Play the video with <em>Preview with silences skipped</em> on to hear the result, then press <strong>Remove silences &amp; export</strong>.</li></ol>
+<h2>Why remove silences?</h2>
+<p>Pauses, "umm, let me think" moments and fumbling between takes make videos feel slow; viewers on YouTube, TikTok and Instagram swipe away within seconds. Jump cuts keep the energy up, and editors normally spend hours making them by hand. Typical results: a 10-minute tutorial becomes 7–8 minutes without losing a word, and lecture recordings shrink by a third.</p>
+<h2>Settings that work</h2>
+<div class="t-table-wrap"><table class="t-table"><thead><tr><th>Content</th><th>Min. pause</th><th>Padding</th></tr></thead><tbody>
+<tr><td>Fast-paced social video (Shorts, Reels, TikTok)</td><td>0.3 s</td><td>0.05 s</td></tr>
+<tr><td>YouTube tutorial, talking head</td><td>0.5–0.6 s</td><td>0.1 s</td></tr>
+<tr><td>Lecture, interview, podcast</td><td>1–1.5 s</td><td>0.2 s</td></tr></tbody></table></div>
+<p>Every cut gets a tiny audio crossfade so there are no clicks. For full editing (zooms, captions, music) record with the <a href="/screen-recorder">screen recorder</a>; for subtitles use <a href="/auto-captions">auto captions</a> on the exported video.</p>''' + PRIVACY,
+  faqs=[('Is the silence remover free?', 'Yes, with no watermark, length limit or sign-up.'),
+        ('Will it cut off my words?', 'Not with the default padding. If the start or end of quiet words is clipped, lower the threshold a few dB or increase the padding.'),
+        ('Does it work on podcasts and audio files?', 'Yes. Audio files are exported as MP3 with the silences removed.'),
+        ('How long does it take?', 'Analysis takes seconds. Exporting re-encodes the video with your device\'s hardware encoder: usually faster than real time; choose 720p to speed it up.'),
+        ('Is my video uploaded?', 'No. Everything runs in your browser.')])
+
+# ------------------------------------------------------------------------------------------- auto-reframe
+PAGES['auto-reframe'] = dict(
+  name='Auto-reframe to vertical', cat='video', script='auto-reframe.js', appcat='MultimediaApplication',
+  title='Auto Reframe Video to 9:16 — Landscape to Vertical, Face Tracking | WebcamClicks',
+  desc='Turn landscape videos into vertical 9:16 Reels, TikToks and Shorts that follow the speaker\'s face automatically. Also 1:1 and 4:5, or blurred-background fit. Free, no upload.',
+  lead='Turn any landscape video into a vertical video for Reels, TikTok and YouTube Shorts. AI face tracking keeps the speaker in frame and moves the crop smoothly like a camera operator, or fit the whole shot over a blurred background. Runs on your device.',
+  ui=f'''{DROP("video/*", "Drop a landscape video", "MP4, MOV, WebM · podcasts, interviews, webinars, vlogs · nothing is uploaded", multiple=False)}
+  <p class="t-status" id="t-status" role="status"></p>
+  <div id="rf-work" hidden>
+    <div class="rf-grid">
+      <div>
+        <div class="rf-wrap" id="rf-wrap"><video id="rf-video" controls playsinline preload="auto"></video><div class="rf-box" id="rf-box"></div></div>
+        <p class="t-status" id="rf-info"></p>
+        <div class="sr-progress" id="rf-bar" hidden><div id="rf-fill"></div></div>
+      </div>
+      <div class="rf-side">
+        <canvas id="rf-preview" class="rf-preview" aria-label="Preview of the reframed video"></canvas>
+        <div class="t-panel">
+          <label class="t-field">Format <select class="t-select" id="rf-aspect"><option value="9:16">9:16 vertical (Reels, TikTok, Shorts)</option><option value="4:5">4:5 portrait (Instagram feed)</option><option value="1:1">1:1 square</option></select></label>
+          <label class="t-field">Framing <select class="t-select" id="rf-mode"><option value="smooth">Follow the speaker (smooth)</option><option value="steady">Follow the speaker (steady shots)</option><option value="center">Fixed position</option><option value="blur">Whole video on blurred background</option></select></label>
+          <label class="t-field" id="rf-nudge-wrap"><span>Aim offset</span><input class="t-range" type="range" id="rf-nudge" min="-100" max="100" value="0"></label>
+          <label class="t-field">Size <select class="t-select" id="rf-size"><option value="hd">1080 wide (recommended)</option><option value="native">Original pixels (no upscaling)</option></select></label>
+          <button class="t-btn primary" id="rf-run" type="button" disabled style="width:100%">⬇ Export video</button>
+        </div>
+      </div>
+    </div>
+  </div>''',
+  article='''<h2>How to turn a landscape video into a vertical one</h2>
+<ol><li>Drop your video in. Faces are found automatically, five times per second, on your device.</li>
+<li>Play it: the orange box shows the part that will be kept, and the phone-shaped preview shows the result live.</li>
+<li>Pick a format and a framing style, then press <strong>Export video</strong>. The sound is copied as it is.</li></ol>
+<h2>Framing styles</h2>
+<ul><li><strong>Follow the speaker (smooth)</strong> glides with the person as they move: best for vlogs, walking shots and lively speakers.</li>
+<li><strong>Follow the speaker (steady shots)</strong> holds a still frame and only re-centres when the speaker leaves the middle of the shot, the way a camera operator works. Best for podcasts and interviews.</li>
+<li><strong>Fixed position</strong> keeps the crop where you put it with the slider, useful for screen-shares with a webcam in the corner.</li>
+<li><strong>Whole video on blurred background</strong> keeps everything in the shot and fills the rest of the vertical frame with a blurred, zoomed copy, perfect for slides, gameplay and group shots.</li></ul>
+<p>Vertical video gets more reach: it fills the whole phone screen, and short-form feeds give it priority. Repurpose one long landscape recording into many clips: cut them with the <a href="/video-trimmer">video trimmer</a>, remove pauses with the <a href="/silence-remover">silence remover</a>, reframe here, then add animated <a href="/auto-captions">captions</a>.</p>''' + PRIVACY,
+  faqs=[('Is it free?', 'Yes, with no watermark, sign-up or length limit.'),
+        ('What if there are two people?', 'The largest (closest) face is followed. For two-person podcasts, the steady style switches between speakers less often; the blurred-background style keeps both in view.'),
+        ('Will the quality drop?', 'A vertical crop of a 1080p video is 608 pixels wide, enlarged to 1080. For the sharpest result, record in 4K or choose “Original pixels”.'),
+        ('Is my video uploaded?', 'No. Face detection and encoding run in your browser.')])

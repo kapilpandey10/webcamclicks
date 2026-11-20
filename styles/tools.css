@@ -356,3 +356,17 @@ input[type=range].t-range { width: 100%; accent-color: var(--accent); }
 .vr-wavebox { position: relative; height: 120px; margin-top: 14px; border-radius: 12px; background: #fff; border: 1px solid var(--line); cursor: ew-resize; touch-action: none; overflow: hidden; }
 .vr-wavebox canvas { display: block; width: 100%; height: 100%; }
 .vr-sel { position: absolute; top: 0; bottom: 0; border-left: 3px solid var(--accent); border-right: 3px solid var(--accent); background: rgba(255,77,46,.06); pointer-events: none; }
+
+/* silence remover */
+.sl-wave { display: block; width: 100%; height: 110px; margin-top: 12px; border-radius: 12px; background: #fff; border: 1px solid var(--line); cursor: pointer; }
+.sl-stats { margin: 8px 0; font-size: .92rem; }
+
+/* auto-reframe */
+.rf-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; align-items: start; margin-top: 12px; }
+.rf-wrap { position: relative; border-radius: 14px; overflow: hidden; background: #000; }
+.rf-wrap video { display: block; width: 100%; }
+.rf-box { position: absolute; outline: 3px solid var(--accent); box-shadow: 0 0 0 9999px rgba(0,0,0,.45); pointer-events: none; transition: left .08s linear; }
+.rf-side { display: grid; gap: 14px; justify-items: center; }
+.rf-side .t-panel { width: 100%; }
+.rf-preview { width: 200px; max-width: 60%; height: auto; border-radius: 18px; background: #111; box-shadow: 0 0 0 6px #0e0e12, 0 12px 30px rgba(0,0,0,.25); }
+@media (max-width: 860px) { .rf-grid { grid-template-columns: 1fr; } }

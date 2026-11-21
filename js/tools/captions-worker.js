@@ -62,7 +62,7 @@ async function getAsr(size) {
  * read the decoder's scores for every language token after <|startoftranscript|>, and add them up.
  * transformers.js would otherwise silently assume English when no language is given.
  */
-async function detectLanguage(asr, audio, wins, sr) {
+async function detectLanguage(asr, audio, wins, sr, prefer = []) {
   const gc = asr.model.generation_config || {}, langs = Object.entries(gc.lang_to_id || {});
   if (!langs.length || gc.decoder_start_token_id == null) return null;
   const picks = wins.map((w) => ({ w, speech: w.regions.reduce((a, [x, y]) => a + (y - x), 0) })).sort((a, b) => b.speech - a.speech).slice(0, 3);
@@ -77,6 +77,9 @@ async function detectLanguage(asr, audio, wins, sr) {
     const ex = vals.map((v) => Math.exp(v - mx)), sum = ex.reduce((a, b) => a + b, 0);
     langs.forEach(([tok], i) => score.set(tok, (score.get(tok) || 0) + (ex[i] / sum) * speech));
   }
+  // languages set in the browser get extra weight: Hindi and Urdu (or Nepali and Hindi) sound alike and only the
+  // writing differs, so a viewer's own language settles close calls
+  for (const code of prefer) { const k = `<|${code}|>`; if (score.has(k)) score.set(k, score.get(k) * 3); }
   const total = [...score.values()].reduce((a, b) => a + b, 0) || 1;
   const ranked = [...score].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([tok, v]) => ({ code: tok.replace(/[<|>]/g, ''), p: v / total }));
   return ranked;
@@ -111,7 +114,9 @@ function foreign(bytes, sc) {
   const two = new Set(sc.two || []), e0 = new Set(sc.e0 || []), e1 = new Set(sc.e1 || []);
   for (let i = 0; i < bytes.length; i++) {
     const b = bytes[i];
-    if (b == null || b < 0x80) continue;                       // ASCII: Latin letters, digits, punctuation
+    if (b == null) continue;
+    if (b < 0x80) { if ((b >= 0x41 && b <= 0x5a) || (b >= 0x61 && b <= 0x7a)) return true; continue; }   // no Latin letters (romanised output); digits & punctuation OK
+    if ((b === 0xe0 || b === 0xe1) && i === bytes.length - 1) return true;   // a token ending mid-character could continue in any script
     if (b >= 0x80 && b <= 0xbf) continue;                      // continuation byte (checked with its lead byte)
     if (b === 0xc2) continue;                                  // Latin-1 punctuation (« » ° nbsp)
     if (b >= 0xc3 && b <= 0xdf) { if (!two.has(b)) return true; continue; }
@@ -182,7 +187,7 @@ const tokensOf = (text) => {
 // languages the tiny and base models transcribe well; for all others a bigger model is used automatically
 const WELL_SUPPORTED = new Set(['en', 'es', 'fr', 'de', 'it', 'pt', 'nl', 'ru', 'ja', 'zh', 'ko', 'pl', 'tr', 'sv', 'ca', 'id', 'uk', 'cs', 'ro', 'da', 'no', 'fi', 'hu', 'el', 'vi', 'ms']);
 
-async function run({ id, audio, size, language: lang0, task, autoUpgrade = true }) {
+async function run({ id, audio, size, language: lang0, task, autoUpgrade = true, prefer = [] }) {
   let language = lang0;
   const post = (m) => self.postMessage({ id, ...m });
   post({ type: 'status', text: 'Preparing the speech model…' });
@@ -193,7 +198,7 @@ async function run({ id, audio, size, language: lang0, task, autoUpgrade = true 
   if (!language) {
     post({ type: 'status', text: 'Detecting the spoken language…' });
     let ranked = null;
-    try { ranked = await detectLanguage(asr, audio, wins, sr); } catch (e) { console.warn('language detection failed', e); }
+    try { ranked = await detectLanguage(asr, audio, wins, sr, prefer); } catch (e) { console.warn('language detection failed', e); }
     if (!ranked || !ranked.length) throw new Error('NO_LANG');
     language = ranked[0].code;
     post({ type: 'language', ranked });
@@ -217,9 +222,12 @@ async function run({ id, audio, size, language: lang0, task, autoUpgrade = true 
     const slice = audio.subarray(Math.floor(w.start * sr), Math.min(audio.length, Math.ceil(w.end * sr)));
     const opts = { language, task: task || 'transcribe' };
     if (suppress) opts.suppress_tokens = suppress;
-    let out;
+    let out = null;
     try { out = await asr(slice, { ...opts, return_timestamps: word ? 'word' : true }); }
-    catch (e) { if (word) out = await asr(slice, { ...opts, return_timestamps: true }); else throw e; }
+    catch (e) {
+      try { out = await asr(slice, { ...opts, return_timestamps: true }); }
+      catch (e2) { try { out = await asr(slice, { language, task: opts.task, return_timestamps: true }); } catch (e3) { console.warn('window skipped', e3); out = { text: '', chunks: [] }; } }   // one bad window must not stop the rest
+    }
     if (looping(out.chunks || [])) {   // stuck in a loop: decode again with some randomness (Whisper's temperature fallback)
       try { const again = await asr(slice, { ...opts, return_timestamps: word ? 'word' : true, do_sample: true, temperature: 0.4, top_k: 0, no_repeat_ngram_size: 3 }); if (!looping(again.chunks || [])) out = again; } catch (_) { /* keep the first result */ }
     }

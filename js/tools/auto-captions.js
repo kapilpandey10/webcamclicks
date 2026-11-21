@@ -142,7 +142,7 @@ async function generate() {
     showModel();
     if (modelState[size].state === 'downloading') setStatus(els.status, 'Waiting for the speech AI to finish downloading (first time only)…');
     const w = getWorker(), id = ++jobId;
-    const result = await new Promise((resolve, reject) => { job = { id, resolve, reject }; w.postMessage({ type: 'run', id, audio: pcm, size, language: els.lang.value, task: els.task.value }, [pcm.buffer]); });
+    const result = await new Promise((resolve, reject) => { job = { id, resolve, reject }; w.postMessage({ type: 'run', id, audio: pcm, size, language: els.lang.value, task: els.task.value, prefer: [...new Set((navigator.languages || [navigator.language]).map((l) => String(l).slice(0, 2).toLowerCase()))].filter((l) => l !== 'en') }, [pcm.buffer]); });
     job = null;
     beforeTranslate = null; els.trUndo.hidden = true;
     lastGroup = groupMode();

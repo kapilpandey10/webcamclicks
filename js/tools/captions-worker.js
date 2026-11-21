@@ -159,6 +159,22 @@ function dropPhrases(chunks) {
   for (const m of text.matchAll(HALLUCINATIONS)) for (let k = m.index; k < m.index + m[0].length; k++) if (/\S/.test(text[k])) bad.add(at[k]);
   return bad.size ? chunks.filter((_, i) => !bad.has(i)) : chunks;
 }
+/** Collapse any word or phrase (1–6 words) repeated 3+ times in a row to one copy: Whisper's classic loop. */
+function dedupeLoops(words) {
+  const key = (w) => w.text.trim().toLowerCase().replace(/[.,!?।、。]+$/u, '');
+  let out = words;
+  for (let n = 1; n <= 6; n++) {
+    const res = []; let i = 0;
+    while (i < out.length) {
+      const g = out.slice(i, i + n).map(key).join('\u0001');
+      let k = 1;
+      while (i + (k + 1) * n <= out.length && out.slice(i + k * n, i + (k + 1) * n).map(key).join('\u0001') === g) k++;
+      if (k >= 3 && g.replace(/\u0001/g, '')) { res.push(...out.slice(i, i + n)); i += k * n; } else { res.push(out[i]); i++; }
+    }
+    out = res;
+  }
+  return out;
+}
 function collapseRepeats(chunks) {
   const out = []; let run = 0;
   for (const c of chunks) { const k = c.text.trim().toLowerCase(); run = out.length && out[out.length - 1].text.trim().toLowerCase() === k ? run + 1 : 0; if (run < 2) out.push(c); }
@@ -257,7 +273,7 @@ async function run({ id, audio, size, language: lang0, task, autoUpgrade = true,
     }
     post({ type: 'progress', done: (i + 1) / wins.length, words: words.length });
   }
-  post({ type: 'done', words, mode: word ? 'word' : 'segment' });
+  post({ type: 'done', words: dedupeLoops(words), mode: word ? 'word' : 'segment' });
 }
 
 self.onmessage = async (e) => {

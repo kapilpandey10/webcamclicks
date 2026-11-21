@@ -416,7 +416,7 @@ PAGES['ai-image-upscaler'] = dict(
     </div>
     <div class="t-panel">
       <h2>AI model</h2>
-      <label class="t-field">AI model <select class="t-select" id="up-model"><option value="fast">Fast 2× (seconds, any device)</option><option value="photo">Best for photos 4× (slower)</option><option value="jpeg">Blocky / compressed JPEG 4× (slower)</option><option value="sharp">Graphics, screenshots, text 2×</option></select></label>
+      <label class="t-field">AI model <select class="t-select" id="up-model"><option value="instant">Instant 2× (classic sharp resize, no AI)</option><option value="fast">Fast AI 2× (recommended)</option><option value="photo">Best for photos 4× (slower)</option><option value="jpeg">Blocky / compressed JPEG 4× (slower)</option><option value="sharp">Graphics, screenshots, text 2×</option></select></label>
       <p class="muted" id="up-device" style="font-size:.8rem;margin:-4px 0 8px"></p>
       <p class="cap-model" id="up-model-status" aria-live="polite"></p>
       <label class="t-field">Output size <select class="t-select" id="up-out"><option value="0">Full (4× or 2×)</option><option value="3">3×</option><option value="2">2×</option></select></label>

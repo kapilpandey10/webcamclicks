@@ -83,10 +83,20 @@ async function detectLanguage(asr, audio, wins, sr) {
 }
 
 /* ---------------------------------------------------------------- script guard
-   Small Whisper models often write Hindi, Nepali or Marathi in Urdu/Arabic letters (the spoken languages sound alike).
-   For languages that are never written in Arabic script, tokens containing Arabic letters are suppressed. */
-const NON_ARABIC_SCRIPT = new Set(['hi', 'ne', 'mr', 'sa', 'bn', 'as', 'gu', 'pa', 'ta', 'te', 'kn', 'ml', 'si', 'or', 'my', 'th', 'lo', 'km', 'bo', 'zh', 'ja', 'ko', 'ru', 'uk', 'be', 'bg', 'sr', 'mk', 'el', 'hy', 'ka', 'he', 'yi', 'am',
-  'en', 'es', 'fr', 'de', 'pt', 'it', 'nl', 'pl', 'cs', 'sk', 'ro', 'hu', 'sv', 'no', 'nn', 'da', 'fi', 'et', 'lv', 'lt', 'tr', 'vi', 'id', 'ms', 'tl', 'sw', 'jw', 'su']);
+   Smaller Whisper models often write Hindi or Nepali in Urdu, Arabic or even Cyrillic letters. For languages with
+   their own script, every token that could produce letters of ANOTHER script is suppressed, so the text can only
+   come out in the right alphabet (plus Latin letters, digits and punctuation for names and numbers).
+   Scripts are described by their UTF-8 bytes: 2-byte lead bytes, or the second byte after 0xE0 / 0xE1. */
+const SCRIPTS = {
+  deva: { e0: [0xa4, 0xa5] }, beng: { e0: [0xa6, 0xa7] }, guru: { e0: [0xa8, 0xa9] }, gujr: { e0: [0xaa, 0xab] }, orya: { e0: [0xac, 0xad] },
+  taml: { e0: [0xae, 0xaf] }, telu: { e0: [0xb0, 0xb1] }, knda: { e0: [0xb2, 0xb3] }, mlym: { e0: [0xb4, 0xb5] }, sinh: { e0: [0xb6, 0xb7] },
+  thai: { e0: [0xb8, 0xb9] }, laoo: { e0: [0xba, 0xbb] }, tibt: { e0: [0xbc, 0xbd, 0xbe, 0xbf] }, mymr: { e1: [0x80, 0x81, 0x82] }, geor: { two: [0x10a0], e1: [0x83] },
+  ethi: { e1: [0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d] }, khmr: { e1: [0x9e, 0x9f] },
+  arab: { two: [0xd8, 0xd9, 0xda, 0xdb, 0xdd] }, hebr: { two: [0xd6, 0xd7] }, cyrl: { two: [0xd0, 0xd1, 0xd2, 0xd3, 0xd4] }, grek: { two: [0xcd, 0xce, 0xcf] }, armn: { two: [0xd4, 0xd5, 0xd6] }
+};
+const LANG_SCRIPT = { hi: 'deva', ne: 'deva', mr: 'deva', sa: 'deva', bn: 'beng', as: 'beng', pa: 'guru', gu: 'gujr', or: 'orya', ta: 'taml', te: 'telu', kn: 'knda', ml: 'mlym', si: 'sinh',
+  th: 'thai', lo: 'laoo', bo: 'tibt', my: 'mymr', ka: 'geor', am: 'ethi', km: 'khmr', ar: 'arab', ur: 'arab', fa: 'arab', ps: 'arab', sd: 'arab', ug: 'arab', he: 'hebr', yi: 'hebr',
+  ru: 'cyrl', uk: 'cyrl', be: 'cyrl', bg: 'cyrl', sr: 'cyrl', mk: 'cyrl', kk: 'cyrl', mn: 'cyrl', tg: 'cyrl', tt: 'cyrl', ba: 'cyrl', el: 'grek', hy: 'armn' };
 let byteDecoder = null;
 function bytesOfToken(tok) {   // GPT-2 byte-level BPE: each character stands for one byte
   if (!byteDecoder) {
@@ -96,22 +106,35 @@ function bytesOfToken(tok) {   // GPT-2 byte-level BPE: each character stands fo
   }
   return [...tok].map((c) => byteDecoder.get(c));
 }
-const arabicCache = new Map();
-function arabicTokenIds(asr) {
-  if (arabicCache.has(asr)) return arabicCache.get(asr);
+/** Is this token able to produce letters outside the allowed script? (unknowable partial sequences are allowed) */
+function foreign(bytes, sc) {
+  const two = new Set(sc.two || []), e0 = new Set(sc.e0 || []), e1 = new Set(sc.e1 || []);
+  for (let i = 0; i < bytes.length; i++) {
+    const b = bytes[i];
+    if (b == null || b < 0x80) continue;                       // ASCII: Latin letters, digits, punctuation
+    if (b >= 0x80 && b <= 0xbf) continue;                      // continuation byte (checked with its lead byte)
+    if (b === 0xc2) continue;                                  // Latin-1 punctuation (« » ° nbsp)
+    if (b >= 0xc3 && b <= 0xdf) { if (!two.has(b)) return true; continue; }
+    if (b === 0xe0) { const n = bytes[i + 1]; if (n != null && !e0.has(n)) return true; continue; }
+    if (b === 0xe1) { const n = bytes[i + 1]; if (n != null && !e1.has(n)) return true; continue; }
+    if (b === 0xe2) continue;                                  // general punctuation, currency (… “ ” – ₹)
+    return true;                                               // CJK, emoji and everything else
+  }
+  return false;
+}
+const guardCache = new Map();
+function scriptGuard(asr, language) {
+  const sc = SCRIPTS[LANG_SCRIPT[language]]; if (!sc) return null;
+  const key = `${language}`; if (guardCache.has(key)) return guardCache.get(key);
   const ids = [];
   try {
-    const m = asr.tokenizer.model, vocab = Array.isArray(m.vocab) ? m.vocab : [...(m.tokens_to_ids || new Map()).keys()];
-    const toId = (t, i) => (Array.isArray(m.vocab) ? i : m.tokens_to_ids.get(t));
-    vocab.forEach((t, i) => {
-      if (!t || t.startsWith('<|')) return;
-      const b = bytesOfToken(t);
-      // UTF-8 lead bytes 0xD8–0xDB encode U+0600–U+06FF (Arabic, Urdu, Persian letters)
-      if (b.some((x) => x >= 0xd8 && x <= 0xdb)) ids.push(toId(t, i));
-    });
+    const vocab = asr.tokenizer.get_vocab ? asr.tokenizer.get_vocab() : null;
+    const entries = vocab instanceof Map ? [...vocab] : vocab ? Object.entries(vocab) : [];
+    for (const [tok, id] of entries) { if (!tok.startsWith('<|') && foreign(bytesOfToken(tok), sc)) ids.push(id); }
   } catch (e) { console.warn('script guard unavailable', e); }
-  arabicCache.set(asr, ids);
-  return ids;
+  const out = ids.length ? ids : null;
+  guardCache.set(key, out);
+  return out;
 }
 
 /* ---------------------------------------------------------------- hallucination guards */
@@ -156,11 +179,14 @@ const tokensOf = (text) => {
   const out = []; for (let i = 0; i < t.length; i += 2) out.push(t.slice(i, i + 2)); return out;
 };
 
-async function run({ id, audio, size, language: lang0, task }) {
+// languages the tiny and base models transcribe well; for all others a bigger model is used automatically
+const WELL_SUPPORTED = new Set(['en', 'es', 'fr', 'de', 'it', 'pt', 'nl', 'ru', 'ja', 'zh', 'ko', 'pl', 'tr', 'sv', 'ca', 'id', 'uk', 'cs', 'ro', 'da', 'no', 'fi', 'hu', 'el', 'vi', 'ms']);
+
+async function run({ id, audio, size, language: lang0, task, autoUpgrade = true }) {
   let language = lang0;
   const post = (m) => self.postMessage({ id, ...m });
   post({ type: 'status', text: 'Preparing the speech model…' });
-  const { asr, word, device } = await getAsr(size);
+  let { asr, word, device } = await getAsr(size);
   const sr = 16000;
   const wins = planWindows(audio, sr);
   if (!wins.length) { post({ type: 'done', words: [], mode: word ? 'word' : 'segment' }); return; }
@@ -172,11 +198,17 @@ async function run({ id, audio, size, language: lang0, task }) {
     language = ranked[0].code;
     post({ type: 'language', ranked });
   }
-  // script guard: languages never written in Arabic letters can't produce them
+  if (autoUpgrade && /^(tiny|base)$/.test(size) && !WELL_SUPPORTED.has(language)) {
+    const up = (await webgpuOk()) ? 'large-v3-turbo' : 'small';
+    post({ type: 'status', text: `This language needs a larger speech model for good text. Switching to ${up === 'small' ? 'Accurate' : 'Best'} (one-time download)…` });
+    try { ({ asr, word, device } = await getAsr(up)); post({ type: 'upgraded', size: up }); }
+    catch (e) { if (up !== 'small') { try { ({ asr, word, device } = await getAsr('small')); post({ type: 'upgraded', size: 'small' }); } catch (_) { /* keep the current model */ } } }
+  }
+  // script guard: the text can only come out in the language's own alphabet
   let suppress = null;
-  if (task !== 'translate' && NON_ARABIC_SCRIPT.has(language)) {
-    const extra = arabicTokenIds(asr);
-    if (extra.length) suppress = [...new Set([...(asr.model.generation_config.suppress_tokens || []), ...extra])];
+  if (task !== 'translate') {
+    const extra = scriptGuard(asr, language);
+    if (extra) { suppress = [...new Set([...(asr.model.generation_config.suppress_tokens || []), ...extra])]; post({ type: 'debug', text: `script guard: ${extra.length} tokens suppressed for ${language}`, win: [0, 0], n: 0 }); }
   }
   post({ type: 'status', text: `Listening on your ${device === 'webgpu' ? 'graphics chip' : 'processor'}…` });
   const words = [];

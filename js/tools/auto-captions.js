@@ -48,6 +48,7 @@ function getWorker() {
     if (!job || m.id !== job.id) return;
     if (m.type === 'status') setStatus(els.status, m.text);
     if (m.type === 'language') showDetected(m.ranked);
+    if (m.type === 'upgraded') { const k = Object.keys(SIZES).find((x) => SIZES[x] === m.size); if (k) { els.model.value = k; showModel(); } }
     if (m.type === 'debug' && window.__capDebug) console.log('CAPDEBUG ' + JSON.stringify(m));
     if (m.type === 'progress') { els.fill.style.width = `${Math.round(m.done * 100)}%`; setStatus(els.status, `Listening… ${Math.round(m.done * 100)}% · ${m.words} words so far`); }
     if (m.type === 'done') job.resolve(m);

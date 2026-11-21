@@ -159,12 +159,13 @@ PAGES['auto-captions'] = dict(
       <h2>1 · Generate</h2>
       <label class="t-field">Spoken language <select class="t-select" id="cap-lang"></select></label>
       <div class="t-row">
-        <label class="t-field">Accuracy <select class="t-select" id="cap-model"><option value="fast">Fast (≈40 MB)</option><option value="balanced" selected>Balanced (≈80 MB)</option><option value="accurate">Accurate (≈250 MB)</option></select></label>
+        <label class="t-field">Accuracy <select class="t-select" id="cap-model"><option value="fast">Fast (≈40 MB)</option><option value="balanced" selected>Balanced (≈80 MB)</option><option value="accurate">Accurate (≈250 MB)</option><option value="best">Best, for Nepali, Hindi &amp; more (≈600 MB, graphics chip)</option></select></label>
         <label class="t-field">Captions in <select class="t-select" id="cap-task"><option value="transcribe">Same language</option><option value="translate">Translate to English</option></select></label>
       </div>
       <label class="t-check"><input type="checkbox" id="cap-auto" checked> Generate automatically when I add a video</label>
       <button class="t-btn primary" id="cap-run" type="button" disabled style="width:100%">✨ Generate captions</button>
       <p class="cap-model" id="cap-model-status" aria-live="polite"></p>
+      <p class="cap-detected" id="cap-detected" hidden aria-live="polite"></p>
       <h2 style="margin-top:18px">2 · Style</h2>
       <div class="cap-styles" id="cap-styles" role="radiogroup" aria-label="Caption style"></div>
       <div class="t-row">
@@ -219,6 +220,7 @@ PAGES['auto-captions'] = dict(
   faqs=[('Is the caption generator really free and private?', 'Yes. The AI model runs in your browser, so your video is never uploaded and there are no per-minute fees or watermarks.'),
         ('How accurate are the captions?', 'Very good for clear speech in major languages, especially with the Accurate model. Always skim the result: names, jargon and overlapping speakers may need a quick fix in the editor.'),
         ('Does it time each word?', 'Yes. Captions are timed word by word, so styles like Bold pop and Karaoke highlight each word exactly when it is spoken. If a model can\'t provide word timings on your device, the words are spread over the detected speech instead.'),
+        ('Why are captions in the wrong language?', 'Leave Spoken language on Detect automatically and the language is identified from up to three parts of your video; the result is shown with how sure the AI is. If it is wrong, or for languages that sound alike (Nepali, Hindi, Marathi, Urdu), choose the language yourself. For less common languages, Accurate or Best give far better text than Fast.'),
         ('How long does it take?', 'With a graphics chip (WebGPU), a 10-minute video usually takes one to three minutes on the Balanced model. Without one it runs on the processor and is slower; use the Fast model for long videos.'),
         ('Can I translate captions into Spanish, Hindi or other languages?', 'Yes, in Chrome 138 or newer on a computer, which has an on-device translator. In other browsers you can transcribe in the original language or translate to English.'),
         ('Can I upload the SRT to YouTube?', 'Yes. In YouTube Studio open Subtitles, choose your video, then Add > Upload file > With timing, and select the SRT.')])

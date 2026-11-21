@@ -5,15 +5,24 @@ import { $, setupDropzone, setStatus, downloadBlob, decodeImage, canvasToBlob, f
 const els = {
   drop: $('#t-drop'), input: $('#t-input'), status: $('#t-status'), model: $('#up-model'), modelStatus: $('#up-model-status'), run: $('#up-run'),
   bar: $('#up-bar'), fill: $('#up-fill'), cmp: $('#up-compare'), before: $('#up-before'), after: $('#up-after'), split: $('#up-split'),
-  out: $('#up-out'), fmt: $('#up-fmt'), dl: $('#up-dl'), info: $('#up-info')
+  out: $('#up-out'), fmt: $('#up-fmt'), dl: $('#up-dl'), info: $('#up-info'), cancel: $('#up-cancel'), eta: $('#up-eta')
 };
-const LIMIT = { photo: 1.2e6, jpeg: 1.2e6, sharp: 2.5e6 };   // input pixels (output is 4–16× more)
-const SCALE = { photo: 4, jpeg: 4, sharp: 2 };
+// input-pixel limits per device: the big 4× models are ~50× more work per pixel than the fast one
+const LIMIT = { gpu: { fast: 4e6, photo: 1.2e6, jpeg: 1.2e6, sharp: 2e6 }, cpu: { fast: 1.2e6, photo: 0.3e6, jpeg: 0.3e6, sharp: 0.45e6 } };
+const SCALE = { fast: 2, photo: 4, jpeg: 4, sharp: 2 };
+let hasGpu = false;
 
 let file = null, src = null, result = null, worker = null, job = null, jid = 0;
 const models = {};
 const store = { get(k, d) { try { return localStorage.getItem(`wc_up_${k}`) ?? d; } catch (_) { return d; } }, set(k, v) { try { localStorage.setItem(`wc_up_${k}`, v); } catch (_) { /* ignore */ } } };
-els.model.value = store.get('model', 'photo');
+els.model.value = store.get('model', '');
+// without a graphics chip the big models take minutes: start with the fast one unless the user chose otherwise
+const gpuReady = (navigator.gpu ? navigator.gpu.requestAdapter().catch(() => null) : Promise.resolve(null)).then((a) => {
+  hasGpu = !!a;
+  if (!els.model.value) els.model.value = hasGpu ? 'photo' : 'fast';
+  const note = $('#up-device'); if (note) note.textContent = hasGpu ? 'Graphics chip found: the 4× models run quickly.' : 'No graphics acceleration in this browser: “Fast” takes seconds; the 4× models can take a few minutes.';
+  if (src) describe();
+});
 
 function getWorker() {
   if (worker) return worker;
@@ -23,7 +32,11 @@ function getWorker() {
     if (m.type === 'model') { models[m.key] = { ...(models[m.key] || {}), ...m }; showModel(); return; }
     if (!job || m.id !== job.id) return;
     if (m.type === 'status') setStatus(els.status, m.text);
-    if (m.type === 'progress') { els.fill.style.width = `${Math.round(m.done * 100)}%`; setStatus(els.status, `Upscaling… ${Math.round(m.done * 100)}%`); }
+    if (m.type === 'progress') {
+      els.fill.style.width = `${Math.round(m.done * 100)}%`;
+      const left = m.done > 0 ? (m.elapsed / m.done) * (1 - m.done) : 0;
+      setStatus(els.status, `Upscaling… ${Math.round(m.done * 100)}%${m.done < 1 && m.elapsed > 2 ? ` · about ${left < 60 ? `${Math.max(1, Math.round(left))} s` : `${Math.round(left / 60)} min`} left` : ''}`);
+    }
     if (m.type === 'done') job.resolve(m);
     if (m.type === 'error') job.reject(new Error(m.text));
   };
@@ -39,13 +52,14 @@ function showModel() {
   else el.textContent = 'The AI model could not be downloaded. It will try again when you upscale.';
 }
 function preload() {
+  if (!els.model.value) return;
   const c = navigator.connection;
   if (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ''))) { els.modelStatus.textContent = 'Data saver is on: the AI model downloads when you upscale.'; return; }
   const k = els.model.value; if (models[k] && models[k].state !== 'error') return;
   models[k] = { state: 'downloading', loaded: 0, total: 0 }; showModel();
   getWorker().postMessage({ type: 'preload', key: k });
 }
-(window.requestIdleCallback || ((f) => setTimeout(f, 2500)))(preload, { timeout: 6000 });
+gpuReady.then(() => (window.requestIdleCallback || ((f) => setTimeout(f, 2500)))(preload, { timeout: 6000 }));
 els.model.addEventListener('change', () => { store.set('model', els.model.value); showModel(); preload(); if (src) describe(); });
 
 /* ---------------------------------------------------------------- input */
@@ -60,19 +74,20 @@ async function open(f) {
   upscale();
 }
 function inputSize() {
-  const k = els.model.value, px = src.width * src.height, s = Math.min(1, Math.sqrt(LIMIT[k] / px));
+  const k = els.model.value, px = src.width * src.height, s = Math.min(1, Math.sqrt(LIMIT[hasGpu ? 'gpu' : 'cpu'][k] / px));
   return [Math.max(1, Math.round(src.width * s)), Math.max(1, Math.round(src.height * s)), s < 1];
 }
 function describe() {
   const [w, h, shrunk] = inputSize(), k = SCALE[els.model.value];
-  els.info.textContent = `${src.width}×${src.height} → ${w * k}×${h * k}${shrunk ? ` (large photo: processed at ${w}×${h} first, still a ${((w * k) / src.width).toFixed(1)}× enlargement)` : ''}`;
+  els.info.textContent = `${src.width}×${src.height} → ${w * k}×${h * k}${shrunk ? ` (to keep it quick on this device, the photo is processed at ${w}×${h}: still a ${((w * k) / src.width).toFixed(1)}× enlargement)` : ''}`;
 }
 
 /* ---------------------------------------------------------------- run */
 let busy = false;
 async function upscale() {
   if (!src || busy) return;
-  busy = true; els.run.disabled = true; els.bar.hidden = false; els.fill.style.width = '0%';
+  await gpuReady;
+  busy = true; els.run.disabled = true; els.bar.hidden = false; els.fill.style.width = '0%'; els.cancel.hidden = false;
   const t0 = performance.now();
   try {
     const key = els.model.value, [w, h] = inputSize();
@@ -97,10 +112,15 @@ async function upscale() {
     setStatus(els.status, `Done in ${((performance.now() - t0) / 1000).toFixed(1)} s: ${result.width}×${result.height}. Drag the slider to compare.`, 'ok');
   } catch (e) {
     console.warn(e);
-    setStatus(els.status, /fetch|network|Failed to load/i.test(e.message) ? 'Could not download the AI model. Check your connection and try again.' : `Upscaling failed: ${e.message}`, 'err');
+    setStatus(els.status, e.message === 'CANCELLED' ? 'Cancelled. Try “Fast” for a quick result.' : /Failed to fetch|NetworkError/i.test(e.message) ? 'Could not download the AI model. Check your connection and try again.' : `Upscaling failed: ${e.message}`, e.message === 'CANCELLED' ? '' : 'err');
   }
-  job = null; busy = false; els.bar.hidden = true; els.run.disabled = false;
+  job = null; busy = false; els.bar.hidden = true; els.run.disabled = false; els.cancel.hidden = true;
 }
+els.cancel.addEventListener('click', () => {
+  if (!job) return;
+  const j = job; worker.terminate(); worker = null; for (const k of Object.keys(models)) if (models[k].state === 'downloading') delete models[k];
+  j.reject(new Error('CANCELLED'));
+});
 els.run.addEventListener('click', upscale);
 els.split.addEventListener('input', () => els.cmp.style.setProperty('--split', `${els.split.value}%`));
 els.dl.addEventListener('click', async () => {

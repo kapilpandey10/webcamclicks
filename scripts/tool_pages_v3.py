@@ -412,10 +412,12 @@ PAGES['ai-image-upscaler'] = dict(
       <p class="t-status" id="up-info"></p>
       <p class="t-status" id="t-status" role="status"></p>
       <div class="sr-progress" id="up-bar" hidden><div id="up-fill"></div></div>
+      <button class="t-btn sm" id="up-cancel" type="button" hidden>Cancel</button>
     </div>
     <div class="t-panel">
       <h2>AI model</h2>
-      <label class="t-field">Photo type <select class="t-select" id="up-model"><option value="photo">Photo, real-world (4×)</option><option value="jpeg">Compressed / blocky JPEG (4×)</option><option value="sharp">Graphics, screenshots, text (2×)</option></select></label>
+      <label class="t-field">AI model <select class="t-select" id="up-model"><option value="fast">Fast 2× (seconds, any device)</option><option value="photo">Best for photos 4× (slower)</option><option value="jpeg">Blocky / compressed JPEG 4× (slower)</option><option value="sharp">Graphics, screenshots, text 2×</option></select></label>
+      <p class="muted" id="up-device" style="font-size:.8rem;margin:-4px 0 8px"></p>
       <p class="cap-model" id="up-model-status" aria-live="polite"></p>
       <label class="t-field">Output size <select class="t-select" id="up-out"><option value="0">Full (4× or 2×)</option><option value="3">3×</option><option value="2">2×</option></select></label>
       <button class="t-btn primary" id="up-run" type="button" disabled style="width:100%">✨ Upscale again</button>
@@ -430,7 +432,7 @@ PAGES['ai-image-upscaler'] = dict(
 <ul><li><strong>Photo, real-world (4×)</strong> is trained on real camera noise and blur: best for old phone photos, webcam snapshots and pictures saved from chats.</li>
 <li><strong>Compressed JPEG (4×)</strong> also removes the blocky 8×8 artifacts of heavily compressed images, such as screenshots of screenshots or images from social media.</li>
 <li><strong>Graphics, screenshots, text (2×)</strong> keeps lines and lettering crisp for logos, UI screenshots and diagrams.</li></ul>
-<p>Need 2× from a photo? Choose the 4× photo model with output size 2×: the result is usually sharper than a 2× model.</p>
+<p><strong>Fast 2×</strong> uses a lightweight version of the same model: it finishes in seconds on any phone or laptop and is the right choice most of the time. The 4× models give the most detail but are about 50 times more work, so without a graphics chip they are limited to smaller photos and can take a few minutes; the page shows the time left and you can cancel at any moment.</p>
 <h2>Speed and limits</h2>
 <p>The model (about 20–60 MB) downloads in the background when you open the page and is then cached. With a graphics chip (WebGPU), a typical photo takes seconds; on the processor alone, larger photos can take a minute or two. To keep memory in check, very large photos are processed at up to about 1.2 megapixels for 4× (giving roughly 19 megapixels out). For quick fixes of exposure and colour without enlarging, use the <a href="/photo-enhancer">photo enhancer</a>.</p>''' + PRIVACY,
   faqs=[('Is the AI upscaler free?', 'Yes, with no credits, watermark or sign-up.'),

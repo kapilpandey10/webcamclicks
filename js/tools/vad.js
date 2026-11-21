@@ -1,50 +1,56 @@
-/* WebcamClicks — simple energy-based speech detection.
-   Finds where people are talking and packs those parts into windows of at most ~24 s, cut at pauses,
-   so the speech model never has to guess timings across a hard 30-second chunk boundary. */
+/* WebcamClicks — split audio into windows for the speech model.
+   ALL audio is transcribed: windows cover the whole recording back to back, each at most ~24 s and cut at the
+   quietest moment near its end (so words are not split). Loudness is only used to choose those cut points, to
+   skip stretches of true silence, and to know roughly where speech is inside a window (timing fallback). */
 
 const FRAME = 0.02;   // 20 ms
+
+/** Speech regions between two times (seconds) — used to re-check a window for untranscribed speech. */
+export function speechAfter(win, t) { return win.regions.reduce((acc, [x, y]) => acc + Math.max(0, y - Math.max(x, t)), 0); }
 
 export function planWindows(audio, sr = 16000, maxLen = 24) {
   const hop = Math.round(sr * FRAME), n = Math.floor(audio.length / hop);
   if (!n) return [];
   const rms = new Float32Array(n);
   for (let i = 0; i < n; i++) { let s = 0; const o = i * hop; for (let j = 0; j < hop; j++) { const v = audio[o + j]; s += v * v; } rms[i] = Math.sqrt(s / hop); }
+  let peak = 0; for (const v of rms) if (v > peak) peak = v;
+  if (peak < 0.001) return [];   // the whole file is silent
   const sorted = Float32Array.from(rms).sort();
-  const q = (p) => sorted[Math.min(n - 1, Math.floor(p * n))];
-  const noise = q(0.1), peak = q(0.98);
-  if (peak < 0.002) return [];   // silence
-  const thr = Math.max(noise * 2.2, noise + (peak - noise) * 0.05, 0.0018);
+  const noise = sorted[Math.floor(n * 0.1)];
+  // generous speech threshold: anything clearly above the noise floor (quiet voices included)
+  // recordings mix loud and quiet speakers, so this is relative to the noise floor more than to the peak
+  const thr = Math.max(0.0006, noise * 1.8, peak * 0.005);
+  const silentBelow = Math.max(0.0006, peak * 0.004);   // windows quieter than this everywhere are skipped
 
-  // speech frames → regions (merge pauses shorter than 0.4 s, drop blips shorter than 0.12 s)
-  let regions = [], s = -1;
-  for (let i = 0; i <= n; i++) {
-    const on = i < n && rms[i] > thr;
-    if (on && s < 0) s = i;
-    if (!on && s >= 0) { regions.push([s, i]); s = -1; }
-  }
-  const merged = [];
-  for (const r of regions) { const last = merged[merged.length - 1]; if (last && r[0] - last[1] <= 20) last[1] = r[1]; else merged.push(r.slice()); }
-  regions = merged.filter((r) => r[1] - r[0] >= 6);
-
-  // split very long stretches of continuous sound at their quietest moment
-  const maxF = Math.round(maxLen / FRAME), pieces = [];
-  for (let [a, b] of regions) {
-    while (b - a > maxF) {
-      let cut = a + maxF, best = Infinity;
-      for (let i = a + Math.round(maxF * 0.55); i < a + maxF; i++) if (rms[i] < best) { best = rms[i]; cut = i; }
-      pieces.push([a, cut]); a = cut;
+  const maxF = Math.round(maxLen / FRAME), minF = Math.round(maxF * 0.55), pauseFrom = Math.round(8 / FRAME), wins = [];
+  let a = 0;
+  while (a < n - 5) {
+    let b = Math.min(n, a + maxF);
+    if (b < n || b - a > pauseFrom + 150) {   // also split a long final stretch at a pause
+      // prefer the first natural pause (≥ 0.3 s of quiet) once the window is 8 s long: Whisper sometimes stops
+      // after one sentence in long windows, so shorter, sentence-shaped windows lose less speech
+      let cut = -1, run = 0;
+      for (let i = a + pauseFrom; i < b; i++) { if (rms[i] < thr) { run++; if (run >= 15) { cut = i - 7; break; } } else run = 0; }
+      if (cut < 0 && b === n) cut = b;
+      if (cut < 0) {   // no pause: cut at the quietest 100 ms in the last part of the window
+        let best = Infinity; cut = b;
+        for (let i = a + minF; i < b - 4; i++) { const e = rms[i] + rms[i + 1] + rms[i + 2] + rms[i + 3] + rms[i + 4]; if (e < best) { best = e; cut = i + 2; } }
+      }
+      b = cut;
     }
-    pieces.push([a, b]);
-  }
-  const total = audio.length / sr;
-  const secs = pieces.map(([a, b]) => [Math.max(0, a * FRAME - 0.2), Math.min(total, b * FRAME + 0.25)]);
-
-  // pack neighbouring regions into windows (fewer model calls), never longer than maxLen
-  const wins = [];
-  for (const [a, b] of secs) {
-    const w = wins[wins.length - 1];
-    if (w && b - w.start <= maxLen && a - w.end < 3) { w.end = Math.max(w.end, b); w.regions.push([a, b]); }
-    else wins.push({ start: a, end: b, regions: [[a, b]] });
+    let loud = 0; for (let i = a; i < b; i++) if (rms[i] > silentBelow) { loud++; }
+    if (loud > 5) {
+      // speech regions inside the window (merged across short pauses), used only if the model gives no timings
+      const regions = []; let s = -1;
+      for (let i = a; i <= b; i++) {
+        const on = i < b && rms[i] > thr;
+        if (on && s < 0) s = i;
+        if (!on && s >= 0) { const last = regions[regions.length - 1]; if (last && s - last[1] < 25) last[1] = i; else regions.push([s, i]); s = -1; }
+      }
+      const reg = regions.filter(([x, y]) => y - x >= 5).map(([x, y]) => [x * FRAME, y * FRAME]);
+      wins.push({ start: a * FRAME, end: b * FRAME, regions: reg.length ? reg : [[a * FRAME, b * FRAME]] });
+    }
+    a = b;
   }
   return wins;
 }

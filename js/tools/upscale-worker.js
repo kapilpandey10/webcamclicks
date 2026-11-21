@@ -3,14 +3,18 @@
 
 const TRANSFORMERS = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.2/dist/transformers.min.js';
 export const MODELS = {
+  fast: { id: 'Xenova/swin2SR-lightweight-x2-64', scale: 2, light: true },   // ~1 M parameters: quick on any device
   photo: { id: 'Xenova/swin2SR-realworld-sr-x4-64-bsrgan-psnr', scale: 4 },
   jpeg: { id: 'Xenova/swin2SR-compressed-sr-x4-48', scale: 4 },
   sharp: { id: 'Xenova/swin2SR-classical-sr-x2-64', scale: 2 }
 };
-let T = null, gpu = null;
+let T = null, gpu = null, f16 = false;
 const pipes = new Map(), loaded = new Map();
 
-async function hasGpu() { if (gpu == null) { try { gpu = !!(self.navigator.gpu && await self.navigator.gpu.requestAdapter()); } catch (_) { gpu = false; } } return gpu; }
+async function hasGpu() {
+  if (gpu == null) { try { const a = self.navigator.gpu && await self.navigator.gpu.requestAdapter(); gpu = !!a; f16 = !!(a && a.features && a.features.has('shader-f16')); } catch (_) { gpu = false; } }
+  return gpu;
+}
 
 async function getModel(key) {
   if (!T) { T = await import(TRANSFORMERS); T.env.allowLocalModels = false; }
@@ -19,7 +23,9 @@ async function getModel(key) {
   for (const device of g ? ['webgpu', 'wasm'] : ['wasm']) {
     const k = `${key}|${device}`;
     try {
-      if (!pipes.has(k)) pipes.set(k, T.pipeline('image-to-image', m.id, { device, dtype: 'fp32', progress_callback: (p) => {
+      // graphics chip: half precision when supported; processor: 8-bit weights for the big models (2–3× faster)
+      const dtype = device === 'webgpu' ? (f16 ? 'fp16' : 'fp32') : m.light ? 'fp32' : 'q8';
+      if (!pipes.has(k)) pipes.set(k, T.pipeline('image-to-image', m.id, { device, dtype, progress_callback: (p) => {
         if (p.status !== 'progress' || !p.total) return;
         loaded.set(`${key}|${p.file}`, [p.loaded, p.total]);
         let l = 0, t = 0; for (const [f, [a, b]] of loaded) if (f.startsWith(`${key}|`)) { l += a; t += b; }
@@ -37,7 +43,8 @@ async function getModel(key) {
 async function run({ id, key, data, width, height }) {
   const { up, scale, device } = await getModel(key);
   self.postMessage({ id, type: 'status', text: `Upscaling on your ${device === 'webgpu' ? 'graphics chip' : 'processor'}…` });
-  const TILE = device === 'webgpu' ? 192 : 128, M = 12;
+  const TILE = device === 'webgpu' ? 256 : 128, M = 12;
+  const t0 = performance.now();
   const OW = width * scale, OH = height * scale, out = new Uint8ClampedArray(OW * OH * 4);
   const tiles = [];
   for (let y = 0; y < height; y += TILE) for (let x = 0; x < width; x += TILE) tiles.push([x, y]);
@@ -58,7 +65,7 @@ async function run({ id, key, data, width, height }) {
     }
     // keep transparency: upscale alpha with the source (nearest), AI only handles colour
     done++;
-    self.postMessage({ id, type: 'progress', done: done / tiles.length });
+    self.postMessage({ id, type: 'progress', done: done / tiles.length, elapsed: (performance.now() - t0) / 1000, device });
   }
   for (let y = 0; y < OH; y++) for (let x = 0; x < OW; x++) out[(y * OW + x) * 4 + 3] = data[(((y / scale) | 0) * width + ((x / scale) | 0)) * 4 + 3];
   self.postMessage({ id, type: 'done', data: out, width: OW, height: OH, scale }, [out.buffer]);

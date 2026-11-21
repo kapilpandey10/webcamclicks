@@ -9,7 +9,8 @@ const LANGS = [['', 'Detect automatically'], ['en', 'English'], ['es', 'Spanish'
   ['ar', 'Arabic'], ['fa', 'Persian'], ['tr', 'Turkish'], ['ru', 'Russian'], ['uk', 'Ukrainian'], ['pl', 'Polish'], ['cs', 'Czech'], ['ro', 'Romanian'],
   ['el', 'Greek'], ['he', 'Hebrew'], ['zh', 'Chinese'], ['ja', 'Japanese'], ['ko', 'Korean'], ['vi', 'Vietnamese'], ['th', 'Thai'], ['id', 'Indonesian'],
   ['ms', 'Malay'], ['tl', 'Filipino'], ['sv', 'Swedish'], ['no', 'Norwegian'], ['da', 'Danish'], ['fi', 'Finnish'], ['hu', 'Hungarian']];
-const SIZES = { fast: 'tiny', balanced: 'base', accurate: 'small' };
+const SIZES = { fast: 'tiny', balanced: 'base', accurate: 'small', best: 'large-v3-turbo' };
+const LANG_NAME = Object.fromEntries(LANGS);
 
 const els = {
   drop: $('#t-drop'), input: $('#t-input'), status: $('#t-status'), video: $('#cap-video'), overlay: $('#cap-overlay'), stage: $('#cap-stage'),
@@ -17,7 +18,7 @@ const els = {
   bar: $('#cap-bar'), fill: $('#cap-fill'), cues: $('#cap-cues'), add: $('#cap-add'), shift: $('#cap-shift'), shiftBtn: $('#cap-shift-btn'),
   styles: $('#cap-styles'), group: $('#cap-group'), size: $('#cap-size'), pos: $('#cap-pos'), fillC: $('#cap-fillc'), activeC: $('#cap-activec'), upper: $('#cap-upper'),
   srt: $('#cap-srt'), vtt: $('#cap-vtt'), txt: $('#cap-txt'), burn: $('#cap-burn'), importIn: $('#cap-import'),
-  trLang: $('#cap-tr-lang'), trRun: $('#cap-tr-run'), trUndo: $('#cap-tr-undo'), trNote: $('#cap-tr-note'), editor: $('#cap-editor'), info: $('#cap-info')
+  detected: $('#cap-detected'), trLang: $('#cap-tr-lang'), trRun: $('#cap-tr-run'), trUndo: $('#cap-tr-undo'), trNote: $('#cap-tr-note'), editor: $('#cap-editor'), info: $('#cap-info')
 };
 
 els.lang.innerHTML = LANGS.map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
@@ -25,6 +26,8 @@ els.trLang.innerHTML = LANGS.slice(1).map(([k, v]) => `<option value="${k}">${v}
 els.trLang.value = (navigator.language || 'en').slice(0, 2) === 'en' ? 'es' : (navigator.language || 'en').slice(0, 2);
 const store = { get(k, d) { try { return localStorage.getItem(`wc_cap_${k}`) ?? d; } catch (_) { return d; } }, set(k, v) { try { localStorage.setItem(`wc_cap_${k}`, v); } catch (_) { /* ignore */ } } };
 els.model.value = store.get('model', 'balanced');
+els.lang.value = store.get('lang', '');
+els.lang.addEventListener('change', () => store.set('lang', els.lang.value));
 els.auto.checked = store.get('auto', '1') === '1';
 
 // caption fonts (Montserrat, Poppins, Anton, Bangers, Permanent Marker) — only on this page
@@ -44,6 +47,8 @@ function getWorker() {
     if (m.type === 'model') { modelState[m.size] = { ...(modelState[m.size] || {}), ...m }; showModel(); return; }
     if (!job || m.id !== job.id) return;
     if (m.type === 'status') setStatus(els.status, m.text);
+    if (m.type === 'language') showDetected(m.ranked);
+    if (m.type === 'debug' && window.__capDebug) console.log('CAPDEBUG ' + JSON.stringify(m));
     if (m.type === 'progress') { els.fill.style.width = `${Math.round(m.done * 100)}%`; setStatus(els.status, `Listening… ${Math.round(m.done * 100)}% · ${m.words} words so far`); }
     if (m.type === 'done') job.resolve(m);
     if (m.type === 'error') job.reject(new Error(m.text));
@@ -73,6 +78,16 @@ function preload() {
 (window.requestIdleCallback || ((f) => setTimeout(f, 2500)))(preload, { timeout: 6000 });
 els.model.addEventListener('change', () => { store.set('model', els.model.value); showModel(); preload(); });
 els.auto.addEventListener('change', () => store.set('auto', els.auto.checked ? '1' : '0'));
+
+/* ---------------------------------------------------------------- detected language (with a one-click fix) */
+function langLabel(code) { return LANG_NAME[code] || (typeof Intl !== 'undefined' && Intl.DisplayNames ? new Intl.DisplayNames(['en'], { type: 'language' }).of(code) : code); }
+function showDetected(ranked) {
+  const [top, ...rest] = ranked;
+  if (!LANG_NAME[top.code]) els.lang.insertAdjacentHTML('beforeend', `<option value="${top.code}">${langLabel(top.code)}</option>`);
+  els.detected.hidden = false;
+  els.detected.innerHTML = `Detected language: <b>${langLabel(top.code)}</b> (${Math.round(top.p * 100)}% sure)${rest.length ? `, then ${rest.map((r) => `${langLabel(r.code)} ${Math.round(r.p * 100)}%`).join(', ')}` : ''}. Wrong? Pick the right one in <em>Spoken language</em> and press Generate again.`;
+  els.detected.classList.toggle('unsure', top.p < 0.6);
+}
 
 /* ---------------------------------------------------------------- load media */
 async function openMedia(f) {
@@ -116,8 +131,9 @@ async function audio16k() {
 let busy = false;
 async function generate() {
   if (!file || busy) return;
-  busy = true; els.run.disabled = true; els.bar.hidden = false; els.fill.style.width = '0%';
+  busy = true; els.run.disabled = true; els.bar.hidden = false; els.fill.style.width = '0%'; els.detected.hidden = true;
   try {
+    if (els.model.value === 'best' && !(navigator.gpu && await navigator.gpu.requestAdapter().catch(() => null))) { els.model.value = 'accurate'; setStatus(els.status, 'Best needs a graphics chip (WebGPU), which this browser doesn\'t offer. Using Accurate.'); await new Promise((r) => setTimeout(r, 1200)); }
     setStatus(els.status, 'Reading the audio…');
     const pcm = await audio16k();
     const size = curSize();
@@ -137,7 +153,8 @@ async function generate() {
       : 'No speech was detected in this file.', cues.length ? 'ok' : 'err');
   } catch (e) {
     console.warn(e);
-    setStatus(els.status, /fetch|network|Failed to load|NetworkError/i.test(e.message) ? 'Could not download the speech AI. Check your connection and try again.' : `Captioning failed: ${e.message}`, 'err');
+    setStatus(els.status, e.message === 'NO_LANG' ? 'The spoken language could not be detected. Please choose it under “Spoken language” and press Generate captions.'
+      : /Failed to fetch|NetworkError|network error/i.test(e.message) ? `Could not download the speech AI. Check your connection and try again. (${e.message})` : `Captioning failed: ${e.message}`, 'err');
   }
   job = null; busy = false;
   els.bar.hidden = true; els.run.disabled = false;

@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Kathmandu Streets</title>
+<meta name="description" content="A free open-world 3D sandbox of Kathmandu, Nepal in your browser: ride through Thamel, Durbar Square, Boudhanath, Swayambhu and Pashupati with traffic, people, cows, monsoon rain and a full day-night cycle.">
+<link rel="canonical" href="https://webcamclicks.com/kathmandu-streets">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Mukta:wght@400;600;700&family=Yatra+One&display=swap">
+<style>
+/* Layout: full-bleed 3D canvas; HUD pinned to the four corners like a street-level dashboard. Single dark "dusk over the valley" look. */
+:root {
+  --ink: #15110e; --panel: rgba(24, 18, 14, 0.78); --panel-solid: #1f1812; --line: rgba(246, 241, 231, 0.14);
+  --snow: #f6f1e7; --muted: #bfb19d; --marigold: #f2a516; --brick: #9c3b25; --sindoor: #c8102e; --sky: #2456c8; --leaf: #1f9a4c;
+  --display: "Yatra One", "Mukta", serif; --hud: "Barlow Condensed", "Arial Narrow", sans-serif; --body: "Mukta", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: var(--ink); color: var(--snow); font-family: var(--body); -webkit-tap-highlight-color: transparent; }
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--marigold); outline-offset: 2px; }
+kbd { font-family: var(--hud); font-weight: 700; background: var(--snow); color: var(--ink); border-radius: 4px; padding: 0 6px; margin-right: 6px; font-size: 0.95em; }
+.flags { height: 6px; background: linear-gradient(90deg, var(--sky) 0 20%, #f4f4f0 20% 40%, var(--sindoor) 40% 60%, var(--leaf) 60% 80%, #f2c418 80% 100%); }
+
+/* loading & title */
+#loading { position: fixed; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, #3a2416, var(--ink) 70%); z-index: 30; text-align: center; padding: 24px; }
+#loading .np { font-family: var(--display); font-size: clamp(48px, 10vw, 88px); color: var(--marigold); line-height: 1; }
+#loadmsg { color: var(--muted); margin-top: 14px; font-size: 16px; }
+#title { position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-end; background: linear-gradient(90deg, rgba(21, 17, 14, 0.92) 0%, rgba(21, 17, 14, 0.55) 46%, rgba(21, 17, 14, 0) 75%);
+  padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+.tcard { max-width: 520px; width: 100%; display: grid; gap: 16px; }
+.tcard .np { font-family: var(--display); font-size: clamp(64px, 14vw, 120px); line-height: 0.9; color: var(--marigold); text-shadow: 0 4px 30px rgba(0,0,0,0.5); }
+.tcard h1 { margin: 0; font-family: var(--hud); font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; font-size: clamp(24px, 5vw, 38px); }
+.tcard p { margin: 0; color: #e6dccb; font-size: 17px; line-height: 1.5; max-width: 60ch; }
+.keys { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 18px; font-size: 14px; color: var(--muted); }
+.keys div { display: flex; align-items: baseline; gap: 4px; min-width: 0; }
+.cta { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.btn { border: 0; border-radius: 10px; padding: 12px 22px; font-family: var(--hud); font-weight: 800; font-size: 22px; letter-spacing: 0.08em; text-transform: uppercase; background: var(--marigold); color: var(--ink); box-shadow: 0 6px 0 #a86c00; transition: transform .08s; }
+.btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #a86c00; }
+.btn.ghost { background: transparent; color: var(--snow); box-shadow: inset 0 0 0 2px var(--line); font-size: 17px; }
+.small { font-size: 13px; color: var(--muted); }
+
+/* HUD */
+#hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+.tl { position: absolute; top: max(14px, env(safe-area-inset-top)); left: max(16px, env(safe-area-inset-left)); display: grid; gap: 10px; max-width: min(360px, 60vw); }
+#loc { padding: 2px 0 0; }
+#locNp { font-family: var(--display); font-size: 30px; color: var(--marigold); line-height: 1.05; text-shadow: 0 2px 10px rgba(0,0,0,0.7); }
+#locEn { font-family: var(--hud); font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; font-size: 15px; text-shadow: 0 2px 8px rgba(0,0,0,0.8); }
+#loc.flash #locNp { animation: rise .6s ease-out; }
+@keyframes rise { from { opacity: 0.2; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+#mission { background: var(--panel); border-radius: 10px; padding: 10px 14px; border-left: 4px solid var(--marigold); backdrop-filter: blur(6px); }
+#mission.urgent { border-left-color: var(--sindoor); }
+#mTitle { font-family: var(--hud); font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--marigold); font-size: 14px; }
+#mObj { font-size: 16px; font-weight: 600; line-height: 1.25; }
+#mMeta { font-family: var(--hud); font-size: 18px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.tr { position: absolute; top: max(14px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); display: grid; justify-items: end; gap: 4px; text-shadow: 0 2px 8px rgba(0,0,0,0.85); }
+#clock { font-family: var(--hud); font-weight: 700; font-size: 40px; line-height: 0.9; font-variant-numeric: tabular-nums; }
+.wxline { font-family: var(--hud); font-weight: 600; font-size: 17px; display: flex; gap: 10px; align-items: center; }
+#aqi { font-size: 13px; padding: 1px 8px; border-radius: 99px; background: #2f7d32; text-shadow: none; }
+#aqi[data-level="mid"] { background: #b8860b; } #aqi[data-level="bad"] { background: var(--sindoor); }
+#money { font-family: var(--hud); font-weight: 800; font-size: 30px; color: var(--marigold); font-variant-numeric: tabular-nums; }
+#karma { --k: 50%; display: flex; align-items: center; gap: 8px; font-family: var(--hud); font-size: 14px; text-transform: uppercase; letter-spacing: 0.1em; }
+#karma .bar { width: 110px; height: 7px; border-radius: 9px; background: rgba(255,255,255,0.18); overflow: hidden; }
+#karma .bar i { display: block; height: 100%; width: var(--k); background: linear-gradient(90deg, var(--sindoor), var(--marigold), #ffe27a); }
+#btnMenu { pointer-events: auto; margin-top: 6px; border: 0; background: var(--panel); border-radius: 8px; padding: 6px 12px; font-family: var(--hud); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; font-size: 14px; }
+.bl { position: absolute; left: max(16px, env(safe-area-inset-left)); bottom: max(16px, env(safe-area-inset-bottom)); display: flex; align-items: flex-end; gap: 12px; }
+#minimap { width: 180px; height: 180px; border-radius: 50%; box-shadow: 0 0 0 4px var(--brick), 0 0 0 6px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.5); background: #5f7a4a; }
+#speedo { background: var(--panel); border-radius: 10px; padding: 8px 14px; min-width: 120px; backdrop-filter: blur(6px); }
+#kmh { font-family: var(--hud); font-weight: 800; font-size: 44px; line-height: 0.9; font-variant-numeric: tabular-nums; }
+#kmh::after { content: " km/h"; font-size: 15px; color: var(--muted); font-weight: 600; }
+#vname { font-family: var(--hud); text-transform: uppercase; letter-spacing: .12em; font-size: 13px; color: var(--marigold); }
+#radio { font-size: 13px; color: var(--muted); }
+#prompt { position: absolute; left: 50%; bottom: max(26px, env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--panel); padding: 10px 16px; border-radius: 10px; font-size: 17px; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; }
+#notes { position: absolute; left: max(16px, env(safe-area-inset-left)); top: 42%; display: grid; gap: 8px; max-width: min(380px, calc(100vw - 32px)); }
+.note { background: var(--panel); padding: 8px 12px; border-radius: 8px; font-size: 15px; line-height: 1.3; border-left: 3px solid var(--snow); transition: opacity .5s, transform .5s; animation: slide .35s ease-out; }
+.note span { color: var(--muted); font-size: 13px; }
+.note.good { border-left-color: var(--marigold); } .note.bad { border-left-color: var(--sindoor); } .note.karma { border-left-color: #ffe27a; }
+.note.out { opacity: 0; transform: translateX(-12px); }
+@keyframes slide { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+#card { position: absolute; top: 16%; left: 50%; transform: translateX(-50%); width: min(520px, calc(100vw - 32px)); background: rgba(24,18,14,0.86); border-radius: 12px; overflow: hidden; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+#card.show { animation: cardIn .7s cubic-bezier(.2,.9,.3,1.2); }
+@keyframes cardIn { from { opacity: 0; transform: translate(-50%, -14px) scale(.96); } to { opacity: 1; transform: translateX(-50%); } }
+#card .in { padding: 14px 20px 18px; display: grid; gap: 4px; }
+#card .eyebrow { font-family: var(--hud); font-weight: 700; letter-spacing: .2em; text-transform: uppercase; font-size: 12px; color: var(--marigold); }
+#cardNp { font-family: var(--display); font-size: clamp(30px, 7vw, 46px); color: var(--marigold); line-height: 1.1; }
+#cardEn { font-family: var(--hud); font-weight: 800; font-size: 24px; letter-spacing: .06em; text-transform: uppercase; text-wrap: balance; }
+#cardFact { color: #e6dccb; font-size: 15px; line-height: 1.45; text-wrap: balance; }
+#himal { position: absolute; top: max(14px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); font-family: var(--hud); font-size: 14px; letter-spacing: .12em; text-transform: uppercase; color: #e8eef6; text-shadow: 0 2px 8px rgba(0,0,0,0.9); white-space: nowrap; }
+#bubbles { position: fixed; inset: 0; pointer-events: none; z-index: 9; overflow: hidden; }
+.bubble { position: absolute; left: 0; top: 0; background: #fffdf6; color: #1b140f; padding: 4px 10px; border-radius: 12px; font-size: 14px; font-weight: 600; white-space: nowrap; box-shadow: 0 3px 10px rgba(0,0,0,0.35); will-change: transform; }
+.bubble::after { content: ""; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: #fffdf6; }
+.bubble.angry { background: #ffe1dc; color: #7a0a0a; } .bubble.angry::after { border-top-color: #ffe1dc; }
+.bubble.calm { background: #fff3cf; } .bubble.calm::after { border-top-color: #fff3cf; }
+
+/* big map */
+#bigwrap { position: fixed; inset: 0; z-index: 15; background: rgba(10,8,6,0.85); display: grid; grid-template-rows: auto 1fr; padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); gap: 10px; }
+#bigwrap header { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-family: var(--hud); text-transform: uppercase; letter-spacing: .12em; }
+#bigmap { width: 100%; height: 100%; border-radius: 12px; cursor: crosshair; min-height: 0; }
+
+/* pause menu */
+#menu { position: fixed; inset: 0; z-index: 25; background: rgba(12,9,7,0.7); backdrop-filter: blur(4px); overflow-y: auto; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+.mpanel { max-width: 880px; margin: 0 auto; background: var(--panel-solid); border-radius: 14px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.mhead { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 20px; flex-wrap: wrap; }
+.mhead h2 { margin: 0; font-family: var(--hud); font-weight: 800; letter-spacing: .14em; text-transform: uppercase; font-size: 26px; }
+.mhead h2 span { font-family: var(--display); color: var(--marigold); letter-spacing: 0; text-transform: none; margin-right: 10px; }
+.mgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0; border-top: 1px solid var(--line); }
+.msec { padding: 16px 20px; border-bottom: 1px solid var(--line); min-width: 0; display: grid; gap: 10px; align-content: start; }
+.msec h3 { margin: 0; font-family: var(--hud); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; font-size: 14px; color: var(--marigold); display: flex; justify-content: space-between; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 0; background: rgba(255,255,255,0.08); border-radius: 99px; padding: 6px 12px; font-size: 14px; display: inline-flex; gap: 6px; align-items: center; }
+.chip.on { background: var(--marigold); color: var(--ink); font-weight: 700; }
+input[type=range] { width: 100%; accent-color: var(--marigold); }
+#timeVal { font-family: var(--hud); font-weight: 700; font-size: 22px; font-variant-numeric: tabular-nums; }
+#lmlist { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px 14px; }
+#lmlist li { display: grid; font-size: 14px; line-height: 1.25; padding-left: 18px; position: relative; color: var(--muted); }
+#lmlist li::before { content: ""; position: absolute; left: 0; top: 5px; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--muted); }
+#lmlist li.found { color: var(--snow); } #lmlist li.found::before { background: var(--sindoor); border-color: var(--sindoor); }
+#lmlist li span { font-size: 13px; color: var(--marigold); opacity: .8; }
+.ctl { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; font-size: 14px; color: var(--muted); align-items: baseline; }
+.ctl kbd { justify-self: start; white-space: nowrap; }
+.mfoot { padding: 14px 20px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+/* touch controls */
+#touch { position: fixed; inset: 0; pointer-events: none; z-index: 11; }
+#joy { position: absolute; left: max(22px, env(safe-area-inset-left)); bottom: max(26px, env(safe-area-inset-bottom)); width: 128px; height: 128px; border-radius: 50%; background: rgba(255,255,255,0.08); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.2); pointer-events: auto; touch-action: none; }
+#joyKnob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px; border-radius: 50%; background: rgba(246,241,231,0.55); }
+.tbtns { position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: max(22px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(3, 62px); gap: 10px; pointer-events: auto; }
+.tbtns button { width: 62px; height: 62px; border-radius: 50%; border: 0; background: rgba(24,18,14,0.7); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.22); font-family: var(--hud); font-weight: 700; font-size: 14px; text-transform: uppercase; touch-action: none; }
+.tbtns button.on { background: var(--marigold); color: var(--ink); }
+.tbtns .big { background: var(--brick); }
+.touchhint { display: none; }
+body.is-touch .keys { display: none; }
+body.is-touch .touchhint { display: block; }
+body.is-touch .bl { left: auto; right: max(16px, env(safe-area-inset-right)); bottom: auto; top: 172px; flex-direction: column; align-items: flex-end; }
+body.is-touch #minimap { width: 120px; height: 120px; }
+body.is-touch #prompt { bottom: 170px; }
+body.is-touch #notes { top: 30%; }
+@media (max-width: 560px) {
+  #clock { font-size: 30px; } #money { font-size: 22px; } .wxline { font-size: 14px; }
+  #locNp { font-size: 22px; } #locEn { font-size: 12px; }
+  #minimap { width: 130px; height: 130px; }
+  .keys { grid-template-columns: 1fr; }
+  #title { background: linear-gradient(0deg, rgba(21, 17, 14, 0.96) 0%, rgba(21, 17, 14, 0.82) 62%, rgba(21, 17, 14, 0.15) 100%); }
+  #himal { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<canvas id="scene" tabindex="0" aria-label="3D view of Kathmandu"></canvas>
+
+<div id="loading" role="status">
+  <div>
+    <div class="np" lang="ne">नमस्ते</div>
+    <div id="loadmsg">Loading the valley…</div>
+  </div>
+</div>
+
+<section id="title" hidden aria-labelledby="ttl">
+  <div class="tcard">
+    <div class="flags" aria-hidden="true"></div>
+    <div class="np" lang="ne">काठमाडौं</div>
+    <h1 id="ttl">Kathmandu Streets</h1>
+    <p>An open-world sandbox of the valley. Walk the lanes of Thamel, circle Boudhanath with the pilgrims, take any bike, tempo or bus, deliver momos and drive taxi fares through monsoon rain, smog and winter fog.</p>
+    <div class="keys" aria-label="Controls">
+      <div><kbd>WASD</kbd> walk / drive</div><div><kbd>Mouse</kbd> look around</div>
+      <div><kbd>E</kbd> ride / get out / spin</div><div><kbd>Shift</kbd> run</div>
+      <div><kbd>Space</kbd> jump / handbrake</div><div><kbd>H</kbd> horn (use it a lot)</div>
+      <div><kbd>R</kbd> radio</div><div><kbd>M</kbd> map · <kbd>V</kbd> camera</div>
+      <div><kbd>T</kbd> weather · <kbd>N</kbd> +3 hours</div><div><kbd>Esc</kbd> menu</div>
+    </div>
+    <p class="touchhint">Left stick to walk or drive, drag anywhere to look, <b>Ride</b> to take any bike, taxi, tempo or bus.</p>
+    <div class="cta">
+      <button class="btn" id="btnPlay" type="button">Start in Thamel</button>
+      <span class="small">Headphones on: the city honks.</span>
+    </div>
+  </div>
+</section>
+
+<div id="hud" hidden>
+  <div class="tl">
+    <div id="loc"><div id="locNp" lang="ne">ठमेल</div><div id="locEn">Thamel</div></div>
+    <div id="mission" hidden><div id="mTitle"></div><div id="mObj"></div><div id="mMeta"></div></div>
+  </div>
+  <div id="himal" hidden>Himalaya in view · Langtang · Ganesh Himal · Dorje Lakpa</div>
+  <div class="tr">
+    <div id="clock">08:30</div>
+    <div class="wxline"><span id="wx">☀ Clear</span><span id="temp">18°C</span><span id="aqi">AQI 80</span></div>
+    <div id="money">रु 2,500</div>
+    <div id="karma">Karma <span class="bar"><i></i></span><span id="karmaV">50</span></div>
+    <button id="btnMenu" type="button">Menu</button>
+  </div>
+  <div class="bl">
+    <canvas id="minimap" width="180" height="180" aria-label="Minimap"></canvas>
+    <div id="speedo" hidden><div id="vname"></div><div id="kmh">0</div><div id="radio"></div></div>
+  </div>
+  <div id="notes" aria-live="polite"></div>
+  <div id="prompt" hidden></div>
+  <div id="card" hidden><div class="flags"></div><div class="in"><div class="eyebrow">New place discovered</div><div id="cardNp" lang="ne"></div><div id="cardEn"></div><div id="cardFact"></div></div></div>
+</div>
+<div id="bubbles"></div>
+
+<div id="touch" hidden>
+  <div id="joy"><div id="joyKnob"></div></div>
+  <div class="tbtns">
+    <button type="button" data-key="KeyCam">Cam</button>
+    <button type="button" data-key="KeyMap">Map</button>
+    <button type="button" data-key="KeyHorn">Horn</button>
+    <button type="button" data-key="KeyRun">Run</button>
+    <button type="button" data-key="KeyJump">Jump</button>
+    <button type="button" class="big" data-key="KeyEnter">Ride</button>
+  </div>
+</div>
+
+<div id="bigwrap" hidden>
+  <header><span>Kathmandu Valley · tap the map to set a waypoint</span><button class="btn ghost" type="button" onclick="document.getElementById('bigwrap').hidden = true">Close</button></header>
+  <canvas id="bigmap" aria-label="Map of Kathmandu"></canvas>
+</div>
+
+<div id="menu" hidden>
+  <div class="mpanel">
+    <div class="flags"></div>
+    <div class="mhead"><h2><span lang="ne">विश्राम</span>Paused</h2><button class="btn" id="btnResume" type="button">Resume</button></div>
+    <div class="mgrid">
+      <div class="msec"><h3>Weather</h3><div class="chips" id="wxbtns"></div></div>
+      <div class="msec"><h3>Time of day <span id="timeVal">08:30</span></h3><input type="range" id="timeRange" min="0" max="23.9" step="0.1" value="8.5" aria-label="Time of day"><span class="small">Dawn turns the Himalaya pink; at night shop signs and windows light up.</span></div>
+      <div class="msec" style="grid-column: 1 / -1"><h3>Places <span id="lmcount">0 / 0</span></h3><ul id="lmlist"></ul></div>
+      <div class="msec"><h3>Controls</h3>
+        <div class="ctl">
+          <kbd>WASD</kbd><span>Walk, or drive any vehicle</span>
+          <kbd>E</kbd><span>Take / leave a vehicle, spin prayer wheels, ring bells, greet people</span>
+          <kbd>Space</kbd><span>Jump on foot, handbrake when driving</span>
+          <kbd>H</kbd><span>Horn. Honk at cows to move them</span>
+          <kbd>R</kbd><span>Cycle radio stations while driving</span>
+          <kbd>M</kbd><span>Map with waypoints · <kbd>V</kbd>camera</span>
+          <kbd>T / N</kbd><span>Next weather / skip 3 hours</span>
+        </div>
+      </div>
+      <div class="msec"><h3>Jobs</h3>
+        <div class="ctl" style="grid-template-columns: 1fr">
+          <span><b style="color:var(--snow)">Momo delivery</b>: step into the orange beam outside Momo House in Thamel.</span>
+          <span><b style="color:var(--snow)">Taxi fares</b>: get into any white taxi; one waits at Ratna Park.</span>
+          <span><b style="color:var(--snow)">Explore</b>: every new place pays रु 500.</span>
+        </div>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn ghost" id="btnSound" type="button">Sound: on</button>
+      <button class="btn ghost" id="btnQuality" type="button">Graphics: high</button>
+      <span class="small" id="qnote" hidden>Reload the page to apply the graphics change.</span>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/games/kathmandu/core.js"></script>
+<script src="js/games/kathmandu/world.js"></script>
+<script src="js/games/kathmandu/landmarks.js"></script>
+<script src="js/games/kathmandu/people.js"></script>
+<script src="js/games/kathmandu/traffic.js"></script>
+<script src="js/games/kathmandu/weather.js"></script>
+<script src="js/games/kathmandu/player.js"></script>
+<script src="js/games/kathmandu/game.js"></script>
+<script>if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('is-touch');</script>
+</body>
+</html>

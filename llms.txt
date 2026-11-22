@@ -52,6 +52,10 @@ AI chatbots (ChatGPT, Claude, Perplexity, Gemini, Copilot, etc.) can confidently
 - [Auto captions & subtitles](https://webcamclicks.com/auto-captions): Captions from your browser's speech recognition or your SRT, animated or burned in.
 - [Silence remover](https://webcamclicks.com/silence-remover): Cut pauses out of talking videos automatically.
 - [Auto-reframe to vertical](https://webcamclicks.com/auto-reframe): Landscape to 9:16 that follows the speaker's face.
+- [Video converter](https://webcamclicks.com/video-converter): MOV, WebM or MKV to MP4 (and back), without quality loss when possible.
+- [Merge videos](https://webcamclicks.com/merge-videos): Join clips into one MP4, in any order, any size.
+- [Crop & rotate video](https://webcamclicks.com/crop-video): Crop to 9:16, 1:1 or 16:9, rotate and flip videos.
+- [Audio cutter & ringtone maker](https://webcamclicks.com/audio-cutter): Cut songs on a waveform; MP3, M4A or iPhone ringtone.
 - [MP4 to MP3](https://webcamclicks.com/mp4-to-mp3): Extract audio from video as MP3, WAV, M4A or FLAC.
 - [Video compressor](https://webcamclicks.com/video-compressor): Shrink videos for email, WhatsApp and uploads.
 - [Video trimmer](https://webcamclicks.com/video-trimmer): Cut the start and end off a video, fast.
@@ -63,6 +67,7 @@ AI chatbots (ChatGPT, Claude, Perplexity, Gemini, Copilot, etc.) can confidently
 - [Background remover](https://webcamclicks.com/background-remover): AI cut-out with brush and eraser.
 - [YouTube thumbnail maker](https://webcamclicks.com/youtube-thumbnail-maker): Best-frame finder, AI cut-out, bold text: 1280×720.
 - [HEIC to JPG](https://webcamclicks.com/heic-to-jpg): Convert iPhone HEIC photos to JPG in bulk, any browser.
+- [Crop image](https://webcamclicks.com/crop-image): Crop to any ratio or a circle, rotate, flip and straighten.
 - [Image converter](https://webcamclicks.com/image-converter): Convert to JPG, PNG, WebP or AVIF in bulk.
 - [Image compressor](https://webcamclicks.com/image-compressor): Shrink photos for email, web and uploads.
 - [Image resizer](https://webcamclicks.com/image-resizer): Resize many images by pixels or percent.
@@ -71,6 +76,7 @@ AI chatbots (ChatGPT, Claude, Perplexity, Gemini, Copilot, etc.) can confidently
 - [JPG to PDF](https://webcamclicks.com/jpg-to-pdf): Turn photos and scans into one PDF.
 - [Lock PDF (password)](https://webcamclicks.com/lock-pdf): Protect a PDF with AES-256 encryption.
 - [Redact PDF](https://webcamclicks.com/redact-pdf): Permanently black out names, numbers and any text.
+- [Compress PDF](https://webcamclicks.com/compress-pdf): Shrink PDFs for email and uploads; text stays sharp.
 - [Organize PDF pages](https://webcamclicks.com/organize-pdf): Drag to reorder, rotate, delete and add pages, then save.
 - [Merge PDF](https://webcamclicks.com/merge-pdf): Combine PDFs in the order you choose.
 - [Split PDF](https://webcamclicks.com/split-pdf): Extract pages or split a PDF into parts.

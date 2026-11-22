@@ -22,7 +22,7 @@ def video_shell(mode, controls, extra_result=''):
     </div>
     <div class="t-panel">
       {controls}
-      <button class="t-btn primary" id="vt-run" type="button" disabled style="width:100%;margin-top:6px">{ {"mp3": "Extract audio", "compress": "Compress video", "trim": "Trim video", "gif": "Create GIF"}[mode] }</button>
+      <button class="t-btn primary" id="vt-run" type="button" disabled style="width:100%;margin-top:6px">{ {"mp3": "Extract audio", "compress": "Compress video", "trim": "Trim video", "gif": "Create GIF", "convert": "Convert video"}[mode] }</button>
     </div>
   </div>'''
 

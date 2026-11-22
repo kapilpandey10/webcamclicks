@@ -267,3 +267,258 @@ PAGES['collage-maker'] = dict(
         ('How many photos can I use?', 'Layouts hold 2 to 16 photos. Add more photos than frames and you can drag or replace to pick which ones show.'),
         ('How do I move a photo inside its frame?', 'Drag it. Release inside the same frame to reposition, or over another frame to swap the two photos.'),
         ('Will my collage be blurry on Instagram?', 'No. Collages are saved at 2160 pixels or more, which Instagram scales down cleanly.')])
+
+# =========================================================================================== batch 4: essentials
+# ------------------------------------------------------------------------------------------- compress PDF
+PAGES['compress-pdf'] = dict(
+  name='Compress PDF', cat='pdf', script='pdf-compress.js', appcat='UtilitiesApplication',
+  title='Compress PDF — Reduce PDF File Size Online Free, No Upload | WebcamClicks',
+  desc='Make PDFs smaller for email, WhatsApp and upload portals. Shrinks photos and scans inside the PDF while text stays sharp and selectable. Free, private, batch.',
+  lead='Make PDFs small enough for email, WhatsApp and government or job portals. The photos and scans inside are shrunk, while text, links and drawings stay sharp and selectable. Compress several PDFs at once; nothing is uploaded.',
+  ui=f'''<div class="t-grid">
+    <div>
+      {DROP("application/pdf,.pdf", "Drop PDF files here", "One or many PDFs · nothing is uploaded")}
+      <ul class="t-list" id="pc-list"></ul>
+      <p class="t-status" id="t-status" role="status"></p>
+    </div>
+    <div class="t-panel">
+      <h2>Compression</h2>
+      <div class="pc-levels">
+        <label class="pc-level"><input type="radio" name="pc-level" value="light"><span><b>Light</b><small>Best quality, smaller file</small></span></label>
+        <label class="pc-level"><input type="radio" name="pc-level" value="medium" checked><span><b>Recommended</b><small>Good quality, much smaller</small></span></label>
+        <label class="pc-level"><input type="radio" name="pc-level" value="strong"><span><b>Strong</b><small>Smallest while keeping text as text</small></span></label>
+        <label class="pc-level"><input type="radio" name="pc-level" value="max"><span><b>Maximum (scans)</b><small>Pages become compact images; text is no longer selectable</small></span></label>
+      </div>
+      <select id="pc-level" hidden><option value="light">light</option><option value="medium" selected>medium</option><option value="strong">strong</option><option value="max">max</option></select>
+      <label class="t-check"><input type="checkbox" id="pc-gray"> Black &amp; white (smaller for scanned documents)</label>
+      <label class="t-check"><input type="checkbox" id="pc-meta"> Remove title, author and other details</label>
+      <button class="t-btn primary" id="pc-run" type="button" disabled style="width:100%;margin-top:8px">Compress PDF</button>
+      <button class="t-btn" id="pc-all" type="button" hidden style="width:100%;margin-top:8px">Download all (ZIP)</button>
+    </div>
+  </div>
+  <script>document.querySelectorAll('input[name="pc-level"]').forEach(function(r){{r.addEventListener('change',function(){{document.getElementById('pc-level').value=r.value;}});}});</script>''',
+  article='''<h2>How much smaller will my PDF get?</h2>
+<p>It depends on what is inside. PDFs made from phone photos and scans often shrink by 70–90%, because each page holds a large photo. PDFs that are mostly text (from Word, Google Docs or a website) are usually already small; compression can't do much for them, and the tool keeps your original if it can't make it smaller.</p>
+<h2>Which level should I choose?</h2>
+<ul><li><strong>Recommended</strong> suits almost everything: photos are resized to about 1600 pixels and saved as good-quality JPEG. On screen and on paper it looks the same.</li>
+<li><strong>Strong</strong> for strict upload limits (2 MB, 1 MB): photos are smaller and more compressed, while text stays perfectly sharp.</li>
+<li><strong>Maximum</strong> for scanned documents: every page becomes a compact 100 DPI image. Combine with <em>Black &amp; white</em> for the smallest scans.</li></ul>
+<h2>What stays untouched</h2>
+<p>Text, fonts, links, form fields, bookmarks and vector drawings are copied as they are; only the pictures are re-encoded. Colour-managed print images (CMYK) are left alone so their colours don't shift. Need to edit or reorder pages too? Use the <a href="/pdf-editor">PDF editor</a> or <a href="/organize-pdf">organize PDF pages</a>.</p>''' + PRIVACY,
+  faqs=[('Is it free and private?', 'Yes. Your PDFs are compressed in your browser and never uploaded, so you can safely compress contracts, IDs and bank statements.'),
+        ('Will the text become blurry?', 'No. Only images are compressed; text stays sharp and selectable, except with Maximum, which turns pages into images.'),
+        ('Why didn\'t my PDF get smaller?', 'PDFs that are mostly text are already compact. If compression can\'t reduce the size, the original is kept. Try Maximum for scanned documents.'),
+        ('Can I compress a PDF to under 1 MB or 200 KB?', 'Usually, yes: use Strong, or Maximum with Black & white for scans. Very long documents may need splitting with Split PDF.'),
+        ('Can I compress several PDFs at once?', 'Yes. Drop them all, press Compress, then download each one or all of them as a ZIP.')])
+
+# ------------------------------------------------------------------------------------------- video converter
+PAGES['video-converter'] = dict(
+  name='Video converter', cat='video', script='video-tools.js', mode='convert', appcat='MultimediaApplication',
+  title='Video Converter — MOV to MP4, WebM to MP4, MKV to MP4 Free | WebcamClicks',
+  desc='Convert MOV, WebM and MKV to MP4 (or MP4 to WebM/MOV) in your browser. Copies the video without quality loss when it can; H.264 for WhatsApp and iPhone. No upload.',
+  lead='Turn MOV, WebM and MKV videos into MP4 that plays everywhere: WhatsApp, iPhone, Windows, TVs and video editors. When the video is already in a compatible format it is copied without re-encoding, so it is instant and lossless.',
+  ui=video_shell('convert', '''<h2>Convert to</h2>
+      <div class="t-row">
+        <label class="t-field">Format <select class="t-select" id="vt-format"><option value="mp4">MP4 (recommended)</option><option value="mov">MOV (QuickTime)</option><option value="webm">WebM (VP9, for the web)</option><option value="mkv">MKV</option></select></label>
+        <label class="t-field">Quality <select class="t-select" id="vt-quality"><option value="same">Same as original</option><option value="high">High</option><option value="medium">Balanced (smaller)</option><option value="low">Small file</option></select></label>
+      </div>
+      <div class="t-row">
+        <label class="t-field">Resolution <select class="t-select" id="vt-res"><option value="0">Keep original</option><option value="2160">4K</option><option value="1080">1080p</option><option value="720">720p</option><option value="480">480p</option></select></label>
+        <label class="t-field">&nbsp;<span class="t-check" style="margin:8px 0 0"><input type="checkbox" id="vt-compat" checked> Plays everywhere (H.264 + AAC)</span></label>
+      </div>
+      ''' + TRIM_FIELDS),
+  article='''<h2>Common conversions</h2>
+<ul><li><strong>MOV to MP4:</strong> iPhone and Mac videos. Usually copied without re-encoding in seconds.</li>
+<li><strong>WebM to MP4:</strong> screen recordings and web downloads, re-encoded to H.264 so they play on iPhone and in WhatsApp.</li>
+<li><strong>MKV to MP4:</strong> for phones, TVs and editors that don't open MKV.</li>
+<li><strong>MP4 to WebM:</strong> smaller files for websites.</li></ul>
+<h2>Lossless when possible</h2>
+<p>A video file is a container (MP4, MOV, MKV, WebM) holding video and audio streams. If the streams are already compatible with the new container, the converter simply re-packages them: no quality loss, and even long videos convert in seconds. Otherwise it re-encodes with your device's hardware video encoder. Keep <em>Plays everywhere</em> on for MP4 to get H.264 video and AAC audio, the combination every phone, browser and TV understands.</p>
+<p>Need a smaller file? Use the <a href="/video-compressor">video compressor</a>. Only want the sound? <a href="/mp4-to-mp3">MP4 to MP3</a>.</p>''' + PRIVACY,
+  faqs=[('Is the video converter free?', 'Yes, with no watermark, no sign-up and no file size limit.'),
+        ('Will converting reduce quality?', 'Not when the video can be copied (shown in the result). When it must be re-encoded, Same as original uses high quality.'),
+        ('Why won\'t my MP4 play on iPhone or WhatsApp?', 'It probably uses a codec like VP9 or HEVC. Convert it to MP4 with Plays everywhere on to get H.264 + AAC.'),
+        ('Can it convert AVI or WMV?', 'Not yet: browsers can\'t decode those old formats. MP4, MOV, MKV and WebM work.'),
+        ('Does it work on phones?', 'Yes, in recent Chrome on Android and Safari on iPhone.')])
+
+# ------------------------------------------------------------------------------------------- merge videos
+PAGES['merge-videos'] = dict(
+  name='Merge videos', cat='video', script='video-merge.js', appcat='MultimediaApplication',
+  title='Merge Videos Online — Join MP4 Clips Into One Video Free | WebcamClicks',
+  desc='Join several video clips into one MP4: drag to reorder, mix sizes and formats, add a fade between clips, vertical or landscape. Free, no watermark, no upload.',
+  lead='Join clips into one video. Add them in any order, drag to rearrange, pick a size (landscape, vertical or square) and download a single MP4. Different sizes and formats are fine; everything runs on your device.',
+  ui=f'''<div class="t-grid">
+    <div>
+      {DROP("video/*,.mp4,.mov,.m4v,.webm,.mkv", "Drop your video clips", "MP4, MOV, WebM, MKV · add as many as you like · nothing is uploaded")}
+      <div id="vm-work" hidden><ol class="vm-list" id="vm-list"></ol><p class="muted" id="vm-total" style="font-size:.85rem"></p></div>
+      <p class="t-status" id="t-status" role="status"></p>
+      <div class="sr-progress" id="vm-bar" hidden><div id="vm-fill"></div></div>
+      <div class="vt-result" id="vm-result" hidden><video id="vm-result-video" controls playsinline class="vt-video"></video><p id="vm-result-info"></p><button class="t-btn primary" id="vm-dl" type="button">⬇ Download</button></div>
+    </div>
+    <div class="t-panel">
+      <h2>Output</h2>
+      <label class="t-field">Size <select class="t-select" id="vm-size"><option value="first">Same as clip 1</option><option value="1920x1080">Landscape 16:9 (1920×1080)</option><option value="1280x720">Landscape 720p</option><option value="1080x1920">Vertical 9:16 (1080×1920)</option><option value="1080x1080">Square (1080×1080)</option></select></label>
+      <div class="t-row">
+        <label class="t-field">Fit clips <select class="t-select" id="vm-fit"><option value="contain">Show whole clip (bars)</option><option value="cover">Fill the frame (crop)</option></select></label>
+        <label class="t-field"><span>Bar colour</span><input type="color" id="vm-bg" value="#000000" style="width:100%;height:40px"></label>
+      </div>
+      <label class="t-field">Quality <select class="t-select" id="vm-quality"><option value="high">High</option><option value="medium" selected>Balanced</option><option value="low">Small file</option></select></label>
+      <label class="t-check"><input type="checkbox" id="vm-fade"> Fade between clips</label>
+      <button class="t-btn primary" id="vm-run" type="button" disabled style="width:100%;margin-top:8px">Merge videos</button>
+    </div>
+  </div>''',
+  article='''<h2>How to merge videos</h2>
+<ol><li><strong>Drop your clips</strong>, or add them from your phone's gallery. Add more any time.</li>
+<li><strong>Put them in order</strong> with the arrows, or drag them (on a computer).</li>
+<li><strong>Choose the size:</strong> keep the first clip's size, or pick landscape for YouTube, vertical 9:16 for Reels, TikTok and Shorts, or square.</li>
+<li><strong>Merge</strong>, watch the result, and download one MP4.</li></ol>
+<h2>Clips of different sizes</h2>
+<p>Mixing phone videos (vertical) and camera clips (landscape)? Choose <em>Show whole clip</em> to keep every clip complete with bars, or <em>Fill the frame</em> to crop them to fill the screen. Clips without sound get silence, so the audio always stays in sync.</p>
+<p>Want to cut clips first? Use the <a href="/video-trimmer">video trimmer</a>. Need to change the shape of one clip? <a href="/crop-video">Crop video</a>.</p>''' + PRIVACY,
+  faqs=[('Is it free? Is there a watermark?', 'Free, with no watermark and no sign-up.'),
+        ('Can I merge videos of different formats and sizes?', 'Yes. MP4, MOV, WebM and MKV clips of any size can be joined; each is fitted to the output size you pick.'),
+        ('How long can the merged video be?', 'There is no fixed limit; very long 4K projects are limited by your device\'s memory. Keep the total under about 30 minutes on phones.'),
+        ('Is the sound kept?', 'Yes. Each clip\'s sound is kept in sync, and clips without sound get silence.'),
+        ('Can I add music?', 'Not in this tool yet. Merge the clips, then add music in the screen recorder\'s editor.')])
+
+# ------------------------------------------------------------------------------------------- crop video
+PAGES['crop-video'] = dict(
+  name='Crop & rotate video', cat='video', script='video-crop.js', appcat='MultimediaApplication',
+  title='Crop Video Online — Resize to 9:16, 1:1, 16:9, Rotate & Flip Free | WebcamClicks',
+  desc='Crop videos to 9:16 for TikTok and Reels, 1:1 square or 16:9 for YouTube. Rotate sideways videos, flip, choose the size. Free, no watermark, no upload.',
+  lead='Draw a box on your video to keep just the part you want: 9:16 for TikTok, Reels and Shorts, square for the feed, or 16:9 for YouTube. Rotate sideways phone videos and flip mirrored ones too. The sound is kept.',
+  ui=f'''<div class="t-grid">
+    <div>
+      {DROP("video/*,.mp4,.mov,.m4v,.webm,.mkv", "Drop a video", "MP4, MOV, WebM, MKV · nothing is uploaded", multiple=False)}
+      <div id="vc-work" hidden>
+        <div class="crop-stage" id="vc-stage"><canvas id="vc-canvas"></canvas></div>
+        <video id="vc-video" playsinline muted preload="auto" hidden></video>
+        <div class="vc-controls"><button class="t-icon-btn" id="vc-play" type="button" aria-label="Play or pause">▶</button><input type="range" id="vc-seek" min="0" max="1000" value="0" aria-label="Seek"><span id="vc-time" class="muted">0:00</span></div>
+        <p class="t-status" id="vc-info"></p>
+      </div>
+      <p class="t-status" id="t-status" role="status"></p>
+      <div class="sr-progress" id="vc-bar" hidden><div id="vc-fill"></div></div>
+    </div>
+    <div class="t-panel">
+      <h2>Shape</h2>
+      <div class="crop-aspects" id="vc-aspects"></div>
+      <h2 style="margin-top:14px">Rotate &amp; flip</h2>
+      <div class="t-actions" style="margin-top:0"><button class="t-btn sm" id="vc-rotl" type="button">⟲ 90° left</button><button class="t-btn sm" id="vc-rotr" type="button">⟳ 90° right</button><button class="t-btn sm" id="vc-flip" type="button">⇋ Mirror</button></div>
+      <div class="t-row" style="margin-top:12px">
+        <label class="t-field">Size <select class="t-select" id="vc-size"><option value="0">Keep (no upscaling)</option><option value="1080" selected>1080p</option><option value="720">720p</option><option value="480">480p</option></select></label>
+        <label class="t-field">Quality <select class="t-select" id="vc-quality"><option value="high" selected>High</option><option value="medium">Balanced</option><option value="low">Small file</option></select></label>
+      </div>
+      <label class="t-check"><input type="checkbox" id="vc-mute"> Remove sound</label>
+      <p class="muted" id="vc-out" style="font-size:.85rem;margin:6px 0"></p>
+      <button class="t-btn primary" id="vc-run" type="button" disabled style="width:100%">Crop video</button>
+    </div>
+  </div>''',
+  article='''<h2>Crop a video for every platform</h2>
+<ul><li><strong>9:16</strong> for TikTok, Instagram Reels and Stories, YouTube Shorts and WhatsApp Status.</li>
+<li><strong>4:5</strong> and <strong>1:1</strong> for Instagram and Facebook feed posts.</li>
+<li><strong>16:9</strong> for YouTube, presentations and TVs.</li></ul>
+<h2>How to crop a video</h2>
+<ol><li>Drop your video. A crop box appears on the first frame.</li>
+<li>Pick a shape, then drag the box to choose what stays in view, and its corners to zoom in. Play or scrub to check the whole video.</li>
+<li>Rotate or mirror if needed, pick the size, and press <strong>Crop video</strong>. The MP4 downloads when it's ready.</li></ol>
+<p>Talking-head video that needs to follow the speaker? <a href="/auto-reframe">Auto-reframe</a> moves the crop with the face automatically. Need to cut the length? Use the <a href="/video-trimmer">trimmer</a>.</p>''' + PRIVACY,
+  faqs=[('Is it free? Watermark?', 'Free, with no watermark and no sign-up.'),
+        ('How do I fix a sideways video?', 'Press 90° left or right until it looks right, then Crop video. Choose Free shape to keep the whole picture.'),
+        ('Will cropping reduce quality?', 'The video is re-encoded at high quality. Cropping keeps fewer pixels, so a 9:16 crop of a 1080p landscape video is narrower than 1080 pixels; it is never upscaled.'),
+        ('Is the sound kept?', 'Yes, unless you tick Remove sound.'),
+        ('Can I crop on my phone?', 'Yes, in recent Chrome on Android and Safari on iPhone.')])
+
+# ------------------------------------------------------------------------------------------- audio cutter
+PAGES['audio-cutter'] = dict(
+  name='Audio cutter & ringtone maker', cat='video', script='audio-cutter.js', appcat='MultimediaApplication',
+  title='Audio Cutter & Ringtone Maker — Cut MP3 Online, iPhone M4R Free | WebcamClicks',
+  desc='Cut MP3, M4A, WAV or a video\'s sound on a waveform. Fade in/out, make iPhone (M4R) and Android ringtones, save MP3 or WAV. Free, private, no upload.',
+  lead='Cut the best part of a song, voice note or video\'s sound. Drag the handles on the waveform, listen, add a fade in and out, and save it as MP3, M4A, WAV or an iPhone ringtone.',
+  ui=f'''<div class="t-grid">
+    <div>
+      {DROP("audio/*,video/*,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac,.mp4,.mov,.webm", "Drop a song, recording or video", "MP3, M4A, WAV, OGG, FLAC, MP4 · nothing is uploaded", multiple=False)}
+      <div id="ac-work" hidden>
+        <div class="ac-wave" id="ac-wave-wrap"><canvas id="ac-wave" aria-label="Waveform: drag the handles to choose the part to keep"></canvas></div>
+        <div class="ac-row"><button class="t-btn primary sm" id="ac-play" type="button">▶ Play selection</button><span id="ac-len" class="muted"></span></div>
+        <div class="t-row" style="margin-top:8px"><label class="t-field">Start (s) <input class="t-input" type="number" id="ac-start" min="0" step="0.1"></label><label class="t-field">End (s) <input class="t-input" type="number" id="ac-end" min="0" step="0.1"></label></div>
+        <p class="t-status" id="ac-info"></p>
+      </div>
+      <p class="t-status" id="t-status" role="status"></p>
+    </div>
+    <div class="t-panel">
+      <h2>Cut</h2>
+      <label class="t-field">Length <select class="t-select" id="ac-preset"><option value="free">Free selection</option><option value="ring30">Ringtone: 30 seconds</option><option value="ring40">iPhone ringtone: 40 seconds</option></select></label>
+      <div class="t-row">
+        <label class="t-field">Fade in <span id="ac-fin-v" class="muted">0 s</span><input class="t-range" type="range" id="ac-fin" min="0" max="5" step="0.5" value="0"></label>
+        <label class="t-field">Fade out <span id="ac-fout-v" class="muted">0 s</span><input class="t-range" type="range" id="ac-fout" min="0" max="5" step="0.5" value="0"></label>
+      </div>
+      <label class="t-check"><input type="checkbox" id="ac-norm"> Make it louder (normalise)</label>
+      <h2 style="margin-top:14px">Save as</h2>
+      <div class="t-row">
+        <label class="t-field">Format <select class="t-select" id="ac-fmt"><option value="mp3">MP3 (Android ringtone, everywhere)</option><option value="m4r">M4R (iPhone ringtone)</option><option value="m4a">M4A (AAC)</option><option value="wav">WAV (lossless)</option><option value="ogg">OGG (Opus)</option></select></label>
+        <label class="t-field">Quality <select class="t-select" id="ac-bitrate"><option value="128">128 kbps</option><option value="192" selected>192 kbps</option><option value="256">256 kbps</option><option value="320">320 kbps</option></select></label>
+      </div>
+      <p class="muted" id="ac-note" hidden style="color:#9a3412;font-size:.85rem"></p>
+      <button class="t-btn primary" id="ac-run" type="button" disabled style="width:100%;margin-top:6px">✂ Cut &amp; save</button>
+    </div>
+  </div>''',
+  article='''<h2>How to cut a song</h2>
+<ol><li>Drop an MP3, M4A, WAV or even a video. Its waveform appears.</li>
+<li>Drag the two handles to the start and end you want (or drag the highlighted part to move it). Press <strong>Play selection</strong>, or the space bar, to listen.</li>
+<li>Add a short fade in and out for a smooth start and finish, then save.</li></ol>
+<h2>Make a ringtone</h2>
+<ul><li><strong>Android:</strong> save as MP3, copy it to your phone, then Settings → Sound → Phone ringtone → add (the + button).</li>
+<li><strong>iPhone:</strong> choose <em>iPhone ringtone: 40 seconds</em> and save as M4R. Add it with GarageBand on the iPhone (Share → Ringtone) or by dragging it onto your iPhone in Finder (Mac) or iTunes (Windows).</li></ul>
+<p>Need the sound from a video first? <a href="/mp4-to-mp3">MP4 to MP3</a>. Recording your own voice? Try the <a href="/voice-recorder">voice recorder</a>.</p>''' + PRIVACY,
+  faqs=[('Is the audio cutter free?', 'Yes, with no sign-up, no ads in the file and no length limit.'),
+        ('Can I cut the audio from a video?', 'Yes. Drop an MP4, MOV or WebM and cut its sound like a song.'),
+        ('How long can an iPhone ringtone be?', 'Up to 40 seconds. Alert and text tones should be shorter, about 5–15 seconds.'),
+        ('Why is M4R unavailable?', 'Some browsers (for example Chrome on Linux) can\'t create AAC audio. Use Chrome on Windows, Mac or Android, or Safari.'),
+        ('Will the quality drop?', 'Choose WAV for a lossless cut, or MP3 at 256–320 kbps, which sounds identical to the original for most music.')])
+
+# ------------------------------------------------------------------------------------------- crop image
+PAGES['crop-image'] = dict(
+  name='Crop image', cat='image', script='image-crop.js', appcat='DesignApplication',
+  title='Crop Image Online — Crop Photos to 1:1, 4:5, 16:9 or Circle, Free | WebcamClicks',
+  desc='Crop photos to any size or ratio: square, 4:5, 16:9, 9:16 or a circle for profile pictures. Rotate, flip, straighten, set exact pixels. Free, full quality, no upload.',
+  lead='Crop a photo to exactly what you need: a square for Instagram, 4:5 for the feed, 16:9 for YouTube, or a circle for a profile picture. Rotate, flip and straighten, set an exact size in pixels and save at full quality.',
+  ui=f'''<div class="t-grid">
+    <div>
+      {DROP("image/*,.heic,.heif", "Drop or paste an image", "JPG, PNG, WebP, HEIC · nothing is uploaded", multiple=False)}
+      <div id="ic-work" hidden><div class="crop-stage" id="ic-stage"><canvas id="ic-canvas"></canvas></div><p class="t-status" id="ic-info"></p></div>
+      <p class="t-status" id="t-status" role="status"></p>
+    </div>
+    <div class="t-panel">
+      <h2>Ratio</h2>
+      <div class="crop-aspects" id="ic-aspects"></div>
+      <h2 style="margin-top:14px">Rotate &amp; straighten</h2>
+      <div class="t-actions" style="margin-top:0"><button class="t-btn sm" id="ic-rotl" type="button">⟲ 90°</button><button class="t-btn sm" id="ic-rotr" type="button">⟳ 90°</button><button class="t-btn sm" id="ic-fliph" type="button">⇋ Flip</button><button class="t-btn sm" id="ic-flipv" type="button">⇅ Flip</button><button class="t-btn sm" id="ic-reset" type="button">Reset</button></div>
+      <label class="t-field" style="margin-top:10px">Straighten <span id="ic-straight-v" class="muted">0°</span><input class="t-range" type="range" id="ic-straight" min="-45" max="45" step="0.5" value="0"></label>
+      <h2 style="margin-top:14px">Output</h2>
+      <div class="t-row"><label class="t-field">Width (px) <input class="t-input" type="number" id="ic-w" min="1"></label><label class="t-field">Height (px) <input class="t-input" type="number" id="ic-h" min="1"></label></div>
+      <label class="t-check"><input type="checkbox" id="ic-lock" checked> Keep proportions</label>
+      <div class="t-row">
+        <label class="t-field">Format <select class="t-select" id="ic-fmt"><option value="image/jpeg">JPG</option><option value="image/png">PNG</option><option value="image/webp">WebP</option><option value="image/avif">AVIF</option></select></label>
+        <label class="t-field">Quality <input class="t-range" type="range" id="ic-q" min="50" max="100" value="92"><span class="muted">92%</span></label>
+      </div>
+      <label class="t-field" hidden><span>Circle background (JPG)</span><input type="color" id="ic-bg" value="#ffffff" style="width:100%;height:40px"></label>
+      <button class="t-btn primary" id="ic-save" type="button" disabled style="width:100%;margin-top:6px">⬇ Crop &amp; download</button>
+    </div>
+  </div>''',
+  article='''<h2>Common sizes</h2>
+<div class="t-table-wrap"><table class="t-table"><thead><tr><th>Where</th><th>Ratio</th><th>Size</th></tr></thead><tbody>
+<tr><td>Instagram post</td><td>1:1 or 4:5</td><td>1080×1080 or 1080×1350</td></tr>
+<tr><td>Story, Reels cover, TikTok</td><td>9:16</td><td>1080×1920</td></tr>
+<tr><td>YouTube thumbnail</td><td>16:9</td><td>1280×720</td></tr>
+<tr><td>Profile picture</td><td>Circle</td><td>400×400 or larger</td></tr>
+<tr><td>Print photo 6×4 in</td><td>3:2</td><td>1800×1200 at 300 DPI</td></tr></tbody></table></div>
+<h2>How to crop a photo</h2>
+<ol><li>Drop or paste (Ctrl+V) your image.</li>
+<li>Pick a ratio, then drag the box and its corners. Use the arrow keys to nudge it a pixel at a time (Shift for 10).</li>
+<li>Rotate, flip or straighten a tilted horizon, set an exact output size if you need one, and download.</li></ol>
+<p>Making a passport or visa photo? Use the <a href="/passport-photo">passport photo maker</a>, which knows every country's rules. Need many images resized at once? <a href="/image-resizer">Image resizer</a>.</p>''' + PRIVACY,
+  faqs=[('Does cropping reduce quality?', 'No. The crop is taken from the full-resolution image. Only the format and quality you choose affect the file.'),
+        ('How do I make a round profile picture?', 'Choose Circle and save as PNG: the corners become transparent, ready for any app.'),
+        ('Can I crop to an exact pixel size?', 'Yes. Type the width and height under Output; with Keep proportions on, the other side follows the crop box.'),
+        ('Does it work with iPhone HEIC photos?', 'Yes. HEIC photos open directly and can be saved as JPG.'),
+        ('Is it private?', 'Yes. Images are cropped in your browser and never uploaded.')])

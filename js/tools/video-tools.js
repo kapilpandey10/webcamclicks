@@ -1,5 +1,5 @@
-/* WebcamClicks — video & audio converters (MP4→MP3/WAV/M4A/FLAC, compressor, trimmer, GIF maker).
-   One engine, four pages (main[data-mode] = mp3 | compress | trim | gif). Uses mediabunny + WebCodecs;
+/* WebcamClicks — video & audio converters (MP4→MP3/WAV/M4A/FLAC, compressor, trimmer, GIF maker, format converter).
+   One engine, five pages (main[data-mode] = mp3 | compress | trim | gif | convert). Uses mediabunny + WebCodecs;
    nothing is uploaded. */
 
 import { $, setupDropzone, splitName, downloadBlob, setStatus, loadMediabunny, loadEsm, formatBytes, fmtTime } from './common.js';
@@ -10,7 +10,7 @@ const els = {
   start: $('#vt-start'), end: $('#vt-end'), setStart: $('#vt-set-start'), setEnd: $('#vt-set-end'), run: $('#vt-run'),
   bar: $('#vt-bar'), fill: $('#vt-fill'), result: $('#vt-result'), resultInfo: $('#vt-result-info'), dl: $('#vt-dl'), gifPreview: $('#vt-gif'),
   format: $('#vt-format'), bitrate: $('#vt-bitrate'), res: $('#vt-res'), quality: $('#vt-quality'), mute: $('#vt-mute'),
-  precise: $('#vt-precise'), fps: $('#vt-fps'), width: $('#vt-width'), range: $('#vt-range')
+  precise: $('#vt-precise'), fps: $('#vt-fps'), width: $('#vt-width'), range: $('#vt-range'), compat: $('#vt-compat')
 };
 let file = null, duration = 0, lastUrl = null;
 
@@ -29,7 +29,7 @@ async function open(f) {
     const vt = await input.getPrimaryVideoTrack(), at = await input.getPrimaryAudioTrack();
     els.info.textContent = `${f.name} · ${formatBytes(f.size)} · ${fmtTime(duration)}${vt ? ` · ${vt.displayWidth}×${vt.displayHeight}` : ''}${at ? ' · with audio' : ' · no audio'}`;
     if (MODE === 'mp3' && !at) throw new Error('This file has no audio track.');
-    if ((MODE === 'compress' || MODE === 'gif' || MODE === 'trim') && !vt && MODE !== 'trim') throw new Error('This file has no video.');
+    if ((MODE === 'compress' || MODE === 'gif' || MODE === 'convert') && !vt) throw new Error('This file has no video.');
   } catch (e) { setStatus(els.status, e.message || 'This file could not be read.', 'err'); els.run.disabled = true; return; }
   els.work.hidden = false;
   els.start.value = '0'; els.end.value = (MODE === 'gif' ? Math.min(duration, 5) : duration).toFixed(2);
@@ -113,6 +113,47 @@ async function compress() {
   done(new Blob([output.target.buffer], { type: webm ? 'video/webm' : 'video/mp4' }), `${splitName(file.name)[0]}-compressed.${webm ? 'webm' : 'mp4'}`, ` · ${W}×${H} · ${((performance.now() - t0) / 1000).toFixed(1)} s`);
 }
 
+/** Change the container (MOV/WebM/MKV/AVI-free formats → MP4, WebM, MOV, MKV). Copies streams when it can (no quality loss). */
+async function convert() {
+  const MB = await loadMediabunny();
+  const input = new MB.Input({ source: new MB.BlobSource(file), formats: MB.ALL_FORMATS });
+  const vt = await input.getPrimaryVideoTrack(), at = await input.getPrimaryAudioTrack();
+  if (!vt) throw new Error('This file has no video. Use MP4 to MP3 for audio files.');
+  const fmt = els.format.value, q = els.quality.value, compat = els.compat ? els.compat.checked : true;
+  const target = +els.res.value;
+  const scale = target && Math.min(vt.displayWidth, vt.displayHeight) > target ? target / Math.min(vt.displayWidth, vt.displayHeight) : 1;
+  const W = Math.round(vt.displayWidth * scale / 2) * 2, H = Math.round(vt.displayHeight * scale / 2) * 2;
+  const format = { mp4: () => new MB.Mp4OutputFormat({ fastStart: 'in-memory' }), mov: () => new MB.MovOutputFormat({ fastStart: 'in-memory' }), webm: () => new MB.WebMOutputFormat(), mkv: () => new MB.MkvOutputFormat() }[fmt]();
+  const vIn = await vt.getCodec(), aIn = at ? await at.getCodec() : null;
+  // "plays everywhere" for MP4/MOV means H.264 video + AAC audio (iPhone, WhatsApp, Windows, TVs)
+  const wantV = fmt === 'webm' ? ['vp9', 'vp8', 'av1'] : compat && fmt !== 'mkv' ? ['avc'] : format.getSupportedVideoCodecs();
+  const copyV = q === 'same' && scale === 1 && wantV.includes(vIn);
+  let video;
+  if (copyV) video = {};
+  else {
+    const codec = await MB.getFirstEncodableVideoCodec(fmt === 'webm' ? ['vp9', 'vp8', 'av1'] : ['avc', 'hevc', 'vp9'], { width: W, height: H });
+    if (!codec) throw new Error('Your browser has no suitable video encoder.');
+    const Q = { same: MB.QUALITY_HIGH, high: MB.QUALITY_HIGH, medium: MB.QUALITY_MEDIUM, low: MB.QUALITY_LOW }[q];
+    video = { codec, bitrate: Q, forceTranscode: true, ...(scale !== 1 ? { width: W, height: H, fit: 'fill' } : {}) };
+  }
+  let audio = {};
+  if (at) {
+    const wantA = fmt === 'webm' ? ['opus', 'vorbis'] : compat && fmt !== 'mkv' ? ['aac'] : format.getSupportedAudioCodecs();
+    if (!wantA.includes(aIn)) {
+      const codec = await MB.getFirstEncodableAudioCodec(fmt === 'webm' ? ['opus', 'vorbis'] : ['aac', 'opus', 'mp3']);
+      audio = codec ? { codec, bitrate: 160_000, forceTranscode: true } : { discard: true };
+      if (codec && codec !== 'aac' && fmt !== 'webm') setStatus(els.status, 'Note: this browser can\'t write AAC audio, so the sound is saved as Opus (plays in browsers and VLC).');
+    }
+  }
+  const output = new MB.Output({ format, target: new MB.BufferTarget() });
+  const conv = await MB.Conversion.init({ input, output, video, audio, trim: trimRange(), showWarnings: false });
+  if (!conv.isValid) throw new Error('This video can\'t be converted to that format in your browser. Try MP4.');
+  conv.onProgress = (p) => progress(p, copyV ? 'Converting (no re-encoding)' : 'Converting');
+  const t0 = performance.now();
+  await conv.execute();
+  done(new Blob([output.target.buffer], { type: format.mimeType }), `${splitName(file.name)[0]}.${fmt}`, ` · ${copyV ? 'video copied without quality loss' : `${W}×${H} re-encoded`} · ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+}
+
 async function trim() {
   const MB = await loadMediabunny();
   const input = new MB.Input({ source: new MB.BlobSource(file), formats: MB.ALL_FORMATS });
@@ -160,10 +201,14 @@ async function gif() {
 els.run.addEventListener('click', async () => {
   if (!file) return;
   els.run.disabled = true; els.result.hidden = true;
-  try { await ({ mp3: toAudio, compress, trim, gif })[MODE](); }
+  try { await ({ mp3: toAudio, compress, trim, gif, convert })[MODE](); }
   catch (e) { console.warn(e); els.bar.hidden = true; setStatus(els.status, e.message || 'Conversion failed.', 'err'); }
   els.run.disabled = false;
 });
+if (els.format && MODE === 'convert') {
+  // grey out containers this browser can't write video for (WebM needs a VP9/VP8 encoder)
+  (async () => { const MB = await loadMediabunny().catch(() => null); if (!MB || !('VideoEncoder' in window)) return; const ok = await MB.getFirstEncodableVideoCodec(['vp9', 'vp8', 'av1'], { width: 640, height: 360 }).catch(() => null); if (!ok) { const o = els.format.querySelector('option[value="webm"]'); if (o) { o.disabled = true; o.textContent += ' · not supported in this browser'; } } })();
+}
 if (els.format && MODE === 'mp3') {
   els.format.addEventListener('change', () => { els.bitrate.closest('.t-field').hidden = ['wav', 'flac'].includes(els.format.value); });
   // grey out formats this browser can't encode (e.g. AAC on Linux, FLAC in most browsers) instead of failing after a click

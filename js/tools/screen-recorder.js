@@ -168,7 +168,7 @@ const UI = {
   sceneLane: $('#t-ed-scenes'), scenePanel: $('#t-scene-panel'), sceneInfo: $('#t-scene-info'), sceneSplit: $('#t-scene-split'),
   sceneDel: $('#t-scene-del'), transStyle: $('#t-trans-style'), transDur: $('#t-trans-dur'), transDurVal: $('#t-trans-dur-val'),
   autoEdit: $('#t-auto-edit'), zoomStrength: $('#t-zoom-strength'), zoomAmount: $('#t-zoom-amount'), introOutro: $('#t-intro-outro'),
-  introWrap: $('#t-intro-wrap'), scenesWrap: $('#t-scenes-wrap'),
+  introWrap: $('#t-intro-wrap'), scenesWrap: $('#t-scenes-wrap'), quickLayouts: $('#t-quick-layouts'),
   clipLane: $('#t-ed-clips'), thumbs: $('#t-ed-thumbs'), waveLane: $('#t-ed-wavelane'), wave: $('#t-ed-wave'), textLane: $('#t-ed-texts'),
   undo: $('#t-undo'), redo: $('#t-redo'), splitBtn: $('#t-split'), clipDel: $('#t-clip-del'), clipInfo: $('#t-clip-info'),
   voiceVol: $('#t-voice-vol'), voiceVolVal: $('#t-voice-vol-val'), voiceMute: $('#t-voice-mute'), clean: $('#t-clean'), cleanStr: $('#t-clean-str'),
@@ -885,9 +885,10 @@ function splitClipAt(t) {
   const right = newClip(t, c.end); right.del = c.del;
   c.end = t;
   E.clips.splice(i + 1, 0, right);
+  if (E.cam) splitSceneAt(t);   // each part can now get its own layout
   selectOnly('clip', right);
   renderTimeline();
-  setStatus(UI.status, `Split at ${fmt(t)}. Press Delete to cut the selected clip, or double-click again to split more.`);
+  setStatus(UI.status, E.cam ? `Split at ${fmt(t)}. The selected part can now have its own layout (buttons above the timeline), or press Delete to cut it.` : `Split at ${fmt(t)}. Press Delete to cut the selected clip, or double-click again to split more.`);
   return right;
 }
 function toggleClipDeleted(c) {
@@ -967,9 +968,13 @@ function renderTimeline(skipHistory) {
     UI.zoomScale.value = E.sel.scale; UI.zoomScaleVal.textContent = `${E.sel.scale.toFixed(2)}×`;
     UI.zoomStart.value = E.sel.start.toFixed(1); UI.zoomEnd.value = E.sel.end.toFixed(1);
   }
-  const cur = E.selScene || E.scenes[sceneIndexAt(E.main.currentTime)];
-  UI.sceneInfo.textContent = cur ? `${E.selScene ? 'Selected' : 'At playhead'}: ${fmt(cur.start)}–${fmt(cur.end)} · ${LAYOUTS[cur.layout]}` : '';
+  const selClip = !E.selScene && E.selClip;
+  const inClip = selClip ? E.scenes.filter((x) => x.end > selClip.start + 0.05 && x.start < selClip.end - 0.05) : null;
+  const cur = E.selScene || (inClip && inClip.length === 1 ? inClip[0] : null) || (!selClip ? E.scenes[sceneIndexAt(E.main.currentTime)] : null);
+  UI.sceneInfo.textContent = selClip ? `Selected part ${fmt(selClip.start)}–${fmt(selClip.end)} · ${inClip.length === 1 ? LAYOUTS[inClip[0].layout] : 'mixed layouts'} · pick a layout for it`
+    : cur ? `${E.selScene ? 'Selected scene' : 'At playhead'}: ${fmt(cur.start)}–${fmt(cur.end)} · ${LAYOUTS[cur.layout]}. Select a clip on the timeline to give just that part a layout.` : '';
   document.querySelectorAll('[data-layout]').forEach((b) => b.setAttribute('aria-pressed', String(!!cur && b.dataset.layout === cur.layout)));
+  if (UI.quickLayouts) UI.quickLayouts.hidden = !E.cam;
   UI.sceneDel.disabled = E.scenes.length < 2;
   const sc = E.selClip;
   UI.clipDel.disabled = !sc;
@@ -1087,12 +1092,30 @@ let sid = 0;
 const newScene = (start, end, layout) => ({ id: `s${++sid}`, start, end, layout });
 function defaultScenes() { E.scenes = [newScene(0, E.dur, E.cam ? 'bubble' : 'screen')]; E.selScene = null; }
 
+/** Make a scene boundary at t (no-op near an existing boundary). Returns the index of the scene starting at t. */
+function splitSceneAt(t) {
+  const i = sceneIndexAt(t), sc = E.scenes[i];
+  if (Math.abs(t - sc.start) < 0.05) return i;
+  if (Math.abs(sc.end - t) < 0.05) return i + 1;
+  const second = newScene(t, sc.end, sc.layout); sc.end = t; E.scenes.splice(i + 1, 0, second);
+  return i + 1;
+}
+/** Give one stretch of the video a layout: split the scenes at its edges and set every scene inside. */
+function setLayoutRange(a, b, layout) {
+  splitSceneAt(a); if (b < E.dur - 0.05) splitSceneAt(b);
+  for (const sc of E.scenes) if (sc.start >= a - 0.05 && sc.end <= b + 0.05) sc.layout = layout;
+}
 document.querySelectorAll('[data-layout]').forEach((btn) => btn.addEventListener('click', () => {
   if (!E) return;
-  const target = E.selScene || E.scenes[sceneIndexAt(E.main.currentTime)];
-  target.layout = btn.dataset.layout;
+  const layout = btn.dataset.layout, clip = E.selClip;
+  if (E.selScene) E.selScene.layout = layout;
+  else if (clip) setLayoutRange(clip.start, clip.end, layout);
+  else E.scenes[sceneIndexAt(E.main.currentTime)].layout = layout;
+  const keepClip = clip && !E.selScene;
   mergeScenes();
+  if (keepClip) E.selClip = clip;
   renderTimeline();
+  setStatus(UI.status, `${LAYOUTS[layout]} ${keepClip ? `for the selected part (${fmt(clip.start)}–${fmt(clip.end)})` : E.selScene ? 'for the selected scene' : 'at the playhead'}. Split (✂) to give another part a different layout.`);
 }));
 UI.sceneSplit.addEventListener('click', () => {
   if (!E) return;

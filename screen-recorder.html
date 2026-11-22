@@ -259,6 +259,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <span class="sr-tools">
         <button class="sr-tool" id="t-split" type="button" title="Split at playhead (S) · or double-click the timeline">✂ Split</button>
         <button class="sr-tool" id="t-clip-del" type="button" title="Cut the selected clip (Delete)" disabled>🗑 Delete clip</button>
+        <span class="sr-quick-layouts" id="t-quick-layouts" hidden title="Layout for the selected clip (or at the playhead)"><span class="sr-ql-label">Layout:</span><button class="sr-tool" type="button" data-layout="bubble" aria-pressed="false" title="Screen + camera bubble">🫧</button><button class="sr-tool" type="button" data-layout="screen" aria-pressed="false" title="Screen only">🖥</button><button class="sr-tool" type="button" data-layout="split" aria-pressed="false" title="Split screen">◧</button><button class="sr-tool" type="button" data-layout="camera" aria-pressed="false" title="Camera full">🎥</button></span>
         <button class="sr-tool" id="t-undo" type="button" title="Undo (Ctrl+Z)" disabled>↶</button>
         <button class="sr-tool" id="t-redo" type="button" title="Redo (Ctrl+Shift+Z)" disabled>↷</button>
       </span>
@@ -382,6 +383,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
     <div data-pane="layout" hidden>
     <details open id="t-scenes-wrap" hidden><summary>Scenes</summary>
+      <p class="sr-note" style="margin:0 0 6px">Different layouts for different parts: split the video (✂ or double-click the timeline), select a part, then pick a layout here or with the layout buttons above the timeline.</p>
       <p class="sr-note" id="t-scene-info" style="margin:0 0 8px"></p>
       <div class="sr-layouts">
         <button type="button" data-layout="camera" aria-pressed="false"><span class="ly ly-camera"></span>Camera full</button>
@@ -455,6 +457,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 .sr-zoomcount { margin-left:auto; font-size:.82rem; color:var(--ink-2); font-weight:600; white-space:nowrap; }
 .sr-track { position:relative; height:44px; border-radius:12px; background:var(--surface-3); cursor:pointer; touch-action:none; overflow:hidden; }
 .sr-tools { display:flex; flex-wrap:wrap; gap:6px; margin-left:8px; }
+.sr-quick-layouts { display:inline-flex; align-items:center; gap:4px; padding-left:8px; margin-left:4px; border-left:1px solid var(--line-strong); }
+.sr-quick-layouts[hidden] { display:none; }
+.sr-ql-label { font:700 .78rem var(--font); color:var(--ink-2); }
+.sr-quick-layouts .sr-tool { padding:5px 8px; font-size:.95rem; line-height:1; }
+.sr-quick-layouts .sr-tool[aria-pressed=true] { background:var(--accent); border-color:var(--accent); }
 .sr-tool { border:1px solid var(--line-strong); background:#fff; border-radius:9px; padding:6px 10px; font:700 .8rem var(--font); color:var(--ink); cursor:pointer; white-space:nowrap; }
 .sr-tool:hover:not([disabled]) { border-color:var(--ink); }
 .sr-tool[disabled] { opacity:.4; cursor:default; }
@@ -589,6 +596,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </a>
 </nav>
 
-<script type="module" src="/js/tools/screen-recorder.js?v=a0d7cc3adb"></script>
+<script type="module" src="/js/tools/screen-recorder.js?v=9f49a38453"></script>
 </body>
 </html>

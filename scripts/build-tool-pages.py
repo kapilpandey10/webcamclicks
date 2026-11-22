@@ -56,6 +56,11 @@ ICONS = {
   'info': '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
   'ocr': '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 9h8M8 12h8M8 15h5"/>',
   'palette': '<path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.8 1.6-1.6 0-.9-.7-1.3-.7-2.2 0-.8.7-1.4 1.5-1.4H17a4 4 0 0 0 4-4C21 6.9 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10" cy="7" r="1.2"/><circle cx="15" cy="7.5" r="1.2"/>',
+  'dictate': '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/><path d="M3 7h2M19 7h2" opacity=".6"/>',
+  'booth': '<rect x="6" y="2.5" width="12" height="19" rx="1.5"/><rect x="8.5" y="5" width="7" height="4.5" rx=".6"/><rect x="8.5" y="11.5" width="7" height="4.5" rx=".6"/><path d="M10 19h4"/>',
+  'pages': '<rect x="3.5" y="3.5" width="7" height="9" rx="1"/><rect x="13.5" y="3.5" width="7" height="9" rx="1"/><path d="M7 16v4M4.5 18H9.5" opacity=".6"/><rect x="13.5" y="15" width="7" height="5.5" rx="1"/>',
+  'beautify': '<rect x="2.5" y="4" width="19" height="16" rx="3"/><rect x="6" y="7.5" width="12" height="9" rx="1.5"/><circle cx="8" cy="9.5" r=".5" fill="currentColor"/><circle cx="9.6" cy="9.5" r=".5" fill="currentColor"/>',
+  'collage': '<rect x="3" y="3" width="10" height="10" rx="1.5"/><rect x="15" y="3" width="6" height="6" rx="1.5"/><rect x="15" y="11" width="6" height="10" rx="1.5"/><rect x="3" y="15" width="10" height="6" rx="1.5"/>',
 }
 def icon(k, size=22):
     return f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{ICONS[k]}</svg>'
@@ -75,6 +80,7 @@ TOOLS = [
   ('/#camera', 'Webcam studio', 'camera', 'camera', '90+ live effects, photo booth strips and HD recording.', False),
   ('/#background', 'AI background changer', 'camera', 'person', 'Blur or replace your webcam background in real time.', False),
   ('/screen-recorder', 'Screen recorder & editor', 'camera', 'screen', 'Record your screen, then edit with zooms, captions and music.', False),
+  ('/photo-booth', 'Photo booth: GIF & boomerang', 'camera', 'booth', 'Photo strips, animated GIFs and boomerangs from your webcam.', True),
   ('/teleprompter', 'Teleprompter', 'camera', 'prompter', 'Scrolling script over your webcam, recorded on your device.', True),
   ('/document-scanner', 'Document scanner', 'camera', 'docscan', 'Scan pages with your camera: auto-crop, shadow removal, PDF.', True),
   ('/webcam-test', 'Webcam test', 'camera', 'check', 'Real resolution, fps, lighting and a quality score.', False),
@@ -91,6 +97,8 @@ TOOLS = [
   ('/video-to-gif', 'Video to GIF', 'video', 'gif', 'Turn a clip into a looping GIF.', True),
   ('/photo-enhancer', 'Photo enhancer', 'image', 'wand', 'Fix exposure, colour, noise and sharpness; 2× upscale.', True),
   ('/ai-image-upscaler', 'AI image upscaler', 'image', 'upscale', 'Real AI super-resolution: 2× and 4× on your device.', True),
+  ('/collage-maker', 'Collage maker', 'image', 'collage', '20 grid layouts for Instagram, stories and print; drag to swap.', True),
+  ('/screenshot-beautifier', 'Screenshot beautifier', 'image', 'beautify', 'Gradient background, shadow and Mac, browser or phone frame.', True),
   ('/passport-photo', 'Passport photo maker', 'image', 'id', 'Official sizes for 10 countries at 300 DPI.', False),
   ('/background-remover', 'Background remover', 'image', 'scissors', 'AI cut-out with brush and eraser.', False),
   ('/youtube-thumbnail-maker', 'YouTube thumbnail maker', 'image', 'thumb', 'Best-frame finder, AI cut-out, bold text: 1280×720.', True),
@@ -105,11 +113,13 @@ TOOLS = [
   ('/jpg-to-pdf', 'JPG to PDF', 'pdf', 'pdf', 'Turn photos and scans into one PDF.', False),
   ('/lock-pdf', 'Lock PDF (password)', 'pdf', 'lock', 'Protect a PDF with AES-256 encryption.', True),
   ('/redact-pdf', 'Redact PDF', 'pdf', 'redact', 'Permanently black out names, numbers and any text.', True),
+  ('/organize-pdf', 'Organize PDF pages', 'pdf', 'pages', 'Drag to reorder, rotate, delete and add pages, then save.', True),
   ('/merge-pdf', 'Merge PDF', 'pdf', 'merge', 'Combine PDFs in the order you choose.', False),
   ('/split-pdf', 'Split PDF', 'pdf', 'split', 'Extract pages or split a PDF into parts.', False),
   ('/metadata-viewer', 'Metadata viewer & remover', 'file', 'info', 'See and remove EXIF, GPS and document data.', True),
   ('/bulk-file-rename', 'Bulk file renamer', 'file', 'rename', 'Rename hundreds of files with patterns and numbering.', False),
   ('/image-to-text', 'Image to text (OCR)', 'text', 'ocr', 'Extract text from photos, scans and PDFs in 38 languages.', True),
+  ('/voice-typing', 'Voice typing', 'text', 'dictate', 'Speak and it types: 49 languages, punctuation by voice, copy or save.', True),
   ('/word-counter', 'Word counter', 'text', 'text', 'Words, characters, reading time and text tools.', False),
   ('/qr-scanner', 'QR & barcode scanner', 'util', 'scan', 'Scan QR codes and barcodes with your camera or an image.', True),
   ('/qr-code-generator', 'QR code generator', 'util', 'qr', 'QR codes for links, Wi-Fi, contacts and more.', False),
@@ -1102,6 +1112,7 @@ PAGES['screen-recorder'] = dict(
 # ----------------------------------------------------------------------------- media, PDF & OCR tools (2026-11 batch)
 exec(open(os.path.join(ROOT, 'scripts', 'tool_pages_v2.py'), encoding='utf-8').read())
 exec(open(os.path.join(ROOT, 'scripts', 'tool_pages_v3.py'), encoding='utf-8').read())
+exec(open(os.path.join(ROOT, 'scripts', 'tool_pages_v4.py'), encoding='utf-8').read())
 
 # ----------------------------------------------------------------------------- build tool pages
 def related_cards(slug, cat):
@@ -1115,7 +1126,7 @@ for slug, p in PAGES.items():
     body = f'''<main class="t-main"{f' data-mode="{p["mode"]}"' if p.get("mode") else ''}>
   <nav class="t-crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <a href="/tools">Tools</a> › <a href="/tools#{cat}">{CAT_NAME[cat]}</a> › {p["name"]}</nav>
   <section class="t-hero">
-    <p class="t-badge">Free · Private · No upload</p>
+    <p class="t-badge">{p.get("badge", "Free · Private · No upload")}</p>
     <h1>{p["name"]}</h1>
     <p>{p["lead"]}</p>
   </section>

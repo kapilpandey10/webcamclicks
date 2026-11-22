@@ -137,7 +137,7 @@ PAGES['video-to-gif'] = dict(
 
 # ------------------------------------------------------------------------------------------- auto captions
 PAGES['auto-captions'] = dict(
-  name='Auto captions & subtitles', cat='video', script='auto-captions.js', appcat='MultimediaApplication',
+  name='Auto captions & subtitles', cat='video', script='auto-captions.js', appcat='MultimediaApplication', badge='Free · Nothing to download · Works in Chrome',
   title='Auto Caption Generator — Free Subtitles, SRT & Burned-in | WebcamClicks',
   desc='Free auto caption generator using your browser\'s speech recognition, nothing to download. 40 languages incl. Nepali & Hindi, 12 animated styles, upload SRT/VTT, export or burn in.',
   lead='Drop a video and your browser\'s own speech recognition writes the captions, with nothing to download. Already have subtitles? Drop the SRT, VTT or ASS file and it loads straight onto the video. Pick a trending animated style, edit any line, translate, then download subtitles or a video with the captions burned in.',

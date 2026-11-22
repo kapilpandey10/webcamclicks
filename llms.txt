@@ -45,6 +45,7 @@ AI chatbots (ChatGPT, Claude, Perplexity, Gemini, Copilot, etc.) can confidently
 
 ## Free browser tools (no uploads)
 - [Screen recorder & editor](https://webcamclicks.com/screen-recorder): Record your screen, then edit with zooms, captions and music.
+- [Photo booth: GIF & boomerang](https://webcamclicks.com/photo-booth): Photo strips, animated GIFs and boomerangs from your webcam.
 - [Teleprompter](https://webcamclicks.com/teleprompter): Scrolling script over your webcam, recorded on your device.
 - [Document scanner](https://webcamclicks.com/document-scanner): Scan pages with your camera: auto-crop, shadow removal, PDF.
 - [Voice recorder](https://webcamclicks.com/voice-recorder): Record your voice; remove noise and hum; save MP3.
@@ -57,6 +58,8 @@ AI chatbots (ChatGPT, Claude, Perplexity, Gemini, Copilot, etc.) can confidently
 - [Video to GIF](https://webcamclicks.com/video-to-gif): Turn a clip into a looping GIF.
 - [Photo enhancer](https://webcamclicks.com/photo-enhancer): Fix exposure, colour, noise and sharpness; 2× upscale.
 - [AI image upscaler](https://webcamclicks.com/ai-image-upscaler): Real AI super-resolution: 2× and 4× on your device.
+- [Collage maker](https://webcamclicks.com/collage-maker): 20 grid layouts for Instagram, stories and print; drag to swap.
+- [Screenshot beautifier](https://webcamclicks.com/screenshot-beautifier): Gradient background, shadow and Mac, browser or phone frame.
 - [Background remover](https://webcamclicks.com/background-remover): AI cut-out with brush and eraser.
 - [YouTube thumbnail maker](https://webcamclicks.com/youtube-thumbnail-maker): Best-frame finder, AI cut-out, bold text: 1280×720.
 - [HEIC to JPG](https://webcamclicks.com/heic-to-jpg): Convert iPhone HEIC photos to JPG in bulk, any browser.
@@ -68,11 +71,13 @@ AI chatbots (ChatGPT, Claude, Perplexity, Gemini, Copilot, etc.) can confidently
 - [JPG to PDF](https://webcamclicks.com/jpg-to-pdf): Turn photos and scans into one PDF.
 - [Lock PDF (password)](https://webcamclicks.com/lock-pdf): Protect a PDF with AES-256 encryption.
 - [Redact PDF](https://webcamclicks.com/redact-pdf): Permanently black out names, numbers and any text.
+- [Organize PDF pages](https://webcamclicks.com/organize-pdf): Drag to reorder, rotate, delete and add pages, then save.
 - [Merge PDF](https://webcamclicks.com/merge-pdf): Combine PDFs in the order you choose.
 - [Split PDF](https://webcamclicks.com/split-pdf): Extract pages or split a PDF into parts.
 - [Metadata viewer & remover](https://webcamclicks.com/metadata-viewer): See and remove EXIF, GPS and document data.
 - [Bulk file renamer](https://webcamclicks.com/bulk-file-rename): Rename hundreds of files with patterns and numbering.
 - [Image to text (OCR)](https://webcamclicks.com/image-to-text): Extract text from photos, scans and PDFs in 38 languages.
+- [Voice typing](https://webcamclicks.com/voice-typing): Speak and it types: 49 languages, punctuation by voice, copy or save.
 - [Word counter](https://webcamclicks.com/word-counter): Words, characters, reading time and text tools.
 - [QR & barcode scanner](https://webcamclicks.com/qr-scanner): Scan QR codes and barcodes with your camera or an image.
 - [QR code generator](https://webcamclicks.com/qr-code-generator): QR codes for links, Wi-Fi, contacts and more.

@@ -98,21 +98,27 @@ async function offerOnDevice(locale, code) {
   });
   return true;
 }
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+/** Auto captions from sound need Google Chrome (or Edge, which has the same feature). */
+const chromeReady = () => canCaption && hasCloud();
+const NEED_CHROME = () => (isIOS()
+  ? 'Google Chrome on a computer or Android phone is required to use this feature. On iPhone and iPad, browsers can\'t turn a video\'s sound into text.'
+  : 'Google Chrome is required to use this feature. Open this page in Chrome to make captions from your video\'s sound.');
 async function showEngine() {
   const el = els.engine;
-  if (!canCaption) {
+  if (!chromeReady()) {
     el.dataset.state = 'off';
-    el.innerHTML = 'Your browser can\'t turn a video\'s sound into text. Open this page in <b>Chrome</b> or <b>Edge</b> (computer or Android), or upload a caption file you already have.';
+    el.innerHTML = `<b>${escapeHtml(NEED_CHROME())}</b><span>You can still upload a caption file (SRT, VTT, ASS) to style, translate or burn in.</span><button type="button" class="t-btn sm" id="cap-copy-link">Copy page link to open in Chrome</button>`;
+    $('#cap-copy-link').addEventListener('click', async (ev) => { try { await navigator.clipboard.writeText(location.href); ev.currentTarget.textContent = '✓ Link copied: paste it into Chrome'; } catch (_) { ev.currentTarget.textContent = location.href; } });
     els.run.disabled = true; return;
   }
   const code = els.lang.value; if (!code) { el.textContent = ''; el.dataset.state = ''; return; }
   const local = await onDevice(localeOf(code));
   if (code !== els.lang.value) return;
-  el.dataset.state = local ? 'ready' : hasCloud() ? 'cloud' : 'off';
+  el.dataset.state = local ? 'ready' : 'cloud';
   el.textContent = local
     ? `✓ ${LANG_NAME[code]} is recognised on your device by your browser. Nothing to download, and the sound never leaves your computer.`
-    : hasCloud() ? `Uses your browser's speech recognition. Nothing to download; for ${LANG_NAME[code]} ${browserName()} sends the sound (not the video) to ${speechService()} speech service to turn it into text, so you need to be online. Your video file stays on your device.`
-    : `${browserName()} usually can't turn speech into text for ${LANG_NAME[code]} (only Google Chrome and Microsoft Edge include a speech service). If it fails, open this page in Chrome or Edge, or upload a caption file.`;
+    : `Uses your browser's speech recognition. Nothing to download; for ${LANG_NAME[code]} ${browserName()} sends the sound (not the video) to ${speechService()} speech service to turn it into text, so you need to be online. Your video file stays on your device.`;
 }
 showEngine();
 
@@ -130,10 +136,10 @@ async function openMedia(f, { generateNow = true } = {}) {
   duration = isFinite(els.video.duration) ? els.video.duration : 0;
   tlProgress(null);
   els.info.textContent = `${f.name} · ${formatBytes(f.size)}${duration ? ` · ${fmtTime(duration)}` : ''}`;
-  els.run.disabled = !canCaption; els.burn.disabled = !cues.length || els.video.classList.contains('audio-only');
+  els.run.disabled = !chromeReady(); els.burn.disabled = !cues.length || els.video.classList.contains('audio-only');
   sizeOverlay(); renderCues();
   if (!generateNow || (fromFile && cues.length)) { setStatus(els.status, cues.length ? `Your ${cues.length} captions are on the video. Pick a style, check the preview, then export or burn them in.` : 'Video loaded.', cues.length ? 'ok' : ''); return; }
-  if (!canCaption) { setStatus(els.status, 'This browser can\'t make captions from sound. Use Chrome or Edge, or upload a caption file (SRT, VTT or ASS).', 'err'); return; }
+  if (!chromeReady()) { setStatus(els.status, NEED_CHROME(), 'err'); els.engine.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
   if (!els.lang.value) askLanguage();
   else if (els.auto.checked) generate();
   else setStatus(els.status, 'Press Generate captions when you are ready.');
@@ -267,7 +273,7 @@ function listen({ locale, local, rate, onPhrase, onInterim, onTime }) {
 
 async function generate() {
   if (!file) return;
-  if (!canCaption) { showEngine(); return; }
+  if (!chromeReady()) { showEngine(); setStatus(els.status, NEED_CHROME(), 'err'); return; }
   if (!els.lang.value) { askLanguage(); return; }
   if (busy) { stopListening(); return; }   // the button reads “Stop” while listening
   busy = true; fromFile = false;
@@ -315,7 +321,7 @@ async function generate() {
       console.warn(e);
       const offered = e.message === 'NETWORK' || e.message === 'LANG' ? await offerOnDevice(locale, code) : false;
       setStatus(els.status, e.message === 'NETWORK'
-        ? (!hasCloud() ? `${browserName()} doesn't include an online speech service, so it can't make captions from sound. Open this page in Google Chrome or Microsoft Edge, or upload a caption file you already have.`
+        ? (!hasCloud() ? NEED_CHROME()
           : `${speechService()} speech service didn't answer. This happens offline, on some office/school networks or VPNs, and in some regions where the service is temporarily unavailable. Try again in a few minutes or on another network (mobile data works too)${offered ? ', or use on-device recognition below' : ''}, or upload a caption file.`)
         : e.message === 'LANG' ? `Your browser can't recognise ${LANG_NAME[code]} speech yet. Try Chrome, or another language.`
         : e.message === 'BLOCKED' ? 'Speech recognition is turned off in this browser (or blocked by a setting or extension).'

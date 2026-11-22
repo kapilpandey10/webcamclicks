@@ -97,17 +97,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <main class="legal">
   <h1>Privacy Policy</h1>
-  <p class="muted">Last updated: November 20, 2026 · Effective Date: November 20, 2026</p>
+  <p class="muted">Last updated: November 22, 2026 · Effective Date: November 22, 2026</p>
 
   <p>At <strong>WebcamClicks</strong> (accessible at <a href="https://webcamclicks.com">webcamclicks.com</a>), your privacy is our highest priority. This Privacy Policy describes how camera feeds, photos, recordings, cookies, analytics, and sharing functions operate across our website, webcam effects studio, video recorder, and browser games. We believe in total transparency: our architecture is designed to process your media entirely on your own device.</p>
 
-  <h2>1. Zero Server Uploads: Camera, Video &amp; Photos Stay in Your Browser</h2>
+  <h2>1. Your Camera, Photos, Videos &amp; Files Stay in Your Browser</h2>
   <p>WebcamClicks is an entirely client-side web application built with HTML5, Canvas 2D, WebGL, WebRTC, and the browser MediaRecorder API. When you use our camera tools:</p>
   <ul>
     <li><strong>Camera access is requested only when you tap:</strong> We never request camera or microphone permissions automatically on page load. Access is only requested when you tap a "Start camera" or "Enable my camera" button.</li>
     <li><strong>Live video never leaves your device:</strong> Your live webcam stream is rendered and processed strictly in temporary browser memory on your physical hardware. We NEVER record, upload, monitor, stream, or transmit your live video feed or camera frames to any server.</li>
     <li><strong>Photos &amp; photo strips stay local:</strong> When you snap a photo or create a 4-pose photo booth collage, the resulting JPEG snapshot is generated client-side and saved exclusively in your browser's private local storage ("Gallery", up to 24 photos) or downloaded directly to your device storage.</li>
     <li><strong>Video recordings stay local:</strong> When you record a video clip, it is recorded client-side via the browser's <code>MediaRecorder</code> into a temporary memory buffer (up to 6 session clips) and downloaded as a WebM or MP4 file directly to your device. We do not store or host video clips on any remote server.</li>
+    <li><strong>Files you open in our tools stay local:</strong> Photos, videos, audio, PDFs, spreadsheets and other files you open in our tools (for example the PDF editor, video converter, ID card maker or meme generator) are read and processed by your browser on your device. We do not upload, store or see them. The only exception is described in Section 2a: the speech-to-text tools use your browser's speech service.</li>
     <li><strong>Immediate hardware release:</strong> Closing or reloading the tab immediately terminates camera and microphone hardware tracks and flushes all temporary memory buffers.</li>
   </ul>
 
@@ -118,6 +119,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <li><strong>No biometric data or templates:</strong> No facial templates, biometric markers, geometric face embeddings, or identifying records are ever created, stored, or transmitted to any server.</li>
     <li><strong>Playful novelty estimates:</strong> WebcamClicks includes optional entertainment filters such as "Age &amp; Gender" and the "Emotion Meter". These algorithms run purely in real-time browser memory to display casual approximations for fun. They are playful entertainment novelties and are never saved or tied to any personal identity. They are not intended, certified, or suitable for medical, biometric authentication, psychological, legal, or identity verification purposes.</li>
   </ul>
+
+  <h2>2a. Speech to Text: Auto Captions &amp; Voice Typing</h2>
+  <p>Our <a href="/auto-captions">Auto captions</a> and <a href="/voice-typing">Voice typing</a> tools turn speech into text with the speech recognition built into your web browser (the Web Speech API). This is different from our other tools:</p>
+  <ul>
+    <li><strong>Your browser may send the audio to its maker's speech service.</strong> In Google Chrome the audio is processed by Google, in Microsoft Edge by Microsoft, and in Safari by Apple, under their own privacy policies (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google</a>, <a href="https://privacy.microsoft.com/privacystatement" target="_blank" rel="noopener">Microsoft</a>, <a href="https://www.apple.com/legal/privacy/" target="_blank" rel="noopener">Apple</a>). Where your browser can recognise the language on your device, the audio does not leave your device; the tool tells you which applies before you start.</li>
+    <li><strong>Only when you start it:</strong> nothing is sent until you press <em>Generate captions</em> or the microphone button, and it stops when you press Stop or leave the page. Voice typing asks for microphone permission first.</li>
+    <li><strong>WebcamClicks does not receive your audio or the text.</strong> For Auto captions, only the sound is processed, never the video picture, and the video file itself stays on your device. The resulting text is kept in your browser (see Section 6).</li>
+    <li>If you prefer that no audio leaves your device, upload an existing subtitle file to Auto captions instead, or use the tools in a browser with on-device recognition.</li>
+  </ul>
+
+  <h2>2b. Code Libraries, Fonts &amp; AI Models from Content Networks</h2>
+  <p>To keep pages fast, some tools load open-source code, fonts or AI models when you use them, from public content delivery networks: jsDelivr (<code>cdn.jsdelivr.net</code>), cdnjs (<code>cdnjs.cloudflare.com</code>), Google Fonts (<code>fonts.googleapis.com</code>), Google Cloud Storage (<code>storage.googleapis.com</code>, for on-device face and background models) and Hugging Face (<code>huggingface.co</code>, for the AI image upscaler). Like any web resource, these services receive your IP address and standard browser information when the file is downloaded. They never receive your photos, videos, documents or camera feed: the code and models run on your device. Downloaded models are cached by your browser so they don't need to be downloaded again.</p>
 
   <h2>3. Analytics &amp; Performance Telemetry</h2>
   <p>We use Google Tag Manager (<code>GTM-NFMSK93M</code>) and Google Analytics to collect aggregated, anonymized website usage statistics (such as page visits, referring domains, device and browser categories, and page load speeds). This data helps us monitor site stability, fix compatibility bugs across different browsers, and optimize performance. Analytics services never capture, access, or receive your camera stream, snapshot photos, audio recordings, or biometric information.</p>
@@ -149,14 +162,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <li>Camera sound effects toggle (enabled or disabled).</li>
     <li>Your last selected filter and pinned favorite effects.</li>
     <li>Photos in your local gallery (up to 24 images, compressed on your device).</li>
+    <li>Tool settings and work in progress, so it is still there when you come back: for example your voice-typing text, teleprompter script and word-counter draft, your caption language and style, ID card designs you save (and the last design you worked on, without the people's data), thumbnail templates, slideshow and photo booth preferences, and your QR scan history.</li>
+    <li>Your cookie and privacy choice.</li>
   </ul>
+  <p>This data never leaves your device and is not readable by us. Most tools also offer a <em>Clear</em> button for their own data.</p>
   <p>You can clear all locally stored gallery photos at any time by clicking <strong>"Clear all"</strong> inside the gallery drawer, or by clearing your browser's cookies and site data.</p>
 
   <h2>7. Children's Online Privacy (COPPA Compliance)</h2>
   <p>WebcamClicks is designed as family-friendly entertainment. Because our site performs all image processing and video recording strictly client-side on your device and does not require user accounts, email addresses, names, or contact information, <strong>we do not collect any personally identifiable information from children under the age of 13</strong> (or under 16 in the EEA).</p>
 
   <h2>8. GDPR, UK DPA &amp; California Consumer Privacy Act (CCPA)</h2>
-  <p>Under regulations like the General Data Protection Regulation (GDPR) and CCPA/CPRA, users have rights regarding their personal data. Because WebcamClicks does not transmit, store, or profile personal data on our servers, there are no server-side databases containing personal user records to access, rectify, or delete.</p>
+  <p>Under regulations like the General Data Protection Regulation (GDPR) and CCPA/CPRA, users have rights regarding their personal data. Because WebcamClicks does not transmit, store, or profile personal data on our servers, there are no server-side databases containing personal user records to access, rectify, or delete. Data processed by third parties (advertising and analytics in Sections 3–4, and your browser's speech service in Section 2a) is handled under those companies' own policies, where you can exercise your rights.</p>
   <p>For advertising choices, see Section 4: EEA/UK/Swiss visitors use Google's certified consent message (IAB TCF v2.2) and all other visitors use our cookie notice. Both send your choice to Google through Consent Mode v2, and you can change it at any time via the <a href="/privacy" data-privacy-choices>Privacy choices</a> link.</p>
 
   <h2>9. Changes to This Privacy Policy</h2>

@@ -63,29 +63,43 @@ async function getAsr(size) {
  * read the decoder's scores for every language token after <|startoftranscript|>, and add them up.
  * transformers.js would otherwise silently assume English when no language is given.
  */
-async function detectLanguage(asr, clips, prefer = []) {
+async function langProbs(asr, audio) {
   const gc = asr.model.generation_config || {}, langs = Object.entries(gc.lang_to_id || {});
   if (!langs.length || gc.decoder_start_token_id == null) return null;
-  const score = new Map();
+  const { input_features } = await asr.processor(audio);
+  const dec = new T.Tensor('int64', BigInt64Array.from([BigInt(gc.decoder_start_token_id)]), [1, 1]);
+  const out = await asr.model({ input_features, decoder_input_ids: dec });
+  const lg = out.logits.data, V = out.logits.dims[out.logits.dims.length - 1], off = lg.length - V;   // scores for the next token
+  const vals = langs.map(([, id]) => Number(lg[off + id])), mx = Math.max(...vals);
+  const ex = vals.map((v) => Math.exp(v - mx)), sum = ex.reduce((x, y) => x + y, 0);
+  return new Map(langs.map(([tok], i) => [tok.replace(/[<|>]/g, ''), ex[i] / sum]));
+}
+async function detectLanguage(asr, clips, prefer = []) {
+  const score = new Map(), tops = [];
+  const weigh = (m) => { const sc = new Map(m); for (const code of prefer) if (sc.has(code)) sc.set(code, sc.get(code) * 3); return sc; };
   const rank = () => {
     // languages set in the browser get extra weight: Hindi and Urdu (or Nepali and Hindi) sound alike and only the
     // writing differs, so a viewer's own language settles close calls
-    const sc = new Map(score);
-    for (const code of prefer) { const k = `<|${code}|>`; if (sc.has(k)) sc.set(k, sc.get(k) * 3); }
-    const total = [...sc.values()].reduce((a, b) => a + b, 0) || 1;
-    return [...sc].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([tok, v]) => ({ code: tok.replace(/[<|>]/g, ''), p: v / total }));
+    const sc = weigh(score), total = [...sc.values()].reduce((x, y) => x + y, 0) || 1;
+    return [...sc].sort((x, y) => y[1] - x[1]).slice(0, 3).map(([code, v]) => ({ code, p: v / total }));
   };
   for (const { audio: slice, speech } of clips) {
-    const { input_features } = await asr.processor(slice);
-    const dec = new T.Tensor('int64', BigInt64Array.from([BigInt(gc.decoder_start_token_id)]), [1, 1]);
-    const out = await asr.model({ input_features, decoder_input_ids: dec });
-    const lg = out.logits.data, V = out.logits.dims[out.logits.dims.length - 1], off = lg.length - V;   // scores for the next token
-    const vals = langs.map(([, id]) => Number(lg[off + id])), mx = Math.max(...vals);
-    const ex = vals.map((v) => Math.exp(v - mx)), sum = ex.reduce((a, b) => a + b, 0);
-    langs.forEach(([tok], i) => score.set(tok, (score.get(tok) || 0) + (ex[i] / sum) * speech));
-    if (rank()[0].p >= 0.85) break;   // clear answer from the first clip: skip the rest (saves seconds)
+    const pr = await langProbs(asr, slice); if (!pr) return null;
+    for (const [code, v] of pr) score.set(code, (score.get(code) || 0) + v * speech);
+    const top = [...weigh(pr)].sort((x, y) => y[1] - x[1])[0]; tops.push(top[0]);
+    if (tops.length === 1 && rank()[0].p >= 0.97) break;   // unmistakable from the first clip: skip the rest (saves seconds)
   }
-  return rank();
+  const ranked = rank();
+  // mixed speech (Nepali + English, Hindi + English…): every language that led a clip or has a real share
+  const mixed = [...new Set([ranked[0].code, ...tops, ...ranked.filter((r) => r.p >= 0.08).map((r) => r.code)])].slice(0, 3);
+  return { ranked, mixed: mixed.length > 1 ? mixed : null };
+}
+/** Which of a few candidate languages is spoken in this window (for videos that switch languages). */
+async function windowLanguage(asr, audio, langs, prefer = []) {
+  const pr = await langProbs(asr, audio); if (!pr) return langs[0];
+  let best = langs[0], bv = -1;
+  for (const l of langs) { const v = (pr.get(l) || 0) * (prefer.includes(l) ? 3 : 1) * (l === langs[0] ? 1.5 : 1); if (v > bv) { bv = v; best = l; } }
+  return best;
 }
 
 /* ---------------------------------------------------------------- script guard
@@ -214,7 +228,7 @@ async function decodeWindow(asr, word, audio, w, language, task, suppress, post,
   }
   out.text = String(out.text || '').replace(HALLUCINATIONS, '');
   const chunks = collapseRepeats(dropPhrases((out.chunks || []).filter((c) => c.text && !NOISE.test(c.text))));
-  post({ type: 'debug', win: [w.start, w.end], text: out.text, n: (out.chunks || []).length, valid: word ? validWords(chunks, len) : null, first: (out.chunks || []).slice(0, 3), last: (out.chunks || []).slice(-2) });
+  post({ type: 'debug', lang: language, win: [w.start, w.end], text: out.text, n: (out.chunks || []).length, valid: word ? validWords(chunks, len) : null, first: (out.chunks || []).slice(0, 3), last: (out.chunks || []).slice(-2) });
   const words = [];
   if (word && validWords(chunks, len)) {
     for (const c of chunks) {
@@ -245,16 +259,18 @@ async function decodeWindow(asr, word, audio, w, language, task, suppress, post,
 async function detect({ size, clips, prefer = [] }, post) {
   const { asr } = await getAsr(size);
   post({ type: 'status', text: 'Detecting the spoken language…' });
-  const ranked = await detectLanguage(asr, clips, prefer);
-  if (!ranked || !ranked.length) throw new Error('NO_LANG');
-  return { ranked };
+  const r = await detectLanguage(asr, clips, prefer);
+  if (!r || !r.ranked.length) throw new Error('NO_LANG');
+  return r;
 }
 
-async function transcribe({ size, language, task, win, audio }, post) {
+async function transcribe({ size, language: lang0, langs, prefer, task, win, audio }, post) {
   const { asr, word } = await getAsr(size);
+  let language = lang0;
+  if (langs && langs.length > 1) { try { language = await windowLanguage(asr, audio, langs, prefer); } catch (e) { console.warn(e); } }
   const suppress = suppressFor(asr, language, task);
   const words = await decodeWindow(asr, word, audio, win, language, task, suppress, post);
-  return { words, mode: word ? 'word' : 'segment' };
+  return { words, mode: word ? 'word' : 'segment', language };
 }
 
 self.onmessage = async (e) => {

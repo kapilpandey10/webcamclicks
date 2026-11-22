@@ -165,6 +165,7 @@ PAGES['auto-captions'] = dict(
     <div class="t-panel">
       <h2>1 · Generate</h2>
       <label class="t-field">Spoken language <select class="t-select" id="cap-lang"></select></label>
+      <p class="cap-lang-hint">Pick the language spoken in the video: the AI writes much better text when it knows. Mixed, like Nepali with English words? Choose the main language.</p>
       <div class="t-row">
         <label class="t-field">Accuracy <select class="t-select" id="cap-model"><option value="fast">Fast (≈40 MB)</option><option value="balanced" selected>Balanced (≈80 MB)</option><option value="accurate">Accurate (≈250 MB)</option><option value="best">Best, for Nepali, Hindi &amp; more (≈600 MB, graphics chip)</option></select></label>
         <label class="t-field">Captions in <select class="t-select" id="cap-task"><option value="transcribe">Same language</option><option value="translate">Translate to English</option></select></label>
@@ -227,7 +228,7 @@ PAGES['auto-captions'] = dict(
   faqs=[('Is the caption generator really free and private?', 'Yes. The AI model runs in your browser, so your video is never uploaded and there are no per-minute fees or watermarks.'),
         ('How accurate are the captions?', 'Very good for clear speech in major languages, especially with the Accurate model. Always skim the result: names, jargon and overlapping speakers may need a quick fix in the editor.'),
         ('Does it time each word?', 'Yes. Captions are timed word by word, so styles like Bold pop and Karaoke highlight each word exactly when it is spoken. If a model can\'t provide word timings on your device, the words are spread over the detected speech instead.'),
-        ('Why are captions in the wrong language?', 'Leave Spoken language on Detect automatically and the language is identified from up to three parts of your video; the result is shown with how sure the AI is. If it is wrong, or for languages that sound alike (Nepali, Hindi, Marathi, Urdu), choose the language yourself. For less common languages, Accurate or Best give far better text than Fast.'),
+        ('Why are captions in the wrong language?', 'Choose the spoken language before generating: the AI writes much better text when it knows the language, especially for languages that sound alike (Nepali, Hindi, Marathi, Urdu). If you are not sure, pick “Not sure: detect it automatically” and the result is shown with how sure the AI is. For videos that mix languages, such as Nepali with English words, choose the main language. For less common languages, Accurate or Best give far better text than Fast.'),
         ('How long does it take?', 'With a graphics chip (WebGPU), a 10-minute video usually takes one to three minutes on the Balanced model. Without one it runs on the processor and is slower; use the Fast model for long videos.'),
         ('Can I translate captions into Spanish, Hindi or other languages?', 'Yes, in Chrome 138 or newer on a computer, which has an on-device translator. In other browsers you can transcribe in the original language or translate to English.'),
         ('Can I upload the SRT to YouTube?', 'Yes. In YouTube Studio open Subtitles, choose your video, then Add > Upload file > With timing, and select the SRT.')])

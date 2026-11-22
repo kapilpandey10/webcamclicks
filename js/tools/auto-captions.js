@@ -5,11 +5,11 @@ import { $, setupDropzone, splitName, downloadBlob, setStatus, loadMediabunny, f
 import { STYLES, FONTS_CSS, ensureFont, drawCaption, groupWords, wordsFromText, retime, joinWords } from './caption-render.js';
 import { planWindows, dedupeLoops } from './vad.js';
 
-const LANGS = [['', 'Detect automatically'], ['en', 'English'], ['es', 'Spanish'], ['fr', 'French'], ['de', 'German'], ['pt', 'Portuguese'], ['it', 'Italian'],
+const LANGS = [['', 'Choose the spoken language…'], ['en', 'English'], ['es', 'Spanish'], ['fr', 'French'], ['de', 'German'], ['pt', 'Portuguese'], ['it', 'Italian'],
   ['nl', 'Dutch'], ['hi', 'Hindi'], ['ne', 'Nepali'], ['bn', 'Bengali'], ['ta', 'Tamil'], ['te', 'Telugu'], ['mr', 'Marathi'], ['ur', 'Urdu'],
   ['ar', 'Arabic'], ['fa', 'Persian'], ['tr', 'Turkish'], ['ru', 'Russian'], ['uk', 'Ukrainian'], ['pl', 'Polish'], ['cs', 'Czech'], ['ro', 'Romanian'],
   ['el', 'Greek'], ['he', 'Hebrew'], ['zh', 'Chinese'], ['ja', 'Japanese'], ['ko', 'Korean'], ['vi', 'Vietnamese'], ['th', 'Thai'], ['id', 'Indonesian'],
-  ['ms', 'Malay'], ['tl', 'Filipino'], ['sv', 'Swedish'], ['no', 'Norwegian'], ['da', 'Danish'], ['fi', 'Finnish'], ['hu', 'Hungarian']];
+  ['ms', 'Malay'], ['tl', 'Filipino'], ['sv', 'Swedish'], ['no', 'Norwegian'], ['da', 'Danish'], ['fi', 'Finnish'], ['hu', 'Hungarian'], ['auto', 'Not sure: detect it automatically']];
 const SIZES = { fast: 'tiny', balanced: 'base', accurate: 'small', best: 'large-v3-turbo' };
 const LANG_NAME = Object.fromEntries(LANGS);
 
@@ -23,12 +23,23 @@ const els = {
 };
 
 els.lang.innerHTML = LANGS.map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
-els.trLang.innerHTML = LANGS.slice(1).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+els.trLang.innerHTML = LANGS.slice(1, -1).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
 els.trLang.value = (navigator.language || 'en').slice(0, 2) === 'en' ? 'es' : (navigator.language || 'en').slice(0, 2);
 const store = { get(k, d) { try { return localStorage.getItem(`wc_cap_${k}`) ?? d; } catch (_) { return d; } }, set(k, v) { try { localStorage.setItem(`wc_cap_${k}`, v); } catch (_) { /* ignore */ } } };
 els.model.value = store.get('model', 'balanced');
 els.lang.value = store.get('lang', '');
-els.lang.addEventListener('change', () => store.set('lang', els.lang.value));
+els.lang.addEventListener('change', () => {
+  store.set('lang', els.lang.value); els.lang.classList.remove('need');
+  // language picked after the video was added: start right away
+  if (els.lang.value && file && !busy && !cues.length && els.auto.checked) generate();
+});
+/** The language Whisper should write ('' = detect it). */
+const spokenLang = () => (els.lang.value === 'auto' ? '' : els.lang.value);
+function askLanguage() {
+  els.lang.classList.add('need'); els.lang.focus({ preventScroll: true });
+  els.lang.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  setStatus(els.status, 'Choose the language spoken in the video (under “Spoken language”). Captions start as soon as you pick it.');
+}
 els.auto.checked = store.get('auto', '1') === '1';
 
 // caption fonts (Montserrat, Poppins, Anton, Bangers, Permanent Marker) — only on this page
@@ -106,12 +117,14 @@ els.auto.addEventListener('change', () => store.set('auto', els.auto.checked ? '
 
 /* ---------------------------------------------------------------- detected language (with a one-click fix) */
 function langLabel(code) { return LANG_NAME[code] || (typeof Intl !== 'undefined' && Intl.DisplayNames ? new Intl.DisplayNames(['en'], { type: 'language' }).of(code) : code); }
-function showDetected(ranked) {
+function showDetected(ranked, mixed) {
   const [top, ...rest] = ranked;
   if (!LANG_NAME[top.code]) els.lang.insertAdjacentHTML('beforeend', `<option value="${top.code}">${langLabel(top.code)}</option>`);
   els.detected.hidden = false;
-  els.detected.innerHTML = `Detected language: <b>${langLabel(top.code)}</b> (${Math.round(top.p * 100)}% sure)${rest.length ? `, then ${rest.map((r) => `${langLabel(r.code)} ${Math.round(r.p * 100)}%`).join(', ')}` : ''}. Wrong? Pick the right one in <em>Spoken language</em> and press Generate again.`;
-  els.detected.classList.toggle('unsure', top.p < 0.6);
+  els.detected.innerHTML = mixed
+    ? `Mixed speech detected: <b>${mixed.map(langLabel).join(' + ')}</b>. Each part is written in the language it is spoken in. For the best text, pick the main language in <em>Spoken language</em>.`
+    : `Detected language: <b>${langLabel(top.code)}</b> (${Math.round(top.p * 100)}% sure)${rest.length ? `, then ${rest.map((r) => `${langLabel(r.code)} ${Math.round(r.p * 100)}%`).join(', ')}` : ''}. Wrong? Pick the right one in <em>Spoken language</em> and press Generate again.`;
+  els.detected.classList.toggle('unsure', !mixed && top.p < 0.6);
 }
 
 /* ---------------------------------------------------------------- load media */
@@ -128,8 +141,9 @@ async function openMedia(f) {
   els.info.textContent = `${f.name} · ${formatBytes(f.size)}${duration ? ` · ${fmtTime(duration)}` : ''}`;
   els.run.disabled = false; els.burn.disabled = !cues.length || f.type.startsWith('audio/');
   sizeOverlay();
-  if (els.auto.checked) generate();
-  else setStatus(els.status, 'Choose the spoken language (or leave it on automatic) and press Generate captions.');
+  if (!els.lang.value) askLanguage();
+  else if (els.auto.checked) generate();
+  else setStatus(els.status, 'Press Generate captions when you are ready.');
 }
 
 /** Decode the audio track to 16 kHz mono (what Whisper expects). */
@@ -183,6 +197,7 @@ let busy = false, gen = 0, restart = false;
 function cancelGen() { gen++; stopHelpers(); }
 async function generate() {
   if (!file) return;
+  if (!els.lang.value) { askLanguage(); return; }
   if (busy) { restart = true; cancelGen(); setStatus(els.status, 'Restarting with the new settings…'); return; }   // a new file or settings while working: start over
   busy = true; const my = ++gen; const alive = () => my === gen;
   const cancelled = () => { if (!alive()) throw new Error('CANCELLED'); };
@@ -201,15 +216,18 @@ async function generate() {
     if (!wins.length) { setStatus(els.status, 'No speech was detected in this file.', 'err'); return; }
     if (modelState[size]?.state === 'downloading') setStatus(els.status, 'Waiting for the speech AI to finish downloading (first time only)…');
 
-    let language = els.lang.value;
+    let language = spokenLang(), mixed = null;
     if (!language) {
-      // Whisper's language identification on up to three of the speechiest windows (stops early when it is clear)
-      const clips = wins.map((w) => ({ w, speech: w.regions.reduce((acc, [x, y]) => acc + (y - x), 0) })).sort((x, y) => y.speech - x.speech).slice(0, 3)
-        .map(({ w, speech }) => ({ audio: pcm.slice(Math.floor(w.start * SR), Math.min(pcm.length, Math.ceil(Math.min(w.end, w.start + 30) * SR))), speech }));
+      // Whisper's language identification on the speechiest window of each third of the file (beginning, middle,
+      // end), so a video that switches language is noticed; stops early when the first clip is unmistakable
+      const speech = (w) => w.regions.reduce((acc, [x, y]) => acc + (y - x), 0), end = wins[wins.length - 1].end;
+      const picks = [0, 1, 2].map((k) => wins.filter((w) => w.start >= (end * k) / 3 && w.start < (end * (k + 1)) / 3).sort((x, y) => speech(y) - speech(x))[0]).filter(Boolean);
+      const clips = [...new Set(picks)].sort((x, y) => speech(y) - speech(x))
+        .map((w) => ({ audio: pcm.slice(Math.floor(w.start * SR), Math.min(pcm.length, Math.ceil(Math.min(w.end, w.start + 30) * SR))), speech: speech(w) }));
       const r = await call(0, { type: 'detect', size, clips, prefer: preferLangs() }, onEv, clips.map((c) => c.audio.buffer)); cancelled();
-      language = r.ranked[0].code; showDetected(r.ranked);
+      language = r.ranked[0].code; mixed = r.mixed; showDetected(r.ranked, mixed);
     }
-    if (/^(tiny|base)$/.test(size) && !WELL_SUPPORTED.has(language)) {
+    if (/^(tiny|base)$/.test(size) && [language, ...(mixed || [])].some((l) => !WELL_SUPPORTED.has(l))) {
       await loadModel(size).catch(() => {});
       const up = modelState[size]?.device === 'webgpu' ? 'large-v3-turbo' : 'small';
       setStatus(els.status, `This language needs a larger speech model for good text. Switching to ${up === 'small' ? 'Accurate' : 'Best'} (one-time download)…`);
@@ -245,7 +263,7 @@ async function generate() {
         if (i < 0) { if (!active) resolve(); return; }
         state[i] = 'work'; active++; tlState(state);
         const w = wins[i], audio = pcm.slice(Math.floor(w.start * SR), Math.min(pcm.length, Math.ceil(w.end * SR)));
-        call(wi, { type: 'win', size, language, task: els.task.value, win: w, audio }, onEv, [audio.buffer]).then((r) => {
+        call(wi, { type: 'win', size, language, langs: mixed, prefer: preferLangs(), task: els.task.value, win: w, audio }, onEv, [audio.buffer]).then((r) => {
           active--;
           if (!alive()) { reject(new Error('CANCELLED')); return; }
           results[i] = r.words; state[i] = 'done'; mode = r.mode; doneSec += w.end - w.start;
@@ -538,7 +556,7 @@ els.trRun.addEventListener('click', async () => {
   if (!hasTranslator || !cues.length) return;
   els.trRun.disabled = true;
   try {
-    let src = els.task.value === 'translate' ? 'en' : els.lang.value;
+    let src = els.task.value === 'translate' ? 'en' : spokenLang();
     if (!src && 'LanguageDetector' in self) {
       const det = await self.LanguageDetector.create();
       const r = await det.detect(cues.slice(0, 20).map((c) => c.text).join(' '));

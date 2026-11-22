@@ -162,11 +162,11 @@
 
   /* ================= terrain & water ================= */
   function terrain(scene) {
-    const S = 2800, N = 280;
-    const geo = new T.PlaneGeometry(S, S, N, N); geo.rotateX(-Math.PI / 2);
+    const B = KS.BOUNDS, SX = B.x1 - B.x0, SZ = B.z1 - B.z0;
+    const geo = new T.PlaneGeometry(SX, SZ, Math.round(SX / 11), Math.round(SZ / 11)); geo.rotateX(-Math.PI / 2); geo.translate((B.x0 + B.x1) / 2, 0, (B.z0 + B.z1) / 2);
     const pos = geo.attributes.position, cols = new Float32Array(pos.count * 3), c = new T.Color();
     for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i), z = pos.getZ(i), h = KS.heightAt(x, z); pos.setY(i, h);
+      const x = pos.getX(i), z = pos.getZ(i), h = KS.heightAt(x, z, true); pos.setY(i, h);
       const m = Math.max(Math.abs(x), Math.abs(z)), n = KS.fbm(x * 0.02, z * 0.02);
       if (h < -0.5) c.setHex(0x6b5a40);
       else if (m < 560) c.setHex(0x9f9177).offsetHSL(0, 0, (n - 0.5) * 0.08);
@@ -186,8 +186,8 @@
     wt.repeat.set(40, 1.2);
     KS.waterTex = wt;
     KS.waterMat = new T.MeshLambertMaterial({ map: wt, transparent: true, opacity: 0.92 });
-    const wg = new T.PlaneGeometry(2800, KS.RIVER.z1 - KS.RIVER.z0 + 14); wg.rotateX(-Math.PI / 2);
-    const water = new T.Mesh(wg, KS.waterMat); water.position.set(0, KS.RIVER.water, (KS.RIVER.z0 + KS.RIVER.z1) / 2); scene.add(water);
+    const wg = new T.PlaneGeometry(KS.BOUNDS.x1 - KS.BOUNDS.x0, KS.RIVER.z1 - KS.RIVER.z0 + 14); wg.rotateX(-Math.PI / 2);
+    const water = new T.Mesh(wg, KS.waterMat); water.position.set((KS.BOUNDS.x0 + KS.BOUNDS.x1) / 2, KS.RIVER.water, (KS.RIVER.z0 + KS.RIVER.z1) / 2); scene.add(water);
   }
 
   /* ================= roads, sidewalks, bridges ================= */
@@ -623,19 +623,46 @@
     KS.buildingCount = Object.values(inst).reduce((a, l) => a + l.length, 0);
   }
 
+  /* ================= parks: lawns, paths, benches, fountain, flower beds ================= */
+  W.park = (R, seed) => {
+    const cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2, w = R.x1 - R.x0 - SW * 2, d = R.z1 - R.z0 - SW * 2, b = W.chunk(cx, cz);
+    b.box(cx, 0, cz, w, 0.14, d, 0x6f9a48);
+    b.box(cx, 0.14, cz, 3.4, 0.06, d, 0xc8b89a); b.box(cx, 0.14, cz, w, 0.06, 3.4, 0xc8b89a);
+    b.box(cx, 0.14, cz, w * 0.62, 0.05, 2.4, 0xc8b89a, Math.PI / 4); b.box(cx, 0.14, cz, w * 0.62, 0.05, 2.4, 0xc8b89a, -Math.PI / 4);
+    b.cyl(cx, 0.14, cz, 6, 0.7, 0xd9d1c0, 18); b.cyl(cx, 0.5, cz, 5.2, 0.3, 0x5a95b0, 18); b.cyl(cx, 0.5, cz, 0.6, 2.4, 0xd9d1c0, 8); b.sphere(cx, 2.9, cz, 0.9, 0xd9d1c0, 0.6, 10);
+    KS.addCircle(cx, cz, 6, 0.85);
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      const fx = cx + sx * w * 0.27, fz = cz + sz * d * 0.27;
+      b.cyl(fx, 0.14, fz, 4, 0.5, 0x6a4a2a, 14);
+      for (let k = 0; k < 14; k++) { const a = (k / 14) * Math.PI * 2; b.sphere(fx + Math.cos(a) * 3, 0.75, fz + Math.sin(a) * 3, 0.42, KS.pick([0xe23a5a, 0xf2c418, 0xffffff, 0xe86412, 0xb04ad0]), 1, 6); }
+      W.tree(fx, fz, KS.r(6, 9));
+      // benches facing the paths
+      for (const t of [-1, 1]) { const bx = cx + sx * 6 + t * 0, bz = cz + sz * (d * 0.5 - 8) * (t > 0 ? 1 : 0.45); W.bench(b, bx + sx * 2.4, bz, sx > 0 ? -Math.PI / 2 : Math.PI / 2); }
+    }
+    for (let i = 0; i < 22; i++) { const x = KS.r(R.x0 + 8, R.x1 - 8), z = KS.r(R.z0 + 8, R.z1 - 8); if (Math.abs(x - cx) < 4 || Math.abs(z - cz) < 4 || Math.hypot(x - cx, z - cz) < 10) continue; W.tree(x, z, KS.r(5, 10)); }
+    for (const [lx, lz] of [[cx - 4, cz - d / 3], [cx + 4, cz + d / 3], [cx - w / 3, cz + 4], [cx + w / 3, cz - 4]]) { b.cyl(lx, 0, lz, 0.1, 4.2, 0x2b2b2b, 6); b.sphere(lx, 4.3, lz, 0.35, 0xfff2c8, 1, 8); }
+    KS.plazas && KS.plazas.push({ x0: R.x0 + 9, x1: R.x1 - 9, z0: R.z0 + 9, z1: R.z1 - 9, n: 9, kinds: ['elder', 'kid', 'woman', 'man', 'student', 'jogger'] });
+    KS.benches = KS.benches || [];
+  };
+  W.bench = (b, x, z, ry) => {
+    const s = Math.sin(ry), c = Math.cos(ry);
+    b.box(x, 0.45, z, 2.2, 0.08, 0.55, 0x8a5a30, ry); b.box(x - s * 0.25, 0.53, z - c * 0.25, 2.2, 0.5, 0.08, 0x8a5a30, ry);
+    b.box(x + c * 0.9, 0, z - s * 0.9, 0.08, 0.45, 0.5, 0x333333, ry); b.box(x - c * 0.9, 0, z + s * 0.9, 0.08, 0.45, 0.5, 0x333333, ry);
+    (KS.benchSpots = KS.benchSpots || []).push([x + s * 0.05, z + c * 0.05, ry]);
+  };
+
   /* ================= parks & outskirts greenery ================= */
   function greenery() {
     for (let c = 0; c < G.N; c++) for (let r = 0; r < G.N; r++) {
       if (KS.blockType(c, r) !== 'park') continue;
-      const R = W.blockRect(c, r), b = W.chunk((R.x0 + R.x1) / 2, (R.z0 + R.z1) / 2);
-      b.box((R.x0 + R.x1) / 2, 0, (R.z0 + R.z1) / 2, R.x1 - R.x0 - SW * 2, 0.14, R.z1 - R.z0 - SW * 2, 0x6f9a48);
-      for (let i = 0; i < 26; i++) W.tree(KS.r(R.x0 + 8, R.x1 - 8), KS.r(R.z0 + 8, R.z1 - 8), KS.r(5, 10));
-      b.box((R.x0 + R.x1) / 2, 0.14, (R.z0 + R.z1) / 2, 3, 0.1, R.z1 - R.z0 - SW * 2, 0xb9a98a);
+      W.park(W.blockRect(c, r), c * 31 + r);
     }
     // forest on the valley rim (Shivapuri, Chandragiri, Nagarjun) and fields
-    for (let i = 0; i < 1700; i++) {
-      const x = KS.r(-1380, 1380), z = KS.r(-1380, 1380), m = Math.max(Math.abs(x), Math.abs(z));
-      if (m < 600) continue;
+    const hwy = (x, z, pad) => x < -540 && Math.abs(z - KS.HW.z) < pad;
+    for (let i = 0; i < 2600; i++) {
+      const x = KS.r(KS.BOUNDS.x0 + 20, 1380), z = KS.r(-1380, 1380), m = Math.max(Math.abs(x), Math.abs(z));
+      if (m < 600 || hwy(x, z, 30)) continue;
+      if (Math.hypot(x - KS.HW.village.x, z - KS.HW.village.z) < 300) continue;
       if (z > KS.RIVER.z0 - 12 && z < KS.RIVER.z1 + 12) continue;
       if (x > 560 && x < 840 && Math.abs(z) < 420) continue; // airport
       const sw = KS.SWAYAMBHU; if (Math.hypot(x - sw.x, z - sw.z) < 32) continue;
@@ -653,7 +680,7 @@
     // outskirts village houses scattered in fields
     for (let i = 0; i < 160; i++) {
       const x = KS.r(-1000, 1000), z = KS.r(-1000, 1000), m = Math.max(Math.abs(x), Math.abs(z));
-      if (m < 600 || m > 980) continue;
+      if (m < 600 || m > 980 || hwy(x, z, 30)) continue;
       if (z > KS.RIVER.z0 - 20 && z < KS.RIVER.z1 + 20) continue;
       if (x > 540 && x < 860 && Math.abs(z) < 440) continue;
       if (Math.hypot(x - sw.x, z - sw.z) < 160) continue;
@@ -673,6 +700,7 @@
     streetProps();
     streetFurniture(scene);
     if (KS.Landmarks) KS.Landmarks.build(scene, W);
+    if (KS.Extras) KS.Extras.build(scene, W);
     // Thamel: prayer flags & festival lights criss-crossing the streets
     for (const [c, r] of [[4, 2], [4, 3], [5, 3], [3, 3]]) {
       const R = W.blockRect(c, r);

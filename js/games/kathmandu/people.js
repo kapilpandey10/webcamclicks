@@ -1,22 +1,30 @@
-/* Kathmandu Streets — people & animals: pedestrians, pilgrims, sadhus, vendors, traffic police, cows, dogs, pigeons, monkeys. */
+/* Kathmandu Streets — people & animals. Characters are built from rounded parts with faces, hair styles and
+   Nepali clothing (kurta suruwal, sari, daura suruwal with dhaka topi, school uniforms, monks' robes),
+   with curated colour palettes per role. Also: fighting reactions, cows, dogs, goats, chickens, pigeons, monkeys. */
 (function () {
   'use strict';
   const T = THREE, KS = window.KS, G = KS.G, P = KS.palette;
-  const SKIN = [0xc68d5f, 0xb07a4f, 0xd8a47a, 0x9a6a44, 0xe0b48c, 0xa87048];
-  const SKIN_T = [0xf0c8a8, 0xe8b898, 0xf6d6c0, 0x8a5a3a, 0xd9a882];
-  const BRIGHT = [0xd12b2b, 0x1d4fb8, 0xf2c418, 0x1f9a4c, 0xe86412, 0x8a2be2, 0xe23a8a, 0x0aa3a3, 0xffffff, 0x333333];
-  const DULL = [0x2a2f45, 0x3a3a3a, 0x5a4a3a, 0x6b6b5a, 0x1e2a3a, 0x444c5c, 0x7a6a50];
-  const SARI = [0xc8102e, 0xe23a8a, 0xf2a516, 0x7b1fa2, 0x00897b, 0xd84315, 0xffd54f, 0x1565c0];
-
+  const SKIN = [0xc8916a, 0xb98159, 0xd6a27c, 0xa87250, 0xe0b18c, 0xbd8a63, 0x9c6a48];
+  const SKIN_T = [0xf1cfb4, 0xe9bd9c, 0xf6dcc8, 0x8a5a3a, 0xd9a882, 0xc8946e];
+  const HAIR = [0x161210, 0x1c1612, 0x221a14, 0x2a2018];
+  const SHIRTS = [0xf4f2ec, 0xdfe7ef, 0xc9d6e6, 0xe9e1cf, 0x8aa0b8, 0x5a6a7a, 0x7a2a2a, 0x2f4a6a, 0xd8cfb8, 0x6a7a5a];
+  const PANTS = [0x23283a, 0x2e2e2e, 0x3a3a46, 0x4a4a52, 0x6b5f4a, 0x1e2a3a, 0x3a3328];
+  const JACKETS = [0x1c1c1c, 0x3a2a20, 0x23314a, 0x4a4a3a, 0x5a1e1e, 0x2f3f2f];
+  const KURTA = [0x7a1f3a, 0x0f6b6b, 0xc8962a, 0xd88aa8, 0xe9dcc4, 0x23315a, 0x8a3a6a, 0x3a6a3a, 0xb0472e, 0x5a2a6a];
+  const SARI = [0xb3122e, 0xd0306a, 0xe08a1a, 0x1f7a5a, 0x6a1f7a, 0xc8102e, 0x2a5aa8, 0xa83a1a];
   const LINES = {
     greet: ['Namaste!', 'Namaskar 🙏', 'K cha dai?', 'Sanchai?', 'Khana khanu bhayo?', 'Aaja jam cha!', 'Chiya khane?'],
     angry: ['Oi! Bistarai!', 'Aankha chaina?', 'Hey! Careful!', 'Ke garya ho?!', 'Hare Shiva!', 'Dhyan dinus na!'],
+    hurt: ['Aiya!', 'Ow!', 'Ke gareko?!', 'Aama!', 'Police bolau?!'],
+    fight: ['Aija! Aija!', 'Ma pani dekhauchhu!', 'Ke herchas?!'],
+    flee: ['Bachau!', 'Police! Police!', 'Bhaag!'],
     tourist: ['Hello! Momo?', 'Which way to Thamel?', 'Namaste! 🙏', 'What a view!', 'Is this Durbar Square?'],
     monk: ['Om mani padme hum', 'Tashi delek 🙏'],
     vendor: ['Momo, momo, taja momo!', 'Taja tarkari!', 'Pashmina, sasto!', 'Chiya, garam chiya!'],
     police: ['Rok! Rok!', 'Side ma lagaunus!', 'License dekhaunus!'],
     sadhu: ['Bam Bam Bhole!', 'Har Har Mahadev', 'Photo? Dakshina!'],
     kid: ['Goal!', 'Dai, ball!', 'Hello! Hello!'],
+    farmer: ['Dhan ramro bhayo!', 'Bazaar jane ho?', 'Gaun ma swagat!'],
   };
   KS.LINES = LINES;
 
@@ -27,6 +35,7 @@
     let b = bubbles.find((x) => x.obj === obj);
     if (!b) { const el = document.createElement('div'); el.className = 'bubble ' + cls; layer.appendChild(el); b = { el, obj }; bubbles.push(b); }
     b.el.textContent = text; b.t = dur; b.el.className = 'bubble ' + cls;
+    if (KS.audio && KS.Player && obj.getWorldPosition) { obj.getWorldPosition(_v); const d = Math.hypot(_v.x - KS.Player.x, _v.z - KS.Player.z); if (d < 26 && obj !== (KS.Player.person && KS.Player.person.root)) KS.audio.voice(1 - d / 26, cls === 'angry' ? 'angry' : 'talk'); }
   };
   const _v = new T.Vector3();
   KS.updateBubbles = (dt, camera, W, H) => {
@@ -41,81 +50,155 @@
     }
   };
 
-  /* ---------------- person builder ---------------- */
-  KS.makePerson = (kind, o = {}) => {
-    const body = new KS.Builder(), legL = new KS.Builder(), legR = new KS.Builder(), armL = new KS.Builder(), armR = new KS.Builder();
-    const tourist = kind === 'tourist';
-    const skin = o.skin || (tourist ? KS.pick(SKIN_T) : KS.pick(SKIN));
-    let shirt = KS.pick(BRIGHT.concat(DULL)), pants = KS.pick(DULL), shoe = KS.pick([0x222222, 0x5a3a22, 0xdddddd]);
-    let hair = KS.pick([0x111111, 0x1a1410, 0x222222]);
-    let robe = null, skirt = null, topi = false, pack = null, longHair = false, beard = null, cap = null, doko = false, bun = false;
+  /* ---------------- outfits ---------------- */
+  /** a coherent outfit for a role. Fields are read by makePerson. */
+  KS.outfitFor = (kind) => {
+    const P_ = KS.pick, c = KS.chance;
+    const o = { kind, skin: P_(SKIN), hair: P_(HAIR), hairStyle: 'short', top: P_(SHIRTS), topStyle: 'shirt', bottom: P_(PANTS), bottomStyle: 'pants', shoes: P_([0x1a1a1a, 0x3a2414, 0x5a3a22]), hat: null, hatColor: 0, bag: null, scarf: null, glasses: false, build: KS.r(0.95, 1.05), height: KS.r(0.95, 1.04) };
     switch (kind) {
-      case 'woman': shirt = KS.pick(SARI); longHair = true; if (KS.chance(0.55)) skirt = shirt; else pants = KS.pick([0xf4f0e6, 0x333333, shirt]); break;
-      case 'elder': hair = KS.pick([0xcccccc, 0xeeeeee, 0x999999]); shirt = KS.pick([0xf0ece0, 0xd8d0b0, 0x7a6a50]); pants = 0xe8e0cc; topi = KS.chance(0.8); break;
-      case 'monk': robe = P.maroon; shirt = KS.chance(0.5) ? P.saffron : P.maroon; skirt = P.maroon; hair = skin; break;
-      case 'sadhu': robe = KS.pick([0xe86412, 0xf2a516, 0xd84315]); skirt = robe; shirt = robe; hair = 0x3a3028; beard = 0x8a8070; bun = true; break;
-      case 'tourist': shirt = KS.pick([0xd12b2b, 0x1d4fb8, 0x1f9a4c, 0xe86412, 0xf2c418, 0x0aa3a3]); pants = KS.pick([0x6b6b5a, 0x2a2f45, 0xc8b890]); hair = KS.pick([0xd8b860, 0x8a5a2a, 0x3a2a1a, 0xb8b8b0]); pack = KS.pick([0x333333, 0xd12b2b, 0x1d4fb8, 0xe86412]); cap = KS.chance(0.5) ? KS.pick([0xf2e6c8, 0x333333, 0x1d4fb8]) : null; longHair = KS.chance(0.4); break;
-      case 'student': shirt = 0xf4f4f4; pants = KS.pick([0x1e2a5a, 0x555555]); pack = KS.pick([0x1d4fb8, 0xd12b2b, 0x333333]); if (KS.chance(0.5)) { skirt = pants; longHair = true; } break;
-      case 'porter': shirt = KS.pick(DULL); pants = KS.pick(DULL); doko = true; topi = KS.chance(0.5); break;
-      case 'police': shirt = 0x2c4d8a; pants = 0x1a2440; cap = 0xf4f4f4; break;
-      case 'kid': shirt = KS.pick(BRIGHT); break;
-      case 'player': shirt = 0xc81e1e; pants = 0x2b4a7a; shoe = 0xf4f4f4; pack = 0x222222; topi = true; break;
-      default: topi = KS.chance(0.35); if (KS.chance(0.25)) shirt = KS.pick([0x2a2f45, 0x3a3a3a, 0x5a4a3a]); // jacket
+      case 'woman':
+        o.hairStyle = P_(['braid', 'bun', 'long', 'long']); o.height *= 0.94; o.tika = true;
+        if (c(0.55)) { o.topStyle = 'kurta'; o.top = P_(KURTA); o.bottom = P_([0xf2ede0, 0xe9dcc4, 0x23283a, o.top]); o.bottomStyle = 'suruwal'; o.scarf = P_([0xf2ede0, 0xd8b8a0, 0xc8962a, 0x7a1f3a, 0x23315a]); }
+        else { o.topStyle = 'blouse'; o.top = P_(SARI); o.bottomStyle = 'sari'; o.bottom = o.top; o.scarf = o.top; }
+        o.shoes = P_([0x3a2414, 0x8a5a3a, 0xc8a080]); if (c(0.3)) o.bag = 'handbag'; break;
+      case 'elder':
+        o.hair = P_([0xd8d8d0, 0xb8b8b0, 0xeeeeea]); o.hairStyle = c(0.3) ? 'bald' : 'short'; o.height *= 0.96;
+        if (c(0.6)) { o.topStyle = 'daura'; o.top = P_([0xf2ede0, 0xe6dcc8, 0xd8ccb0]); o.bottom = o.top; o.bottomStyle = 'suruwal'; o.coat = P_([0x2a2a2a, 0x3a3328, 0x23314a]); o.hat = 'topi'; }
+        else { o.top = P_([0x8a7a60, 0x5a5a5a, 0xe9e1cf]); o.hat = c(0.6) ? 'topi' : null; o.cane = true; }
+        break;
+      case 'grandma':
+        o.hair = P_([0xd8d8d0, 0xb8b8b0]); o.hairStyle = 'bun'; o.height *= 0.9; o.topStyle = 'blouse'; o.top = P_([0x7a1f1f, 0x3a2a4a, 0x2a4a3a]); o.bottomStyle = 'sari'; o.bottom = P_([0x5a1a1a, 0x2a2a3a, 0x6a3a1a]); o.scarf = 0xe9dcc4; o.tika = true; o.cane = true; break;
+      case 'office':
+        o.top = P_([0xf4f2ec, 0xdfe7ef, 0xc9d6e6, 0xf0e8f0]); o.bottom = P_([0x23283a, 0x2e2e2e, 0x3a3a46]); o.tie = P_([0x7a1f1f, 0x1d3a6a, 0x2a2a2a]); o.lanyard = true; if (c(0.4)) { o.topStyle = 'jacket'; o.jacket = P_([0x23283a, 0x2e2e2e]); } break;
+      case 'student':
+        o.top = 0xf4f4f4; o.bottom = P_([0x1e2a5a, 0x4a4a52]); o.tie = 0x7a1f1f; o.bag = 'backpack'; o.bagColor = P_([0x1d4fb8, 0xc81e1e, 0x333333]); o.height *= 0.93;
+        if (c(0.5)) { o.bottomStyle = 'skirt'; o.hairStyle = P_(['braid', 'bun']); } break;
+      case 'tourist':
+        o.skin = P_(SKIN_T); o.hair = P_([0xd8b860, 0x8a5a2a, 0x3a2a1a, 0xb8b8b0, 0xc89a5a]); o.hairStyle = c(0.4) ? 'long' : 'short';
+        o.topStyle = 'jacket'; o.jacket = P_([0xc81e1e, 0x1d4fb8, 0xe86412, 0x1f8a4c, 0xf2c418, 0x0a8a9a]); o.top = 0xe0e0e0;
+        o.bottom = P_([0x6b6b5a, 0x2a2f45, 0xc8b890]); if (c(0.3)) o.bottomStyle = 'shorts'; o.bag = 'backpack'; o.bagColor = P_([0x333333, 0x4a5a3a, 0xc81e1e, 0x1d4fb8]);
+        o.hat = c(0.5) ? P_(['cap', 'sunhat']) : null; o.hatColor = P_([0xf2e6c8, 0x333333, 0x1d4fb8]); o.glasses = c(0.5); o.height *= KS.r(1, 1.08); o.shoes = 0x5a4a3a; break;
+      case 'monk':
+        o.hairStyle = 'bald'; o.hair = o.skin; o.topStyle = 'robe'; o.top = P.maroon; o.bottom = P.maroon; o.bottomStyle = 'skirt'; o.vest = P.saffron; o.shoes = 0x5a3a22; break;
+      case 'sadhu':
+        o.hairStyle = 'bun'; o.hair = 0x3a3028; o.beard = 0x8a8070; o.topStyle = 'robe'; o.top = KS.pick([0xe86412, 0xf2a516, 0xd84315]); o.bottom = o.top; o.bottomStyle = 'skirt'; o.tilak = true; o.shoes = o.skin; break;
+      case 'porter':
+        o.top = P_([0x5a5a4a, 0x6a5a40, 0x4a4a52]); o.bottom = P_([0x3a3328, 0x4a4a42]); o.bottomStyle = 'shorts'; o.bag = 'doko'; o.hat = c(0.5) ? 'topi' : null; o.shoes = o.skin; break;
+      case 'farmer':
+        if (c(0.5)) { o.topStyle = 'blouse'; o.top = P_([0x7a1f1f, 0x2a4a3a, 0x6a3a6a]); o.bottomStyle = 'sari'; o.bottom = P_([0x5a2a1a, 0x2a3a2a, 0x3a2a4a]); o.hairStyle = 'braid'; o.patuka = 0xe9dcc4; o.tika = true; }
+        else { o.top = P_([0xe9e1cf, 0x8a7a60, 0x5a6a5a]); o.bottom = P_([0x3a3328, 0x4a4a42]); o.bottomStyle = 'shorts'; o.hat = c(0.5) ? 'topi' : null; o.gamcha = 0xc8102e; }
+        o.bag = c(0.5) ? 'doko' : null; o.shoes = o.skin; break;
+      case 'police':
+        o.top = 0x3a5a8a; o.bottom = 0x1a2440; o.hat = 'cap'; o.hatColor = 0x1a2440; o.vestHi = true; o.gloves = 0xffffff; o.shoes = 0x111111; break;
+      case 'jogger':
+        o.topStyle = 'tshirt'; o.top = P_([0xc81e1e, 0x1d4fb8, 0xf4f4f4, 0x1f8a4c, 0x333333]); o.bottom = P_([0x222222, 0x23283a]); o.shoes = 0xf4f4f4; o.hat = c(0.3) ? 'cap' : null; o.hatColor = 0x222222; break;
+      case 'kid':
+        o.topStyle = 'tshirt'; o.top = P_([0xd12b2b, 0x1d4fb8, 0xf2c418, 0x1f9a4c, 0xe86412, 0xf4f4f4]); o.bottomStyle = 'shorts'; o.bottom = P_([0x23283a, 0x6b5f4a, 0x2a4a6a]); o.height = 0.62; o.shoes = 0xf4f4f4; break;
+      case 'uthao':
+        o.topStyle = 'jacket'; o.jacket = 0x0f8a7a; o.top = 0xf4f4f4; o.hat = 'helmet'; o.hatColor = 0x0f8a7a; break;
+      default: // man
+        if (c(0.3)) { o.topStyle = 'jacket'; o.jacket = P_(JACKETS); }
+        else if (c(0.25)) o.topStyle = 'tshirt';
+        if (c(0.22)) { o.hat = 'topi'; }
+        if (c(0.12)) o.glasses = true;
+        if (c(0.15)) o.moustache = true;
     }
-    // legs
-    for (const [b] of [[legL], [legR]]) {
-      if (!skirt) b.box(0, -0.9, 0, 0.17, 0.9, 0.2, pants); else b.box(0, -0.9, 0, 0.14, 0.4, 0.16, skin);
-      b.box(0, -0.98, 0.03, 0.19, 0.1, 0.3, shoe);
+    if (o.hat === 'topi') o.hatColor = KS.pick([0xa8323a, 0x2a2a2a, 0x6a2a6a, 0x23315a]);
+    return o;
+  };
+
+  /* ---------------- person builder ---------------- */
+  KS.makePerson = (kind, cfg) => {
+    const o = cfg || KS.outfitFor(kind);
+    const body = new KS.Builder(), legL = new KS.Builder(), legR = new KS.Builder(), armL = new KS.Builder(), armR = new KS.Builder();
+    const skin = o.skin, top = o.topStyle, longTop = top === 'kurta' || top === 'daura' || top === 'robe';
+    const skirt = o.bottomStyle === 'sari' || o.bottomStyle === 'skirt';
+    const lip = new T.Color(skin).multiplyScalar(0.72).getHex(), shade = new T.Color(skin).multiplyScalar(0.88).getHex();
+    // legs (pivot at hip, y = 0.92)
+    for (const b of [legL, legR]) {
+      if (skirt) b.cyl(0, -0.88, 0, 0.045, 0.4, skin, 8, 1.1);
+      else if (o.bottomStyle === 'shorts') { b.cyl(0, -0.5, 0, 0.075, 0.5, o.bottom, 8, 1.15); b.cyl(0, -0.88, 0, 0.048, 0.4, skin, 8, 1.3); }
+      else b.cyl(0, -0.88, 0, 0.058, 0.9, o.bottom, 8, 1.45);
+      b.ell(0, -0.9, 0.05, 0.055, 0.04, 0.13, o.shoes, 8);
     }
-    // body
-    body.box(0, 0.88, 0, 0.42, 0.66, 0.25, shirt);
-    if (skirt) body.cyl(0, 0.08, 0, 0.3, 0.84, skirt, 10, 0.68);
-    else body.box(0, 0.82, 0, 0.4, 0.14, 0.24, pants);
-    if (robe) body.box(0.05, 0.92, 0, 0.47, 0.55, 0.27, robe, 0, 0, 0.35); // shoulder wrap
-    if (kind === 'woman' && !skirt) body.box(0, 0.6, 0, 0.44, 0.4, 0.27, shirt); // long kurta
-    if (kind === 'police') { body.box(0, 0.96, 0.0, 0.44, 0.3, 0.27, 0xd8ff3a); }
-    body.box(0, 1.53, 0, 0.1, 0.06, 0.1, skin); // neck
-    body.box(0, 1.58, 0, 0.24, 0.27, 0.24, skin); // head
-    body.box(-0.06, 1.69, 0.121, 0.04, 0.03, 0.01, 0x111111); body.box(0.06, 1.69, 0.121, 0.04, 0.03, 0.01, 0x111111); // eyes
-    if (hair !== skin) {
-      body.box(0, 1.8, -0.01, 0.26, 0.08, 0.26, hair);
-      body.box(0, 1.6, -0.12, 0.26, 0.22, 0.04, hair);
-      if (longHair) body.box(0, 1.25, -0.14, 0.2, 0.5, 0.05, hair);
-      if (bun) body.sphere(0, 1.9, -0.04, 0.1, hair, 1, 6);
+    // hips & torso
+    if (!skirt) body.ecyl(0, 0.84, 0, 0.17, 0.11, 0.16, o.bottom, 10, 1.05);
+    if (skirt) body.cyl(0, 0.04, 0, o.bottomStyle === 'sari' ? 0.25 : 0.22, 0.92, o.bottom, 12, o.bottomStyle === 'sari' ? 0.66 : 0.72);
+    const torsoCol = top === 'jacket' ? o.jacket : o.top;
+    body.ecyl(0, 0.9, 0, 0.165, 0.105, 0.5, torsoCol, 12, 1.2);
+    body.ell(-0.19, 1.37, 0, 0.065, 0.055, 0.07, torsoCol, 8); body.ell(0.19, 1.37, 0, 0.065, 0.055, 0.07, torsoCol, 8);
+    if (top === 'jacket') { body.box(0, 1.02, 0.112, 0.08, 0.34, 0.01, o.top); body.box(0, 0.9, 0.0, 0.36, 0.06, 0.25, new T.Color(o.jacket).multiplyScalar(0.8).getHex()); }
+    if (longTop) body.cyl(0, top === 'robe' ? 0.12 : 0.5, 0, 0.2, top === 'robe' ? 0.8 : 0.42, o.top, 12, 0.85);
+    if (o.coat) { body.ecyl(0, 0.9, 0, 0.172, 0.112, 0.46, o.coat, 12, 1.18); body.box(0, 1.05, 0.118, 0.06, 0.3, 0.01, o.top); }
+    if (o.vest) body.ecyl(0, 0.95, 0.005, 0.168, 0.108, 0.38, o.vest, 12, 1.15);
+    if (top === 'robe') body.box(0.05, 0.98, 0, 0.42, 0.5, 0.25, o.top, 0, 0, 0.42); // shoulder wrap
+    if (o.vestHi) { body.ecyl(0, 0.95, 0.005, 0.17, 0.112, 0.38, 0xd8ff3a, 12, 1.15); body.box(0, 1.1, 0.115, 0.34, 0.03, 0.01, 0xd0d0d0); }
+    if (o.tie) body.box(0, 1.02, 0.113, 0.035, 0.33, 0.012, o.tie);
+    if (o.lanyard) { body.box(0, 1.08, 0.114, 0.012, 0.24, 0.01, 0x1d4fb8); body.box(0, 0.95, 0.116, 0.06, 0.08, 0.01, 0xf4f4f4); }
+    if (o.scarf) { body.box(0.02, 1.02, 0.0, 0.07, 0.46, 0.226, o.scarf, 0, 0, -0.5); body.box(-0.16, 0.92, -0.06, 0.06, 0.46, 0.02, o.scarf); }
+    if (o.patuka) body.ecyl(0, 0.88, 0, 0.175, 0.118, 0.12, o.patuka, 12);
+    if (o.gamcha) body.box(-0.16, 1.2, 0, 0.1, 0.3, 0.22, o.gamcha);
+    // neck & head
+    body.cyl(0, 1.41, 0, 0.048, 0.09, skin, 8);
+    body.ell(0, 1.6, 0.005, 0.098, 0.122, 0.108, skin, 14);
+    body.ell(-0.098, 1.6, -0.005, 0.02, 0.035, 0.025, shade, 6); body.ell(0.098, 1.6, -0.005, 0.02, 0.035, 0.025, shade, 6); // ears
+    for (const s of [-1, 1]) {
+      body.ell(s * 0.038, 1.625, 0.093, 0.019, 0.011, 0.008, 0xf6f3ee, 8);
+      body.ell(s * 0.038, 1.625, 0.099, 0.008, 0.008, 0.004, 0x2a1a10, 6);
+      body.box(s * 0.04, 1.648, 0.096, 0.036, 0.008, 0.01, new T.Color(o.hair === skin ? 0x2a1a10 : o.hair).getHex()); // brows
     }
-    if (beard) body.box(0, 1.46, 0.1, 0.2, 0.22, 0.08, beard);
-    if (kind === 'sadhu') body.box(0, 1.74, 0.122, 0.12, 0.04, 0.01, 0xf2c418);
-    if (kind === 'woman') body.box(0, 1.71, 0.122, 0.025, 0.025, 0.01, 0xc8102e); // tika
-    if (topi) { // dhaka topi
-      const tc = KS.pick([0xb81c1c, 0x2a2a2a, 0x7a1fa2, 0x1d4fb8]);
-      body.box(0, 1.84, 0, 0.25, 0.13, 0.25, tc, 0, -0.12);
-      body.box(0.0, 1.9, 0.02, 0.2, 0.02, 0.2, KS.pick([0xf2c418, 0xffffff, 0x1f9a4c]), 0, -0.12);
+    body.ell(0, 1.59, 0.105, 0.014, 0.024, 0.016, shade, 6); // nose
+    body.box(0, 1.545, 0.098, 0.04, 0.01, 0.008, lip); // mouth
+    if (o.moustache) body.box(0, 1.562, 0.1, 0.05, 0.012, 0.008, 0x1a1410);
+    if (o.beard) body.ell(0, 1.51, 0.06, 0.08, 0.08, 0.06, o.beard, 8);
+    if (o.tika) body.ell(0, 1.656, 0.103, 0.008, 0.008, 0.004, 0xc8102e, 6);
+    if (o.tilak) body.box(0, 1.665, 0.104, 0.05, 0.014, 0.006, 0xf2c418);
+    if (o.glasses) { body.box(0, 1.625, 0.106, 0.13, 0.03, 0.01, 0x111111); }
+    // hair
+    const H = o.hair;
+    if (o.hairStyle !== 'bald') {
+      body.ell(0, 1.64, -0.008, 0.106, 0.1, 0.112, H, 12);
+      body.ell(0, 1.69, 0.035, 0.094, 0.045, 0.078, H, 10); // fringe line
+      if (o.hairStyle === 'long') body.box(0, 1.26, -0.08, 0.2, 0.42, 0.06, H);
+      if (o.hairStyle === 'braid') { body.cyl(0, 1.0, -0.11, 0.028, 0.52, H, 6, 1.4); body.ell(0, 0.98, -0.11, 0.022, 0.03, 0.022, 0xc8102e, 6); }
+      if (o.hairStyle === 'bun') body.ell(0, 1.66, -0.12, 0.06, 0.06, 0.06, H, 8);
     }
-    if (cap) { body.box(0, 1.82, 0, 0.27, 0.1, 0.27, cap); body.box(0, 1.84, 0.16, 0.24, 0.03, 0.12, cap); }
-    if (pack) body.box(0, 0.95, -0.2, 0.36, tourist ? 0.62 : 0.4, 0.16, pack);
-    if (doko) { body.cyl(0, 0.95, -0.32, 0.26, 0.6, 0xa0784a, 8, 1.35); for (let i = 0; i < 3; i++) body.box(KS.r(-0.1, 0.1), 1.45, -0.32, 0.18, 0.15, 0.18, KS.pick([0x5cae3a, 0xe8d23a, 0xd12b2b])); body.box(0, 1.72, 0.0, 0.26, 0.03, 0.26, 0x7a5a3a); }
-    // arms
+    if (o.hat === 'topi') { body.ecyl(0, 1.68, -0.005, 0.104, 0.11, 0.1, o.hatColor, 10, 0.86, -0.12); body.ecyl(0, 1.7, 0.0, 0.106, 0.112, 0.05, KS.pick([0xf2c418, 0xe8e0d0, 0x1f9a4c]), 10, 0.95, -0.12); }
+    if (o.hat === 'cap') { body.sphere(0, 1.66, 0, 0.112, o.hatColor, 0.72, 10, true); body.box(0, 1.68, 0.11, 0.18, 0.015, 0.11, o.hatColor); }
+    if (o.hat === 'sunhat') { body.cyl(0, 1.68, 0, 0.19, 0.015, o.hatColor, 12); body.cyl(0, 1.69, 0, 0.11, 0.09, o.hatColor, 10, 0.9); }
+    if (o.hat === 'beanie') body.sphere(0, 1.64, 0, 0.115, o.hatColor, 0.95, 10, true);
+    if (o.hat === 'helmet') { body.sphere(0, 1.6, 0, 0.145, o.hatColor, 1.05, 12); body.box(0, 1.57, 0.12, 0.2, 0.08, 0.04, 0x111418); }
+    if (o.bag === 'backpack') { body.box(0, 0.98, -0.17, 0.3, o.kind === 'tourist' ? 0.55 : 0.38, 0.14, o.bagColor || 0x333333); body.box(0, 1.1, -0.245, 0.2, 0.1, 0.02, 0x222222); }
+    if (o.bag === 'doko') { body.cyl(0, 0.95, -0.3, 0.2, 0.62, 0xa0784a, 10, 1.4); for (let i = 0; i < 3; i++) body.ell(KS.r(-0.1, 0.1), 1.55, -0.3, 0.1, 0.07, 0.1, KS.pick([0x5cae3a, 0xe8d23a, 0xd12b2b, 0x8a6a3a]), 6); body.box(0, 1.68, 0.02, 0.22, 0.025, 0.22, 0x7a5a3a); }
+    if (o.bag === 'handbag') body.box(0.2, 0.86, 0.02, 0.06, 0.18, 0.22, KS.pick([0x3a2414, 0x7a1f3a, 0x111111]));
+    // arms (pivot at shoulder y = 1.42)
+    const sleeveCol = top === 'jacket' ? o.jacket : o.coat || o.top, shortSleeve = top === 'tshirt' || top === 'blouse';
     for (const b of [armL, armR]) {
-      b.box(0, -0.58, 0, 0.12, 0.6, 0.14, robe && b === armL ? robe : shirt);
-      b.box(0, -0.68, 0, 0.1, 0.1, 0.11, kind === 'police' ? 0xffffff : skin);
+      if (shortSleeve) { b.cyl(0, -0.24, 0, 0.05, 0.25, sleeveCol, 8, 1.15); b.cyl(0, -0.62, 0, 0.036, 0.4, skin, 8, 1.3); }
+      else b.cyl(0, -0.62, 0, 0.04, 0.63, top === 'robe' && b === armR ? skin : sleeveCol, 8, 1.35);
+      b.ell(0, -0.66, 0.01, 0.034, 0.05, 0.026, o.gloves || skin, 6);
     }
-    const root = new T.Group();
-    const mk = (b, x, y) => { const m = new T.Mesh(b.build(), KS.M.vc); m.position.set(x, y, 0); m.castShadow = true; root.add(m); return m; };
+    if (o.cane) armR.cyl(0, -1.4, 0.04, 0.012, 0.8, 0x5a3a22, 5);
+    const root = new T.Group(), inner = new T.Group(); root.add(inner);
+    const mk = (b, x, y) => { const m = new T.Mesh(b.build(), KS.M.vc); m.position.set(x, y, 0); m.castShadow = true; inner.add(m); return m; };
     const torso = mk(body, 0, 0);
-    const lL = mk(legL, -0.1, 0.9), lR = mk(legR, 0.1, 0.9), aL = mk(armL, -0.28, 1.48), aR = mk(armR, 0.28, 1.48);
-    if (kind === 'kid') root.scale.setScalar(0.66);
-    if (kind === 'elder') { torso.rotation.x = 0.12; }
-    return { root, torso, legL: lL, legR: lR, armL: aL, armR: aR, kind, phase: KS.r(0, 6), skirt: !!skirt };
+    const lL = mk(legL, -0.085, 0.92), lR = mk(legR, 0.085, 0.92), aL = mk(armL, -0.2, 1.41), aR = mk(armR, 0.2, 1.41);
+    inner.scale.set(o.build, o.height, o.build);
+    if (kind === 'kid') inner.scale.setScalar(0.66);
+    if (kind === 'elder' || kind === 'grandma') torso.rotation.x = 0.1;
+    if (skirt) { lL.position.z = lR.position.z = 0; }
+    return { root, inner, torso, legL: lL, legR: lR, armL: aL, armR: aR, kind, phase: KS.r(0, 6), skirt, cfg: o };
   };
   KS.animWalk = (p, dt, speed) => {
-    p.phase += dt * (2.2 + speed * 2.4);
-    const a = Math.min(0.75, 0.25 + speed * 0.12) * (speed > 0.05 ? 1 : 0);
-    const s = Math.sin(p.phase) * a;
-    p.legL.rotation.x = s; p.legR.rotation.x = -s; p.armL.rotation.x = -s * 0.8; p.armR.rotation.x = s * 0.8;
-    p.armL.rotation.z = 0; p.armR.rotation.z = 0;
-    p.torso.position.y = Math.abs(Math.cos(p.phase)) * 0.04 * (a > 0 ? 1 : 0);
+    p.phase += dt * (2.2 + speed * 2.2);
+    const a = Math.min(0.85, 0.22 + speed * 0.11) * (speed > 0.05 ? 1 : 0), s = Math.sin(p.phase) * a;
+    p.legL.rotation.x = s * (p.skirt ? 0.4 : 1); p.legR.rotation.x = -s * (p.skirt ? 0.4 : 1);
+    if (!p.busyArm) { p.armL.rotation.x = -s * 0.75; p.armR.rotation.x = s * 0.75; p.armL.rotation.z = 0.06; p.armR.rotation.z = -0.06; }
+    p.torso.position.y = Math.abs(Math.cos(p.phase)) * 0.035 * (a > 0 ? 1 : 0);
+    p.torso.rotation.y = Math.sin(p.phase) * 0.05 * (a > 0 ? 1 : 0);
   };
-  KS.animSit = (p) => { p.legL.rotation.x = p.legR.rotation.x = -1.45; p.armL.rotation.x = p.armR.rotation.x = -0.5; p.root.children.forEach((c) => (c.position.y -= 0)); };
+  KS.animSit = (p) => { p.legL.rotation.x = p.legR.rotation.x = -1.45; p.armL.rotation.x = p.armR.rotation.x = -0.5; };
+  KS.animPunch = (p, t) => { p.armR.rotation.x = -1.55 * Math.sin(Math.min(1, t) * Math.PI); p.armR.rotation.z = 0.2; };
 
   /* ---------------- pedestrian system ---------------- */
   const Peds = (KS.Peds = { list: [] });
@@ -133,7 +216,7 @@
   }
   function cornerS(R, k) { const w = R.x1 - R.x0, d = R.z1 - R.z0; return [0, w, w + d, 2 * w + d][k]; }
   const CROSS = { 0: [[0, -1, 3], [-1, 0, 1]], 1: [[0, -1, 2], [1, 0, 0]], 2: [[0, 1, 1], [1, 0, 3]], 3: [[0, 1, 0], [-1, 0, 2]] };
-  const AMBIENT_KINDS = ['man', 'man', 'woman', 'woman', 'elder', 'student', 'tourist', 'porter', 'man', 'woman', 'kid', 'monk'];
+  const AMBIENT_KINDS = ['man', 'man', 'woman', 'woman', 'elder', 'student', 'tourist', 'porter', 'man', 'woman', 'kid', 'monk', 'office', 'office', 'woman', 'grandma', 'student'];
 
   function placeAmbient(ped, px, pz, minD, maxD) {
     for (let tries = 0; tries < 30; tries++) {
@@ -146,62 +229,53 @@
     }
     return false;
   }
-
+  const add = (scene, ped) => { ped.home = ped.mode; scene.add(ped.p.root); Peds.list.push(ped); return ped; };
   Peds.init = (scene, count, px, pz) => {
     Peds.scene = scene;
-    // ambient walkers that follow the player around the city
     for (let i = 0; i < count; i++) {
       const kind = KS.pick(AMBIENT_KINDS), p = KS.makePerson(kind);
-      const ped = { p, kind, mode: 'walk', dir: KS.chance(0.5) ? 1 : -1, lat: KS.r(-1.3, 1.3), speed: kind === 'elder' ? 0.8 : KS.r(1.0, 1.6), ambient: true, x: 0, z: 0, h: 0, y: 0, t: 0 };
-      if (kind === 'tourist') ped.speed *= 0.85;
-      placeAmbient(ped, px, pz, 10, 240);
-      scene.add(p.root); Peds.list.push(ped);
+      add(scene, { p, kind, mode: 'walk', dir: KS.chance(0.5) ? 1 : -1, lat: KS.r(-1.3, 1.3), speed: kind === 'elder' || kind === 'grandma' ? 0.75 : kind === 'office' ? 1.6 : KS.r(1.0, 1.5), ambient: true, x: 0, z: 0, h: 0, y: 0, t: 0 });
+      placeAmbient(Peds.list[Peds.list.length - 1], px, pz, 10, 240);
     }
-    // pilgrims circling stupas (clockwise kora)
     for (const k of KS.koras) for (let i = 0; i < k.n; i++) {
       const kind = KS.pick(k.kinds), p = KS.makePerson(kind);
-      const ped = { p, kind, mode: 'kora', k, a: KS.r(0, Math.PI * 2), rr: KS.r(k.r0, k.r1), speed: KS.r(0.9, 1.3), x: 0, z: 0, h: 0, y: k.y || 0.15, t: 0 };
-      scene.add(p.root); Peds.list.push(ped);
+      add(scene, { p, kind, mode: 'kora', k, a: KS.r(0, Math.PI * 2), rr: KS.r(k.r0, k.r1), speed: KS.r(0.9, 1.3), x: 0, z: 0, h: 0, y: k.y || 0.15, t: 0 });
     }
-    // plaza wanderers
     for (const z of KS.plazas) for (let i = 0; i < z.n; i++) {
-      const kind = KS.pick(z.kinds || ['man', 'woman', 'tourist', 'tourist', 'elder', 'kid', 'porter']), p = KS.makePerson(kind);
-      const ped = { p, kind, mode: 'plaza', zone: z, x: KS.r(z.x0, z.x1), z: KS.r(z.z0, z.z1), tx: 0, tz: 0, wait: KS.r(0, 4), speed: KS.r(0.8, 1.4), h: 0, y: 0.15, t: 0 };
+      const kind = KS.pick(z.kinds || ['man', 'woman', 'tourist', 'tourist', 'elder', 'kid', 'porter']), p = KS.makePerson(kind === 'jogger' ? 'jogger' : kind);
+      const ped = add(scene, { p, kind, mode: 'plaza', zone: z, x: KS.r(z.x0, z.x1), z: KS.r(z.z0, z.z1), tx: 0, tz: 0, wait: KS.r(0, 4), speed: kind === 'jogger' ? 2.6 : KS.r(0.8, 1.4), h: 0, y: 0.15, t: 0 });
       ped.tx = ped.x; ped.tz = ped.z;
-      scene.add(p.root); Peds.list.push(ped);
     }
-    // people sitting on temple steps, sadhus at the ghats
     for (const s of KS.sitSpots) {
-      const kind = s[3] || KS.pick(['man', 'elder', 'woman', 'tourist', 'man']), p = KS.makePerson(kind);
-      const ped = { p, kind, mode: 'sit', x: s[0], z: s[1], y: s[2], h: Math.PI + KS.r(-0.4, 0.4), t: 0 };
-      if (kind === 'sadhu') ped.h = Math.PI;
-      KS.animSit(p); scene.add(p.root); Peds.list.push(ped);
+      const kind = s[3] || KS.pick(['man', 'elder', 'woman', 'tourist', 'man', 'grandma']), p = KS.makePerson(kind);
+      KS.animSit(p); add(scene, { p, kind, mode: 'sit', x: s[0], z: s[1], y: s[2], h: Math.PI + KS.r(-0.4, 0.4), t: 0 });
     }
-    // traffic police on their platforms at busy junctions
+    for (const [bx, bz, ry] of (KS.benchSpots || [])) {
+      if (!KS.chance(0.45)) continue;
+      const p = KS.makePerson(KS.pick(['elder', 'woman', 'man', 'student', 'grandma'])); KS.animSit(p);
+      add(scene, { p, kind: p.kind, mode: 'sit', x: bx, z: bz, y: 0.05, h: ry, t: 0 });
+    }
     Peds.police = [];
     for (const [i, j] of [[6, 5], [5, 3], [6, 8], [4, 5], [8, 6], [10, 4], [3, 7]]) {
       const x = G.line(i), z = G.line(j), p = KS.makePerson('police');
       const b = new KS.Builder(); b.cyl(x, 0, z, 1.1, 0.5, 0xe8e2d4, 12); b.cyl(x, 0.5, z, 0.06, 2.6, 0x777777, 4); b.cyl(x, 3.1, z, 1.5, 0.5, 0xd12b2b, 10, 0.05);
       scene.add(KS.mesh(b)); KS.addCircle(x, z, 1.1, 0.5);
-      const ped = { p, kind: 'police', mode: 'police', x: x + 0.3, z, y: 0.5, h: 0, t: KS.r(0, 6) };
-      scene.add(p.root); Peds.list.push(ped); Peds.police.push(ped);
+      Peds.police.push(add(scene, { p, kind: 'police', mode: 'police', x: x + 0.3, z, y: 0.5, h: 0, t: KS.r(0, 6) }));
     }
-    // football at Tundikhel
     if (KS.football) {
       const ball = new T.Mesh(new T.SphereGeometry(0.22, 10, 8), new T.MeshLambertMaterial({ color: 0xffffff }));
       ball.position.set(KS.football.x, 0.36, KS.football.z); scene.add(ball);
       Peds.ball = { m: ball, vx: 0, vz: 0, x: KS.football.x, z: KS.football.z };
       for (let i = 0; i < 8; i++) {
         const p = KS.makePerson('kid');
-        const ped = { p, kind: 'kid', mode: 'football', x: KS.football.x + KS.r(-10, 10), z: KS.football.z + KS.r(-10, 10), h: 0, y: 0.15, speed: KS.r(2.2, 3.2), t: 0, home: [KS.football.x + KS.r(-14, 14), KS.football.z + KS.r(-12, 12)] };
-        scene.add(p.root); Peds.list.push(ped);
+        add(scene, { p, kind: 'kid', mode: 'football', x: KS.football.x + KS.r(-10, 10), z: KS.football.z + KS.r(-10, 10), h: 0, y: 0.15, speed: KS.r(2.2, 3.2), t: 0, homeXY: [KS.football.x + KS.r(-14, 14), KS.football.z + KS.r(-12, 12)] });
       }
     }
   };
 
   const tmp = { x: 0, z: 0, h: 0 };
   Peds.update = (dt, ctx) => {
-    const { px, pz, cx, cz, time } = ctx;
+    const { px, pz, cx, cz } = ctx;
     const ball = Peds.ball;
     if (ball) {
       ball.x += ball.vx * dt; ball.z += ball.vz * dt; ball.vx *= 0.985; ball.vz *= 0.985;
@@ -213,21 +287,42 @@
     let chaser = null, best = 1e9;
     for (const ped of Peds.list) {
       const dxp = ped.x - cx, dzp = ped.z - cz, d2 = dxp * dxp + dzp * dzp;
-      if (ped.ambient && (ped.x - px) ** 2 + (ped.z - pz) ** 2 > 270 * 270) { placeAmbient(ped, px, pz, 140, 240); }
+      if (ped.ambient && !ped.fight && (ped.x - px) ** 2 + (ped.z - pz) ** 2 > 270 * 270) { placeAmbient(ped, px, pz, 140, 240); ped.down = 0; ped.flee = 0; ped.p.inner.rotation.x = 0; }
       const vis = d2 < 210 * 210;
       ped.p.root.visible = vis;
       if (!vis && !ped.ambient) continue;
       let moving = 0;
-      if (ped.flee > 0) { // knocked aside / dodging a vehicle
-        ped.flee -= dt; ped.x += ped.fvx * dt; ped.z += ped.fvz * dt; ped.fvx *= 0.9; ped.fvz *= 0.9; moving = 3;
-        const c = KS.collide(ped.x, ped.z, 0.35, ped.y, 1.3); ped.x = c.x; ped.z = c.z;
+      const pr = ped.p.root;
+      if (ped.down > 0) { // knocked over: lie, then get up
+        ped.down -= dt;
+        ped.p.inner.rotation.x = KS.lerp(ped.p.inner.rotation.x, -1.5, Math.min(1, dt * 10)); ped.p.inner.position.y = 0.12;
+        if (ped.down <= 0) {
+          ped.p.inner.rotation.x = 0; ped.p.inner.position.y = 0;
+          if (ped.kind !== 'grandma' && ped.kind !== 'kid' && ped.kind !== 'elder' && ped.kind !== 'monk' && KS.chance(0.4)) { ped.fight = 9; KS.say(pr, KS.pick(LINES.fight), 2, 'angry'); }
+          else { ped.flee = 4; ped.fvx = (ped.x - px); ped.fvz = (ped.z - pz); const m = Math.hypot(ped.fvx, ped.fvz) || 1; ped.fvx *= 5 / m; ped.fvz *= 5 / m; KS.say(pr, KS.pick(LINES.flee), 2, 'angry'); }
+        }
+        pr.position.set(ped.x, ped.y || 0.06, ped.z); continue;
+      }
+      if (ped.fight > 0) { // fight back
+        ped.fight -= dt; ped.punchT = (ped.punchT || 0) - dt;
+        const dx = px - ped.x, dz = pz - ped.z, d = Math.hypot(dx, dz);
+        ped.h = Math.atan2(dx, dz);
+        if (d > 18 || KS.Player.vehicle) ped.fight = 0;
+        else if (d > 1.1) { ped.x += (dx / d) * 3.2 * dt; ped.z += (dz / d) * 3.2 * dt; moving = 3.2; }
+        else if (ped.punchT <= 0) { ped.punchT = 1.1; ped.punchA = 0; KS.Game && KS.Game.hurt(KS.r(6, 11), ped); }
+        if (ped.punchA != null) { ped.punchA += dt * 4; ped.p.busyArm = true; KS.animPunch(ped.p, ped.punchA); if (ped.punchA >= 1) { ped.punchA = null; ped.p.busyArm = false; } }
+        const c = KS.collide(ped.x, ped.z, 0.35, ped.y || 0, 1.0); ped.x = c.x; ped.z = c.z;
+        if (ped.fight <= 0) { ped.flee = 2; ped.fvx = -dx; ped.fvz = -dz; }
+      } else if (ped.flee > 0) {
+        ped.flee -= dt; ped.x += ped.fvx * dt; ped.z += ped.fvz * dt; moving = Math.hypot(ped.fvx, ped.fvz);
+        ped.h = Math.atan2(ped.fvx, ped.fvz);
+        const c = KS.collide(ped.x, ped.z, 0.35, ped.y || 0, 1.3); ped.x = c.x; ped.z = c.z;
         if (ped.flee <= 0 && ped.mode === 'walk') { const o = perimPos(ped, tmp); ped.x = o.x; ped.z = o.z; }
       } else switch (ped.mode) {
         case 'walk': {
           if (ped.wait > 0) { ped.wait -= dt; break; }
           const R = ped.rect, w = R.x1 - R.x0, d = R.z1 - R.z0, L = 2 * (w + d);
           const s0 = ped.s; ped.s += ped.dir * ped.speed * dt; moving = ped.speed;
-          // reaching a corner: maybe cross the road
           for (let k = 0; k < 4; k++) {
             const cs = cornerS(R, k), a = ((s0 - cs) % L + L) % L, b = ((ped.s - cs) % L + L) % L;
             const passed = ped.dir > 0 ? (a > L - 2 && b < 2) : (a < 2 && b > L - 2);
@@ -239,7 +334,7 @@
                 ped.c = nc; ped.r = nr; ped.rect = nR; ped.s = cornerS(nR, opt[2]);
                 const o2 = perimPos(ped, tmp); ped.toX = o2.x; ped.toZ = o2.z; ped.ct = 0;
                 ped.cLen = Math.hypot(ped.toX - ped.fromX, ped.toZ - ped.fromZ);
-                if (ped.cLen > 40) { ped.mode = 'walk'; }
+                if (ped.cLen > 40) ped.mode = 'walk';
               }
               break;
             }
@@ -249,8 +344,10 @@
           break;
         }
         case 'cross': {
-          // wait at the kerb if a vehicle is close
-          if (ped.ct < 0.05 && KS.Traffic && KS.Traffic.nearCount(ped.x, ped.z, 13) > 0) { ped.h = Math.atan2(ped.toX - ped.fromX, ped.toZ - ped.fromZ); break; }
+          if (ped.ct < 0.05) {
+            const sig = KS.Traffic && KS.Traffic.signalAt((ped.fromX + ped.toX) / 2, (ped.fromZ + ped.toZ) / 2);
+            if ((KS.Traffic && KS.Traffic.nearCount(ped.x, ped.z, 13) > 0) || (sig && sig.state[Math.abs(ped.toX - ped.fromX) > 1 ? 'ns' : 'ew'] === 'g')) { ped.h = Math.atan2(ped.toX - ped.fromX, ped.toZ - ped.fromZ); break; }
+          }
           ped.ct += (ped.speed * 1.15 * dt) / Math.max(1, ped.cLen); moving = ped.speed * 1.2;
           const t = Math.min(1, ped.ct);
           ped.x = ped.fromX + (ped.toX - ped.fromX) * t; ped.z = ped.fromZ + (ped.toZ - ped.fromZ) * t;
@@ -259,26 +356,27 @@
           break;
         }
         case 'kora': {
-          const k = ped.k; ped.a += (ped.speed / ped.rr) * dt; moving = ped.speed; // clockwise on the map (east -> south -> west)
+          const k = ped.k; ped.a += (ped.speed / ped.rr) * dt; moving = ped.speed;
           ped.x = k.x + Math.cos(ped.a) * ped.rr; ped.z = k.z + Math.sin(ped.a) * ped.rr;
           ped.h = Math.atan2(-Math.sin(ped.a), Math.cos(ped.a));
-          if (ped.kind === 'monk' || ped.kind === 'elder') { ped.p.armR.rotation.x = -0.9; }
+          if (ped.kind === 'monk' || ped.kind === 'elder' || ped.kind === 'grandma') { ped.p.busyArm = true; ped.p.armR.rotation.x = -0.9; }
           break;
         }
         case 'plaza': {
           const z = ped.zone;
           if (ped.wait > 0) { ped.wait -= dt; break; }
           const dx = ped.tx - ped.x, dz = ped.tz - ped.z, d = Math.hypot(dx, dz);
-          if (d < 0.5) { ped.tx = KS.r(z.x0, z.x1); ped.tz = KS.r(z.z0, z.z1); ped.wait = KS.r(0.5, 6); break; }
+          if (d < 0.5) { ped.tx = KS.r(z.x0, z.x1); ped.tz = KS.r(z.z0, z.z1); ped.wait = ped.kind === 'jogger' ? 0 : KS.r(0.5, 6); break; }
           const sp = ped.speed; ped.x += (dx / d) * sp * dt; ped.z += (dz / d) * sp * dt; moving = sp;
           const c = KS.collide(ped.x, ped.z, 0.35, ped.y, 1.0); if (c.hit) { ped.tx = KS.r(z.x0, z.x1); ped.tz = KS.r(z.z0, z.z1); } ped.x = c.x; ped.z = c.z;
           ped.h = KS.angLerp(ped.h, Math.atan2(dx, dz), Math.min(1, dt * 6));
+          if (z.y === null) ped.y = KS.heightAt(ped.x, ped.z) + 0.02;
           break;
         }
         case 'football': {
           const b = Peds.ball, dx = b.x - ped.x, dz = b.z - ped.z, d = Math.hypot(dx, dz);
           if (d < best) { best = d; chaser = ped; }
-          const tx = ped === Peds.lastChaser ? b.x : ped.home[0], tz = ped === Peds.lastChaser ? b.z : ped.home[1];
+          const tx = ped === Peds.lastChaser ? b.x : ped.homeXY[0], tz = ped === Peds.lastChaser ? b.z : ped.homeXY[1];
           const ex = tx - ped.x, ez = tz - ped.z, e = Math.hypot(ex, ez);
           if (e > 0.6) { const sp = ped === Peds.lastChaser ? ped.speed : 1; ped.x += (ex / e) * sp * dt; ped.z += (ez / e) * sp * dt; moving = sp; ped.h = Math.atan2(ex, ez); }
           if (d < 0.7 && Math.hypot(b.vx, b.vz) < 4) { const a = KS.r(0, Math.PI * 2), f = KS.r(6, 12); b.vx = Math.cos(a) * f; b.vz = Math.sin(a) * f; if (KS.chance(0.1)) KS.say(ped.p.root, KS.pick(LINES.kid), 1.5); }
@@ -286,30 +384,51 @@
         }
         case 'police': {
           ped.t += dt; ped.h = Math.floor(ped.t / 6) * (Math.PI / 2);
-          ped.p.armR.rotation.z = -1.4 + Math.sin(ped.t * 5) * 0.4; ped.p.armL.rotation.x = Math.sin(ped.t * 2.5) * 0.9 - 0.4;
+          ped.p.busyArm = true; ped.p.armR.rotation.z = -1.4 + Math.sin(ped.t * 5) * 0.4; ped.p.armL.rotation.x = Math.sin(ped.t * 2.5) * 0.9 - 0.4;
+          if (Math.floor(ped.t * 0.5) !== Math.floor((ped.t - dt) * 0.5) && d2 < 900 && KS.chance(0.35)) KS.audio && KS.audio.whistle(Math.max(0.1, 1 - Math.sqrt(d2) / 30));
           break;
         }
       }
-      const pr = ped.p.root;
-      const gy = ped.mode === 'walk' || ped.mode === 'cross' ? (ped.mode === 'walk' ? 0.22 : 0.06) : ped.y;
+      const gy = ped.mode === 'walk' && !ped.flee && !ped.fight ? 0.22 : ped.mode === 'cross' ? 0.06 : ped.y || 0.06;
       pr.position.set(ped.x, gy, ped.z); pr.rotation.y = ped.h;
-      if (ped.mode !== 'sit' && ped.mode !== 'police') KS.animWalk(ped.p, dt, moving);
-      // random chatter close to the player
-      if (d2 < 100 && KS.chance(dt * 0.12)) {
-        const set = ped.kind === 'tourist' ? LINES.tourist : ped.kind === 'monk' ? LINES.monk : ped.kind === 'sadhu' ? LINES.sadhu : ped.kind === 'police' ? LINES.police : ped.kind === 'porter' ? LINES.vendor : LINES.greet;
+      if (ped.mode !== 'sit' && (ped.mode !== 'police' || ped.fight)) KS.animWalk(ped.p, dt, moving);
+      if (d2 < 100 && !ped.fight && KS.chance(dt * 0.1)) {
+        const set = LINES[ped.kind] || (ped.kind === 'porter' ? LINES.vendor : ped.kind === 'grandma' || ped.kind === 'elder' ? LINES.greet : LINES.greet);
         KS.say(pr, KS.pick(set), 2.4);
       }
     }
     if (chaser) Peds.lastChaser = chaser;
   };
-  /** knock pedestrians out of the way of a moving vehicle / running player. returns number hit hard */
+  /** knock a pedestrian down (from a punch or a vehicle) */
+  Peds.knock = (ped, fromX, fromZ, hard) => {
+    ped.down = hard ? 3.2 : 2.2; ped.flee = 0; ped.fight = 0;
+    const dx = ped.x - fromX, dz = ped.z - fromZ, d = Math.hypot(dx, dz) || 1;
+    ped.x += (dx / d) * 0.8; ped.z += (dz / d) * 0.8; ped.h = Math.atan2(-dx, -dz);
+    KS.say(ped.p.root, KS.pick(LINES.hurt), 1.8, 'angry');
+    KS.audio && KS.audio.punch();
+  };
+  Peds.punch = (x, z, h) => {
+    const fx = Math.sin(h), fz = Math.cos(h); let best = null, bd = 1.9;
+    for (const ped of Peds.list) {
+      if (!ped.p.root.visible || ped.down > 0 || ped.mode === 'sit') continue;
+      const dx = ped.x - x, dz = ped.z - z, d = Math.hypot(dx, dz);
+      if (d < bd && (dx * fx + dz * fz) / (d || 1) > 0.3) { bd = d; best = ped; }
+    }
+    if (best) {
+      Peds.knock(best, x, z, false);
+      // bystanders scatter
+      Peds.forEachNear(best.x, best.z, 12, (p) => { if (p !== best && !p.down && !p.fight && p.mode !== 'sit' && p.mode !== 'police' && KS.chance(0.6)) { p.flee = 3; const dx = p.x - x, dz = p.z - z, m = Math.hypot(dx, dz) || 1; p.fvx = (dx / m) * 5; p.fvz = (dz / m) * 5; if (KS.chance(0.3)) KS.say(p.p.root, KS.pick(LINES.flee), 1.6, 'angry'); } });
+    }
+    return best;
+  };
   Peds.bump = (x, z, r, vx, vz, speed) => {
     let hits = 0;
     for (const ped of Peds.list) {
-      if (ped.mode === 'sit' || ped.mode === 'police' || !ped.p.root.visible) continue;
+      if (ped.mode === 'sit' || ped.mode === 'police' || !ped.p.root.visible || ped.down > 0) continue;
       const dx = ped.x - x, dz = ped.z - z, d2 = dx * dx + dz * dz;
       if (d2 > r * r) continue;
       const d = Math.sqrt(d2) || 1;
+      if (speed > 8) { Peds.knock(ped, x, z, true); hits++; continue; }
       if (!(ped.flee > 0)) {
         ped.flee = 0.9; const k = Math.max(3, speed * 0.6);
         ped.fvx = (dx / d) * k + vx * 0.3; ped.fvz = (dz / d) * k + vz * 0.3;
@@ -318,113 +437,123 @@
     }
     return hits;
   };
-  /** obstacles for traffic (pedestrians crossing / walking on road) */
   Peds.forEachNear = (x, z, r, fn) => {
     for (const ped of Peds.list) { if (!ped.p.root.visible) continue; const dx = ped.x - x, dz = ped.z - z; if (dx * dx + dz * dz < r * r) fn(ped); }
   };
 
   /* ---------------- animals ---------------- */
-  const Animals = (KS.Animals = { cows: [], dogs: [], monkeys: [] });
-  function makeCow() {
-    const b = new KS.Builder(), c = KS.pick([0xf2ede4, 0xe8e0d0, 0x8a6a4a, 0x3a3028, 0xd8c8b0]);
-    b.box(0, 0.75, 0, 0.7, 0.75, 1.7, c); b.box(0, 1.42, -0.45, 0.4, 0.22, 0.4, c); // hump
-    b.box(0, 1.15, 0.95, 0.34, 0.36, 0.5, c); b.box(0, 1.08, 1.22, 0.26, 0.2, 0.12, 0xd8a8a0);
-    b.box(-0.18, 1.42, 0.92, 0.05, 0.25, 0.05, 0xd8d0c0, 0, 0, 0.4); b.box(0.18, 1.42, 0.92, 0.05, 0.25, 0.05, 0xd8d0c0, 0, 0, -0.4);
-    b.box(0, 1.0, -0.88, 0.05, 0.55, 0.05, c, 0, 0.25);
-    if (KS.chance(0.5)) b.box(0, 1.05, 0.95, 0.38, 0.06, 0.05, 0xf2a516); // marigold garland
-    const legs = new KS.Builder();
-    for (const [x, z] of [[-0.25, 0.6], [0.25, 0.6], [-0.25, -0.6], [0.25, -0.6]]) legs.box(x, 0, z, 0.14, 0.78, 0.14, c);
-    const g = new T.Group(), body = new T.Mesh(b.build(), KS.M.vc), lg = new T.Mesh(legs.build(), KS.M.vc);
-    body.castShadow = true; g.add(body); g.add(lg);
-    return { g, body, legs: lg };
+  const Animals = (KS.Animals = { cows: [], dogs: [], monkeys: [], goats: [], hens: [] });
+  function quad(o) { // generic four-legged animal with separate legs for walking
+    const b = new KS.Builder(), c = o.color, L = o.len, H = o.h;
+    b.ell(0, H, 0, o.wid / 2, H * 0.32, L / 2, c, 10);
+    if (o.hump) b.ell(0, H * 1.28, L * 0.28, o.wid * 0.3, H * 0.18, L * 0.14, c, 8);
+    b.ell(0, H * 1.12, L * 0.62, o.wid * 0.28, H * 0.22, L * 0.2, c, 8); // head
+    b.ell(0, H * 1.04, L * 0.76, o.wid * 0.18, H * 0.12, L * 0.08, o.muzzle || 0xd8a8a0, 8);
+    for (const s of [-1, 1]) b.ell(s * o.wid * 0.3, H * 1.24, L * 0.58, o.wid * 0.08, H * 0.04, L * 0.04, c, 6); // ears
+    if (o.horns) for (const s of [-1, 1]) b.cyl(s * o.wid * 0.15, H * 1.3, L * 0.58, 0.03, H * 0.3, 0xd8d0c0, 6, 0.3, 0, 0, -s * 0.5);
+    b.cyl(0, H * 0.95, -L * 0.48, 0.025, H * 0.6, c, 5, 0.6, 0, -2.7); // tail
+    if (o.garland) b.ecyl(0, H * 0.9, L * 0.48, o.wid * 0.3, o.wid * 0.12, 0.08, 0xf2a516, 10);
+    if (o.bell) b.sphere(0, H * 0.8, L * 0.5, 0.06, 0xc9a23a, 1, 6);
+    const g = new T.Group(), body = new T.Mesh(b.build(), KS.M.vc); body.castShadow = true; g.add(body);
+    const legs = [];
+    for (const [x, z] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) {
+      const lb = new KS.Builder(); lb.cyl(0, -H * 0.82, 0, o.leg, H * 0.82, c, 6, 1.2); lb.box(0, -H * 0.82, 0, o.leg * 2, 0.04, o.leg * 2.2, 0x2a2a2a);
+      const m = new T.Mesh(lb.build(), KS.M.vc); m.position.set(x * o.wid * 0.3, H * 0.82, z * L * 0.33); g.add(m); legs.push(m);
+    }
+    return { g, body, legs, H };
   }
-  function makeDog() {
-    const b = new KS.Builder(), c = KS.pick([0xb8875a, 0x3a2a1a, 0xd8c0a0, 0x6a4a2a, 0x222222]);
-    b.box(0, 0.38, 0, 0.26, 0.26, 0.7, c); b.box(0, 0.55, 0.42, 0.2, 0.2, 0.26, c); b.box(0, 0.5, 0.6, 0.12, 0.1, 0.12, 0x222222);
-    b.box(-0.07, 0.68, 0.38, 0.05, 0.1, 0.04, c); b.box(0.07, 0.68, 0.38, 0.05, 0.1, 0.04, c); b.box(0, 0.5, -0.4, 0.05, 0.05, 0.3, c, 0, 0.6);
-    for (const [x, z] of [[-0.09, 0.25], [0.09, 0.25], [-0.09, -0.25], [0.09, -0.25]]) b.box(x, 0, z, 0.07, 0.38, 0.07, c);
-    const m = new T.Mesh(b.build(), KS.M.vc); m.castShadow = true; const g = new T.Group(); g.add(m); return { g, m };
-  }
-  function makeMonkey() {
-    const b = new KS.Builder(), c = 0x8a6a4a;
-    b.box(0, 0.25, 0, 0.22, 0.3, 0.4, c); b.box(0, 0.5, 0.22, 0.18, 0.18, 0.16, c); b.box(0, 0.48, 0.31, 0.12, 0.1, 0.02, 0xd8a890);
-    for (const [x, z] of [[-0.08, 0.14], [0.08, 0.14], [-0.08, -0.14], [0.08, -0.14]]) b.box(x, 0, z, 0.06, 0.26, 0.06, c);
-    b.box(0, 0.4, -0.35, 0.04, 0.04, 0.4, c, 0, -0.8);
-    const m = new T.Mesh(b.build(), KS.M.vc); const g = new T.Group(); g.add(m); return { g };
-  }
+  const walkLegs = (a, ph, amp) => { a.legs.forEach((l, i) => (l.rotation.x = Math.sin(ph + (i === 0 || i === 3 ? 0 : Math.PI)) * amp)); };
   Animals.init = (scene) => {
-    // sacred cows resting on or strolling along roads
-    for (let i = 0; i < 18; i++) {
-      const cow = makeCow(), vertical = KS.chance(0.5), li = KS.ri(1, G.N - 1), along = KS.r(-500, 500);
-      const off = KS.r(-4, 4);
+    for (let i = 0; i < 20; i++) {
+      const vertical = KS.chance(0.5), li = KS.ri(1, G.N - 1), along = KS.r(-500, 500), off = KS.r(-4, 4);
       const x = vertical ? G.line(li) + off : along, z = vertical ? along : G.line(li) + off;
-      if (Math.abs(((along - G.O) % G.B) - 45) > 30) { i--; continue; } // keep away from junctions
+      if (Math.abs(((along - G.O) % G.B) - 45) > 30) { i--; continue; }
       const { c, r } = G.blockOf(x, z); if (KS.blockType(c, r) === 'river') { i--; continue; }
-      const lying = KS.chance(0.45);
-      cow.x = x; cow.z = z; cow.h = vertical ? (KS.chance(0.5) ? 0 : Math.PI) : (KS.chance(0.5) ? Math.PI / 2 : -Math.PI / 2) + KS.r(-0.4, 0.4);
-      cow.lying = lying; cow.vertical = vertical; cow.line = G.line(li); cow.t = KS.r(0, 10);
-      if (lying) { cow.legs.visible = false; cow.body.position.y = -0.62; }
+      const cow = quad({ color: KS.pick([0xf2ede4, 0xe8e0d0, 0x8a6a4a, 0x3a3028, 0xd8c8b0]), len: 1.9, wid: 0.75, h: 0.95, leg: 0.06, hump: true, horns: true, garland: KS.chance(0.5), bell: KS.chance(0.6) });
+      Object.assign(cow, { x, z, h: vertical ? (KS.chance(0.5) ? 0 : Math.PI) : (KS.chance(0.5) ? Math.PI / 2 : -Math.PI / 2), vertical, line: G.line(li), t: KS.r(0, 10), mode: KS.pick(['lie', 'lie', 'stand', 'walk', 'walk']), ph: 0, dirSign: KS.chance(0.5) ? 1 : -1 });
+      if (cow.mode === 'lie') { cow.legs.forEach((l) => (l.visible = false)); cow.body.position.y = -0.62; }
       cow.g.position.set(x, 0.05, z); cow.g.rotation.y = cow.h; scene.add(cow.g); Animals.cows.push(cow);
     }
-    // street dogs on the sidewalks
-    for (let i = 0; i < 26; i++) {
-      const d = makeDog(); const c = KS.ri(1, 10), r = KS.ri(0, 10);
+    for (let i = 0; i < 30; i++) {
+      const c = KS.ri(1, 10), r = KS.ri(0, 10);
       if (KS.blockType(c, r) === 'river') { i--; continue; }
       const R = KS.World.blockRect(c, r);
-      d.x = KS.chance(0.5) ? R.x0 + 2 : R.x1 - 2; d.z = KS.r(R.z0 + 3, R.z1 - 3); d.h = KS.r(0, 6); d.home = [d.x, d.z];
-      d.sleep = KS.chance(0.6); d.chase = 0; d.bark = 0; d.t = 0;
-      d.g.position.set(d.x, 0.22, d.z); d.g.rotation.y = d.h; if (d.sleep) { d.m.rotation.z = 1.4; d.m.position.y = 0.12; }
-      scene.add(d.g); Animals.dogs.push(d);
+      const d = quad({ color: KS.pick([0xb8875a, 0x3a2a1a, 0xd8c0a0, 0x6a4a2a, 0x222222, 0xc8a070]), len: 0.75, wid: 0.28, h: 0.42, leg: 0.035, muzzle: 0x222222 });
+      Object.assign(d, { x: KS.chance(0.5) ? R.x0 + 2 : R.x1 - 2, z: KS.r(R.z0 + 3, R.z1 - 3), h: KS.r(0, 6), sleep: KS.chance(0.55), chase: 0, bark: 0, t: 0, ph: 0, big: KS.chance(0.3) });
+      d.homeXY = [d.x, d.z];
+      if (d.sleep) { d.body.rotation.z = 1.3; d.body.position.y = -0.22; d.legs.forEach((l) => (l.visible = false)); }
+      d.g.position.set(d.x, 0.22, d.z); d.g.rotation.y = d.h; scene.add(d.g); Animals.dogs.push(d);
     }
-    // monkeys at Swayambhu and Pashupati
     for (const [x, z, r, y] of KS.monkeySpots) for (let i = 0; i < 9; i++) {
-      const m = makeMonkey(); m.cx = x; m.cz = z; m.r = r; m.y = y; m.x = x + KS.r(-r, r); m.z = z + KS.r(-r, r); m.tx = m.x; m.tz = m.z; m.hop = 0; m.wait = KS.r(0, 3);
+      const m = quad({ color: 0x8a6a4a, len: 0.42, wid: 0.2, h: 0.28, leg: 0.025, muzzle: 0xd8a890 });
+      Object.assign(m, { cx: x, cz: z, r, y, x: x + KS.r(-r, r), z: z + KS.r(-r, r), hop: 0, wait: KS.r(0, 3) }); m.tx = m.x; m.tz = m.z;
       scene.add(m.g); Animals.monkeys.push(m);
     }
-    // pigeon flocks (one instanced mesh)
-    const pg = new KS.Builder(); pg.box(0, 0.1, 0, 0.14, 0.13, 0.26, 0x8f96a0); pg.box(0, 0.2, 0.12, 0.09, 0.09, 0.09, 0x6f7a88); pg.box(0, 0.2, 0.17, 0.03, 0.02, 0.05, 0xd8a040);
+    for (const [x, z] of KS.goatSpots || []) {
+      for (let i = 0; i < 5; i++) { const gt = quad({ color: KS.pick([0xf2ede4, 0x3a3028, 0x8a6a4a]), len: 0.85, wid: 0.32, h: 0.55, leg: 0.03, horns: true, muzzle: 0x3a3028 }); Object.assign(gt, { cx: x, cz: z, x: x + KS.r(-8, 8), z: z + KS.r(-8, 8), t: KS.r(0, 9), wait: 0, ph: 0 }); gt.tx = gt.x; gt.tz = gt.z; scene.add(gt.g); Animals.goats.push(gt); }
+      for (let i = 0; i < 6; i++) { const hb = new KS.Builder(), c = KS.pick([0xf4f4f0, 0x8a4a2a, 0x2a2a2a]); hb.ell(0, 0.22, 0, 0.1, 0.1, 0.14, c, 8); hb.ell(0, 0.34, 0.1, 0.05, 0.06, 0.05, c, 6); hb.box(0, 0.37, 0.12, 0.02, 0.04, 0.04, 0xc81e1e); hb.box(0, 0.32, 0.15, 0.02, 0.015, 0.04, 0xe8a020); hb.box(-0.03, 0, 0, 0.015, 0.14, 0.015, 0xe8a020); hb.box(0.03, 0, 0, 0.015, 0.14, 0.015, 0xe8a020);
+        const g = new T.Group(); g.add(new T.Mesh(hb.build(), KS.M.vc)); const hen = { g, cx: x, cz: z, x: x + KS.r(-6, 6), z: z + KS.r(-6, 6), t: KS.r(0, 5) }; scene.add(g); Animals.hens.push(hen); }
+    }
+    const pg = new KS.Builder(); pg.ell(0, 0.12, 0, 0.07, 0.07, 0.13, 0x8f96a0, 8); pg.ell(0, 0.21, 0.1, 0.045, 0.045, 0.045, 0x6f7a88, 6); pg.box(0, 0.2, 0.15, 0.02, 0.015, 0.04, 0xd8a040); pg.box(0, 0.16, 0.06, 0.08, 0.02, 0.05, 0x5f8a7a);
     const total = KS.pigeonSpots.reduce((a, s) => a + s[2], 0);
     Animals.pigeonMesh = new T.InstancedMesh(pg.build(), KS.M.vc, total); Animals.pigeonMesh.frustumCulled = false; scene.add(Animals.pigeonMesh);
     Animals.pigeons = [];
-    for (const [x, z, n] of KS.pigeonSpots) for (let i = 0; i < n; i++) Animals.pigeons.push({ cx: x, cz: z, x: x + KS.r(-7, 7), z: z + KS.r(-7, 7), y: 0.15, h: KS.r(0, 6), fly: 0, vy: 0, a: KS.r(0, 6), t: KS.r(0, 5) });
+    for (const [x, z, n] of KS.pigeonSpots) for (let i = 0; i < n; i++) Animals.pigeons.push({ cx: x, cz: z, x: x + KS.r(-7, 7), z: z + KS.r(-7, 7), y: 0.15, h: KS.r(0, 6), fly: 0, a: KS.r(0, 6), t: KS.r(0, 5) });
   };
   const dm = new T.Object3D();
   Animals.update = (dt, ctx) => {
-    const { px, pz, playerSpeed, honk, inVehicle, vehicleKind, time } = ctx;
+    const { px, pz, playerSpeed, honk, inVehicle, vehicleKind } = ctx;
+    const A = KS.audio;
     for (const cow of Animals.cows) {
       cow.t += dt;
       const d = Math.hypot(cow.x - px, cow.z - pz);
-      if (honk && d < 16 && !cow.moving) { cow.moving = 3; KS.audio && KS.audio.moo(); KS.say(cow.g, 'Mooo…', 1.8); if (cow.lying) { cow.lying = false; cow.legs.visible = true; cow.body.position.y = 0; } }
-      if (cow.moving > 0) { // amble to the roadside
+      if (honk && d < 16 && !cow.moving) { cow.moving = 3; A && A.moo(1 - d / 20); KS.say(cow.g, 'Mooo…', 1.8); if (cow.mode === 'lie') { cow.mode = 'stand'; cow.legs.forEach((l) => (l.visible = true)); cow.body.position.y = 0; } }
+      if (cow.moving > 0) {
         cow.moving -= dt; const side = cow.vertical ? Math.sign(cow.x - cow.line || 1) : Math.sign(cow.z - cow.line || 1);
         if (cow.vertical) cow.x += side * dt * 0.9; else cow.z += side * dt * 0.9;
         const lim = cow.line + side * 6.2; if (cow.vertical) cow.x = side > 0 ? Math.min(cow.x, lim) : Math.max(cow.x, lim); else cow.z = side > 0 ? Math.min(cow.z, lim) : Math.max(cow.z, lim);
-        cow.legs.rotation.x = Math.sin(cow.t * 6) * 0.05;
+        cow.ph += dt * 5; walkLegs(cow, cow.ph, 0.35);
+      } else if (cow.mode === 'walk') { // slow amble along the road, turning at the next junction
+        const sp = 0.7, dirx = cow.vertical ? 0 : cow.dirSign, dirz = cow.vertical ? cow.dirSign : 0;
+        cow.x += dirx * sp * dt; cow.z += dirz * sp * dt; cow.h = Math.atan2(dirx, dirz); cow.ph += dt * 4.5; walkLegs(cow, cow.ph, 0.3);
+        const along = cow.vertical ? cow.z : cow.x, m = ((along - G.O) % G.B + G.B) % G.B;
+        if (m < 16 || m > G.B - 16) { cow.dirSign = -cow.dirSign; cow.x -= dirx * 1; cow.z -= dirz * 1; }
+        if (d < 24 && Math.floor(cow.ph / Math.PI) !== Math.floor((cow.ph - dt * 4.5) / Math.PI)) A && A.hoof(1 - d / 24);
       }
-      cow.g.position.set(cow.x, 0.05, cow.z);
+      if (cow.bell && d < 18 && cow.mode !== 'lie' && KS.chance(dt * 0.8)) A && A.cowbell(1 - d / 18);
+      if (d < 14 && KS.chance(dt * 0.03)) { A && A.moo(1 - d / 18); }
+      cow.g.position.set(cow.x, 0.05, cow.z); cow.g.rotation.y = cow.h;
       cow.body.rotation.z = Math.sin(cow.t * 0.7) * 0.02;
     }
-    for (const d of Animals.dogs) {
-      d.t += dt;
-      const dist = Math.hypot(d.x - px, d.z - pz);
-      if (inVehicle && vehicleKind === 'bike' && playerSpeed > 6 && dist < 9 && d.chase <= 0 && KS.chance(0.5)) { d.chase = 4; d.sleep = false; d.m.rotation.z = 0; d.m.position.y = 0; }
-      if (d.chase > 0) {
-        d.chase -= dt; const dx = px - d.x, dz = pz - d.z, e = Math.hypot(dx, dz) || 1, sp = Math.min(playerSpeed + 1, 9);
-        if (e > 2.2) { d.x += (dx / e) * sp * dt; d.z += (dz / e) * sp * dt; }
-        d.h = Math.atan2(dx, dz); d.m.position.y = Math.abs(Math.sin(d.t * 14)) * 0.12;
-        d.bark -= dt; if (d.bark <= 0) { d.bark = 0.6; KS.audio && KS.audio.bark(Math.max(0.1, 1 - e / 40)); KS.say(d.g, 'Bhau! Bhau!', 0.6); }
-      } else if (!d.sleep) {
-        const hx = d.home[0] - d.x, hz = d.home[1] - d.z, e = Math.hypot(hx, hz);
-        if (e > 1) { d.x += (hx / e) * 1.6 * dt; d.z += (hz / e) * 1.6 * dt; d.h = Math.atan2(hx, hz); d.m.position.y = Math.abs(Math.sin(d.t * 8)) * 0.05; }
-        else if (KS.chance(dt * 0.05)) { d.sleep = true; d.m.rotation.z = 1.4; d.m.position.y = 0.12; }
+    for (const dg of Animals.dogs) {
+      dg.t += dt;
+      const dist = Math.hypot(dg.x - px, dg.z - pz);
+      // bikes get chased; anyone walking close gets barked at
+      if (inVehicle && vehicleKind === 'bike' && playerSpeed > 6 && dist < 9 && dg.chase <= 0 && KS.chance(0.5)) { dg.chase = 4; wake(dg); }
+      if (dg.sleep && dist < (playerSpeed > 3 ? 7 : 3.5)) { wake(dg); dg.alert = 4; }
+      if (!dg.sleep && dist < 11 && dg.chase <= 0) dg.alert = Math.max(dg.alert || 0, 1);
+      dg.bark -= dt;
+      if (dg.chase > 0) {
+        dg.chase -= dt; const dx = px - dg.x, dz = pz - dg.z, e = Math.hypot(dx, dz) || 1, sp = Math.min(playerSpeed + 1, 9);
+        if (e > 2.2) { dg.x += (dx / e) * sp * dt; dg.z += (dz / e) * sp * dt; }
+        dg.h = Math.atan2(dx, dz); dg.ph += dt * 16; walkLegs(dg, dg.ph, 0.7);
+        if (dg.bark <= 0) { dg.bark = KS.r(0.35, 0.7); A && A.bark(Math.max(0.1, 1 - e / 40), dg.big); KS.say(dg.g, 'Bhau! Bhau!', 0.6); }
+      } else if (dg.alert > 0) { // stand and bark at you
+        dg.alert -= dt; dg.h = KS.angLerp(dg.h, Math.atan2(px - dg.x, pz - dg.z), Math.min(1, dt * 6));
+        if (dist < 11 && dg.bark <= 0) { dg.bark = KS.r(0.5, 1.4); if (KS.chance(0.25)) A && A.growl(1 - dist / 12); else A && A.bark(1 - dist / 14, dg.big); KS.say(dg.g, KS.pick(['Bhau!', 'Woof!', 'Grrr…']), 0.7); }
+        if (dist > 14) dg.alert = 0;
+      } else if (!dg.sleep) {
+        const hx = dg.homeXY[0] - dg.x, hz = dg.homeXY[1] - dg.z, e = Math.hypot(hx, hz);
+        if (e > 1) { dg.x += (hx / e) * 1.6 * dt; dg.z += (hz / e) * 1.6 * dt; dg.h = Math.atan2(hx, hz); dg.ph += dt * 8; walkLegs(dg, dg.ph, 0.5); }
+        else if (KS.chance(dt * 0.05)) { dg.sleep = true; dg.body.rotation.z = 1.3; dg.body.position.y = -0.22; dg.legs.forEach((l) => (l.visible = false)); }
       }
-      // night barking
-      if (ctx.night > 0.6 && dist < 40 && KS.chance(dt * 0.04)) KS.audio && KS.audio.bark(0.3);
-      d.g.position.set(d.x, 0.22, d.z); d.g.rotation.y = d.h;
+      if (ctx.night > 0.6 && dist < 40 && KS.chance(dt * 0.03)) A && A.bark(0.25, dg.big);
+      dg.g.position.set(dg.x, 0.22, dg.z); dg.g.rotation.y = dg.h;
     }
+    function wake(dg) { dg.sleep = false; dg.body.rotation.z = 0; dg.body.position.y = 0; dg.legs.forEach((l) => (l.visible = true)); }
     for (const m of Animals.monkeys) {
       const vis = Math.hypot(m.x - px, m.z - pz) < 150; m.g.visible = vis; if (!vis) continue;
-      if (m.wait > 0) { m.wait -= dt; }
+      if (m.wait > 0) m.wait -= dt;
       else {
         const dx = m.tx - m.x, dz = m.tz - m.z, e = Math.hypot(dx, dz);
         if (e < 0.3) { m.tx = m.cx + KS.r(-m.r, m.r); m.tz = m.cz + KS.r(-m.r, m.r); m.wait = KS.r(0.3, 3); }
@@ -433,12 +562,26 @@
       const gy = m.y != null ? m.y : KS.groundAt(m.x, m.z, 100, 200);
       m.g.position.set(m.x, gy + Math.abs(Math.sin(m.hop)) * 0.35, m.z);
     }
-    // pigeons: peck, and burst into the air when someone runs through
+    for (const gt of Animals.goats) {
+      const d = Math.hypot(gt.x - px, gt.z - pz); gt.g.visible = d < 200; if (!gt.g.visible) continue;
+      gt.t += dt;
+      if (gt.wait > 0) gt.wait -= dt;
+      else { const dx = gt.tx - gt.x, dz = gt.tz - gt.z, e = Math.hypot(dx, dz); if (e < 0.4) { gt.tx = gt.cx + KS.r(-10, 10); gt.tz = gt.cz + KS.r(-10, 10); gt.wait = KS.r(1, 6); } else { gt.x += (dx / e) * 0.9 * dt; gt.z += (dz / e) * 0.9 * dt; gt.g.rotation.y = Math.atan2(dx, dz); gt.ph += dt * 6; walkLegs(gt, gt.ph, 0.35); } }
+      if (d < 14 && KS.chance(dt * 0.08)) A && A.bleat(1 - d / 16);
+      gt.g.position.set(gt.x, KS.heightAt(gt.x, gt.z), gt.z);
+    }
+    for (const h of Animals.hens) {
+      const d = Math.hypot(h.x - px, h.z - pz); h.g.visible = d < 120; if (!h.g.visible) continue;
+      h.t += dt; if (KS.chance(dt * 0.6)) { h.x = KS.clamp(h.x + KS.r(-0.8, 0.8), h.cx - 8, h.cx + 8); h.z = KS.clamp(h.z + KS.r(-0.8, 0.8), h.cz - 8, h.cz + 8); h.g.rotation.y = KS.r(0, 6); }
+      if (d < (playerSpeed > 3 ? 5 : 2)) { const dx = h.x - px, dz = h.z - pz, m = Math.hypot(dx, dz) || 1; h.x += (dx / m) * 4 * dt; h.z += (dz / m) * 4 * dt; if (KS.chance(dt * 3)) A && A.cluck(0.6); }
+      else if (d < 12 && KS.chance(dt * 0.06)) A && A.cluck(1 - d / 14);
+      h.g.position.set(h.x, KS.heightAt(h.x, h.z) + Math.max(0, Math.sin(h.t * 9)) * 0.03, h.z); h.g.children[0].rotation.x = Math.max(0, Math.sin(h.t * 3)) * 0.5;
+    }
     const pm = Animals.pigeonMesh; let i = 0;
     for (const b of Animals.pigeons) {
       b.t += dt;
       const dist = Math.hypot(b.x - px, b.z - pz);
-      if (b.fly <= 0 && dist < (playerSpeed > 3 ? 7 : 3)) { b.fly = KS.r(5, 9); b.vy = KS.r(4, 7); b.a = Math.atan2(b.z - b.cz, b.x - b.cx); if (i % 9 === 0) KS.audio && KS.audio.flap(); }
+      if (b.fly <= 0 && dist < (playerSpeed > 3 ? 7 : 3)) { b.fly = KS.r(5, 9); b.a = Math.atan2(b.z - b.cz, b.x - b.cx); if (i % 9 === 0) A && A.flap(); }
       if (b.fly > 0) {
         b.fly -= dt; b.a += dt * 0.8;
         const tr = 9 + (b.h % 1) * 6, ty = 8 + (b.t % 3);

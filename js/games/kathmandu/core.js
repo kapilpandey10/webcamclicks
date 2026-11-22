@@ -52,6 +52,9 @@
   set(10, 10, 'pashupati');
   set(8, 3, 'park');
   set(2, 9, 'park');
+  set(1, 1, 'balaju');
+  set(8, 1, 'shankha');
+  set(7, 5, 'hospital');
   KS.blockType = (c, r) => {
     if (c < 0 || r < 0 || c >= G.N || r >= G.N) return 'outside';
     return layout[c + ',' + r] || 'city';
@@ -73,7 +76,14 @@
     { name: 'Tripureshwor', np: 'त्रिपुरेश्वर', x0: -90, x1: 90, z0: 180, z1: 450 },
     { name: 'Boudha', np: 'बौद्ध', x0: 270, x1: 540, z0: -360, z1: -90 },
     { name: 'Pashupati · Gaushala', np: 'पशुपति', x0: 270, x1: 540, z0: 270, z1: 450 },
-    { name: 'Bagmati River', np: 'बागमती नदी', x0: -1300, x1: 1300, z0: 452, z1: 532 },
+    { name: 'Nagdhunga Tunnel', np: 'नागढुङ्गा सुरुङमार्ग', x0: -1510, x1: -890, z0: 70, z1: 110 },
+    { name: 'Dhunibesi Village', np: 'धुनिबेसी गाउँ', x0: -2700, x1: -1510, z0: -600, z1: 700 },
+    { name: 'Nagdhunga Highway', np: 'नागढुङ्गा सडक', x0: -890, x1: -548, z0: 60, z1: 120 },
+    { name: 'Balaju Water Garden', np: 'बालाजु बाइसधारा', x0: -450, x1: -360, z0: -450, z1: -360 },
+    { name: 'Shankha Park', np: 'शंख पार्क', x0: 180, x1: 270, z0: -450, z1: -360 },
+    { name: 'Bir Hospital area', np: 'अस्पताल', x0: 90, x1: 180, z0: -90, z1: 0 },
+    { name: 'Kalanki', np: 'कलंकी', x0: -570, x1: -510, z0: 40, z1: 140 },
+    { name: 'Bagmati River', np: 'बागमती नदी', x0: -2700, x1: 1400, z0: 452, z1: 532 },
     { name: 'Swayambhu', np: 'स्वयम्भू', x0: -860, x1: -560, z0: -260, z1: 80 },
     { name: 'Tribhuvan Airport', np: 'त्रिभुवन विमानस्थल', x0: 560, x1: 820, z0: -380, z1: 380 },
     { name: 'Baneshwor', np: 'बानेश्वर', x0: 90, x1: 540, z0: 0, z1: 270 },
@@ -102,11 +112,28 @@
 
   KS.RIVER = { z0: 462, z1: 528, bed: -2.6, water: -1.1 };
   KS.SWAYAMBHU = { x: -700, z: -90, top: 46, flat: 30, foot: 150 };
-  KS.heightAt = (x, z) => {
+  /* Nagdhunga highway: west from Kalanki on the Ring Road, through the tunnel, down to Dhunibesi village */
+  const HW = (KS.HW = { z: 90, x0: -548, x1: -2350, pE: -900, pW: -1500, village: { x: -2050, z: 90 } });
+  KS.BOUNDS = { x0: -2700, x1: 1400, z0: -1400, z1: 1400 };
+  KS.roadH = (x) => {
+    if (x > -560) return 0;
+    if (x > HW.pE) return 14 * KS.smooth(-560, HW.pE, x);
+    if (x > HW.pW) return 14 + 12 * ((HW.pE - x) / (HW.pE - HW.pW));
+    if (x > -1650) return 26 - 4 * KS.smooth(HW.pW, -1650, x);
+    return 22;
+  };
+  KS.inTunnel = (x, z) => x < HW.pE && x > HW.pW && Math.abs(z - HW.z) < 8;
+  function natural(x, z) {
     let h = 0;
-    // valley rim hills
+    // valley rim hills (Shivapuri, Nagarjun, Chandragiri, Phulchoki)
     const m = Math.max(Math.abs(x), Math.abs(z));
     if (m > 820) h += (m - 820) * 0.42 * (0.65 + 0.6 * KS.fbm(x * 0.004, z * 0.004));
+    // beyond the Nagdhunga pass: the Dhunibesi basin with terraced slopes
+    if (x < -1350) {
+      const v = HW.village, d = Math.hypot(x - v.x, (z - v.z) * 0.9);
+      const basin = 22 + Math.max(0, d - 240) * 0.36 + 6 * KS.fbm(x * 0.01, z * 0.01);
+      h = KS.lerp(h, basin, KS.smooth(-1350, -1720, x));
+    }
     // Swayambhu hill
     const sw = KS.SWAYAMBHU;
     const dx = x - sw.x, dz = z - sw.z, d = Math.sqrt(dx * dx + dz * dz);
@@ -118,6 +145,31 @@
       h = h * (1 - bank) + R.bed * bank;
     }
     return h;
+  }
+  /** ground height. forMesh: the visible terrain (the hill stays solid over the tunnel) */
+  KS.heightAt = (x, z, forMesh) => {
+    const h = natural(x, z);
+    if (x < HW.x0 && x > HW.x1) {
+      const dz = Math.abs(z - HW.z), tun = x < HW.pE - 6 && x > HW.pW + 6;
+      if (forMesh && tun) return h;
+      if (dz < 8) return KS.roadH(x);
+      if (dz < 26 && !tun) return KS.lerp(KS.roadH(x), h, KS.smooth(8, 26, dz));
+    }
+    return h;
+  };
+
+  /* junctions with traffic lights (the rest are run by traffic police or nobody) */
+  KS.SIGNALS = [[6, 4], [7, 7], [8, 8], [9, 6], [4, 9], [2, 6], [7, 3], [9, 9], [0, 7], [12, 6], [6, 12], [6, 0], [3, 2], [8, 10]];
+  KS.SPEEDCAMS = [{ x: G.line(0) - 4, z: -200, ax: 'z' }, { x: G.line(12) + 4, z: 230, ax: 'z' }, { x: 300, z: G.line(12) + 4, ax: 'x' }, { x: -280, z: G.line(0) - 4, ax: 'x' },
+    { x: G.line(6) - 4, z: 230, ax: 'z' }, { x: 140, z: G.line(6) - 4, ax: 'x' }, { x: -700, z: HW.z - 9, ax: 'x', hw: true }, { x: -1720, z: HW.z - 9, ax: 'x', hw: true }, { x: G.line(9) + 4, z: -120, ax: 'z' }];
+
+  /* speed limits in km/h (Nepal: 40 in the city, less in the old core, more on the Ring Road & highway) */
+  KS.speedLimit = (x, z) => {
+    if (x < HW.x0 && Math.abs(z - HW.z) < 10) return KS.inTunnel(x, z) ? 50 : 60;
+    if (Math.abs(Math.abs(x) - G.HALF) < 12 || Math.abs(Math.abs(z) - G.HALF) < 12) return 60;
+    const { c, r } = G.blockOf(x, z), t = KS.blockType(c, r);
+    if (t === 'thamel' || t === 'old' || t === 'ason' || t === 'durbar' || t === 'durbar2' || t === 'boudha' || t === 'pashupati') return 20;
+    return 40;
   };
 
   /* ---------- solids: boxes / circles with a top height, on a spatial hash ---------- */
@@ -226,6 +278,16 @@
     pyr(x, y, z, w, h, color, ry = 0) {
       const g = unit('pyr', () => new T.ConeGeometry(Math.SQRT1_2, 1, 4, 1).rotateY(Math.PI / 4).translate(0, 0.5, 0), true);
       return this.addGeo(g, this.mat(x, y, z, w, h, w, 0, ry, 0), color);
+    }
+    /** elliptical cylinder/frustum (rx across, rz deep), bottom at y */
+    ecyl(x, y, z, rx, rz, h, color, seg = 10, taper = 1, rotX = 0, ry = 0) {
+      const g = unit('cyl' + seg + '_' + taper.toFixed(3), () => new T.CylinderGeometry(taper, 1, 1, seg, 1).translate(0, 0.5, 0), seg <= 6);
+      return this.addGeo(g, this.mat(x, y, z, rx, h, rz, rotX, ry, 0), color);
+    }
+    /** ellipsoid */
+    ell(x, y, z, rx, ry, rz, color, seg = 10) {
+      const g = unit('sph' + seg, () => new T.SphereGeometry(1, seg, Math.max(4, seg >> 1)));
+      return this.addGeo(g, this.mat(x, y, z, rx, ry, rz), color);
     }
     /** flared pagoda roof: truncated square pyramid, side w at the eaves */
     roof(x, y, z, w, h, color, taper = 0.3) { return this.cyl(x, y, z, w * Math.SQRT1_2, h, color, 4, taper, Math.PI / 4); }

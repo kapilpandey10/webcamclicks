@@ -1511,6 +1511,14 @@ function closeGallery() {
 function buildGameCards() {
   if (!el.gamesGrid) return;
   el.gamesGrid.innerHTML = '';
+  // the 3D open-world game lives on its own page
+  const ks = document.createElement('a');
+  ks.className = 'game-card game-card-feature';
+  ks.href = '/kathmandu-streets';
+  ks.innerHTML = '<div class="gc-icon">🛵</div><h3>Kathmandu Streets 3D</h3>'
+    + '<p>Open-world Kathmandu: drive for Uthao, carry passengers and parcels through the Nagdhunga tunnel, buy and upgrade bikes and cars, live Nepali radio.</p>'
+    + '<span class="gc-play">▶ Play now</span>';
+  el.gamesGrid.appendChild(ks);
   for (const g of gameMgr.list()) {
     const card = document.createElement('article');
     card.className = 'game-card';

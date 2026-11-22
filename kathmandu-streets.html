@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Kathmandu Streets</title>
-<meta name="description" content="A free open-world 3D sandbox of Kathmandu, Nepal in your browser: ride through Thamel, Durbar Square, Boudhanath, Swayambhu and Pashupati with traffic, people, cows, monsoon rain and a full day-night cycle.">
+<meta name="description" content="Free open-world 3D driving game set in Kathmandu, Nepal: be an Uthao ride driver, carry passengers and parcels through Thamel, Durbar Square, Boudhanath and the Nagdhunga tunnel, buy and upgrade bikes and cars, live Nepali radio, traffic fines and monsoon weather.">
 <link rel="canonical" href="https://webcamclicks.com/kathmandu-streets">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -138,6 +138,8 @@ body.is-touch .touchhint { display: block; }
 body.is-touch .bl { left: auto; right: max(16px, env(safe-area-inset-right)); bottom: auto; top: 172px; flex-direction: column; align-items: flex-end; }
 body.is-touch #minimap { width: 120px; height: 120px; }
 body.is-touch #prompt { bottom: 170px; }
+body.is-touch #phone { bottom: auto; top: 330px; width: 230px; }
+.tbtns { grid-template-columns: repeat(4, 56px); } .tbtns button { width: 56px; height: 56px; font-size: 12px; }
 body.is-touch #notes { top: 30%; }
 @media (max-width: 560px) {
   #clock { font-size: 30px; } #money { font-size: 22px; } .wxline { font-size: 14px; }
@@ -147,6 +149,74 @@ body.is-touch #notes { top: 30%; }
   #title { background: linear-gradient(0deg, rgba(21, 17, 14, 0.96) 0%, rgba(21, 17, 14, 0.82) 62%, rgba(21, 17, 14, 0.15) 100%); }
   #himal { display: none; }
 }
+
+/* v2: wallet, health, speed limit, phone, recording, tabs, shop */
+#tokens { font-family: var(--hud); font-weight: 700; font-size: 20px; color: #ffe27a; font-variant-numeric: tabular-nums; }
+#health { --h: 100%; width: 110px; height: 7px; border-radius: 9px; background: rgba(255,255,255,0.18); overflow: hidden; }
+#health i { display: block; height: 100%; width: var(--h); background: linear-gradient(90deg, #c8102e, #ff6a5a); }
+.hrow { display: flex; align-items: center; gap: 8px; font-family: var(--hud); font-size: 13px; letter-spacing: .1em; text-transform: uppercase; }
+.hudbtns { display: flex; gap: 6px; pointer-events: auto; flex-wrap: wrap; justify-content: flex-end; }
+.hudbtns button { border: 0; background: var(--panel); border-radius: 8px; padding: 6px 10px; font-family: var(--hud); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 13px; }
+.hudbtns button.on { background: var(--sindoor); }
+#camName { font-family: var(--hud); font-size: 13px; color: var(--muted); letter-spacing: .08em; }
+#recDot { display: inline-flex; align-items: center; gap: 6px; background: var(--sindoor); border-radius: 99px; padding: 2px 10px; font-family: var(--hud); font-weight: 700; font-size: 14px; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: .55; } }
+.spd { display: flex; align-items: center; gap: 12px; }
+#limit { width: 46px; height: 46px; border-radius: 50%; background: #fff; color: #111; border: 6px solid #c8102e; display: grid; place-items: center; font-family: var(--hud); font-weight: 800; font-size: 18px; flex: none; }
+#limit.over { animation: blink .5s infinite; box-shadow: 0 0 0 4px rgba(200,16,46,0.6); }
+#nitro { font-family: var(--hud); font-size: 13px; color: #ffb02e; }
+#phone { position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); width: min(300px, calc(100vw - 32px)); background: #101418; border-radius: 18px; box-shadow: 0 0 0 3px #2a2f36, 0 14px 40px rgba(0,0,0,0.5); overflow: hidden; pointer-events: auto; }
+#phone header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #0f8a7a; font-family: var(--hud); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+#phone header button { border: 0; border-radius: 99px; padding: 3px 10px; font-family: var(--hud); font-weight: 700; font-size: 12px; background: rgba(0,0,0,.25); }
+#phone.on header button { background: #fff; color: #0f8a7a; }
+#phBody { padding: 10px 12px; font-size: 14px; }
+#phStats { padding: 6px 12px 10px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ph-muted { margin: 0; color: var(--muted); }
+.req { display: grid; gap: 8px; position: relative; }
+.req::before { content: ""; position: absolute; left: 0; top: -10px; height: 3px; width: var(--left, 100%); background: #0f8a7a; transition: width .2s linear; }
+.req-h { display: flex; gap: 10px; align-items: center; }
+.req-h small { display: block; color: var(--muted); font-size: 12px; line-height: 1.3; }
+.req-ic { font-size: 28px; }
+.req-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.req-row b { color: #ffe27a; font-family: var(--hud); font-size: 18px; }
+.req-btns { display: flex; gap: 8px; }
+.small-btn { font-size: 15px; padding: 7px 12px; box-shadow: 0 3px 0 #a86c00; }
+.small-btn.ghost { box-shadow: inset 0 0 0 2px var(--line); }
+.small-btn kbd { font-size: 12px; margin: 0 0 0 4px; }
+#flash { position: fixed; inset: 0; pointer-events: none; z-index: 12; opacity: 0; }
+#flash.go { animation: fl .5s ease-out; }
+#flash.cam { background: #fff; } #flash.photo { background: #fff; } #flash.fine { background: rgba(29,79,184,.35); } #flash.hurt { background: rgba(200,16,46,.4); }
+@keyframes fl { from { opacity: 1; } to { opacity: 0; } }
+#mediaBox { position: fixed; inset: 0; z-index: 26; background: rgba(10,8,6,.85); display: grid; place-items: center; padding: 16px; }
+.mcard { background: var(--panel-solid); border-radius: 14px; padding: 16px; width: min(760px, 100%); display: grid; gap: 12px; }
+#mediaView video, #mediaView img { width: 100%; border-radius: 10px; display: block; max-height: 60vh; object-fit: contain; background: #000; }
+.mcard .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+a.btn { text-decoration: none; display: inline-block; }
+.tabs { display: flex; gap: 4px; padding: 0 20px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+.tabs button { border: 0; background: none; padding: 10px 12px; font-family: var(--hud); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: 15px; color: var(--muted); border-bottom: 3px solid transparent; }
+.tabs button[aria-selected="true"] { color: var(--snow); border-bottom-color: var(--marigold); }
+.panel { padding: 16px 20px; display: grid; gap: 14px; }
+.wallet { display: flex; gap: 16px; font-family: var(--hud); font-weight: 800; font-size: 22px; }
+.wallet span:first-child { color: var(--marigold); } .wallet span:last-child { color: #ffe27a; }
+.shopgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.shopcard { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.shopcard.owned { box-shadow: inset 0 0 0 2px rgba(242,165,22,.45); }
+.shopcard p { margin: 0; font-size: 14px; color: #e6dccb; }
+.sc-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.tag { font-family: var(--hud); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; background: rgba(255,255,255,.1); border-radius: 99px; padding: 1px 8px; }
+.stats { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); }
+.ups { display: flex; flex-wrap: wrap; gap: 6px; }
+.ups .chip { font-size: 12px; padding: 4px 9px; } .chip small { opacity: .8; } .chip:disabled { opacity: .5; }
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; } .swatches small { color: var(--muted); }
+.sw { width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); padding: 0; }
+.sw.on { border-color: var(--marigold); box-shadow: 0 0 0 2px var(--marigold); }
+.wslot h4 { margin: 0 0 6px; font-family: var(--hud); letter-spacing: .14em; text-transform: uppercase; font-size: 13px; color: var(--marigold); }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; box-shadow: 0 0 0 1px rgba(255,255,255,.4); }
+#radioList { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.stn { text-align: left; border: 0; border-radius: 10px; padding: 8px 10px; background: rgba(255,255,255,.06); display: grid; gap: 2px; min-width: 0; }
+.stn b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .stn small { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stn.on { background: var(--marigold); color: var(--ink); } .stn.on small { color: #3a2a10; }
+
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 </head>
@@ -165,13 +235,14 @@ body.is-touch #notes { top: 30%; }
     <div class="flags" aria-hidden="true"></div>
     <div class="np" lang="ne">काठमाडौं</div>
     <h1 id="ttl">Kathmandu Streets</h1>
-    <p>An open-world sandbox of the valley. Walk the lanes of Thamel, circle Boudhanath with the pilgrims, take any bike, tempo or bus, deliver momos and drive taxi fares through monsoon rain, smog and winter fog.</p>
+    <p>An open-world sandbox of the valley. Drive for Uthao, the in-game ride app: students, tourists, hajurama and parcels across town and through the Nagdhunga tunnel to Dhunibesi village. Buy bikes and cars, upgrade them, dress up, tune in to live Nepali radio, and mind the speed cameras.</p>
     <div class="keys" aria-label="Controls">
       <div><kbd>WASD</kbd> walk / drive</div><div><kbd>Mouse</kbd> look around</div>
       <div><kbd>E</kbd> ride / get out / spin</div><div><kbd>Shift</kbd> run</div>
       <div><kbd>Space</kbd> jump / handbrake</div><div><kbd>H</kbd> horn (use it a lot)</div>
-      <div><kbd>R</kbd> radio</div><div><kbd>M</kbd> map · <kbd>V</kbd> camera</div>
-      <div><kbd>T</kbd> weather · <kbd>N</kbd> +3 hours</div><div><kbd>Esc</kbd> menu</div>
+      <div><kbd>U</kbd> Uthao app</div><div><kbd>R</kbd> live radio</div>
+      <div><kbd>M</kbd> map · <kbd>V</kbd> camera</div><div><kbd>K</kbd> record · <kbd>J</kbd> photo</div>
+      <div><kbd>F</kbd> punch</div><div><kbd>Esc</kbd> menu, garage, wardrobe</div>
     </div>
     <p class="touchhint">Left stick to walk or drive, drag anywhere to look, <b>Ride</b> to take any bike, taxi, tempo or bus.</p>
     <div class="cta">
@@ -191,28 +262,39 @@ body.is-touch #notes { top: 30%; }
     <div id="clock">08:30</div>
     <div class="wxline"><span id="wx">☀ Clear</span><span id="temp">18°C</span><span id="aqi">AQI 80</span></div>
     <div id="money">रु 2,500</div>
+    <div id="tokens">10 🪙</div>
     <div id="karma">Karma <span class="bar"><i></i></span><span id="karmaV">50</span></div>
-    <button id="btnMenu" type="button">Menu</button>
+    <div class="hrow">Health <span id="health"><i></i></span></div>
+    <div id="recDot" hidden>● REC <span id="recTime">0:00</span></div>
+    <div class="hudbtns"><button id="btnPhoto" type="button" title="Photo (J)">Photo</button><button id="btnRec" type="button" title="Record video (K)">Rec</button><button id="btnGarage" type="button">Garage</button><button id="btnMenu" type="button">Menu</button></div>
+    <div id="camName"></div>
   </div>
   <div class="bl">
     <canvas id="minimap" width="180" height="180" aria-label="Minimap"></canvas>
-    <div id="speedo" hidden><div id="vname"></div><div id="kmh">0</div><div id="radio"></div></div>
+    <div id="speedo" hidden><div id="vname"></div><div class="spd"><div id="kmh">0</div><div id="limit" title="Speed limit">40</div></div><div id="nitro" hidden></div><div id="radio"></div></div>
   </div>
   <div id="notes" aria-live="polite"></div>
   <div id="prompt" hidden></div>
+  <div id="phone"><header><span>Uthao Driver</span><button type="button" id="btnPhone">Go online (U)</button></header><div id="phBody"></div><div id="phStats"></div></div>
   <div id="card" hidden><div class="flags"></div><div class="in"><div class="eyebrow">New place discovered</div><div id="cardNp" lang="ne"></div><div id="cardEn"></div><div id="cardFact"></div></div></div>
 </div>
 <div id="bubbles"></div>
+<div id="flash" class="flash"></div>
+<div id="mediaBox" hidden><div class="mcard"><div class="row" style="justify-content:space-between"><b id="mediaTitle">Your recording</b><button class="btn ghost small-btn" type="button" id="mediaClose">Close</button></div><div id="mediaView"></div><div class="row"><a class="btn small-btn" id="mediaSave" href="#" download>Save to device</a><span class="small">Files stay on your device. Nothing is uploaded.</span></div></div></div>
 
 <div id="touch" hidden>
   <div id="joy"><div id="joyKnob"></div></div>
   <div class="tbtns">
     <button type="button" data-key="KeyCam">Cam</button>
     <button type="button" data-key="KeyMap">Map</button>
+    <button type="button" data-key="KeyRadio">Radio</button>
     <button type="button" data-key="KeyHorn">Horn</button>
+    <button type="button" data-key="KeyHit">Hit</button>
     <button type="button" data-key="KeyRun">Run</button>
     <button type="button" data-key="KeyJump">Jump</button>
     <button type="button" class="big" data-key="KeyEnter">Ride</button>
+    <button type="button" data-key="KeyAccept">Accept</button>
+    <button type="button" data-key="KeyNitro">Nitro</button>
   </div>
 </div>
 
@@ -224,33 +306,63 @@ body.is-touch #notes { top: 30%; }
 <div id="menu" hidden>
   <div class="mpanel">
     <div class="flags"></div>
-    <div class="mhead"><h2><span lang="ne">विश्राम</span>Paused</h2><button class="btn" id="btnResume" type="button">Resume</button></div>
-    <div class="mgrid">
-      <div class="msec"><h3>Weather</h3><div class="chips" id="wxbtns"></div></div>
-      <div class="msec"><h3>Time of day <span id="timeVal">08:30</span></h3><input type="range" id="timeRange" min="0" max="23.9" step="0.1" value="8.5" aria-label="Time of day"><span class="small">Dawn turns the Himalaya pink; at night shop signs and windows light up.</span></div>
-      <div class="msec" style="grid-column: 1 / -1"><h3>Places <span id="lmcount">0 / 0</span></h3><ul id="lmlist"></ul></div>
-      <div class="msec"><h3>Controls</h3>
-        <div class="ctl">
-          <kbd>WASD</kbd><span>Walk, or drive any vehicle</span>
-          <kbd>E</kbd><span>Take / leave a vehicle, spin prayer wheels, ring bells, greet people</span>
-          <kbd>Space</kbd><span>Jump on foot, handbrake when driving</span>
-          <kbd>H</kbd><span>Horn. Honk at cows to move them</span>
-          <kbd>R</kbd><span>Cycle radio stations while driving</span>
-          <kbd>M</kbd><span>Map with waypoints · <kbd>V</kbd>camera</span>
-          <kbd>T / N</kbd><span>Next weather / skip 3 hours</span>
-        </div>
+    <div class="mhead"><h2><span lang="ne">विश्राम</span>Paused</h2><div class="wallet"><span id="walletCash">रु 0</span><span id="walletTok">0 🪙</span></div><button class="btn" id="btnResume" type="button">Resume</button></div>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" data-tab-btn="play" aria-selected="true">World</button>
+      <button type="button" role="tab" data-tab-btn="uthao" aria-selected="false">Uthao</button>
+      <button type="button" role="tab" data-tab-btn="garage" aria-selected="false">Garage</button>
+      <button type="button" role="tab" data-tab-btn="wardrobe" aria-selected="false">Wardrobe</button>
+      <button type="button" role="tab" data-tab-btn="radio" aria-selected="false">Radio</button>
+      <button type="button" role="tab" data-tab-btn="help" aria-selected="false">Controls</button>
+    </div>
+    <div data-tab-panel="play">
+      <div class="mgrid">
+        <div class="msec"><h3>Weather</h3><div class="chips" id="wxbtns"></div></div>
+        <div class="msec"><h3>Time of day <span id="timeVal">08:30</span></h3><input type="range" id="timeRange" min="0" max="23.9" step="0.1" value="8.5" aria-label="Time of day"><span class="small">Dawn turns the Himalaya pink; at night shop signs and windows light up.</span></div>
+        <div class="msec"><h3>Camera angle</h3><div class="chips" id="cambtns"></div><span class="small">V cycles angles. Cinematic and Side look great while recording.</span></div>
+        <div class="msec" style="grid-column: 1 / -1"><h3>Places <span id="lmcount">0 / 0</span></h3><ul id="lmlist"></ul></div>
       </div>
-      <div class="msec"><h3>Jobs</h3>
-        <div class="ctl" style="grid-template-columns: 1fr">
-          <span><b style="color:var(--snow)">Momo delivery</b>: step into the orange beam outside Momo House in Thamel.</span>
-          <span><b style="color:var(--snow)">Taxi fares</b>: get into any white taxi; one waits at Ratna Park.</span>
-          <span><b style="color:var(--snow)">Explore</b>: every new place pays रु 500.</span>
-        </div>
+    </div>
+    <div data-tab-panel="uthao" hidden><div class="panel">
+      <p style="margin:0">Uthao is the in-game ride app. Go online in any bike, car or cargo vehicle, accept a request, pick up the passenger or parcel at the yellow beam and follow the blue GPS line. Each passenger rates you: smooth driving, no crashes, respecting their wishes and arriving on time earn stars, tips and coins.</p>
+      <div class="small" id="uthaoStats"></div>
+      <div class="ctl" style="grid-template-columns: auto 1fr">
+        <span>🎒 Student</span><span>Cheap, quick trips</span><span>💼 Office worker</span><span>In a hurry: early arrival earns a tip</span>
+        <span>🧳 Tourist</span><span>Luggage, so car only; tips well</span><span>👵 Hajurama</span><span>Gentle! Keep under 35 km/h, no hard braking</span>
+        <span>🧘 Monk</span><span>Do not honk</span><span>👔 VIP</span><span>Big fare, strict rating</span>
+        <span>🤒 Unwell</span><span>Urgent to the hospital, but smooth</span><span>🧺 Villager</span><span>Long trip through the Nagdhunga tunnel to Dhunibesi</span>
+        <span>🏺 Fragile</span><span>Every bump hurts your rating</span><span>🛢️ 🛋️ 🥬 Cargo</span><span>Needs a pickup or tempo; vegetables come from the village</span>
+      </div>
+      <div><button class="btn small-btn" type="button" id="btnUthao">Go online</button></div>
+    </div></div>
+    <div data-tab-panel="garage" hidden><div class="panel"><p style="margin:0" class="small">Buy with cash (रु) from fares. Owned vehicles are brought to the kerb next to you. Upgrades make you faster; passengers still hate hard braking.</p><div class="shopgrid" id="garageList"></div></div></div>
+    <div data-tab-panel="wardrobe" hidden><div class="panel"><p style="margin:0" class="small">Clothes cost coins 🪙. You earn coins for every completed delivery or ride (more stars, more coins) and for new places.</p><div id="wardrobeList" style="display:grid;gap:14px"></div></div></div>
+    <div data-tab-panel="radio" hidden><div class="panel"><p style="margin:0" id="radioStatus" class="small"></p><div class="row" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost small-btn" type="button" id="radioOff">Radio off</button><button class="btn ghost small-btn" type="button" id="radioRetry">Reload stations</button></div><div id="radioList"></div><p class="small" style="margin:0">Live streams come from the community-run Radio Browser directory (radio-browser.info). The radio plays while you are in a vehicle. R next station, Shift+R previous.</p></div></div>
+    <div data-tab-panel="help" hidden>
+      <div class="mgrid">
+        <div class="msec"><h3>On foot</h3><div class="ctl">
+          <kbd>WASD</kbd><span>Walk · <kbd>Shift</kbd>run · <kbd>Space</kbd>jump</span>
+          <kbd>E</kbd><span>Ride any vehicle, spin prayer wheels, ring bells, greet people</span>
+          <kbd>F</kbd><span>Punch. People fall, get up, fight back or run. Police fine you.</span></div></div>
+        <div class="msec"><h3>Driving</h3><div class="ctl">
+          <kbd>W / S</kbd><span>Throttle / brake · <kbd>Space</kbd>handbrake</span>
+          <kbd>H</kbd><span>Horn (honk at cows to move them)</span><kbd>B</kbd><span>Nitro, if installed</span>
+          <kbd>R</kbd><span>Next radio station</span></div></div>
+        <div class="msec"><h3>Everything else</h3><div class="ctl">
+          <kbd>U</kbd><span>Uthao app online/offline · <kbd>Y</kbd>accept · <kbd>N</kbd>skip · <kbd>X</kbd>cancel</span>
+          <kbd>V</kbd><span>Camera angle · <kbd>M</kbd>map and waypoints</span>
+          <kbd>K</kbd><span>Record video · <kbd>J</kbd>photo</span>
+          <kbd>T</kbd><span>Weather · <kbd>Shift+T</kbd>skip 3 hours</span></div></div>
+        <div class="msec"><h3>Rules of the road</h3><div class="ctl" style="grid-template-columns:1fr">
+          <span>Drive on the left. Limits: 20 km/h in the old city, 40 in town, 50 in the tunnel, 60 on the Ring Road and highway.</span>
+          <span>Speed cameras (blue squares on the map), red-light cameras at every signal and traffic police all issue fines.</span>
+          <span>Give way to ambulances: the traffic does.</span></div></div>
       </div>
     </div>
     <div class="mfoot">
       <button class="btn ghost" id="btnSound" type="button">Sound: on</button>
       <button class="btn ghost" id="btnQuality" type="button">Graphics: high</button>
+      <button class="btn ghost" id="btnReset" type="button">Reset progress</button>
       <span class="small" id="qnote" hidden>Reload the page to apply the graphics change.</span>
     </div>
   </div>
@@ -260,10 +372,15 @@ body.is-touch #notes { top: 30%; }
 <script src="js/games/kathmandu/core.js"></script>
 <script src="js/games/kathmandu/world.js"></script>
 <script src="js/games/kathmandu/landmarks.js"></script>
+<script src="js/games/kathmandu/extras.js"></script>
 <script src="js/games/kathmandu/people.js"></script>
+<script src="js/games/kathmandu/vehicles.js"></script>
 <script src="js/games/kathmandu/traffic.js"></script>
 <script src="js/games/kathmandu/weather.js"></script>
+<script src="js/games/kathmandu/audio.js"></script>
+<script src="js/games/kathmandu/shop.js"></script>
 <script src="js/games/kathmandu/player.js"></script>
+<script src="js/games/kathmandu/uthao.js"></script>
 <script src="js/games/kathmandu/game.js"></script>
 <script>if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('is-touch');</script>
 </body>

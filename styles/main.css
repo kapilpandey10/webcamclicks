@@ -1277,6 +1277,9 @@ h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 0.5em; color: var(--text); font-
   display: inline-block; margin-top: 12px; font-size: 0.84rem; font-weight: 800;
   color: var(--brand-2);
 }
+.game-card-feature { display: block; text-decoration: none; color: inherit; grid-column: span 2; background: linear-gradient(135deg, #fff7ec, #ffffff 60%); border-color: #f2a516; }
+.game-card-feature h3 { color: #9c3b25; }
+@media (max-width: 560px) { .game-card-feature { grid-column: auto; } }
 
 /* Game HUD */
 .game-hud {

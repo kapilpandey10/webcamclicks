@@ -16,6 +16,8 @@ SITE = 'https://webcamclicks.com'
 
 # ----------------------------------------------------------------------------- icons
 ICONS = {
+  'game': '<rect x="2.5" y="7" width="19" height="11" rx="5"/><path d="M7 11v3M5.5 12.5h3"/><circle cx="15.5" cy="11.5" r="1" fill="currentColor"/><circle cx="17.5" cy="13.5" r="1" fill="currentColor"/>',
+  'car': '<path d="M4 16v-3l2-5h12l2 5v3"/><path d="M3 16h18v2H3z"/><circle cx="7.5" cy="16.5" r="1.6"/><circle cx="16.5" cy="16.5" r="1.6"/>',
   'camera': '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
   'person': '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/><path d="M3 4h4M3 4v4M21 4h-4M21 4v4" opacity=".6"/>',
   'screen': '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/><circle cx="12" cy="10" r="2.2" fill="currentColor"/>',
@@ -84,6 +86,7 @@ CATEGORIES = [
   ('file', 'File', 'Inspect and organise files.'),
   ('text', 'Text & OCR', 'Extract, count, clean and transform text.'),
   ('util', 'Everyday utilities', 'Small tools you reach for every week.'),
+  ('games', 'Games', 'Free browser games: a 3D open world of Kathmandu and camera-controlled mini games.'),
 ]
 # (slug/href, name, category, icon, description, new?)
 TOOLS = [
@@ -145,6 +148,8 @@ TOOLS = [
   ('/qr-scanner', 'QR & barcode scanner', 'util', 'scan', 'Scan QR codes and barcodes with your camera or an image.', False),
   ('/qr-code-generator', 'QR code generator', 'util', 'qr', 'QR codes for links, Wi-Fi, contacts and more.', False),
   ('/password-generator', 'Password generator', 'util', 'key', 'Strong random passwords with a strength meter.', False),
+  ('/kathmandu-streets', 'Kathmandu Streets 3D', 'games', 'car', 'Open-world Kathmandu: drive for Uthao, buy bikes and cars, live Nepali radio.', True),
+  ('/#games', 'Camera games', 'games', 'game', 'Balloon Pop, Motion Catch, Face Pong and Freeze Pose with your webcam.', False),
 ]
 CAT_NAME = {c[0]: c[1] for c in CATEGORIES}
 
@@ -161,7 +166,7 @@ TEMPLATE = read('passport-photo.html')
 HEAD_TOP = TEMPLATE[:TEMPLATE.index('<title>')]          # doctype, consent mode, GTM, AdSense, consent.js
 BODY_OPEN = TEMPLATE[TEMPLATE.index('<body>'):TEMPLATE.index('</header>') + len('</header>')]
 
-NAV = [('/#camera', 'Studio'), ('/passport-photo', 'Passport photo'), ('/guides', 'Guides')]
+NAV = [('/#camera', 'Studio'), ('/kathmandu-streets', 'Games'), ('/passport-photo', 'Passport photo'), ('/guides', 'Guides')]
 NAV_RE = r'<!--nav-->.*?<!--/nav-->|<nav class="site-nav".*?</nav>\s*<a class="header-cta"[^>]*>[^<]*</a>'
 CHEV = '<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>'
 SEARCH_ICO = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>'
@@ -1262,7 +1267,7 @@ def home_card(t):
     return (f'<a class="ht-card" href="{href}" data-cat="{cat}"><span class="ico">{icon(ico)}</span>'
             f'<span class="tx"><strong>{html.escape(name)}{" <em>New</em>" if new else ""}</strong>'
             f'<span class="d">{html.escape(desc)}</span></span></a>')
-TABS = [('all', 'All tools'), ('camera', 'Camera'), ('video', 'Video & audio'), ('image', 'Photo & image'), ('pdf', 'PDF'), ('more', 'Text & more')]
+TABS = [('all', 'All tools'), ('camera', 'Camera'), ('video', 'Video & audio'), ('image', 'Photo & image'), ('pdf', 'PDF'), ('games', 'Games'), ('more', 'Text & more')]
 def tab_of(cat): return 'more' if cat in ('file', 'text', 'util') else cat
 tabs = ''.join(f'<button type="button" role="tab" data-tab="{k}" aria-selected="{str(k == "all").lower()}">{html.escape(n)} <small>{len(TOOLS) if k == "all" else sum(1 for t in TOOLS if tab_of(t[2]) == k)}</small></button>' for k, n in TABS)
 cards = ''.join(home_card(t).replace(f'data-cat="{t[2]}"', f'data-cat="{t[2]}" data-tab="{tab_of(t[2])}"') for t in TOOLS)

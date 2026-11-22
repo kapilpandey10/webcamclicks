@@ -81,47 +81,47 @@ TOOLS = [
   ('/#background', 'AI background changer', 'camera', 'person', 'Blur or replace your webcam background in real time.', False),
   ('/screen-recorder', 'Screen recorder & editor', 'camera', 'screen', 'Record your screen, then edit with zooms, captions and music.', False),
   ('/photo-booth', 'Photo booth: GIF & boomerang', 'camera', 'booth', 'Photo strips, animated GIFs and boomerangs from your webcam.', True),
-  ('/teleprompter', 'Teleprompter', 'camera', 'prompter', 'Scrolling script over your webcam, recorded on your device.', True),
-  ('/document-scanner', 'Document scanner', 'camera', 'docscan', 'Scan pages with your camera: auto-crop, shadow removal, PDF.', True),
+  ('/teleprompter', 'Teleprompter', 'camera', 'prompter', 'Scrolling script over your webcam, recorded on your device.', False),
+  ('/document-scanner', 'Document scanner', 'camera', 'docscan', 'Scan pages with your camera: auto-crop, shadow removal, PDF.', False),
   ('/webcam-test', 'Webcam test', 'camera', 'check', 'Real resolution, fps, lighting and a quality score.', False),
   ('/mic-test', 'Mic test', 'camera', 'mic', 'Check levels, noise and playback before a call.', False),
-  ('/voice-recorder', 'Voice recorder', 'camera', 'voice', 'Record your voice; remove noise and hum; save MP3.', True),
+  ('/voice-recorder', 'Voice recorder', 'camera', 'voice', 'Record your voice; remove noise and hum; save MP3.', False),
   ('/pro-camera', 'Pro camera', 'camera', 'film', 'Cinema aspect ratios and manual controls.', False),
   ('/compare-webcams', 'Compare two webcams', 'camera', 'compare', 'Side-by-side quality comparison.', False),
-  ('/auto-captions', 'Auto captions & subtitles', 'video', 'cc', 'Captions from your browser\'s speech recognition or your SRT, animated or burned in.', True),
-  ('/silence-remover', 'Silence remover', 'video', 'silence', 'Cut pauses out of talking videos automatically.', True),
-  ('/auto-reframe', 'Auto-reframe to vertical', 'video', 'reframe', 'Landscape to 9:16 that follows the speaker\'s face.', True),
-  ('/mp4-to-mp3', 'MP4 to MP3', 'video', 'music', 'Extract audio from video as MP3, WAV, M4A or FLAC.', True),
-  ('/video-compressor', 'Video compressor', 'video', 'compress', 'Shrink videos for email, WhatsApp and uploads.', True),
-  ('/video-trimmer', 'Video trimmer', 'video', 'scissors', 'Cut the start and end off a video, fast.', True),
-  ('/video-to-gif', 'Video to GIF', 'video', 'gif', 'Turn a clip into a looping GIF.', True),
-  ('/photo-enhancer', 'Photo enhancer', 'image', 'wand', 'Fix exposure, colour, noise and sharpness; 2× upscale.', True),
-  ('/ai-image-upscaler', 'AI image upscaler', 'image', 'upscale', 'Real AI super-resolution: 2× and 4× on your device.', True),
+  ('/auto-captions', 'Auto captions & subtitles', 'video', 'cc', 'Captions from your browser\'s speech recognition or your SRT, animated or burned in.', False),
+  ('/silence-remover', 'Silence remover', 'video', 'silence', 'Cut pauses out of talking videos automatically.', False),
+  ('/auto-reframe', 'Auto-reframe to vertical', 'video', 'reframe', 'Landscape to 9:16 that follows the speaker\'s face.', False),
+  ('/mp4-to-mp3', 'MP4 to MP3', 'video', 'music', 'Extract audio from video as MP3, WAV, M4A or FLAC.', False),
+  ('/video-compressor', 'Video compressor', 'video', 'compress', 'Shrink videos for email, WhatsApp and uploads.', False),
+  ('/video-trimmer', 'Video trimmer', 'video', 'scissors', 'Cut the start and end off a video, fast.', False),
+  ('/video-to-gif', 'Video to GIF', 'video', 'gif', 'Turn a clip into a looping GIF.', False),
+  ('/photo-enhancer', 'Photo enhancer', 'image', 'wand', 'Fix exposure, colour, noise and sharpness; 2× upscale.', False),
+  ('/ai-image-upscaler', 'AI image upscaler', 'image', 'upscale', 'Real AI super-resolution: 2× and 4× on your device.', False),
   ('/collage-maker', 'Collage maker', 'image', 'collage', '20 grid layouts for Instagram, stories and print; drag to swap.', True),
   ('/screenshot-beautifier', 'Screenshot beautifier', 'image', 'beautify', 'Gradient background, shadow and Mac, browser or phone frame.', True),
   ('/passport-photo', 'Passport photo maker', 'image', 'id', 'Official sizes for 10 countries at 300 DPI.', False),
   ('/background-remover', 'Background remover', 'image', 'scissors', 'AI cut-out with brush and eraser.', False),
-  ('/youtube-thumbnail-maker', 'YouTube thumbnail maker', 'image', 'thumb', 'Best-frame finder, AI cut-out, bold text: 1280×720.', True),
-  ('/heic-to-jpg', 'HEIC to JPG', 'image', 'convert', 'Convert iPhone HEIC photos to JPG in bulk, any browser.', True),
+  ('/youtube-thumbnail-maker', 'YouTube thumbnail maker', 'image', 'thumb', 'Best-frame finder, AI cut-out, bold text: 1280×720.', False),
+  ('/heic-to-jpg', 'HEIC to JPG', 'image', 'convert', 'Convert iPhone HEIC photos to JPG in bulk, any browser.', False),
   ('/image-converter', 'Image converter', 'image', 'convert', 'Convert to JPG, PNG, WebP or AVIF in bulk.', False),
   ('/image-compressor', 'Image compressor', 'image', 'compress', 'Shrink photos for email, web and uploads.', False),
   ('/image-resizer', 'Image resizer', 'image', 'resize', 'Resize many images by pixels or percent.', False),
   ('/instagram-photo-border', 'Instagram photo border', 'image', 'frame', 'White borders for 1:1, 4:5 and 9:16.', False),
   ('/filters', 'Photo filters gallery', 'image', 'palette', 'Browse every live effect and film look.', False),
-  ('/pdf-editor', 'PDF editor', 'pdf', 'edit', 'Add text, signatures, highlights and white-out.', True),
-  ('/pdf-to-jpg', 'PDF to JPG', 'pdf', 'image', 'Turn PDF pages into JPG or PNG images.', True),
+  ('/pdf-editor', 'PDF editor', 'pdf', 'edit', 'Add text, signatures, highlights and white-out.', False),
+  ('/pdf-to-jpg', 'PDF to JPG', 'pdf', 'image', 'Turn PDF pages into JPG or PNG images.', False),
   ('/jpg-to-pdf', 'JPG to PDF', 'pdf', 'pdf', 'Turn photos and scans into one PDF.', False),
-  ('/lock-pdf', 'Lock PDF (password)', 'pdf', 'lock', 'Protect a PDF with AES-256 encryption.', True),
-  ('/redact-pdf', 'Redact PDF', 'pdf', 'redact', 'Permanently black out names, numbers and any text.', True),
+  ('/lock-pdf', 'Lock PDF (password)', 'pdf', 'lock', 'Protect a PDF with AES-256 encryption.', False),
+  ('/redact-pdf', 'Redact PDF', 'pdf', 'redact', 'Permanently black out names, numbers and any text.', False),
   ('/organize-pdf', 'Organize PDF pages', 'pdf', 'pages', 'Drag to reorder, rotate, delete and add pages, then save.', True),
   ('/merge-pdf', 'Merge PDF', 'pdf', 'merge', 'Combine PDFs in the order you choose.', False),
   ('/split-pdf', 'Split PDF', 'pdf', 'split', 'Extract pages or split a PDF into parts.', False),
-  ('/metadata-viewer', 'Metadata viewer & remover', 'file', 'info', 'See and remove EXIF, GPS and document data.', True),
+  ('/metadata-viewer', 'Metadata viewer & remover', 'file', 'info', 'See and remove EXIF, GPS and document data.', False),
   ('/bulk-file-rename', 'Bulk file renamer', 'file', 'rename', 'Rename hundreds of files with patterns and numbering.', False),
-  ('/image-to-text', 'Image to text (OCR)', 'text', 'ocr', 'Extract text from photos, scans and PDFs in 38 languages.', True),
+  ('/image-to-text', 'Image to text (OCR)', 'text', 'ocr', 'Extract text from photos, scans and PDFs in 38 languages.', False),
   ('/voice-typing', 'Voice typing', 'text', 'dictate', 'Speak and it types: 49 languages, punctuation by voice, copy or save.', True),
   ('/word-counter', 'Word counter', 'text', 'text', 'Words, characters, reading time and text tools.', False),
-  ('/qr-scanner', 'QR & barcode scanner', 'util', 'scan', 'Scan QR codes and barcodes with your camera or an image.', True),
+  ('/qr-scanner', 'QR & barcode scanner', 'util', 'scan', 'Scan QR codes and barcodes with your camera or an image.', False),
   ('/qr-code-generator', 'QR code generator', 'util', 'qr', 'QR codes for links, Wi-Fi, contacts and more.', False),
   ('/password-generator', 'Password generator', 'util', 'key', 'Strong random passwords with a strength meter.', False),
 ]
@@ -1227,21 +1227,39 @@ llms = re.sub(r'\n## Free browser tools \(no uploads\)\n.*?(?=\n## |\Z)', '', ll
 open('llms.txt', 'w', encoding='utf-8').write(llms.rstrip('\n') + '\n' + block)
 print('sitemap + llms updated')
 
-# ----------------------------------------------------------------------------- home page: "Free everyday tools" section
+# ----------------------------------------------------------------------------- home page: tools by category (tabs)
 s = read('index.html')
-cards = ''.join(tool_card(t) for t in TOOLS if t[5])
+def home_card(t):
+    href, name, cat, ico, desc, new = t
+    return (f'<a class="ht-card" href="{href}" data-cat="{cat}"><span class="ico">{icon(ico)}</span>'
+            f'<span class="tx"><strong>{html.escape(name)}{" <em>New</em>" if new else ""}</strong>'
+            f'<span class="d">{html.escape(desc)}</span></span></a>')
+TABS = [('all', 'All tools'), ('camera', 'Camera'), ('video', 'Video & audio'), ('image', 'Photo & image'), ('pdf', 'PDF'), ('more', 'Text & more')]
+def tab_of(cat): return 'more' if cat in ('file', 'text', 'util') else cat
+tabs = ''.join(f'<button type="button" role="tab" data-tab="{k}" aria-selected="{str(k == "all").lower()}">{html.escape(n)} <small>{len(TOOLS) if k == "all" else sum(1 for t in TOOLS if tab_of(t[2]) == k)}</small></button>' for k, n in TABS)
+cards = ''.join(home_card(t).replace(f'data-cat="{t[2]}"', f'data-cat="{t[2]}" data-tab="{tab_of(t[2])}"') for t in TOOLS)
 block = f'''<section class="content-section home-tools" id="tools">
-  <h2 class="section-title">Free everyday tools</h2>
-  <p class="muted" style="max-width:640px">Convert and compress images, make PDFs, rename files in bulk and more. Like the camera, every tool runs on your device, so nothing is uploaded.</p>
-  <div class="hub-grid" style="margin-top:18px">{cards}</div>
-  <p style="margin-top:18px"><a class="t-btn" href="/tools">See all {len(TOOLS)} tools →</a></p>
+  <div class="ht-head"><h2 class="section-title">{len(TOOLS)} free tools, right in your browser</h2>
+  <p class="muted">Camera, video, photo, PDF and text tools that run on your device. No uploads, no sign-up, no watermarks.</p></div>
+  <div class="ht-tabs" role="tablist" aria-label="Tool categories">{tabs}</div>
+  <div class="ht-grid" id="ht-grid">{cards}</div>
+  <p class="ht-more"><a class="t-btn" href="/tools">Open the tools hub →</a></p>
+  <script>(function(){{var r=document.getElementById('tools');if(!r)return;r.querySelector('.ht-tabs').addEventListener('click',function(e){{var b=e.target.closest('[data-tab]');if(!b)return;var k=b.getAttribute('data-tab');r.querySelectorAll('.ht-tabs [data-tab]').forEach(function(x){{x.setAttribute('aria-selected',String(x===b));}});r.querySelectorAll('.ht-card').forEach(function(c){{c.hidden=k!=='all'&&c.getAttribute('data-tab')!==k;}});}});}})();</script>
 </section>
 '''
+s = re.sub(r'<span id="hv3-count">[^<]*</span>', f'<span id="hv3-count">{len(TOOLS)}</span>', s)
 if '<section class="content-section home-tools"' in s:
     s = re.sub(r'<section class="content-section home-tools".*?</section>\n', lambda m: block, s, count=1, flags=re.S)
 else:
     i = s.index('<section id="faq"')
     s = s[:i] + block + '\n' + s[i:]
+# the tools sit right below the camera studio
+m = re.search(r'<section class="content-section home-tools".*?</section>\n', s, flags=re.S)
+if m and s.index('<section class="effect-showcase"') < m.start():
+    blk = m.group(0); s = s[:m.start()] + s[m.end():]
+    i = s.index('<section class="effect-showcase"'); j = s.rfind('\n<!--', 0, i)
+    i = j + 1 if j > 0 and i - j < 200 else i
+    s = s[:i] + blk + '\n' + s[i:]
 if '/styles/tools.css' not in s:
     s = re.sub(r'(<link rel="stylesheet" href="/styles/main\.css\?v=[^"]*">)', rf'\1\n<link rel="stylesheet" href="/styles/tools.css?v={V}">', s, count=1)
 open('index.html', 'w', encoding='utf-8').write(s)

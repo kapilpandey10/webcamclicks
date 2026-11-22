@@ -47,7 +47,7 @@
     plist.innerHTML = results.length ? results.map((t, i) => `<li role="option" aria-selected="${i === sel}"><a href="${esc(t.href)}">${t.icon}<span><b>${esc(t.name)}</b><small>${esc(t.desc)}</small></span><em>${esc(t.cat)}</em></a></li>`).join('')
       : `<li class="nav-palette-empty">No tool matches “${esc(pin.value)}”. <a href="/tools">Browse all tools</a></li>`;
   }
-  function openPal() { closeDrawer(); openMega(false); pal.hidden = false; document.documentElement.classList.add('nav-lock'); pin.value = ''; sel = 0; renderResults(); setTimeout(() => pin.focus(), 0); }
+  function openPal(q) { closeDrawer(); openMega(false); pal.hidden = false; document.documentElement.classList.add('nav-lock'); pin.value = typeof q === 'string' ? q : ''; sel = 0; renderResults(); pin.focus(); pin.setSelectionRange(pin.value.length, pin.value.length); }
   function closePal() { pal.hidden = true; document.documentElement.classList.remove('nav-lock'); }
   pin.addEventListener('input', () => { sel = 0; renderResults(); });
   pin.addEventListener('keydown', (e) => {
@@ -61,7 +61,15 @@
     const typing = /INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.target.isContentEditable;
     if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') || (e.key === '/' && !typing)) { e.preventDefault(); pal.hidden ? openPal() : closePal(); }
   });
-  document.querySelectorAll('[data-open-search]').forEach((b) => b.addEventListener('click', openPal));
+  document.querySelectorAll('[data-open-search]').forEach((b) => b.addEventListener('click', () => openPal()));
+  // the home page's big search box hands over to the palette as soon as you type
+  document.querySelectorAll('[data-hero-search]').forEach((f) => {
+    const inp = f.querySelector('input');
+    const go = (e) => { if (e) e.preventDefault(); const q = inp.value; inp.value = ''; inp.blur(); openPal(q); };
+    f.addEventListener('submit', go);
+    inp.addEventListener('focus', () => go());   // open the full search right away, so no keystroke is lost
+    inp.addEventListener('input', () => go());
+  });
 
   /* ------------------------------------------------------------ mobile drawer */
   const burger = document.querySelector('.nav-burger');

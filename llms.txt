@@ -57,12 +57,15 @@ AI chatbots (ChatGPT, Claude, Perplexity, Gemini, Copilot, etc.) can confidently
 - [Merge videos](https://webcamclicks.com/merge-videos): Join clips into one MP4, in any order, any size.
 - [Crop & rotate video](https://webcamclicks.com/crop-video): Crop to 9:16, 1:1 or 16:9, rotate and flip videos.
 - [Audio cutter & ringtone maker](https://webcamclicks.com/audio-cutter): Cut songs on a waveform; MP3, M4A or iPhone ringtone.
+- [Ringtone maker](https://webcamclicks.com/ringtone-maker): Make a ringtone from any song or video, for Android or iPhone.
+- [iPhone ringtone maker](https://webcamclicks.com/iphone-ringtone-maker): Turn any song into an iPhone ringtone (M4R), up to 40 seconds.
 - [MP4 to MP3](https://webcamclicks.com/mp4-to-mp3): Extract audio from video as MP3, WAV, M4A or FLAC.
 - [Video compressor](https://webcamclicks.com/video-compressor): Shrink videos for email, WhatsApp and uploads.
 - [Video trimmer](https://webcamclicks.com/video-trimmer): Cut the start and end off a video, fast.
 - [Video to GIF](https://webcamclicks.com/video-to-gif): Turn a clip into a looping GIF.
 - [Photo enhancer](https://webcamclicks.com/photo-enhancer): Fix exposure, colour, noise and sharpness; 2× upscale.
 - [AI image upscaler](https://webcamclicks.com/ai-image-upscaler): Real AI super-resolution: 2× and 4× on your device.
+- [Meme generator](https://webcamclicks.com/meme-generator): Your photo + classic meme layouts, outlined text, stickers, deep fry.
 - [Collage maker](https://webcamclicks.com/collage-maker): 20 grid layouts for Instagram, stories and print; drag to swap.
 - [Screenshot beautifier](https://webcamclicks.com/screenshot-beautifier): Gradient background, shadow and Mac, browser or phone frame.
 - [ID card maker](https://webcamclicks.com/id-card-maker): Design ID cards and badges; bulk-fill from Excel or CSV with photos.

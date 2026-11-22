@@ -9,6 +9,11 @@ const els = {
   fmt: $('#ac-fmt'), bitrate: $('#ac-bitrate'), norm: $('#ac-norm'), run: $('#ac-run'), preset: $('#ac-preset'), note: $('#ac-note')
 };
 let buf = null, name = 'audio', ctx = null, player = null, playStart = 0, raf = 0;
+// the ringtone pages use the same cutter with ringtone defaults (main[data-mode] = ringtone | iphone)
+const MODE = document.querySelector('main')?.dataset.mode || '';
+let stickyNote = '';
+if (MODE === 'iphone') { els.preset.value = 'ring30'; els.fmt.value = 'm4r'; els.fin.value = 1; els.fout.value = 2; }
+else if (MODE === 'ringtone') { els.preset.value = 'ring30'; els.fmt.value = 'mp3'; els.fin.value = 1; els.fout.value = 2; }
 const sel = { a: 0, b: 30 };
 
 /* ---------------------------------------------------------------- decode */
@@ -71,7 +76,8 @@ function setSel(a, b, fromInputs) {
   if (!fromInputs) { els.start.value = a.toFixed(2); els.end.value = b.toFixed(2); }
   els.len.textContent = `${fmtTime(a)} → ${fmtTime(b)} · ${(b - a).toFixed(1)} s`;
   const ring = els.fmt.value === 'm4r' && b - a > 40;
-  els.note.hidden = !ring; els.note.textContent = ring ? 'iPhone ringtones can be at most 40 seconds: shorten the selection.' : '';
+  const msg = ring ? 'iPhone ringtones can be at most 40 seconds: shorten the selection.' : stickyNote;
+  els.note.hidden = !msg; els.note.textContent = msg;
   drawWave();
 }
 let wdrag = null;
@@ -173,6 +179,10 @@ els.fmt.addEventListener('change', () => { if (buf) setSel(sel.a, sel.b); els.bi
   const MB = await loadMediabunny().catch(() => null); if (!MB) return;
   for (const [fmt, codec] of [['m4a', 'aac'], ['m4r', 'aac'], ['ogg', 'opus']]) {
     if (!(await MB.canEncodeAudio(codec).catch(() => false))) { const o = els.fmt.querySelector(`option[value="${fmt}"]`); if (o) { o.disabled = true; o.textContent += ' · not available in this browser'; } }
+  }
+  if (els.fmt.selectedOptions[0]?.disabled) {   // e.g. the iPhone page in a browser that can't write AAC
+    if (MODE === 'iphone') { stickyNote = 'This browser can\'t create iPhone ringtone files (M4R). Open this page in Safari, or in Chrome or Edge on Windows or Mac. Meanwhile you can save an MP3.'; els.note.hidden = false; els.note.textContent = stickyNote; }
+    els.fmt.value = 'mp3';
   }
 })();
 document.addEventListener('keydown', (e) => { if (e.code === 'Space' && buf && !/INPUT|TEXTAREA|SELECT|BUTTON/.test(e.target.tagName)) { e.preventDefault(); els.play.click(); } });

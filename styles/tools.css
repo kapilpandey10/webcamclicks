@@ -781,3 +781,28 @@ html.ss-lock, html.ss-lock body { overflow: hidden; }
 .ic-saved li { display: flex; gap: 4px; } .ic-saved li button:first-child { flex: 1; text-align: left; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; cursor: pointer; font: inherit; font-size: .84rem; }
 .ic-saved li button + button { border: 0; background: none; cursor: pointer; color: var(--ink-3); }
 @media (max-width: 980px) { .ic-grid { grid-template-columns: minmax(0, 1fr); } .ic-stage { padding: 12px; } }
+
+/* ---------------------------------------------------------------- meme generator */
+.mg-stage { position: relative; display: grid; place-items: center; margin-top: 12px; padding: 12px; border-radius: 16px; background: #1f2937; touch-action: none; user-select: none; -webkit-user-select: none; }
+.mg-stage canvas { display: block; max-width: 100%; max-height: 70vh; height: auto; cursor: move; }
+.mg-sel { position: absolute; border: 2px dashed #ffe14d; pointer-events: none; }
+.mg-sel i { position: absolute; right: -9px; bottom: -9px; width: 18px; height: 18px; border-radius: 50%; background: #ffe14d; border: 2px solid #111; pointer-events: auto; cursor: nwse-resize; }
+@media (pointer: coarse) { .mg-sel i { width: 26px; height: 26px; right: -13px; bottom: -13px; } }
+.mg-cambox { margin-top: 10px; padding: 10px; border-radius: 14px; background: #111; } .mg-cambox video { width: 100%; border-radius: 10px; transform: scaleX(-1); display: block; }
+.mg-slotbtns { display: contents; }
+.mg-layouts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.mg-layout { display: grid; gap: 4px; justify-items: center; padding: 8px 4px; border: 2px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; font: inherit; }
+.mg-layout small { font-size: .72rem; font-weight: 700; text-align: center; } .mg-layout[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.mg-ico { width: 54px; height: 42px; border-radius: 5px; background: #9ca3af; position: relative; overflow: hidden; }
+.mg-classic::before, .mg-classic::after { content: ''; position: absolute; left: 8px; right: 8px; height: 5px; background: #fff; box-shadow: 0 0 0 1px #000; } .mg-classic::before { top: 5px; } .mg-classic::after { bottom: 5px; }
+.mg-caption { background: linear-gradient(#fff 0 35%, #9ca3af 35%); box-shadow: inset 0 0 0 1px #d1d5db; } .mg-caption::before { content: ''; position: absolute; left: 6px; top: 5px; width: 34px; height: 4px; background: #111; }
+.mg-compare { background: linear-gradient(90deg, #9ca3af 0 50%, #fff 50%); box-shadow: inset 0 0 0 1px #d1d5db; } .mg-compare::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: #fff; }
+.mg-side { background: linear-gradient(90deg, #9ca3af 0 48%, #111 48% 52%, #6b7280 52%); }
+.mg-comic { background: conic-gradient(#9ca3af 0 25%, #6b7280 0 50%, #9ca3af 0 75%, #6b7280 0); box-shadow: inset 0 0 0 2px #111; }
+.mg-poster { background: #111; } .mg-poster::before { content: ''; position: absolute; left: 10px; right: 10px; top: 5px; height: 22px; background: #9ca3af; outline: 1px solid #fff; outline-offset: 2px; } .mg-poster::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: 6px; height: 4px; background: #fff; }
+.mg-texts { display: grid; gap: 6px; margin-bottom: 8px; }
+.mg-text { display: flex; gap: 6px; align-items: flex-start; } .mg-text textarea { flex: 1; min-height: 0; padding: 8px 10px; resize: vertical; } .mg-text.sel textarea { border-color: var(--accent); }
+.mg-stickers { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 4px; }
+.mg-stickers button { aspect-ratio: 1; border: 1px solid var(--line); border-radius: 8px; background: #fff; font-size: 1.2rem; cursor: pointer; padding: 0; }
+.mg-stickers button:hover { border-color: var(--accent); transform: scale(1.1); }
+@media (max-width: 480px) { .mg-stickers { grid-template-columns: repeat(6, minmax(0, 1fr)); } }

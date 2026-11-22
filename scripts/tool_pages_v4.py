@@ -721,3 +721,112 @@ PAGES['id-card-maker'] = dict(
         ('What resolution are the cards?', '300 DPI, the standard for print: a CR80 card is 1011 × 638 pixels.'),
         ('How do I print double-sided?', 'Export the PDF with Front and back. Fronts and backs are on alternate pages, with the backs mirrored so they line up. Print at 100% / Actual size, double-sided (flip on long edge).'),
         ('Can I reuse my design?', 'Yes. Save it in your browser, or download the design file to open it on another computer.')])
+
+# ------------------------------------------------------------------------------------------- ringtone makers (audio cutter engine)
+PAGES['ringtone-maker'] = dict(
+  name='Ringtone maker', cat='video', script='audio-cutter.js', mode='ringtone', appcat='MultimediaApplication',
+  title='Ringtone Maker — Make a Ringtone from Any Song, Free (MP3 & iPhone M4R) | WebcamClicks',
+  desc='Free ringtone maker: pick the best 30 seconds of any song or video on a waveform, add a fade, and save an MP3 for Android or an M4R for iPhone. No app, no upload.',
+  lead='Make a ringtone from your favourite song in under a minute. Drop the song (or a video), drag the highlighted part to the chorus, listen, add a smooth fade in and out, and save it as an MP3 for Android or an M4R for iPhone.',
+  ui=PAGES['audio-cutter']['ui'],
+  article='''<h2>How to make a ringtone</h2>
+<ol><li><strong>Drop your song.</strong> MP3, M4A, WAV, FLAC and even videos work. A 30-second part is selected for you.</li>
+<li><strong>Find the best part.</strong> Drag the highlighted part to the chorus, or drag its edges. Press <strong>Play selection</strong> (or the space bar) to listen.</li>
+<li><strong>Smooth it:</strong> a 1-second fade in and 2-second fade out are already set, so the ringtone doesn't start or stop abruptly. Tick <em>Make it louder</em> for quiet songs.</li>
+<li><strong>Save:</strong> MP3 for Android, M4R for iPhone.</li></ol>
+<h2>Set a ringtone on Android</h2>
+<ol><li>Copy the MP3 to your phone (it's already there if you made it on the phone).</li>
+<li>Open <strong>Settings → Sound &amp; vibration → Phone ringtone</strong>.</li>
+<li>Tap <strong>+</strong> or <em>Add ringtone</em> (on Samsung: <em>Ringtone → +</em>) and choose the file.</li></ol>
+<h2>Set a ringtone on iPhone</h2>
+<p>Use the <a href="/iphone-ringtone-maker">iPhone ringtone maker</a> for step-by-step instructions: iPhone ringtones must be M4R files of 40 seconds or less, added with GarageBand on the iPhone or by syncing from a computer.</p>
+<h2>Tips for a good ringtone</h2>
+<ul><li>Start a beat before the hook, so the best part plays before you answer.</li>
+<li>20–30 seconds is plenty; most calls are answered within 15 seconds.</li>
+<li>Notification and alarm sounds should be short: 3–10 seconds.</li></ul>
+<p>Only want to trim a song? Use the <a href="/audio-cutter">audio cutter</a>. Need the sound from a video first? <a href="/mp4-to-mp3">MP4 to MP3</a>.</p>''' + PRIVACY,
+  faqs=[('Is the ringtone maker free?', 'Yes, with no app, no sign-up and no watermark sound.'),
+        ('Can I make a ringtone from a YouTube video?', 'Only from files you have on your device. Downloading YouTube videos is against YouTube\'s terms; use songs you own or have the rights to.'),
+        ('How long should a ringtone be?', 'Up to 30 seconds for Android and 40 seconds for iPhone. Text and alert tones are best at 3–10 seconds.'),
+        ('Which format do I need?', 'MP3 for Android phones. M4R (AAC audio) for iPhone.'),
+        ('Is my music uploaded?', 'No. The song is cut and saved in your browser.')])
+
+PAGES['iphone-ringtone-maker'] = dict(
+  name='iPhone ringtone maker', cat='video', script='audio-cutter.js', mode='iphone', appcat='MultimediaApplication',
+  title='iPhone Ringtone Maker — Make an M4R Ringtone from Any Song, Free | WebcamClicks',
+  desc='Make an iPhone ringtone (M4R) from any song or video: pick up to 40 seconds on a waveform, add a fade, download. Step-by-step guide to add it with GarageBand or a computer. Free.',
+  lead='Turn any song into an iPhone ringtone. Pick up to 40 seconds, add a fade, and download an M4R file, the format iPhone ringtones use. Then follow the steps below to add it with GarageBand on your iPhone or from your computer.',
+  ui=PAGES['audio-cutter']['ui'],
+  article='''<h2>Make the ringtone</h2>
+<ol><li><strong>Drop the song</strong> (MP3, M4A, WAV, FLAC or a video). A 30-second part is selected and set to M4R.</li>
+<li><strong>Drag</strong> the highlighted part to the bit you love, press <strong>Play selection</strong> to listen, and keep it under 40 seconds.</li>
+<li><strong>Cut &amp; save</strong> to download the <code>.m4r</code> file.</li></ol>
+<h2>Add it to your iPhone: without a computer (GarageBand)</h2>
+<ol><li>Install Apple's free <strong>GarageBand</strong> app and save the ringtone to the Files app (Downloads).</li>
+<li>In GarageBand, start any project (e.g. Audio Recorder), tap the <strong>tracks view</strong> button, then the <strong>loop</strong> icon → <strong>Files</strong> → <em>Browse items from the Files app</em>, and choose your ringtone. Drag it onto the track.</li>
+<li>Tap the down arrow → <strong>My Songs</strong>, long-press the project → <strong>Share</strong> → <strong>Ringtone</strong> → <strong>Export</strong>.</li>
+<li>Choose <strong>Use sound as… → Standard Ringtone</strong>. It now appears in <em>Settings → Sounds &amp; Haptics → Ringtone</em>.</li></ol>
+<h2>Add it to your iPhone: with a computer</h2>
+<ul><li><strong>Mac (Finder):</strong> connect the iPhone, select it in Finder, and drag the <code>.m4r</code> file onto the iPhone window (General tab).</li>
+<li><strong>Windows (Apple Devices app or iTunes):</strong> connect the iPhone, open the device, and drag the <code>.m4r</code> file onto <em>Tones</em> / <em>On My Device</em>.</li></ul>
+<p>Then pick it in <strong>Settings → Sounds &amp; Haptics → Ringtone</strong>. You can also give a contact their own ringtone in the Contacts app (Edit → Ringtone).</p>
+<p>Making a ringtone for Android instead? Use the <a href="/ringtone-maker">ringtone maker</a> and save as MP3.</p>''' + PRIVACY,
+  faqs=[('Why does my iPhone ringtone have to be 40 seconds or less?', 'iPhone ignores ringtones longer than 40 seconds. The tool warns you if your selection is longer.'),
+        ('What is an M4R file?', 'An M4R is an AAC audio file (the same as M4A) with the extension iPhone expects for ringtones.'),
+        ('Why can\'t I choose M4R?', 'Some browsers, such as Chrome on Linux, can\'t create AAC audio. Use Safari, or Chrome or Edge on Windows or Mac.'),
+        ('Can I set it as a text tone or alarm?', 'Yes. In GarageBand choose Standard Text Tone, or pick it under Sounds & Haptics → Text Tone. Alarms can use any ringtone in the Clock app.'),
+        ('Is it free and private?', 'Yes. The song is cut on your device and never uploaded.')])
+
+# ------------------------------------------------------------------------------------------- meme generator
+PAGES['meme-generator'] = dict(
+  name='Meme generator', cat='image', script='meme-generator.js', appcat='DesignApplication',
+  title='Meme Generator — Make Memes from Your Photos, Free, No Watermark | WebcamClicks',
+  desc='Make a meme in seconds: top & bottom text, caption memes, this-vs-that, side by side, 4-panel comics and motivational posters. Outlined text, emoji stickers, deep fry. No watermark, no upload.',
+  lead='Turn any photo, screenshot or webcam selfie into a meme. Pick a layout (classic top & bottom text, caption on top, this vs that, expectation vs reality, a 4-panel comic or a motivational poster), type your text, drag it where you want, add stickers, and copy or download it.',
+  ui=f'''<div class="t-grid">
+    <div>
+      {DROP("image/*,.heic,.heif", "Drop or paste a picture", "JPG, PNG, WebP, GIF frame, HEIC · nothing is uploaded")}
+      <div class="t-actions" style="margin-top:8px"><button class="t-btn sm" id="mg-cam" type="button">📷 Use my webcam</button><button class="t-btn sm" id="mg-blank" type="button">⬜ Text-only meme</button></div>
+      <div class="mg-cambox" id="mg-cambox" hidden><video id="mg-camvideo" playsinline muted></video><div class="t-actions"><button class="t-btn primary" id="mg-snap" type="button">📸 Snap</button><button class="t-btn" id="mg-camclose" type="button">Cancel</button></div></div>
+      <div id="mg-work" hidden>
+        <div class="mg-stage" id="mg-stage"><canvas id="mg-canvas" aria-label="Meme preview: drag texts and stickers"></canvas><div class="mg-sel" id="mg-sel" hidden><i data-h="se"></i></div></div>
+        <div class="t-actions" style="margin-top:8px"><span id="mg-slotbtns" class="mg-slotbtns"></span><button class="t-btn sm" id="mg-del" type="button" hidden>🗑 Delete selected</button><span class="muted" id="mg-info" style="align-self:center;font-size:.82rem"></span></div>
+        <input type="file" id="mg-slot-in" accept="image/*,.heic,.heif" hidden>
+      </div>
+      <p class="t-status" id="t-status" role="status"></p>
+    </div>
+    <div class="t-panel">
+      <h2>Layout</h2>
+      <div class="mg-layouts" id="mg-layouts"></div>
+      <h2 style="margin-top:14px">Text</h2>
+      <div id="mg-texts" class="mg-texts"></div>
+      <button class="t-btn sm" id="mg-addtext" type="button">+ Add text</button>
+      <div class="t-row" style="margin-top:10px"><label class="t-field">Font <select class="t-select" id="mg-font"></select></label><label class="t-field">Size <input class="t-input" type="number" id="mg-size" min="12" max="240" value="84"></label></div>
+      <div class="t-row cap-colors"><label class="t-field"><span>Text</span><input type="color" id="mg-color" value="#ffffff"></label><label class="t-field"><span>Outline</span><input type="color" id="mg-stroke" value="#000000"></label><label class="t-field">Outline width <input class="t-range" type="range" id="mg-strokew" min="0" max="20" value="8"></label></div>
+      <div class="t-row"><label class="t-field">Align <select class="t-select" id="mg-align"><option value="center">Centre</option><option value="left">Left</option><option value="right">Right</option></select></label><label class="t-check" style="align-self:end"><input type="checkbox" id="mg-upper" checked> CAPITALS</label></div>
+      <button class="t-btn sm" id="mg-apply-all" type="button">Apply this style to all texts</button>
+      <h2 style="margin-top:14px">Stickers</h2>
+      <div class="mg-stickers" id="mg-stickers"></div>
+      <h2 style="margin-top:14px">Effect</h2>
+      <div class="ss-chips" id="mg-fx"></div>
+      <div class="t-row" style="margin-top:12px"><label class="t-field">Format <select class="t-select" id="mg-fmt"><option value="image/jpeg">JPG</option><option value="image/png">PNG</option></select></label></div>
+      <div class="t-actions" style="margin-top:0"><button class="t-btn primary" id="mg-save" type="button" disabled>⬇ Download meme</button><button class="t-btn" id="mg-copy" type="button" disabled>Copy</button></div>
+    </div>
+  </div>''',
+  article='''<h2>How to make a meme</h2>
+<ol><li><strong>Add a picture:</strong> drop or paste (Ctrl+V) a photo or screenshot, snap one with your webcam, or start a text-only meme.</li>
+<li><strong>Pick a layout:</strong> classic top &amp; bottom text, caption on top (the Twitter/Instagram style), this vs that, side by side (expectation vs reality), a 4-panel comic, or a motivational poster.</li>
+<li><strong>Write your text</strong> in the boxes on the right. It is outlined so it reads on any picture, and long text shrinks to fit. Drag any text on the picture to move it, and drag its corner to make it wider.</li>
+<li><strong>Add stickers</strong> (😂 💀 🔥 🗿…) and an effect such as <em>Deep fried</em>, then <strong>download</strong> or <strong>copy</strong> it straight into a chat.</li></ol>
+<h2>Meme layouts</h2>
+<ul><li><strong>Top &amp; bottom:</strong> the classic white Impact text with a black outline.</li>
+<li><strong>Caption on top:</strong> a white bar with plain text above the picture, the most common style today.</li>
+<li><strong>This vs that:</strong> two pictures with a line of text next to each, for comparing a bad and a good choice.</li>
+<li><strong>Side by side</strong> for expectation vs reality, before vs after, and <strong>4-panel comics</strong> for a story.</li>
+<li><strong>Motivational poster:</strong> a framed picture with a big serif title and a sarcastic subtitle.</li></ul>
+<p>Use pictures you took or are allowed to use. Want animated reactions instead? Make a GIF with the <a href="/photo-booth">photo booth</a> or <a href="/video-to-gif">video to GIF</a>.</p>''' + PRIVACY,
+  faqs=[('Is the meme generator free? Watermark?', 'Free, with no watermark and no sign-up.'),
+        ('Can I use my own photos?', 'Yes. Your photos stay on your device; nothing is uploaded.'),
+        ('Which font do memes use?', 'Classic memes use Impact in white with a black outline. Caption-style memes use a plain bold font like Arial. Both are included.'),
+        ('How do I make a deep-fried meme?', 'Choose the Deep fried effect: colours are pushed to the max, noise is added and the image is crunched with low-quality JPEG.'),
+        ('Can I paste the meme into WhatsApp or Discord?', 'Yes. Press Copy and paste it into WhatsApp Web, Discord, Slack or X, or download it on your phone and share it from your gallery.')])

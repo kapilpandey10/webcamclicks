@@ -68,6 +68,36 @@ async function onDevice(locale) {
   if (localOk[locale] == null) { try { localOk[locale] = (await Recognition.available({ langs: [locale], processLocally: true })) === 'available'; } catch (_) { localOk[locale] = false; } }
   return localOk[locale];
 }
+/** The browser's name: only Google Chrome and Microsoft Edge include an online speech service. */
+function browserName() {
+  if (navigator.brave) return 'Brave';
+  const ua = navigator.userAgent;
+  if (/OPR\//.test(ua)) return 'Opera'; if (/Vivaldi/.test(ua)) return 'Vivaldi'; if (/YaBrowser/.test(ua)) return 'Yandex Browser'; if (/SamsungBrowser/.test(ua)) return 'Samsung Internet';
+  const brand = (navigator.userAgentData?.brands || []).map((x) => x.brand).find((x) => !/Not.?A.?Brand|^Chromium$/i.test(x));
+  if (brand) return brand;
+  if (/Edg\//.test(ua)) return 'Microsoft Edge';
+  return /Chrome\//.test(ua) ? 'Chrome' : 'this browser';
+}
+const isEdge = () => /Edge/.test(browserName());
+const hasCloud = () => /^(Google Chrome|Chrome|Microsoft Edge)$/.test(browserName());
+const speechService = () => (isEdge() ? 'Microsoft\'s' : 'Google\'s');
+async function onDeviceState(locale) { try { return await Recognition.available({ langs: [locale], processLocally: true }); } catch (_) { return 'unavailable'; } }
+/** Offer the browser's on-device recogniser (it downloads its own speech pack for the language once). */
+async function offerOnDevice(locale, code) {
+  const st = canCaption ? await onDeviceState(locale) : 'unavailable';
+  if (st !== 'downloadable' && st !== 'downloading') return false;
+  els.engine.dataset.state = 'cloud';
+  els.engine.innerHTML = `Your browser can recognise ${escapeHtml(LANG_NAME[code])} on this device instead (no internet needed after that; ${escapeHtml(browserName())} downloads its own speech pack once). <button type="button" class="t-btn sm" id="cap-install" style="margin-top:6px">Use on-device recognition</button>`;
+  $('#cap-install').addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget; btn.disabled = true; btn.textContent = 'Setting up…';
+    try {
+      const ok = await Recognition.install({ langs: [locale], processLocally: true });
+      if (!ok) throw new Error('not installed');
+      localOk[locale] = true; await showEngine(); generate();
+    } catch (_) { btn.textContent = 'Could not set it up'; }
+  });
+  return true;
+}
 async function showEngine() {
   const el = els.engine;
   if (!canCaption) {
@@ -78,10 +108,11 @@ async function showEngine() {
   const code = els.lang.value; if (!code) { el.textContent = ''; el.dataset.state = ''; return; }
   const local = await onDevice(localeOf(code));
   if (code !== els.lang.value) return;
-  el.dataset.state = local ? 'ready' : 'cloud';
+  el.dataset.state = local ? 'ready' : hasCloud() ? 'cloud' : 'off';
   el.textContent = local
     ? `✓ ${LANG_NAME[code]} is recognised on your device by your browser. Nothing to download, and the sound never leaves your computer.`
-    : `Uses your browser's speech recognition. Nothing to download; for ${LANG_NAME[code]} your browser sends the sound (not the video) to its speech service (Google for Chrome, Microsoft for Edge) to turn it into text. Your video file stays on your device.`;
+    : hasCloud() ? `Uses your browser's speech recognition. Nothing to download; for ${LANG_NAME[code]} ${browserName()} sends the sound (not the video) to ${speechService()} speech service to turn it into text, so you need to be online. Your video file stays on your device.`
+    : `${browserName()} usually can't turn speech into text for ${LANG_NAME[code]} (only Google Chrome and Microsoft Edge include a speech service). If it fails, open this page in Chrome or Edge, or upload a caption file.`;
 }
 showEngine();
 
@@ -190,7 +221,7 @@ function stopListening() { if (session) session.cancel(); }
  * recogniser first heard it and the moment it finished, snapped to the loud parts of the audio.
  */
 function listen({ locale, local, rate, onPhrase, onInterim, onTime }) {
-  let cancelled = false, finished = false, rec = null, timer = 0, failed = null;
+  let cancelled = false, finished = false, rec = null, timer = 0, failed = null, retryDelay = 0;
   const audio = new Audio(); audio.src = els.video.src; audio.preservesPitch = true; audio.playbackRate = rate;
   const ctx = new AudioContext();
   const dest = ctx.createMediaStreamDestination();
@@ -199,7 +230,7 @@ function listen({ locale, local, rate, onPhrase, onInterim, onTime }) {
   const done = new Promise((resolve, reject) => {
     const finish = () => { if (finished) return; finished = true; clearInterval(timer); try { rec && rec.stop(); } catch (_) { /* ignore */ } setTimeout(cleanup, 300); };
     const cleanup = () => { audio.pause(); track.stop(); ctx.close().catch(() => {}); if (failed) reject(failed); else if (cancelled) reject(new Error('CANCELLED')); else resolve(); };
-    let heardAt = -1;
+    let heardAt = -1, netErrors = 0, heardAny = false;
     const start = () => {
       if (finished) return;
       rec = new Recognition();
@@ -208,6 +239,7 @@ function listen({ locale, local, rate, onPhrase, onInterim, onTime }) {
       rec.onresult = (e) => {
         for (let i = e.resultIndex; i < e.results.length; i++) {
           const r = e.results[i], t = audio.currentTime;
+          heardAny = true; netErrors = 0;
           if (heardAt < 0) heardAt = t;
           if (r.isFinal) { const text = r[0].transcript.trim(); if (text) onPhrase(text, heardAt, t); heardAt = -1; onInterim(''); }
           else onInterim(r[0].transcript);
@@ -216,10 +248,12 @@ function listen({ locale, local, rate, onPhrase, onInterim, onTime }) {
       rec.onerror = (e) => {
         if (e.error === 'no-speech' || e.error === 'aborted') return;
         if (e.error === 'language-not-supported' && local) { local = false; return; }   // try the online service instead
+        // the online service drops out now and then: try again (the sound keeps playing), give up if it never answers
+        if (e.error === 'network' && !local && ++netErrors <= (heardAny ? 4 : 2)) { retryDelay = 800 * netErrors; return; }
         failed = new Error(e.error === 'network' ? 'NETWORK' : e.error === 'language-not-supported' ? 'LANG' : e.error === 'not-allowed' || e.error === 'service-not-allowed' ? 'BLOCKED' : e.error);
         cancelled = true; finish();
       };
-      rec.onend = () => { if (!finished) start(); else cleanup(); };   // the recogniser stops now and then: keep listening
+      rec.onend = () => { if (finished) { cleanup(); return; } const d = retryDelay; retryDelay = 0; if (d) setTimeout(start, d); else start(); };   // the recogniser stops now and then: keep listening
       try { rec.start(track); } catch (err) { failed = err; finish(); }
     };
     audio.onended = () => setTimeout(finish, 1800 / rate);   // let the last phrase arrive
@@ -279,7 +313,10 @@ async function generate() {
     if (e.message === 'CANCELLED') setStatus(els.status, cues.length ? `Stopped. ${cues.length} captions so far; press Generate captions to start again.` : 'Stopped.');
     else {
       console.warn(e);
-      setStatus(els.status, e.message === 'NETWORK' ? 'Your browser\'s speech service could not be reached. Check your internet connection and try again.'
+      const offered = e.message === 'NETWORK' || e.message === 'LANG' ? await offerOnDevice(locale, code) : false;
+      setStatus(els.status, e.message === 'NETWORK'
+        ? (!hasCloud() ? `${browserName()} doesn't include an online speech service, so it can't make captions from sound. Open this page in Google Chrome or Microsoft Edge, or upload a caption file you already have.`
+          : `${speechService()} speech service didn't answer. This happens offline, on some office/school networks or VPNs, and in some regions where the service is temporarily unavailable. Try again in a few minutes or on another network (mobile data works too)${offered ? ', or use on-device recognition below' : ''}, or upload a caption file.`)
         : e.message === 'LANG' ? `Your browser can't recognise ${LANG_NAME[code]} speech yet. Try Chrome, or another language.`
         : e.message === 'BLOCKED' ? 'Speech recognition is turned off in this browser (or blocked by a setting or extension).'
         : `Captioning failed: ${e.message}`, 'err');

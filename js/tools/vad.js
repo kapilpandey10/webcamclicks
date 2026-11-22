@@ -1,4 +1,4 @@
-/* WebcamClicks — split audio into windows for the speech model.
+/* WebcamClicks — find where the speech is in a recording (used to time captions).
    ALL audio is transcribed: windows cover the whole recording back to back, each at most ~28 s and cut at a pause
    near its end (so words are not split). Whisper always works on 30 s blocks, so long windows waste the least work;
    the first window is short so the first captions appear quickly. Loudness is only used to choose those cut points, to
@@ -64,21 +64,4 @@ export function spreadOverRegions(tokens, regions) {
   const at = (f) => { let d = f * total; for (const [s, e] of regions) { if (d <= e - s) return s + d; d -= e - s; } return regions[regions.length - 1][1]; };
   let acc = 0;
   return tokens.map((w, i) => { const s = at(acc / sum); acc += weight[i]; return { text: w, start: +s.toFixed(3), end: +at(acc / sum).toFixed(3) }; });
-}
-
-/** Collapse any word or phrase (1–6 words) repeated 3+ times in a row to one copy: Whisper's classic loop. */
-export function dedupeLoops(words) {
-  const key = (w) => w.text.trim().toLowerCase().replace(/[.,!?।、。]+$/u, '');
-  let out = words;
-  for (let n = 1; n <= 6; n++) {
-    const res = []; let i = 0;
-    while (i < out.length) {
-      const g = out.slice(i, i + n).map(key).join('\u0001');
-      let k = 1;
-      while (i + (k + 1) * n <= out.length && out.slice(i + k * n, i + (k + 1) * n).map(key).join('\u0001') === g) k++;
-      if (k >= 3 && g.replace(/\u0001/g, '')) { res.push(...out.slice(i, i + n)); i += k * n; } else { res.push(out[i]); i++; }
-    }
-    out = res;
-  }
-  return out;
 }

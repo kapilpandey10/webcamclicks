@@ -1,152 +1,163 @@
-/* WebcamClicks — Auto captions: on-device speech recognition (Whisper) with word-level timing,
-   12 animated caption styles, editing, translation, SRT/VTT export and burn-in. Nothing is uploaded. */
+/* WebcamClicks — Auto captions with the browser's own speech recognition (Web Speech API, no AI download),
+   12 animated caption styles, caption-file upload, editing, translation, SRT/VTT export and burn-in. */
 
 import { $, setupDropzone, splitName, downloadBlob, setStatus, loadMediabunny, formatBytes, fmtTime, escapeHtml } from './common.js';
 import { STYLES, FONTS_CSS, ensureFont, drawCaption, groupWords, wordsFromText, retime, joinWords } from './caption-render.js';
-import { planWindows, dedupeLoops } from './vad.js';
+import { planWindows, spreadOverRegions } from './vad.js';
 
-const LANGS = [['', 'Choose the spoken language…'], ['en', 'English'], ['es', 'Spanish'], ['fr', 'French'], ['de', 'German'], ['pt', 'Portuguese'], ['it', 'Italian'],
-  ['nl', 'Dutch'], ['hi', 'Hindi'], ['ne', 'Nepali'], ['bn', 'Bengali'], ['ta', 'Tamil'], ['te', 'Telugu'], ['mr', 'Marathi'], ['ur', 'Urdu'],
-  ['ar', 'Arabic'], ['fa', 'Persian'], ['tr', 'Turkish'], ['ru', 'Russian'], ['uk', 'Ukrainian'], ['pl', 'Polish'], ['cs', 'Czech'], ['ro', 'Romanian'],
-  ['el', 'Greek'], ['he', 'Hebrew'], ['zh', 'Chinese'], ['ja', 'Japanese'], ['ko', 'Korean'], ['vi', 'Vietnamese'], ['th', 'Thai'], ['id', 'Indonesian'],
-  ['ms', 'Malay'], ['tl', 'Filipino'], ['sv', 'Swedish'], ['no', 'Norwegian'], ['da', 'Danish'], ['fi', 'Finnish'], ['hu', 'Hungarian'], ['auto', 'Not sure: detect it automatically']];
-const SIZES = { fast: 'tiny', balanced: 'base', accurate: 'small', best: 'large-v3-turbo' };
+// [code, name, speech-recognition locale]
+const LANG_LIST = [['en', 'English', 'en-US'], ['ne', 'Nepali', 'ne-NP'], ['hi', 'Hindi', 'hi-IN'], ['es', 'Spanish', 'es-ES'], ['fr', 'French', 'fr-FR'], ['de', 'German', 'de-DE'],
+  ['pt', 'Portuguese', 'pt-BR'], ['it', 'Italian', 'it-IT'], ['nl', 'Dutch', 'nl-NL'], ['bn', 'Bengali', 'bn-IN'], ['ta', 'Tamil', 'ta-IN'], ['te', 'Telugu', 'te-IN'],
+  ['mr', 'Marathi', 'mr-IN'], ['gu', 'Gujarati', 'gu-IN'], ['pa', 'Punjabi', 'pa-IN'], ['ur', 'Urdu', 'ur-PK'], ['si', 'Sinhala', 'si-LK'], ['ar', 'Arabic', 'ar-SA'], ['fa', 'Persian', 'fa-IR'],
+  ['tr', 'Turkish', 'tr-TR'], ['ru', 'Russian', 'ru-RU'], ['uk', 'Ukrainian', 'uk-UA'], ['pl', 'Polish', 'pl-PL'], ['cs', 'Czech', 'cs-CZ'], ['ro', 'Romanian', 'ro-RO'],
+  ['el', 'Greek', 'el-GR'], ['he', 'Hebrew', 'he-IL'], ['zh', 'Chinese (Mandarin)', 'zh-CN'], ['ja', 'Japanese', 'ja-JP'], ['ko', 'Korean', 'ko-KR'], ['vi', 'Vietnamese', 'vi-VN'],
+  ['th', 'Thai', 'th-TH'], ['id', 'Indonesian', 'id-ID'], ['ms', 'Malay', 'ms-MY'], ['tl', 'Filipino', 'fil-PH'], ['sv', 'Swedish', 'sv-SE'], ['no', 'Norwegian', 'nb-NO'],
+  ['da', 'Danish', 'da-DK'], ['fi', 'Finnish', 'fi-FI'], ['hu', 'Hungarian', 'hu-HU'], ['sw', 'Swahili', 'sw-KE']];
+const LANGS = [['', 'Choose the spoken language…'], ...LANG_LIST.map(([k, v]) => [k, v])];
 const LANG_NAME = Object.fromEntries(LANGS);
+/** Speech-recognition locale for a language, preferring the viewer's own region (es-MX, en-IN…). */
+function localeOf(code) {
+  const mine = (navigator.languages || [navigator.language || '']).find((l) => String(l).toLowerCase().startsWith(`${code}-`));
+  return mine || (LANG_LIST.find((l) => l[0] === code) || [])[2] || code;
+}
 
 const els = {
   drop: $('#t-drop'), input: $('#t-input'), status: $('#t-status'), video: $('#cap-video'), overlay: $('#cap-overlay'), stage: $('#cap-stage'),
-  model: $('#cap-model'), lang: $('#cap-lang'), task: $('#cap-task'), run: $('#cap-run'), auto: $('#cap-auto'), modelStatus: $('#cap-model-status'),
+  lang: $('#cap-lang'), speed: $('#cap-speed'), run: $('#cap-run'), auto: $('#cap-auto'), engine: $('#cap-engine'), live: $('#cap-live'),
   bar: $('#cap-bar'), fill: $('#cap-fill'), cues: $('#cap-cues'), add: $('#cap-add'), shift: $('#cap-shift'), shiftBtn: $('#cap-shift-btn'),
   styles: $('#cap-styles'), group: $('#cap-group'), size: $('#cap-size'), pos: $('#cap-pos'), fillC: $('#cap-fillc'), activeC: $('#cap-activec'), upper: $('#cap-upper'),
-  srt: $('#cap-srt'), vtt: $('#cap-vtt'), txt: $('#cap-txt'), burn: $('#cap-burn'), importIn: $('#cap-import'),
-  detected: $('#cap-detected'), trLang: $('#cap-tr-lang'), trRun: $('#cap-tr-run'), trUndo: $('#cap-tr-undo'), trNote: $('#cap-tr-note'), editor: $('#cap-editor'), info: $('#cap-info')
+  srt: $('#cap-srt'), vtt: $('#cap-vtt'), txt: $('#cap-txt'), burn: $('#cap-burn'), importIn: $('#cap-import'), importIn2: $('#cap-import2'),
+  trLang: $('#cap-tr-lang'), trRun: $('#cap-tr-run'), trUndo: $('#cap-tr-undo'), trNote: $('#cap-tr-note'), editor: $('#cap-editor'), info: $('#cap-info')
 };
 
 els.lang.innerHTML = LANGS.map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
-els.trLang.innerHTML = LANGS.slice(1, -1).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+els.trLang.innerHTML = LANGS.slice(1).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
 els.trLang.value = (navigator.language || 'en').slice(0, 2) === 'en' ? 'es' : (navigator.language || 'en').slice(0, 2);
 const store = { get(k, d) { try { return localStorage.getItem(`wc_cap_${k}`) ?? d; } catch (_) { return d; } }, set(k, v) { try { localStorage.setItem(`wc_cap_${k}`, v); } catch (_) { /* ignore */ } } };
-els.model.value = store.get('model', 'balanced');
 els.lang.value = store.get('lang', '');
+if (!LANG_NAME[els.lang.value]) els.lang.value = '';
+els.speed.value = store.get('speed', '1');
 els.lang.addEventListener('change', () => {
-  store.set('lang', els.lang.value); els.lang.classList.remove('need');
+  store.set('lang', els.lang.value); els.lang.classList.remove('need'); showEngine();
   // language picked after the video was added: start right away
   if (els.lang.value && file && !busy && !cues.length && els.auto.checked) generate();
 });
-/** The language Whisper should write ('' = detect it). */
-const spokenLang = () => (els.lang.value === 'auto' ? '' : els.lang.value);
+els.speed.addEventListener('change', () => store.set('speed', els.speed.value));
+const spokenLang = () => els.lang.value;
 function askLanguage() {
   els.lang.classList.add('need'); els.lang.focus({ preventScroll: true });
   els.lang.scrollIntoView({ block: 'center', behavior: 'smooth' });
   setStatus(els.status, 'Choose the language spoken in the video (under “Spoken language”). Captions start as soon as you pick it.');
 }
 els.auto.checked = store.get('auto', '1') === '1';
+els.auto.addEventListener('change', () => store.set('auto', els.auto.checked ? '1' : '0'));
 
 // caption fonts (Montserrat, Poppins, Anton, Bangers, Permanent Marker) — only on this page
 if (!document.querySelector('link[data-cap-fonts]')) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = FONTS_CSS; l.dataset.capFonts = '1'; document.head.appendChild(l); }
 
-let file = null, cues = [], duration = 0, styleKey = store.get('style', 'pop'), beforeTranslate = null, lastGroup = '';
+let file = null, cues = [], duration = 0, styleKey = store.get('style', 'pop'), beforeTranslate = null, lastGroup = '', fromFile = false;
 if (!STYLES[styleKey]) styleKey = 'pop';
 
-/* ---------------------------------------------------------------- speech model: workers
-   Worker 0 downloads the model in the background as soon as the page settles. When captions are generated on the
-   processor, up to two more workers load the same model from the browser cache and share the windows, because the
-   speech engine runs on one core per worker here. Results stream back window by window. */
-const workers = [];   // { w, busy }
-let rid = 0;
-const calls = new Map();   // rid → { resolve, reject, onEvent }
-const modelState = {};   // size → { state, loaded, total, word, device }
-const readyWaiters = new Map();   // size → [resolve…]
-function spawn(i) {
-  const w = new Worker(new URL('./captions-worker.js', import.meta.url), { type: 'module' });
-  w.onmessage = (e) => {
-    const m = e.data;
-    if (m.type === 'model') {
-      if (i !== 0) return;   // helpers load from the cache: only the first worker's download is shown
-      modelState[m.size] = { ...(modelState[m.size] || {}), ...m }; showModel();
-      if (m.state === 'ready') { (readyWaiters.get(m.size) || []).forEach((f) => f()); readyWaiters.delete(m.size); }
-      return;
-    }
-    const c = calls.get(m.rid); if (!c) return;
-    if (m.type === 'result') { calls.delete(m.rid); c.resolve(m); }
-    else if (m.type === 'error') { calls.delete(m.rid); c.reject(new Error(m.text)); }
-    else c.onEvent && c.onEvent(m);
-  };
-  w.onerror = (e) => { for (const [k, c] of calls) if (c.wi === i) { calls.delete(k); c.reject(new Error(e.message || 'The speech worker stopped.')); } };
-  workers[i] = { w, busy: false };
-  return workers[i];
+/* ---------------------------------------------------------------- the browser's speech recognition */
+const Recognition = self.SpeechRecognition || self.webkitSpeechRecognition;
+// listening to a video's sound (not the microphone) needs start(audioTrack), which came with SpeechRecognition.available()
+const canCaption = !!Recognition && typeof Recognition.available === 'function';
+let localOk = {};   // locale → true when the browser can recognise it on this device (no audio leaves the computer)
+async function onDevice(locale) {
+  if (!canCaption) return false;
+  if (localOk[locale] == null) { try { localOk[locale] = (await Recognition.available({ langs: [locale], processLocally: true })) === 'available'; } catch (_) { localOk[locale] = false; } }
+  return localOk[locale];
 }
-const worker = (i) => workers[i] || spawn(i);
-function call(i, msg, onEvent, transfer = []) {
-  return new Promise((resolve, reject) => { const r = ++rid; calls.set(r, { resolve, reject, onEvent, wi: i }); worker(i).w.postMessage({ ...msg, rid: r }, transfer); });
+async function showEngine() {
+  const el = els.engine;
+  if (!canCaption) {
+    el.dataset.state = 'off';
+    el.innerHTML = 'Your browser can\'t turn a video\'s sound into text. Open this page in <b>Chrome</b> or <b>Edge</b> (computer or Android), or upload a caption file you already have.';
+    els.run.disabled = true; return;
+  }
+  const code = els.lang.value; if (!code) { el.textContent = ''; el.dataset.state = ''; return; }
+  const local = await onDevice(localeOf(code));
+  if (code !== els.lang.value) return;
+  el.dataset.state = local ? 'ready' : 'cloud';
+  el.textContent = local
+    ? `✓ ${LANG_NAME[code]} is recognised on your device by your browser. Nothing to download, and the sound never leaves your computer.`
+    : `Uses your browser's speech recognition. Nothing to download; for ${LANG_NAME[code]} your browser sends the sound (not the video) to its speech service (Google for Chrome, Microsoft for Edge) to turn it into text. Your video file stays on your device.`;
 }
-const whenReady = (size) => (modelState[size]?.state === 'ready' ? Promise.resolve() : new Promise((r) => readyWaiters.set(size, [...(readyWaiters.get(size) || []), r])));
-function stopHelpers() {
-  for (let i = workers.length - 1; i > 0; i--) { if (!workers[i]) continue; workers[i].w.terminate(); for (const [k, c] of calls) if (c.wi === i) { calls.delete(k); c.reject(new Error('CANCELLED')); } workers.length = i; }
-}
-/** How many workers to run at once: one on a graphics chip (it is already parallel), up to three on a processor. */
-function poolSize(size) {
-  if (modelState[size]?.device === 'webgpu') return 1;
-  const cores = navigator.hardwareConcurrency || 2, mem = navigator.deviceMemory || 4;
-  const mobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-  const perGb = { tiny: 0.4, base: 0.6, small: 1.5 }[size] || 2;
-  return Math.max(1, Math.min(mobile ? 2 : 3, cores - 1, Math.floor(mem / 2 / perGb)));
-}
-const curSize = () => SIZES[els.model.value] || 'base';
-function showModel() {
-  const s = modelState[curSize()];
-  const el = els.modelStatus;
-  if (!s) { el.textContent = ''; el.dataset.state = ''; return; }
-  el.dataset.state = s.state;
-  if (s.state === 'downloading') el.textContent = `Speech AI downloading in the background: ${s.total ? Math.round((s.loaded / s.total) * 100) : 0}% (${formatBytes(s.loaded || 0)} of ${formatBytes(s.total || 0)}). One time only.`;
-  else if (s.state === 'ready') el.textContent = `✓ Speech AI ready${s.word ? ' with word-by-word timing' : ''}. Works offline from now on.`;
-  else if (s.state === 'error') el.textContent = 'The speech AI could not be downloaded. It will try again when you generate captions.';
-}
-function preload() {
-  const c = navigator.connection;
-  if (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ''))) { els.modelStatus.textContent = 'Data saver is on: the speech AI will download when you generate captions.'; return; }
-  const size = curSize();
-  if (modelState[size] && modelState[size].state !== 'error') return;
-  modelState[size] = { state: 'downloading', loaded: 0, total: 0 }; showModel();
-  call(0, { type: 'preload', size, warm: true }).catch(() => { /* shown by showModel */ });
-}
-// start the download quietly once the page has settled, so captions are instant when a video is added
-(window.requestIdleCallback || ((f) => setTimeout(f, 2500)))(preload, { timeout: 6000 });
-els.model.addEventListener('change', () => { store.set('model', els.model.value); showModel(); preload(); });
-els.auto.addEventListener('change', () => store.set('auto', els.auto.checked ? '1' : '0'));
+showEngine();
 
-/* ---------------------------------------------------------------- detected language (with a one-click fix) */
-function langLabel(code) { return LANG_NAME[code] || (typeof Intl !== 'undefined' && Intl.DisplayNames ? new Intl.DisplayNames(['en'], { type: 'language' }).of(code) : code); }
-function showDetected(ranked, mixed) {
-  const [top, ...rest] = ranked;
-  if (!LANG_NAME[top.code]) els.lang.insertAdjacentHTML('beforeend', `<option value="${top.code}">${langLabel(top.code)}</option>`);
-  els.detected.hidden = false;
-  els.detected.innerHTML = mixed
-    ? `Mixed speech detected: <b>${mixed.map(langLabel).join(' + ')}</b>. Each part is written in the language it is spoken in. For the best text, pick the main language in <em>Spoken language</em>.`
-    : `Detected language: <b>${langLabel(top.code)}</b> (${Math.round(top.p * 100)}% sure)${rest.length ? `, then ${rest.map((r) => `${langLabel(r.code)} ${Math.round(r.p * 100)}%`).join(', ')}` : ''}. Wrong? Pick the right one in <em>Spoken language</em> and press Generate again.`;
-  els.detected.classList.toggle('unsure', !mixed && top.p < 0.6);
-}
-
-/* ---------------------------------------------------------------- load media */
-async function openMedia(f) {
+/* ---------------------------------------------------------------- load media and caption files */
+const CAPTION_RE = /\.(srt|vtt|ass|ssa)$/i;
+const MEDIA_RE = /\.(mp4|mov|m4v|webm|mkv|m4a|mp3|wav|ogg|oga|opus|flac|aac)$/i;
+async function openMedia(f, { generateNow = true } = {}) {
+  if (busy) stopListening();
   file = f;
   els.editor.hidden = false;
   if (els.video.src) URL.revokeObjectURL(els.video.src);
   els.video.src = URL.createObjectURL(f);
-  els.video.classList.toggle('audio-only', f.type.startsWith('audio/'));
+  els.video.classList.toggle('audio-only', f.type.startsWith('audio/') || /\.(m4a|mp3|wav|ogg|oga|opus|flac|aac)$/i.test(f.name));
   await new Promise((r) => { els.video.onloadedmetadata = r; els.video.onerror = r; });
   duration = isFinite(els.video.duration) ? els.video.duration : 0;
-  if (busy && !els.auto.checked) cancelGen();   // stop captioning the previous file
-  tlSetWindows([]);
+  tlProgress(null);
   els.info.textContent = `${f.name} · ${formatBytes(f.size)}${duration ? ` · ${fmtTime(duration)}` : ''}`;
-  els.run.disabled = false; els.burn.disabled = !cues.length || f.type.startsWith('audio/');
-  sizeOverlay();
+  els.run.disabled = !canCaption; els.burn.disabled = !cues.length || els.video.classList.contains('audio-only');
+  sizeOverlay(); renderCues();
+  if (!generateNow || (fromFile && cues.length)) { setStatus(els.status, cues.length ? `Your ${cues.length} captions are on the video. Pick a style, check the preview, then export or burn them in.` : 'Video loaded.', cues.length ? 'ok' : ''); return; }
+  if (!canCaption) { setStatus(els.status, 'This browser can\'t make captions from sound. Use Chrome or Edge, or upload a caption file (SRT, VTT or ASS).', 'err'); return; }
   if (!els.lang.value) askLanguage();
   else if (els.auto.checked) generate();
   else setStatus(els.status, 'Press Generate captions when you are ready.');
 }
 
-/** Decode the audio track to 16 kHz mono (what Whisper expects). */
+/** Read SRT, WebVTT or ASS/SSA subtitles into captions. */
+function parseCaptions(txt) {
+  const parseT = (v) => { const p = String(v).trim().replace(',', '.').split(':').map(Number); return p.reduce((acc, x) => acc * 60 + x, 0); };
+  const out = [];
+  txt = txt.replace(/^﻿/, '').replace(/\r/g, '');
+  if (/^\s*\[Script Info\]/i.test(txt) || /^Dialogue:/m.test(txt)) {   // ASS / SSA
+    const fmt = (txt.match(/^\[Events\][\s\S]*?^Format:(.*)$/m) || [])[1];
+    const cols = (fmt || 'Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text').split(',').map((c) => c.trim().toLowerCase());
+    for (const line of txt.split('\n')) {
+      if (!line.startsWith('Dialogue:')) continue;
+      const parts = line.slice(9).split(','); const f = {};
+      cols.forEach((c, i) => { f[c] = i === cols.length - 1 ? parts.slice(i).join(',') : parts[i]; });
+      const text = String(f.text || '').replace(/\{[^}]*\}/g, '').replace(/\\N/gi, '\n').replace(/\\h/g, ' ').trim();
+      const a = parseT(f.start), z = parseT(f.end);
+      if (text && z > a) out.push({ start: a, end: z, text });
+    }
+  } else {   // SRT / VTT
+    for (const b of txt.split(/\n\s*\n/)) {
+      const m = b.match(/((?:\d{1,2}:)?\d{1,2}:\d{2}[.,]\d{1,3})\s*-->\s*((?:\d{1,2}:)?\d{1,2}:\d{2}[.,]\d{1,3})/);
+      if (!m) continue;
+      const text = b.slice(b.indexOf(m[0]) + m[0].length).replace(/^[^\n]*\n?/, '').replace(/<[^>]+>/g, '').replace(/\{\\[^}]*\}/g, '')
+        .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').trim();
+      const a = parseT(m[1]), z = parseT(m[2]);
+      if (text && z > a) out.push({ start: a, end: z, text });
+    }
+  }
+  out.sort((x, y) => x.start - y.start);
+  out.forEach((c) => { c.words = wordsFromText(c.text, c.start, c.end); });
+  return out;
+}
+async function loadCaptionFile(f) {
+  const out = parseCaptions(await f.text());
+  if (!out.length) { setStatus(els.status, `No captions found in ${f.name}. SRT, VTT and ASS files work.`, 'err'); return false; }
+  if (busy) stopListening();
+  cues = out; lastGroup = 'imported'; fromFile = true; beforeTranslate = null; els.trUndo.hidden = true;
+  renderCues(); els.editor.hidden = false;
+  if (cues.length && els.video.src && els.video.paused) els.video.currentTime = Math.max(0, cues[0].start + 0.05);
+  setStatus(els.status, `Loaded ${out.length} captions from ${f.name}${file ? ' onto your video' : '. Now add the video they belong to'}. Pick a style; change “Words per caption” to regroup them.`, 'ok');
+  return true;
+}
+async function handleFiles(files) {
+  const capF = files.find((x) => CAPTION_RE.test(x.name));
+  const media = files.find((x) => /^(video|audio)\//.test(x.type) || MEDIA_RE.test(x.name));
+  if (!capF && !media) { setStatus(els.status, 'Please choose a video or audio file, or a caption file (SRT, VTT, ASS).', 'err'); return; }
+  if (capF) await loadCaptionFile(capF);
+  if (media) await openMedia(media, { generateNow: !capF });
+}
+[els.importIn, els.importIn2].forEach((inp) => inp && inp.addEventListener('change', async () => { const fs = [...inp.files]; inp.value = ''; if (fs.length) handleFiles(fs); }));
+
+/** Decode the audio track to 16 kHz mono (used to find where speech is, for timing). */
 async function audio16k() {
   const MB = await loadMediabunny();
   const input = new MB.Input({ source: new MB.BlobSource(file), formats: MB.ALL_FORMATS });
@@ -168,143 +179,114 @@ async function audio16k() {
   return (await ctx.startRendering()).getChannelData(0);
 }
 
-/* ---------------------------------------------------------------- transcribe (streams window by window) */
-// languages the tiny and base models write well; for all others a bigger model is used automatically
-const WELL_SUPPORTED = new Set(['en', 'es', 'fr', 'de', 'it', 'pt', 'nl', 'ru', 'ja', 'zh', 'ko', 'pl', 'tr', 'sv', 'ca', 'id', 'uk', 'cs', 'ro', 'da', 'no', 'fi', 'hu', 'el', 'vi', 'ms']);
-const SR = 16000;
-const preferLangs = () => [...new Set((navigator.languages || [navigator.language]).map((l) => String(l).slice(0, 2).toLowerCase()))].filter((l) => l !== 'en');
-const sizeKey = (size) => Object.keys(SIZES).find((x) => SIZES[x] === size);
-function loadModel(size) {
-  if (!modelState[size] || modelState[size].state === 'error') modelState[size] = { state: 'downloading', loaded: 0, total: 0 };
-  showModel();
-  return call(0, { type: 'preload', size, warm: true });
-}
-/** Words of all finished windows in time order (holes allowed while streaming). */
-function mergeWords(results) {
-  const out = [];
-  for (const ws of results) {
-    if (!ws || !ws.length) continue;
-    const first = out.length;
-    out.push(...ws.map((w) => ({ ...w })));
-    // the first word of a new window needs a leading space in space-separated languages
-    if (first > 0 && !/^\s/.test(out[first].text) && (/^\s/.test(out[first - 1].text) || /^\s/.test(out[first + 1]?.text || ''))) out[first].text = ` ${out[first].text}`;
-  }
-  return dedupeLoops(out);
-}
+/* ---------------------------------------------------------------- transcribe: play the sound silently into the recogniser */
 const cueListBusy = () => els.cues.contains(document.activeElement);
+let busy = false, session = null;
+function stopListening() { if (session) session.cancel(); }
 
-let busy = false, gen = 0, restart = false;
-function cancelGen() { gen++; stopHelpers(); }
+/**
+ * The sound is played (silently, at the chosen speed, pitch kept) into a MediaStream track that the browser's
+ * speech recogniser listens to. Each finished phrase is placed where its speech was: between the moment the
+ * recogniser first heard it and the moment it finished, snapped to the loud parts of the audio.
+ */
+function listen({ locale, local, rate, onPhrase, onInterim, onTime }) {
+  let cancelled = false, finished = false, rec = null, timer = 0, failed = null;
+  const audio = new Audio(); audio.src = els.video.src; audio.preservesPitch = true; audio.playbackRate = rate;
+  const ctx = new AudioContext();
+  const dest = ctx.createMediaStreamDestination();
+  ctx.createMediaElementSource(audio).connect(dest);   // to the recogniser only, not the speakers
+  const track = dest.stream.getAudioTracks()[0];
+  const done = new Promise((resolve, reject) => {
+    const finish = () => { if (finished) return; finished = true; clearInterval(timer); try { rec && rec.stop(); } catch (_) { /* ignore */ } setTimeout(cleanup, 300); };
+    const cleanup = () => { audio.pause(); track.stop(); ctx.close().catch(() => {}); if (failed) reject(failed); else if (cancelled) reject(new Error('CANCELLED')); else resolve(); };
+    let heardAt = -1;
+    const start = () => {
+      if (finished) return;
+      rec = new Recognition();
+      rec.lang = locale; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 1;
+      if (local) rec.processLocally = true;
+      rec.onresult = (e) => {
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const r = e.results[i], t = audio.currentTime;
+          if (heardAt < 0) heardAt = t;
+          if (r.isFinal) { const text = r[0].transcript.trim(); if (text) onPhrase(text, heardAt, t); heardAt = -1; onInterim(''); }
+          else onInterim(r[0].transcript);
+        }
+      };
+      rec.onerror = (e) => {
+        if (e.error === 'no-speech' || e.error === 'aborted') return;
+        if (e.error === 'language-not-supported' && local) { local = false; return; }   // try the online service instead
+        failed = new Error(e.error === 'network' ? 'NETWORK' : e.error === 'language-not-supported' ? 'LANG' : e.error === 'not-allowed' || e.error === 'service-not-allowed' ? 'BLOCKED' : e.error);
+        cancelled = true; finish();
+      };
+      rec.onend = () => { if (!finished) start(); else cleanup(); };   // the recogniser stops now and then: keep listening
+      try { rec.start(track); } catch (err) { failed = err; finish(); }
+    };
+    audio.onended = () => setTimeout(finish, 1800 / rate);   // let the last phrase arrive
+    audio.onerror = () => { failed = new Error('This file\'s sound can\'t be played in your browser.'); finish(); };
+    timer = setInterval(() => onTime(audio.currentTime), 250);
+    ctx.resume().then(() => audio.play()).then(start, (err) => { failed = err; finish(); });
+    session = { cancel() { cancelled = true; finish(); } };
+  });
+  return done;
+}
+
 async function generate() {
   if (!file) return;
+  if (!canCaption) { showEngine(); return; }
   if (!els.lang.value) { askLanguage(); return; }
-  if (busy) { restart = true; cancelGen(); setStatus(els.status, 'Restarting with the new settings…'); return; }   // a new file or settings while working: start over
-  busy = true; const my = ++gen; const alive = () => my === gen;
-  const cancelled = () => { if (!alive()) throw new Error('CANCELLED'); };
-  els.run.disabled = false; els.run.textContent = 'Restart captions'; els.bar.hidden = false; els.fill.style.width = '0%'; els.detected.hidden = true;
-  const T0 = performance.now();
-  const onEv = (m) => { if (!alive()) return; if (m.type === 'status') setStatus(els.status, m.text); if (m.type === 'debug' && window.__capDebug) console.log('CAPDEBUG ' + JSON.stringify(m)); };
+  if (busy) { stopListening(); return; }   // the button reads “Stop” while listening
+  busy = true; fromFile = false;
+  els.run.textContent = '■ Stop'; els.bar.hidden = false; els.fill.style.width = '0%'; els.live.hidden = false; els.live.textContent = '';
+  const T0 = performance.now(), code = els.lang.value, locale = localeOf(code), rate = +els.speed.value || 1;
+  const words = [];
+  let regions = null, lastEnd = 0, streamT = 0;
+  cues = []; lastGroup = groupMode(); beforeTranslate = null; els.trUndo.hidden = true; renderCues();
+  // where the speech is (for word timing): decoded alongside, it is ready long before it is needed
+  audio16k().then((pcm) => { regions = planWindows(pcm, 16000).flatMap((w) => w.regions); }).catch(() => { /* timing falls back to when phrases were heard */ });
+  const stream = (final) => {
+    cues = groupWords(words, lastGroup);
+    if (final || !cueListBusy()) renderCues(); else { tlRender(); drawOverlay(); }
+  };
+  const onPhrase = (text, heard, at) => {
+    // the recogniser reports a phrase a moment after it is spoken
+    let a = Math.max(lastEnd, heard - 0.9), z = Math.max(a + 0.4, at - 0.25);
+    let span = regions ? regions.map(([x, y]) => [Math.max(x, a), Math.min(y, z)]).filter(([x, y]) => y - x > 0.05) : [];
+    if (!span.length) span = [[a, z]];
+    const toks = /\s/.test(text) ? text.split(/\s+/).map((w, i) => (i || words.length ? ` ${w}` : w)) : [...text].reduce((acc, ch, i) => { if (i % 2) acc[acc.length - 1] += ch; else acc.push(ch); return acc; }, []);
+    const ws = spreadOverRegions(toks, span);
+    words.push(...ws); lastEnd = ws.length ? ws[ws.length - 1].end : z;
+    const now = performance.now(); if (now - streamT > 200) { streamT = now; stream(false); }
+  };
+  const onInterim = (t) => { els.live.textContent = t ? `Hearing: “${t.trim()}”` : ''; };
+  const onTime = (t) => {
+    const d = duration || 1, f = Math.min(1, t / d);
+    els.fill.style.width = `${Math.round(f * 100)}%`; tlProgress(t);
+    const left = Math.max(0, Math.round((d - t) / rate));
+    setStatus(els.status, `Listening… ${fmtTime(t)} of ${fmtTime(d)}${left ? ` · about ${left < 90 ? `${left} s` : `${Math.round(left / 60)} min`} left` : ''}. Captions appear as they are heard; you can play the video meanwhile.`);
+  };
   try {
-    if (els.model.value === 'best' && !(navigator.gpu && await navigator.gpu.requestAdapter().catch(() => null))) { els.model.value = 'accurate'; setStatus(els.status, 'Best needs a graphics chip (WebGPU), which this browser doesn\'t offer. Using Accurate.'); await new Promise((r) => setTimeout(r, 1200)); }
-    let size = curSize();
-    if (!modelState[size] || modelState[size].state === 'error') loadModel(size).catch(() => { /* reported below */ });   // download while the audio is read
-    setStatus(els.status, 'Reading the audio…');
-    const pcm = await audio16k(); cancelled();
-    const wins = planWindows(pcm, SR);
-    tlSetWindows(wins);
-    cues = []; lastGroup = groupMode(); renderCues();
-    if (!wins.length) { setStatus(els.status, 'No speech was detected in this file.', 'err'); return; }
-    if (modelState[size]?.state === 'downloading') setStatus(els.status, 'Waiting for the speech AI to finish downloading (first time only)…');
-
-    let language = spokenLang(), mixed = null;
-    if (!language) {
-      // Whisper's language identification on the speechiest window of each third of the file (beginning, middle,
-      // end), so a video that switches language is noticed; stops early when the first clip is unmistakable
-      const speech = (w) => w.regions.reduce((acc, [x, y]) => acc + (y - x), 0), end = wins[wins.length - 1].end;
-      const picks = [0, 1, 2].map((k) => wins.filter((w) => w.start >= (end * k) / 3 && w.start < (end * (k + 1)) / 3).sort((x, y) => speech(y) - speech(x))[0]).filter(Boolean);
-      const clips = [...new Set(picks)].sort((x, y) => speech(y) - speech(x))
-        .map((w) => ({ audio: pcm.slice(Math.floor(w.start * SR), Math.min(pcm.length, Math.ceil(Math.min(w.end, w.start + 30) * SR))), speech: speech(w) }));
-      const r = await call(0, { type: 'detect', size, clips, prefer: preferLangs() }, onEv, clips.map((c) => c.audio.buffer)); cancelled();
-      language = r.ranked[0].code; mixed = r.mixed; showDetected(r.ranked, mixed);
-    }
-    if (/^(tiny|base)$/.test(size) && [language, ...(mixed || [])].some((l) => !WELL_SUPPORTED.has(l))) {
-      await loadModel(size).catch(() => {});
-      const up = modelState[size]?.device === 'webgpu' ? 'large-v3-turbo' : 'small';
-      setStatus(els.status, `This language needs a larger speech model for good text. Switching to ${up === 'small' ? 'Accurate' : 'Best'} (one-time download)…`);
-      try { await loadModel(up); size = up; }
-      catch (e) { if (up !== 'small') { try { await loadModel('small'); size = 'small'; } catch (_) { /* keep the current model */ } } }
-      cancelled();
-      if (sizeKey(size)) { els.model.value = sizeKey(size); showModel(); }
-    }
-
-    const results = new Array(wins.length), state = wins.map(() => 'pending');
-    const totalSec = wins.reduce((acc, w) => acc + (w.end - w.start), 0);
-    let doneSec = 0, mode = 'word', tStart = 0, helpers = 0, streamT = 0;
-    const stream = (final) => {
-      const words = mergeWords(results);
-      cues = groupWords(words, lastGroup);
-      if (final || !cueListBusy()) renderCues(); else { tlRender(); drawOverlay(); }
-      return words;
-    };
-    const progress = () => {
-      const f = doneSec / totalSec, el = (performance.now() - tStart) / 1000;
-      els.fill.style.width = `${Math.round(f * 100)}%`;
-      const left = state.filter((x) => x === 'done').length >= 2 ? Math.max(1, Math.round((el / doneSec) * (totalSec - doneSec))) : 0;
-      setStatus(els.status, `Writing captions… ${Math.round(f * 100)}%${left && f < 1 ? ` · about ${left < 90 ? `${left} s` : `${Math.round(left / 60)} min`} left` : ''}${helpers ? ` · ${helpers + 1} cores working` : ''}. You can play the video meanwhile.`);
-    };
-    await new Promise((resolve, reject) => {
-      let active = 0; const dead = new Set();
-      // next window: the first unfinished one at or after the playhead (so what you watch is captioned first)
-      const pick = () => { const t = els.video.currentTime || 0; let i = state.findIndex((st, k) => st === 'pending' && wins[k].end > t); if (i < 0) i = state.indexOf('pending'); return i; };
-      const feed = (wi) => {
-        if (!alive()) { reject(new Error('CANCELLED')); return; }
-        if (dead.has(wi)) return;
-        const i = pick();
-        if (i < 0) { if (!active) resolve(); return; }
-        state[i] = 'work'; active++; tlState(state);
-        const w = wins[i], audio = pcm.slice(Math.floor(w.start * SR), Math.min(pcm.length, Math.ceil(w.end * SR)));
-        call(wi, { type: 'win', size, language, langs: mixed, prefer: preferLangs(), task: els.task.value, win: w, audio }, onEv, [audio.buffer]).then((r) => {
-          active--;
-          if (!alive()) { reject(new Error('CANCELLED')); return; }
-          results[i] = r.words; state[i] = 'done'; mode = r.mode; doneSec += w.end - w.start;
-          tlState(state);
-          const now = performance.now(); if (now - streamT > 250 || !state.includes('pending')) { streamT = now; stream(false); }
-          progress(); feed(wi);
-        }, (e) => {
-          active--; state[i] = 'pending'; tlState(state);
-          if (wi === 0 || e.message === 'CANCELLED' && !alive()) { reject(e); return; }
-          dead.add(wi); helpers = Math.max(0, helpers - 1); if (!active) feed(0);   // a helper failed: the others take over
-        });
-      };
-      setStatus(els.status, 'Writing captions…');
-      tStart = performance.now(); feed(0);
-      // helpers: once the model is in the browser cache, more cores join in
-      whenReady(size).then(() => {
-        if (!alive()) return;
-        const n = poolSize(size);
-        for (let k = 1; k < n; k++) {
-          if (!state.includes('pending')) break;
-          call(k, { type: 'preload', size }).then(() => { if (alive() && state.includes('pending')) { helpers++; feed(k); } }, () => { /* not enough memory: keep going with fewer */ });
-        }
-      });
-    });
-    const words = stream(true);
-    beforeTranslate = null; els.trUndo.hidden = true;
-    if (cues.length && els.video.paused && els.video.currentTime < 0.05) els.video.currentTime = Math.max(0, cues[0].start + 0.05);
+    setStatus(els.status, 'Starting your browser\'s speech recognition…');
+    await listen({ locale, local: await onDevice(locale), rate, onPhrase, onInterim, onTime });
+    stream(true);
     const took = (performance.now() - T0) / 1000;
+    if (cues.length && els.video.paused && els.video.currentTime < 0.05) els.video.currentTime = Math.max(0, cues[0].start + 0.05);
     setStatus(els.status, cues.length
-      ? `Done in ${took < 90 ? `${took.toFixed(0)} s` : `${(took / 60).toFixed(1)} min`}: ${words.length} words in ${cues.length} captions${mode === 'word' ? ', timed word by word' : ''}. Pick a style, check the preview, then export or burn them in.`
-      : 'No speech was detected in this file.', cues.length ? 'ok' : 'err');
+      ? `Done in ${took < 90 ? `${took.toFixed(0)} s` : `${(took / 60).toFixed(1)} min`}: ${words.length} words in ${cues.length} captions. Check the timing on the timeline (drag a caption's edge to adjust), pick a style, then export or burn them in.`
+      : `No speech was recognised. Check that “Spoken language” is ${LANG_NAME[code]} and that the video has clear speech.`, cues.length ? 'ok' : 'err');
   } catch (e) {
-    if (e.message !== 'CANCELLED') {
+    stream(true);
+    if (e.message === 'CANCELLED') setStatus(els.status, cues.length ? `Stopped. ${cues.length} captions so far; press Generate captions to start again.` : 'Stopped.');
+    else {
       console.warn(e);
-      setStatus(els.status, e.message === 'NO_LANG' ? 'The spoken language could not be detected. Please choose it under “Spoken language” and press Generate captions.'
-        : /Failed to fetch|NetworkError|network error/i.test(e.message) ? `Could not download the speech AI. Check your connection and try again. (${e.message})` : `Captioning failed: ${e.message}`, 'err');
+      setStatus(els.status, e.message === 'NETWORK' ? 'Your browser\'s speech service could not be reached. Check your internet connection and try again.'
+        : e.message === 'LANG' ? `Your browser can't recognise ${LANG_NAME[code]} speech yet. Try Chrome, or another language.`
+        : e.message === 'BLOCKED' ? 'Speech recognition is turned off in this browser (or blocked by a setting or extension).'
+        : `Captioning failed: ${e.message}`, 'err');
     }
   } finally {
-    stopHelpers(); busy = false;
-    if (restart) { restart = false; generate(); }
-    else { els.bar.hidden = true; els.run.textContent = 'Generate captions'; if (alive()) tlState(null); }
+    busy = false; session = null;
+    els.bar.hidden = true; els.live.hidden = true; els.run.textContent = '✨ Generate captions'; tlProgress(null);
   }
 }
 els.run.addEventListener('click', generate);
@@ -317,8 +299,11 @@ function tlPps() {
   const fit = Math.max(1, tlEls.scroll.clientWidth - 2) / tlDur();
   return Math.min(400, Math.max(fit, 60 * 1.6 ** tl.zoom));   // default ≈ 60 px per second, never narrower than the box
 }
-function tlSetWindows(wins) { tl.wins = wins; tl.state = wins.length ? wins.map(() => 'pending') : null; tlRender(); }
-function tlState(state) { tl.state = state ? state.slice() : null; tlRenderProg(); }
+/** Show how far listening has got (null hides it). */
+function tlProgress(t) {
+  if (t == null) { tl.wins = []; tl.state = null; } else { tl.wins = [{ start: 0, end: t }, { start: t, end: tlDur() }]; tl.state = ['done', 'work']; }
+  tlRenderProg();
+}
 function tlRenderProg() {
   const pps = tlPps();
   tlEls.prog.innerHTML = tl.state ? tl.wins.map((w, i) => `<i class="tl-w ${tl.state[i]}" style="left:${w.start * pps}px;width:${(w.end - w.start) * pps}px"></i>`).join('') : '';
@@ -494,22 +479,6 @@ els.txt.addEventListener('click', () => downloadBlob(new Blob([joinWords(cues.fl
   .replace(/([.!?。！？])\s+/g, '$1\n')], { type: 'text/plain;charset=utf-8' }), `${base()}-transcript.txt`));
 
 /* import existing SRT / VTT to restyle, translate or burn in */
-els.importIn.addEventListener('change', async () => {
-  const f = els.importIn.files[0]; els.importIn.value = ''; if (!f) return;
-  const txt = await f.text();
-  const out = [];
-  for (const b of txt.replace(/\r/g, '').split(/\n\n+/)) {
-    const m = b.match(/(\d{1,2}:)?\d{1,2}:\d{2}[.,]\d{1,3}\s*-->\s*(\d{1,2}:)?\d{1,2}:\d{2}[.,]\d{1,3}/);
-    if (!m) continue;
-    const [a, z] = m[0].split('-->').map((x) => parseTs(x.trim()));
-    const text = b.slice(b.indexOf(m[0]) + m[0].length).replace(/^[^\n]*\n/, '').replace(/<[^>]+>/g, '').trim();
-    if (text) out.push({ start: a, end: z, text, words: wordsFromText(text, a, z) });
-  }
-  if (!out.length) { setStatus(els.status, 'No captions found in that file.', 'err'); return; }
-  cues = out; lastGroup = 'imported'; beforeTranslate = null; renderCues(); els.editor.hidden = false;
-  setStatus(els.status, `Imported ${out.length} captions from ${f.name}. Pick a style; change “Words per caption” to regroup them.`, 'ok');
-});
-
 /* burn captions into the video (re-encodes video, copies audio) */
 els.burn.addEventListener('click', async () => {
   if (!file || !cues.length) return;
@@ -556,7 +525,7 @@ els.trRun.addEventListener('click', async () => {
   if (!hasTranslator || !cues.length) return;
   els.trRun.disabled = true;
   try {
-    let src = els.task.value === 'translate' ? 'en' : spokenLang();
+    let src = fromFile ? '' : spokenLang();
     if (!src && 'LanguageDetector' in self) {
       const det = await self.LanguageDetector.create();
       const r = await det.detect(cues.slice(0, 20).map((c) => c.text).join(' '));
@@ -583,9 +552,6 @@ els.trRun.addEventListener('click', async () => {
 });
 els.trUndo.addEventListener('click', () => { if (!beforeTranslate) return; const o = JSON.parse(beforeTranslate); cues = o.cues; lastGroup = o.lastGroup; beforeTranslate = null; els.trUndo.hidden = true; renderCues(); });
 
-setupDropzone(els.drop, els.input, (files) => {
-  const f = files.find((x) => /^(video|audio)\//.test(x.type) || /\.(mp4|mov|webm|mkv|m4a|mp3|wav|ogg|flac|aac)$/i.test(x.name));
-  if (f) openMedia(f); else setStatus(els.status, 'Please choose a video or audio file.', 'err');
-});
+setupDropzone(els.drop, els.input, handleFiles);
 renderStyleTiles(); applyStyleDefaults(); ensureFont(styleKey).then(drawOverlay);
-window.__capTest = { setWords: (w) => { lastGroup = groupMode(); cues = groupWords(w, lastGroup); renderCues(); }, get cues() { return cues; }, groupWords, modelState, get workers() { return workers.filter(Boolean).length; } };
+window.__capTest = { setWords: (w) => { lastGroup = groupMode(); cues = groupWords(w, lastGroup); renderCues(); }, get cues() { return cues; }, groupWords, parseCaptions, canCaption };

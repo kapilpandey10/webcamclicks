@@ -82,7 +82,7 @@ TOOLS = [
   ('/voice-recorder', 'Voice recorder', 'camera', 'voice', 'Record your voice; remove noise and hum; save MP3.', True),
   ('/pro-camera', 'Pro camera', 'camera', 'film', 'Cinema aspect ratios and manual controls.', False),
   ('/compare-webcams', 'Compare two webcams', 'camera', 'compare', 'Side-by-side quality comparison.', False),
-  ('/auto-captions', 'Auto captions & subtitles', 'video', 'cc', 'Word-timed animated captions in 35+ languages, SRT or burned in.', True),
+  ('/auto-captions', 'Auto captions & subtitles', 'video', 'cc', 'Captions from your browser\'s speech recognition or your SRT, animated or burned in.', True),
   ('/silence-remover', 'Silence remover', 'video', 'silence', 'Cut pauses out of talking videos automatically.', True),
   ('/auto-reframe', 'Auto-reframe to vertical', 'video', 'reframe', 'Landscape to 9:16 that follows the speaker\'s face.', True),
   ('/mp4-to-mp3', 'MP4 to MP3', 'video', 'music', 'Extract audio from video as MP3, WAV, M4A or FLAC.', True),

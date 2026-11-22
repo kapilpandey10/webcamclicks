@@ -514,6 +514,10 @@ input[type=range].t-range { width: 100%; accent-color: var(--accent); }
 .tb-top .t-drop .t-drop-ico { width: 40px; height: 40px; margin-bottom: 6px; }
 @media (max-width: 520px) { .tb-top .t-drop { padding: 12px; } .tb-top .t-drop .t-drop-ico { display: none; } }
 @media (max-width: 980px) { .tb-previews { display: none; } }
+.cap-live { margin: 6px 0 0; padding: 8px 10px; border-radius: 10px; background: var(--surface-3); font-size: .8rem; color: var(--ink-2); font-style: italic; min-height: 1.2em; overflow-wrap: anywhere; }
+.cap-live:empty { display: none; }
+.cap-model[data-state="cloud"] { color: var(--ink-2); }
+.cap-model[data-state="off"] { color: #9a3412; }
 .cap-lang-hint { margin: -4px 0 10px; font-size: .78rem; color: var(--ink-3); line-height: 1.4; }
 #cap-lang.need { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); animation: cap-need 1s ease-in-out 2; }
 @keyframes cap-need { 50% { box-shadow: 0 0 0 6px var(--accent-soft); } }

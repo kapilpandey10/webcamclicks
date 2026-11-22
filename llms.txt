@@ -48,7 +48,7 @@ AI chatbots (ChatGPT, Claude, Perplexity, Gemini, Copilot, etc.) can confidently
 - [Teleprompter](https://webcamclicks.com/teleprompter): Scrolling script over your webcam, recorded on your device.
 - [Document scanner](https://webcamclicks.com/document-scanner): Scan pages with your camera: auto-crop, shadow removal, PDF.
 - [Voice recorder](https://webcamclicks.com/voice-recorder): Record your voice; remove noise and hum; save MP3.
-- [Auto captions & subtitles](https://webcamclicks.com/auto-captions): Word-timed animated captions in 35+ languages, SRT or burned in.
+- [Auto captions & subtitles](https://webcamclicks.com/auto-captions): Captions from your browser's speech recognition or your SRT, animated or burned in.
 - [Silence remover](https://webcamclicks.com/silence-remover): Cut pauses out of talking videos automatically.
 - [Auto-reframe to vertical](https://webcamclicks.com/auto-reframe): Landscape to 9:16 that follows the speaker's face.
 - [MP4 to MP3](https://webcamclicks.com/mp4-to-mp3): Extract audio from video as MP3, WAV, M4A or FLAC.

@@ -138,12 +138,12 @@ PAGES['video-to-gif'] = dict(
 # ------------------------------------------------------------------------------------------- auto captions
 PAGES['auto-captions'] = dict(
   name='Auto captions & subtitles', cat='video', script='auto-captions.js', appcat='MultimediaApplication',
-  title='Auto Caption Generator — Free AI Subtitles, SRT & Burned-in | WebcamClicks',
-  desc='Free AI caption generator with word-by-word timing and 12 animated styles (bold pop, karaoke, highlight box, one word). 35+ languages, SRT/VTT, burn-in. No upload.',
-  lead='Drop a video and get perfectly timed captions, word by word, from an AI speech model that runs in your browser. Pick a trending animated style, edit any line, translate, then download subtitles or a video with the captions burned in.',
+  title='Auto Caption Generator — Free Subtitles, SRT & Burned-in | WebcamClicks',
+  desc='Free auto caption generator using your browser\'s speech recognition, nothing to download. 40 languages incl. Nepali & Hindi, 12 animated styles, upload SRT/VTT, export or burn in.',
+  lead='Drop a video and your browser\'s own speech recognition writes the captions, with nothing to download. Already have subtitles? Drop the SRT, VTT or ASS file and it loads straight onto the video. Pick a trending animated style, edit any line, translate, then download subtitles or a video with the captions burned in.',
   ui=f'''<div class="t-grid">
     <div>
-      {DROP(VIDEO_ACCEPT, "Drop a video or audio file", "MP4, MOV, WebM, MP3, M4A, WAV · nothing is uploaded", multiple=False)}
+      {DROP(VIDEO_ACCEPT + ",.srt,.vtt,.ass,.ssa", "Drop a video (and its captions file, if you have one)", "MP4, MOV, WebM, MP3, M4A, WAV · SRT, VTT, ASS · your video stays on your device")}
       <div id="cap-editor" hidden>
         <div class="cap-stage" id="cap-stage"><video id="cap-video" controls playsinline preload="metadata"></video><canvas id="cap-overlay" aria-hidden="true"></canvas></div>
         <div class="cap-tl" id="cap-tl">
@@ -160,20 +160,18 @@ PAGES['auto-captions'] = dict(
       <h2 class="cap-h">Captions</h2>
       <ol class="cap-cues" id="cap-cues"></ol>
       <div class="t-actions"><button class="t-btn sm" id="cap-add" type="button">+ Add caption at playhead</button>
-        <label class="t-btn sm" style="cursor:pointer">Import SRT / VTT<input type="file" id="cap-import" accept=".srt,.vtt,text/vtt" hidden></label></div>
+        <label class="t-btn sm" style="cursor:pointer">Upload captions (SRT, VTT, ASS)<input type="file" id="cap-import" accept=".srt,.vtt,.ass,.ssa,text/vtt" hidden></label></div>
     </div>
     <div class="t-panel">
       <h2>1 · Generate</h2>
       <label class="t-field">Spoken language <select class="t-select" id="cap-lang"></select></label>
-      <p class="cap-lang-hint">Pick the language spoken in the video: the AI writes much better text when it knows. Mixed, like Nepali with English words? Choose the main language.</p>
-      <div class="t-row">
-        <label class="t-field">Accuracy <select class="t-select" id="cap-model"><option value="fast">Fast (≈40 MB)</option><option value="balanced" selected>Balanced (≈80 MB)</option><option value="accurate">Accurate (≈250 MB)</option><option value="best">Best, for Nepali, Hindi &amp; more (≈600 MB, graphics chip)</option></select></label>
-        <label class="t-field">Captions in <select class="t-select" id="cap-task"><option value="transcribe">Same language</option><option value="translate">Translate to English</option></select></label>
-      </div>
+      <p class="cap-lang-hint">Mixed, like Nepali with English words? Choose the main language.</p>
+      <label class="t-field">Listening speed <select class="t-select" id="cap-speed"><option value="1">Normal: most accurate (takes as long as the video)</option><option value="1.25">1.25× faster</option><option value="1.5">1.5× faster (may miss some words)</option><option value="2">2× fastest (for slow, clear speech)</option></select></label>
       <label class="t-check"><input type="checkbox" id="cap-auto" checked> Generate automatically when I add a video</label>
       <button class="t-btn primary" id="cap-run" type="button" disabled style="width:100%">✨ Generate captions</button>
-      <p class="cap-model" id="cap-model-status" aria-live="polite"></p>
-      <p class="cap-detected" id="cap-detected" hidden aria-live="polite"></p>
+      <p class="cap-model" id="cap-engine" aria-live="polite"></p>
+      <p class="cap-live" id="cap-live" hidden aria-live="off"></p>
+      <label class="t-btn sm cap-upload" style="cursor:pointer;width:100%;margin-top:8px">Already have captions? Upload SRT, VTT or ASS<input type="file" id="cap-import2" accept=".srt,.vtt,.ass,.ssa,text/vtt" hidden></label>
       <h2 style="margin-top:18px">2 · Style</h2>
       <div class="cap-styles" id="cap-styles" role="radiogroup" aria-label="Caption style"></div>
       <div class="t-row">
@@ -201,14 +199,16 @@ PAGES['auto-captions'] = dict(
     </div>
   </div>''',
   article='''<h2>How the caption generator works</h2>
-<p>WebcamClicks runs <strong>Whisper</strong>, an open speech-recognition model trained on 680,000 hours of audio, directly in your browser using WebGPU or WebAssembly. Your video's soundtrack is decoded on your device, the model turns it into timed text, and the editor splits that text into readable captions: at most two lines of about 42 characters, as broadcasters recommend. Nothing is uploaded, which also makes it suitable for confidential meetings, lectures and client work.</p>
+<p>WebcamClicks uses the <strong>speech recognition built into your browser</strong> (the Web Speech API in Chrome and Edge), so there is no AI model to download and captions start straight away. The video's sound is played silently into the recogniser, which writes what it hears; each phrase is placed where it was spoken, and the editor splits the text into readable captions: at most two lines of about 42 characters, as broadcasters recommend. Your video file stays on your device. Where the browser can recognise a language on the device itself, the sound never leaves your computer; otherwise the browser sends the sound to its own speech service (Google for Chrome, Microsoft for Edge) to turn it into text, and the page says which applies before you start.</p>
 <h2>Step by step</h2>
 <ol><li><strong>Drop a video or audio file.</strong> MP4, MOV, WebM, MKV, MP3, M4A and WAV all work.</li>
-<li><strong>Choose the spoken language</strong> or leave it on automatic, and pick Fast, Balanced or Accurate. Accurate is noticeably better for accents, names and noisy audio but downloads a bigger model once.</li>
-<li><strong>Check the captions.</strong> Play the video: the captions appear exactly as they will in the final file. Click any line to jump there and fix a word or a timestamp.</li>
+<li><strong>Choose the spoken language.</strong> Captions start as soon as you pick it, and appear on the video and the timeline while they are written.</li>
+<li><strong>Check the captions.</strong> Click the timeline to jump anywhere, drag a caption's edge to fix its timing, and click any line to correct a word.</li>
 <li><strong>Translate</strong> if you need another language, then <strong>export</strong> an SRT/VTT file or burn the captions into an MP4.</li></ol>
-<h2>Animated caption styles, timed word by word</h2>
-<p>The speech model reports when every single word is spoken, so captions can highlight each word the moment it is said, the look that keeps viewers watching on TikTok, Reels and Shorts. Choose from 12 styles:</p>
+<h2>Already have subtitles? Upload them</h2>
+<p>Drop an <strong>SRT, WebVTT or ASS/SSA</strong> file together with your video (or use <em>Upload captions</em>) and the captions load straight onto the video, ready to restyle with animated captions, retime on the timeline, translate or burn in. It is the quickest way to turn YouTube's or your editor's subtitles into eye-catching burned-in captions for Reels, TikTok and Shorts.</p>
+<h2>Animated caption styles</h2>
+<p>Captions can highlight each word as it is spoken, the look that keeps viewers watching on TikTok, Reels and Shorts. Choose from 12 styles:</p>
 <ul><li><strong>Bold pop</strong>: heavy white capitals with a black outline; the spoken word turns yellow and springs up.</li>
 <li><strong>Karaoke</strong>: words fill with colour as they are said.</li>
 <li><strong>Highlight box</strong>: a coloured box jumps from word to word.</li>
@@ -216,21 +216,20 @@ PAGES['auto-captions'] = dict(
 <li><strong>Gradient, Comic, Neon and Marker</strong> for a more playful look.</li>
 <li><strong>Coral bar, Typewriter, Classic subtitle and Minimal</strong> for interviews, tutorials and films.</li></ul>
 <p>Set how many words appear at once (one, two, three, a short line or a full two-line subtitle), the size, the colours and the position, and see it live on your video before exporting. Burned-in captions keep the animation exactly as previewed.</p>
-<h2>Fast, because the AI is ready before you need it</h2>
-<p>When you open this page, the speech model starts downloading quietly in the background (unless your device has Data Saver turned on), and a small note shows the progress. By the time you have chosen a video, it is usually ready, and captions start automatically when you add the file. The model is stored by your browser, so later visits work instantly and even offline.</p>
 <h2>SRT, VTT or burned-in captions?</h2>
 <ul><li><strong>SRT</strong> is the universal subtitle file: upload it to YouTube, Facebook, LinkedIn or Vimeo next to your video, or load it in VLC. Viewers can switch captions on and off, and platforms index the text for search.</li>
 <li><strong>VTT</strong> is the web standard used by HTML5 video players and many course platforms.</li>
 <li><strong>Burned-in</strong> (open) captions are part of the picture. Use them for Instagram Reels, TikTok, Shorts and X, where most people watch without sound and uploaded subtitle files aren't supported.</li></ul>
 <h2>Languages and translation</h2>
-<p>Whisper understands about 100 languages; the menu lists the most common. It can transcribe in the original language or translate straight to English. To translate captions into other languages, WebcamClicks uses the on-device translator built into recent Chrome on desktop. Where that isn't available, download the SRT and translate it in your usual tool.</p>
+<p>The menu lists 40 languages, including Nepali, Hindi, Bengali, Urdu, Tamil, Arabic, Chinese, Japanese and the main European languages. The browser uses your own region where it matters (for example Indian or British English, or Mexican Spanish). To translate captions into other languages, WebcamClicks uses the on-device translator built into recent Chrome on desktop. Where that isn't available, download the SRT and translate it in your usual tool.</p>
 <p>Tip: clear audio gives the best captions. Use the <a href="/mic-test">mic test</a> before recording, and the noise removal in the <a href="/screen-recorder">screen recorder's editor</a> for noisy rooms.</p>''',
-  faqs=[('Is the caption generator really free and private?', 'Yes. The AI model runs in your browser, so your video is never uploaded and there are no per-minute fees or watermarks.'),
-        ('How accurate are the captions?', 'Very good for clear speech in major languages, especially with the Accurate model. Always skim the result: names, jargon and overlapping speakers may need a quick fix in the editor.'),
-        ('Does it time each word?', 'Yes. Captions are timed word by word, so styles like Bold pop and Karaoke highlight each word exactly when it is spoken. If a model can\'t provide word timings on your device, the words are spread over the detected speech instead.'),
-        ('Why are captions in the wrong language?', 'Choose the spoken language before generating: the AI writes much better text when it knows the language, especially for languages that sound alike (Nepali, Hindi, Marathi, Urdu). If you are not sure, pick “Not sure: detect it automatically” and the result is shown with how sure the AI is. For videos that mix languages, such as Nepali with English words, choose the main language. For less common languages, Accurate or Best give far better text than Fast.'),
-        ('How long does it take?', 'With a graphics chip (WebGPU), a 10-minute video usually takes one to three minutes on the Balanced model. Without one it runs on the processor and is slower; use the Fast model for long videos.'),
-        ('Can I translate captions into Spanish, Hindi or other languages?', 'Yes, in Chrome 138 or newer on a computer, which has an on-device translator. In other browsers you can transcribe in the original language or translate to English.'),
+  faqs=[('Is the caption generator free? Do I need to download anything?', 'It is free, with no watermark and no per-minute fees, and there is nothing to download: it uses the speech recognition already built into Chrome and Edge.'),
+        ('Is my video uploaded?', 'No. Your video file stays on your device. To turn speech into text, the browser either recognises the language on your device, or sends only the sound to its own speech service (Google for Chrome, Microsoft for Edge). The page tells you which one applies for your language before you start.'),
+        ('Which browsers work?', 'Recent Chrome and Edge on a computer or Android phone can caption a video\'s sound. Safari and Firefox can\'t yet; there you can still upload an existing SRT, VTT or ASS file to restyle, translate or burn it in.'),
+        ('Can I load captions I already have?', 'Yes. Drop the SRT, VTT or ASS file together with the video, or use Upload captions, and they appear on the video straight away.'),
+        ('How long does it take?', 'The recogniser listens to the sound, so at normal speed it takes about as long as the video, with captions appearing as they are heard. For clear speech you can choose 1.25×, 1.5× or 2× listening speed to finish sooner.'),
+        ('Why are some captions wrong or in the wrong language?', 'Make sure Spoken language matches the video. For videos that mix languages, such as Nepali with English words, choose the main language. Names, jargon and overlapping speakers may need a quick fix in the editor.'),
+        ('Can I translate captions into Spanish, Hindi or other languages?', 'Yes, in Chrome 138 or newer on a computer, which has an on-device translator.'),
         ('Can I upload the SRT to YouTube?', 'Yes. In YouTube Studio open Subtitles, choose your video, then Add > Upload file > With timing, and select the SRT.')])
 
 # ------------------------------------------------------------------------------------------- teleprompter

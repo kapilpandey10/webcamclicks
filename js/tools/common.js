@@ -5,6 +5,7 @@ export const LIBS = {
   jszip: { url: 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js', global: 'JSZip' },
   pdflib: { url: 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js', global: 'PDFLib' },
   qrcode: { url: 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js', global: 'qrcode' },
+  xlsx: { url: 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js', global: 'XLSX' },
   exifr: { url: 'https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js', global: 'exifr' },
   tesseract: { url: 'https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js', global: 'Tesseract' },
   mp3: { url: 'https://cdn.jsdelivr.net/npm/@mediabunny/mp3-encoder@1.62.1/dist/bundles/mediabunny-mp3-encoder.min.js', global: 'MediabunnyMp3Encoder' }

@@ -731,3 +731,53 @@ html.ss-lock, html.ss-lock body { overflow: hidden; }
 .ss-look[aria-pressed="true"], .ss-tstyle[aria-pressed="true"] { border-color: var(--accent); }
 .ss-tstyles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 @media (max-width: 480px) { .ss-templates { grid-template-columns: repeat(3, minmax(0, 1fr)); } .ss-looks { grid-template-columns: repeat(4, minmax(0, 1fr)); } .ss-player { padding: 8px 8px 54px; } }
+
+/* ---------------------------------------------------------------- ID card maker */
+.ic-grid { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); }
+.ic-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.ic-seg { display: inline-flex; padding: 3px; border-radius: 12px; background: var(--surface-3); }
+.ic-seg button { padding: 7px 16px; border: 0; border-radius: 9px; background: none; font: 700 .86rem Inter, system-ui, sans-serif; cursor: pointer; }
+.ic-seg button[aria-pressed="true"] { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.ic-rec { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; font-size: .88rem; min-width: 0; }
+.ic-rec b { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+.ic-stage { position: relative; display: grid; place-items: center; padding: 22px; border-radius: 16px; touch-action: none; user-select: none; -webkit-user-select: none;
+  background: radial-gradient(circle at 30% 20%, #eef0f4, #dfe3ea); }
+.ic-stage canvas { display: block; width: 100%; max-width: 640px; max-height: 70vh; height: auto; object-fit: contain; filter: drop-shadow(0 10px 24px rgba(15,23,42,.22)); cursor: default; }
+.ic-sel { position: absolute; border: 2px solid var(--accent); box-shadow: 0 0 0 1px #fff; pointer-events: none; }
+.ic-sel.locked { border-style: dashed; }
+.ic-sel i { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #fff; border: 2px solid var(--accent); pointer-events: auto; }
+.ic-sel.locked i { display: none; }
+.ic-sel i[data-h="nw"] { left: 0; top: 0; cursor: nwse-resize; } .ic-sel i[data-h="n"] { left: 50%; top: 0; cursor: ns-resize; } .ic-sel i[data-h="ne"] { left: 100%; top: 0; cursor: nesw-resize; }
+.ic-sel i[data-h="e"] { left: 100%; top: 50%; cursor: ew-resize; } .ic-sel i[data-h="se"] { left: 100%; top: 100%; cursor: nwse-resize; } .ic-sel i[data-h="s"] { left: 50%; top: 100%; cursor: ns-resize; }
+.ic-sel i[data-h="sw"] { left: 0; top: 100%; cursor: nesw-resize; } .ic-sel i[data-h="w"] { left: 0; top: 50%; cursor: ew-resize; }
+@media (pointer: coarse) { .ic-sel i { width: 22px; height: 22px; margin: -11px 0 0 -11px; } }
+.ic-guide { position: absolute; background: #ec4899; pointer-events: none; } .ic-guide.v { top: 0; bottom: 0; width: 1px; } .ic-guide.h { left: 0; right: 0; height: 1px; }
+.ic-hint { font-size: .76rem; margin: 6px 0 0; }
+.ic-data { margin-top: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: #fff; }
+.ic-datahead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin-bottom: 8px; } .ic-datahead h2 { font-size: 1rem; margin: 0; }
+.ic-tablewrap { overflow: auto; max-height: 320px; margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; }
+.ic-table { border-collapse: collapse; font-size: .82rem; min-width: 100%; }
+.ic-table th, .ic-table td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); padding: 6px 8px; white-space: nowrap; text-align: left; }
+.ic-table th { position: sticky; top: 0; background: var(--surface-2, #f6f7f9); z-index: 1; font-weight: 800; }
+.ic-table th span { outline: none; } .ic-table th button, .ic-table td button { border: 0; background: none; color: var(--ink-3); cursor: pointer; font-size: .75rem; padding: 0 2px; }
+.ic-table td[contenteditable] { min-width: 90px; outline: none; } .ic-table td[contenteditable]:focus { background: #fff7ed; box-shadow: inset 0 0 0 2px var(--accent); }
+.ic-table tr.cur td { background: #fff1ec; } .ic-table tr.cur td[contenteditable]:focus { background: #fff7ed; }
+.ic-rn { font-variant-numeric: tabular-nums; } .ic-rn button { font-weight: 800; color: var(--ink) !important; }
+.ic-templates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ic-tpl { display: grid; gap: 4px; justify-items: center; padding: 8px; border: 2px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; font: inherit; }
+.ic-tpl canvas { max-width: 100%; height: auto; max-height: 150px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+.ic-tpl small { font-size: .74rem; font-weight: 700; }
+.ic-tpl[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.ic-add { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.ic-add button { display: grid; gap: 2px; justify-items: center; padding: 10px 4px; border: 1px solid var(--line-strong); border-radius: 12px; background: #fff; font: 600 .76rem Inter, system-ui, sans-serif; cursor: pointer; }
+.ic-add button b { font-size: 1.05rem; } .ic-add button:hover { border-color: var(--accent); }
+.ic-layers { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 300px; overflow: auto; }
+.ic-layers li { display: flex; align-items: center; gap: 2px; padding: 5px 6px 5px 10px; border: 1px solid var(--line); border-radius: 9px; background: #fff; font-size: .8rem; cursor: pointer; }
+.ic-layers li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ic-layers li.sel { border-color: var(--accent); background: var(--accent-soft); } .ic-layers li.off span { opacity: .45; }
+.ic-layers li button { border: 0; background: none; cursor: pointer; padding: 2px 4px; font-size: .8rem; } .ic-layers li button:disabled { opacity: .25; }
+.ic-insert { margin: -4px 0 10px; font-size: .82rem; }
+.ic-saved { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.ic-saved li { display: flex; gap: 4px; } .ic-saved li button:first-child { flex: 1; text-align: left; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; cursor: pointer; font: inherit; font-size: .84rem; }
+.ic-saved li button + button { border: 0; background: none; cursor: pointer; color: var(--ink-3); }
+@media (max-width: 980px) { .ic-grid { grid-template-columns: minmax(0, 1fr); } .ic-stage { padding: 12px; } }

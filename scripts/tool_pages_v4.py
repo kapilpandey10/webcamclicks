@@ -631,3 +631,93 @@ PAGES['slideshow-maker'] = dict(
         ('Is the built-in music copyright-free?', 'Yes. It is composed on your device for your video, so you can use it on YouTube, Instagram and TikTok without claims.'),
         ('How many photos can I add?', 'As many as you like. A 60-second Reel fits about 20 photos at 3 seconds each.'),
         ('Are my photos uploaded?', 'No. The video is made in your browser, which keeps family and private photos private.')])
+
+# ------------------------------------------------------------------------------------------- ID card maker
+PAGES['id-card-maker'] = dict(
+  name='ID card maker', cat='image', script='idcard-maker.js', appcat='DesignApplication',
+  title='ID Card Maker Online — Free Templates, Bulk from Excel/CSV, Print PDF | WebcamClicks',
+  desc='Free ID card maker: professional employee, student, event and membership templates. Front & back, photos, logo, QR code, barcode. Bulk create from Excel or CSV and export PNG, ZIP or print-ready PDF.',
+  lead='Design professional ID cards and badges, then make one for everyone at once. Pick a template, add your logo and colours, link the text, photo, QR code and barcode to your spreadsheet columns, upload the photos, and download every card as a 300 DPI PNG, a ZIP, or a print-ready PDF with cut marks.',
+  ui='''<div class="t-grid ic-grid">
+    <div>
+      <div class="ic-toolbar">
+        <div class="ic-seg" id="ic-side"><button type="button" data-side="front" aria-pressed="true">Front</button><button type="button" data-side="back" aria-pressed="false">Back</button></div>
+        <div class="ic-rec"><button class="t-icon-btn" id="ic-prev" type="button" aria-label="Previous person">‹</button><span id="ic-rec">1 / 3</span><button class="t-icon-btn" id="ic-next" type="button" aria-label="Next person">›</button><b id="ic-rec-name"></b></div>
+      </div>
+      <div class="ic-stage" id="ic-stage">
+        <canvas id="ic-canvas" aria-label="Card editor: click an element to select it, drag to move"></canvas>
+        <div class="ic-sel" id="ic-sel" hidden><i data-h="nw"></i><i data-h="n"></i><i data-h="ne"></i><i data-h="e"></i><i data-h="se"></i><i data-h="s"></i><i data-h="sw"></i><i data-h="w"></i></div>
+        <div class="ic-guide v" id="ic-guide-v" hidden></div><div class="ic-guide h" id="ic-guide-h" hidden></div>
+      </div>
+      <p class="muted ic-hint">Click to select · drag to move · drag the handles to resize · arrows nudge · Delete removes · Ctrl+Z undo</p>
+      <p class="t-status" id="t-status" role="status"></p>
+      <section class="ic-data">
+        <div class="ic-datahead"><h2>People &amp; data</h2><span class="muted" id="ic-data-info"></span></div>
+        <div class="t-actions" style="margin-top:0">
+          <label class="t-btn sm primary" style="cursor:pointer">📄 Upload Excel / CSV<input type="file" id="ic-data-in" accept=".csv,.xlsx,.xls,.ods,.tsv,.txt,text/csv" hidden></label>
+          <label class="t-btn sm" style="cursor:pointer">🖼️ Upload photos<input type="file" id="ic-photos-in" accept="image/*,.heic,.heif" multiple hidden></label>
+          <button class="t-btn sm" id="ic-addrow" type="button">+ Person</button><button class="t-btn sm" id="ic-addcol" type="button">+ Field</button>
+          <button class="t-btn sm" id="ic-sample-csv" type="button">Sample CSV</button><button class="t-btn sm" id="ic-clear-data" type="button">Clear</button>
+        </div>
+        <div class="ic-tablewrap"><table class="ic-table" id="ic-table"></table></div>
+        <p class="muted" style="font-size:.8rem;margin:6px 0 0">The first row of your file is used as field names (Name, ID, Role…). Click any cell or heading to edit it. Name photo files after the person's ID (e.g. <code>EMP-1042.jpg</code>) or add a <b>Photo</b> column with the file names.</p>
+      </section>
+      <input type="file" id="ic-img-in" accept="image/*,.heic,.heif" hidden><input type="file" id="ic-photo1-in" accept="image/*,.heic,.heif" hidden>
+    </div>
+    <div class="t-panel ic-panel">
+      <div class="ss-tabs" id="ic-tabs" role="tablist">
+        <button type="button" role="tab" data-tab="tpl" aria-selected="true">🎨 Templates</button><button type="button" role="tab" data-tab="add" aria-selected="false">➕ Elements</button>
+        <button type="button" role="tab" data-tab="edit" aria-selected="false">✏️ Edit</button><button type="button" role="tab" data-tab="card" aria-selected="false">🪪 Card</button><button type="button" role="tab" data-tab="export" aria-selected="false">⬇ Export</button>
+      </div>
+      <div class="ic-pane" data-pane="tpl"><div class="ic-templates" id="ic-templates"></div></div>
+      <div class="ic-pane" data-pane="add" hidden>
+        <div class="ic-add" id="ic-add">
+          <button type="button" data-add="field"><b>{{ }}</b>Data field</button><button type="button" data-add="text"><b>T</b>Text</button><button type="button" data-add="photo"><b>👤</b>Photo</button>
+          <button type="button" data-add="logo"><b>🏢</b>Logo / image</button><button type="button" data-add="signature"><b>✍️</b>Signature</button><button type="button" data-add="qr"><b>▦</b>QR code</button>
+          <button type="button" data-add="barcode"><b>║▌║</b>Barcode</button><button type="button" data-add="rect"><b>▬</b>Rectangle</button><button type="button" data-add="circle"><b>●</b>Circle</button>
+          <button type="button" data-add="line"><b>─</b>Line</button><button type="button" data-add="band"><b>〰</b>Wave band</button>
+        </div>
+        <p class="ss-tgroup">Layers (top first)</p><ul class="ic-layers" id="ic-layers"></ul>
+      </div>
+      <div class="ic-pane" data-pane="edit" hidden><div id="ic-props"></div></div>
+      <div class="ic-pane" data-pane="card" hidden>
+        <label class="t-field">Card size <select class="t-select" id="ic-size"></select></label>
+        <label class="t-field">Corner rounding <input class="t-range" type="range" id="ic-radius" min="0" max="80" value="28"></label>
+        <p class="ss-tgroup">Background (this side)</p>
+        <div class="t-row"><label class="t-field">Type <select class="t-select" id="ic-bgtype"><option value="solid">Colour</option><option value="gradient">Gradient</option><option value="image">Image</option></select></label><button class="t-btn sm" id="ic-bgimg" type="button" style="align-self:end;margin-bottom:10px">Choose image</button></div>
+        <div class="t-row cap-colors"><label class="t-field"><span>Colour</span><input type="color" id="ic-bgc1"></label><label class="t-field"><span>To</span><input type="color" id="ic-bgc2"></label><label class="t-field">Angle <input class="t-range" type="range" id="ic-bgangle" min="0" max="360"></label></div>
+        <div class="t-row"><label class="t-field">Security pattern <select class="t-select" id="ic-pattern"><option value="none">None</option><option value="guilloche">Guilloche (banknote)</option><option value="waves">Waves</option><option value="lines">Diagonal lines</option><option value="dots">Dots</option><option value="grid">Grid</option><option value="hex">Hexagons</option></select></label><label class="t-field"><span>Pattern colour</span><input type="color" id="ic-patc"></label></div>
+        <label class="t-field">Pattern strength <input class="t-range" type="range" id="ic-pato" min="0" max="40"></label>
+        <button class="t-btn sm" id="ic-copyback" type="button">Use the front background on the back</button>
+      </div>
+      <div class="ic-pane" data-pane="export" hidden>
+        <div class="t-row"><label class="t-field">Sides <select class="t-select" id="ic-sides"><option value="both">Front and back</option><option value="front">Front only</option><option value="back">Back only</option></select></label><label class="t-field">File names from <select class="t-select" id="ic-namecol"></select></label></div>
+        <button class="t-btn primary" id="ic-png" type="button" style="width:100%">⬇ This card (PNG, 300 DPI)</button>
+        <button class="t-btn" id="ic-zip" type="button" style="width:100%;margin-top:8px">⬇ All cards (ZIP of PNGs)</button>
+        <div class="t-row" style="margin-top:8px"><label class="t-field">Paper <select class="t-select" id="ic-paper"><option value="a4">A4</option><option value="letter">US Letter</option></select></label><div class="t-field">&nbsp;<button class="t-btn" id="ic-pdf" type="button" style="width:100%">🖨 Print sheet (PDF)</button></div></div>
+        <p class="muted" style="font-size:.78rem">The PDF places cards at their true size with cut marks; backs are mirrored so double-sided printing lines up.</p>
+        <p class="ss-tgroup">Your designs</p>
+        <div class="t-actions" style="margin-top:0"><button class="t-btn sm" id="ic-save-design" type="button">💾 Save in browser</button><button class="t-btn sm" id="ic-dl-design" type="button">Download design file</button><label class="t-btn sm" style="cursor:pointer">Open design file<input type="file" id="ic-design-in" accept=".json,application/json" hidden></label></div>
+        <ul class="ic-saved" id="ic-saved"></ul>
+      </div>
+    </div>
+  </div>''',
+  article='''<h2>Make ID cards for a whole team in minutes</h2>
+<ol><li><strong>Pick a template:</strong> corporate, modern gradient, minimal, student, medical, tech, event badge, visitor pass, elegant gold, security, membership or volunteer. Each has a front and a back.</li>
+<li><strong>Make it yours:</strong> click anything to change it. Add your logo, colours, a security pattern (guilloche, waves, hexagons), shapes, a signature (the white paper is removed automatically), a QR code or a barcode.</li>
+<li><strong>Add your people:</strong> upload an Excel (.xlsx) or CSV file. The first row becomes the field names, so <code>{{Name}}</code>, <code>{{ID}}</code> or <code>{{Department}}</code> on the card are filled in for each person. Or type the data straight into the table.</li>
+<li><strong>Add photos:</strong> select all the photos at once. They're matched to people by a Photo column with file names, or by file names that match an ID or name (EMP-1042.jpg).</li>
+<li><strong>Export:</strong> one card or all of them as 300 DPI PNG images (in a ZIP), or a PDF sheet with cards at their real size and cut marks, ready for any printer or print shop.</li></ol>
+<h2>Fields: the {{Name}} placeholders</h2>
+<p>Any text on the card can mix fixed words and fields, like <code>Dept: {{Department}}</code> or <code>Valid until {{Valid Until}}</code>. Use the <em>Insert field</em> menu when editing a text, QR code or barcode. A QR code can hold a link such as <code>https://example.com/verify/{{ID}}</code> so security staff can check a card with a phone. Long names shrink automatically to fit their box.</p>
+<h2>Card sizes</h2>
+<ul><li><strong>Standard ID card (CR80):</strong> 85.6 × 54 mm, the size of a bank card, landscape or portrait, for PVC card printers and laminating pouches.</li>
+<li><strong>Event badges:</strong> 3 × 4 in and 4 × 3 in for lanyards and badge holders, and a large 4 × 6 in badge.</li></ul>
+<p>Need a photo with a plain background first? Use the <a href="/background-remover">background remover</a> or the <a href="/passport-photo">passport photo maker</a>. Generating QR codes on their own? <a href="/qr-code-generator">QR code generator</a>.</p>
+<p>This tool is for making identification cards for your own organisation, school, event or club. Don't use it to copy government, police or other official IDs.</p>''' + PRIVACY,
+  faqs=[('Is the ID card maker free?', 'Yes, with no watermark, no sign-up and no limit on the number of cards.'),
+        ('Can I make cards for many people at once?', 'Yes. Upload an Excel or CSV file with one row per person and the photos, and export every card in one go as a ZIP of PNGs or a print-ready PDF.'),
+        ('Is my data uploaded?', 'No. The spreadsheet, photos and design stay in your browser. That matters for staff and student records.'),
+        ('What resolution are the cards?', '300 DPI, the standard for print: a CR80 card is 1011 × 638 pixels.'),
+        ('How do I print double-sided?', 'Export the PDF with Front and back. Fronts and backs are on alternate pages, with the backs mirrored so they line up. Print at 100% / Actual size, double-sided (flip on long edge).'),
+        ('Can I reuse my design?', 'Yes. Save it in your browser, or download the design file to open it on another computer.')])

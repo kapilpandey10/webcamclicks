@@ -68,6 +68,9 @@ ICONS = {
   'cutter': '<path d="M3 12h2M7 8v8M11 5v14M15 9v6M19 11v2"/><path d="M14 3l7 7" opacity=".6"/>',
   'pdfcompress': '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 11v6M9.5 14.5 12 17l2.5-2.5"/>',
   'slides': '<rect x="2.5" y="5" width="15" height="11" rx="1.5"/><path d="M6.5 19.5h13a2 2 0 0 0 2-2V9"/><path d="M8.5 8.5l4 2-4 2z" fill="currentColor"/>',
+  'idcard': '<rect x="2.5" y="5" width="19" height="14" rx="2"/><circle cx="8.5" cy="11" r="2.3"/><path d="M5.3 16.2c.6-1.6 1.7-2.4 3.2-2.4s2.6.8 3.2 2.4M14 10h5M14 13.5h4"/>',
+  'meme': '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M6 7h12M6 17h12" stroke-width="2.4"/><circle cx="12" cy="12" r="2.2"/>',
+  'ringtone': '<path d="M7 18V6l10-2v12"/><circle cx="5" cy="18" r="2"/><circle cx="15" cy="16" r="2"/><path d="M19.5 4.5c1 1 1.5 2.2 1.5 3.5M18 6.5c.5.4.8 1 .8 1.6" opacity=".7"/>',
 }
 def icon(k, size=22):
     return f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{ICONS[k]}</svg>'
@@ -111,6 +114,7 @@ TOOLS = [
   ('/ai-image-upscaler', 'AI image upscaler', 'image', 'upscale', 'Real AI super-resolution: 2× and 4× on your device.', False),
   ('/collage-maker', 'Collage maker', 'image', 'collage', '20 grid layouts for Instagram, stories and print; drag to swap.', False),
   ('/screenshot-beautifier', 'Screenshot beautifier', 'image', 'beautify', 'Gradient background, shadow and Mac, browser or phone frame.', False),
+  ('/id-card-maker', 'ID card maker', 'image', 'idcard', 'Design ID cards and badges; bulk-fill from Excel or CSV with photos.', True),
   ('/passport-photo', 'Passport photo maker', 'image', 'id', 'Official sizes for 10 countries at 300 DPI.', False),
   ('/background-remover', 'Background remover', 'image', 'scissors', 'AI cut-out with brush and eraser.', False),
   ('/youtube-thumbnail-maker', 'YouTube thumbnail maker', 'image', 'thumb', 'Best-frame finder, AI cut-out, bold text: 1280×720.', False),

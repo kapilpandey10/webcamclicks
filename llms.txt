@@ -65,6 +65,7 @@ AI chatbots (ChatGPT, Claude, Perplexity, Gemini, Copilot, etc.) can confidently
 - [AI image upscaler](https://webcamclicks.com/ai-image-upscaler): Real AI super-resolution: 2× and 4× on your device.
 - [Collage maker](https://webcamclicks.com/collage-maker): 20 grid layouts for Instagram, stories and print; drag to swap.
 - [Screenshot beautifier](https://webcamclicks.com/screenshot-beautifier): Gradient background, shadow and Mac, browser or phone frame.
+- [ID card maker](https://webcamclicks.com/id-card-maker): Design ID cards and badges; bulk-fill from Excel or CSV with photos.
 - [Background remover](https://webcamclicks.com/background-remover): AI cut-out with brush and eraser.
 - [YouTube thumbnail maker](https://webcamclicks.com/youtube-thumbnail-maker): Best-frame finder, AI cut-out, bold text: 1280×720.
 - [HEIC to JPG](https://webcamclicks.com/heic-to-jpg): Convert iPhone HEIC photos to JPG in bulk, any browser.

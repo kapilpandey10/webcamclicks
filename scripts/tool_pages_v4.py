@@ -522,3 +522,63 @@ PAGES['crop-image'] = dict(
         ('Can I crop to an exact pixel size?', 'Yes. Type the width and height under Output; with Keep proportions on, the other side follows the crop box.'),
         ('Does it work with iPhone HEIC photos?', 'Yes. HEIC photos open directly and can be saved as JPG.'),
         ('Is it private?', 'Yes. Images are cropped in your browser and never uploaded.')])
+
+# ------------------------------------------------------------------------------------------- slideshow maker
+PAGES['slideshow-maker'] = dict(
+  name='Slideshow maker', cat='video', script='slideshow.js', appcat='MultimediaApplication',
+  title='Slideshow Maker — Photos to Video with Music, Free, No Watermark | WebcamClicks',
+  desc='Turn photos into a video slideshow with music: slow zoom and pan, smooth transitions, a title, royalty-free music or your own song. Reels, TikTok, YouTube sizes. Free MP4, no upload.',
+  lead='Turn your photos into a video in a minute. Add photos, pick a size for Reels, TikTok or YouTube, choose a transition and royalty-free music (or your own song), add a title, and download an MP4. Every photo gets a slow, cinematic zoom.',
+  ui=f'''<div class="t-grid">
+    <div>
+      {DROP("image/*,.heic,.heif", "Drop your photos", "JPG, PNG, HEIC, WebP · as many as you like · nothing is uploaded")}
+      <div id="ss-work" hidden>
+        <div class="ss-stage"><canvas id="ss-canvas" aria-label="Slideshow preview"></canvas></div>
+        <div class="vc-controls"><button class="t-icon-btn" id="ss-play" type="button" aria-label="Play or pause">▶</button><input type="range" id="ss-seek" min="0" max="1000" value="0" aria-label="Seek"><span id="ss-time" class="muted">0:00</span></div>
+        <ol class="ss-strip" id="ss-strip" aria-label="Photos in order"></ol>
+        <div class="t-actions" style="margin-top:6px"><button class="t-btn sm" id="ss-add" type="button">+ Add photos</button><input type="file" id="ss-add-in" accept="image/*,.heic,.heif" multiple hidden><span class="muted" id="ss-total" style="align-self:center;font-size:.85rem"></span></div>
+      </div>
+      <p class="t-status" id="t-status" role="status"></p>
+      <div class="sr-progress" id="ss-bar" hidden><div id="ss-fill"></div></div>
+      <div class="vt-result" id="ss-result" hidden><video controls playsinline class="vt-video"></video><p id="ss-result-info"></p><button class="t-btn primary" id="ss-dl" type="button">⬇ Download MP4</button></div>
+    </div>
+    <div class="t-panel">
+      <h2>Video</h2>
+      <div class="t-row">
+        <label class="t-field">Size <select class="t-select" id="ss-aspect"><option value="9:16">9:16 Reels / TikTok / Shorts</option><option value="1:1">1:1 Square</option><option value="4:5">4:5 Instagram feed</option><option value="16:9">16:9 YouTube / TV</option></select></label>
+        <label class="t-field">Transition <select class="t-select" id="ss-trans"><option value="fade">Crossfade</option><option value="mixed">Mixed</option><option value="slide">Slide</option><option value="zoom">Zoom</option><option value="wipe">Wipe</option><option value="none">Cut (none)</option></select></label>
+      </div>
+      <label class="t-field">Seconds per photo <span class="muted" id="ss-per-v">3.0 s</span><input class="t-range" type="range" id="ss-per" min="1" max="10" step="0.1" value="3"></label>
+      <div class="t-row">
+        <label class="t-field">Photo fit <select class="t-select" id="ss-fit"><option value="blur">Whole photo, blurred edges</option><option value="fill">Fill the frame (crop)</option><option value="color">Whole photo, colour edges</option></select></label>
+        <label class="t-field"><span>Edge colour</span><input type="color" id="ss-bg" value="#111111" style="width:100%;height:40px"></label>
+      </div>
+      <label class="t-check"><input type="checkbox" id="ss-kb" checked> Slow zoom &amp; pan (Ken Burns)</label>
+      <h2 style="margin-top:14px">Title</h2>
+      <label class="t-field">Title <input class="t-input" id="ss-title" maxlength="60" placeholder="e.g. Summer in Pokhara"></label>
+      <label class="t-field">Subtitle <input class="t-input" id="ss-sub" maxlength="80" placeholder="e.g. July 2026"></label>
+      <h2 style="margin-top:14px">Music</h2>
+      <label class="t-field">Track <select class="t-select" id="ss-music"></select></label><input type="file" id="ss-music-in" accept="audio/*,.mp3,.m4a,.wav,.ogg" hidden>
+      <p class="muted" id="ss-music-name" style="margin:-4px 0 6px;font-size:.85rem"></p>
+      <label class="t-check" hidden><input type="checkbox" id="ss-fitmusic" checked> Fit the photos to the length of my song</label>
+      <label class="t-field">Volume <input class="t-range" type="range" id="ss-vol" min="0" max="100" value="80"></label>
+      <button class="t-btn primary" id="ss-run" type="button" disabled style="width:100%;margin-top:8px">🎬 Create video</button>
+    </div>
+  </div>''',
+  article='''<h2>How to make a photo slideshow</h2>
+<ol><li><strong>Drop your photos.</strong> They appear in the order you added them; drag them (or use the arrows) to reorder.</li>
+<li><strong>Pick a size:</strong> 9:16 for Reels, TikTok, Shorts and WhatsApp Status, square or 4:5 for the feed, 16:9 for YouTube and TVs.</li>
+<li><strong>Style it:</strong> seconds per photo, a transition (crossfade, slide, zoom, wipe or a mix), the slow zoom and a title for the first photo.</li>
+<li><strong>Add music:</strong> five royalty-free tracks are built in (lo-fi, upbeat, ambient, corporate, cinematic), or use your own song. With your own song, the photos can be timed to fit it exactly.</li>
+<li><strong>Preview</strong> with ▶, then <strong>Create video</strong> and download the MP4.</li></ol>
+<h2>Ideas</h2>
+<ul><li>Birthday, wedding and anniversary videos, or a memorial tribute.</li>
+<li>Travel recaps and “photo dump” Reels.</li>
+<li>Real-estate tours, product showcases and menus for social media.</li>
+<li>School projects and event recaps.</li></ul>
+<p>The built-in music is generated on your device, so it is free to use anywhere, including monetised videos. If you use your own song, make sure you have the rights to it. Want to merge video clips instead? Use <a href="/merge-videos">merge videos</a>; for a single picture collage, the <a href="/collage-maker">collage maker</a>.</p>''' + PRIVACY,
+  faqs=[('Is the slideshow maker free? Watermark?', 'Free, with no watermark, no sign-up and no limit on photos.'),
+        ('Can I use my own music?', 'Yes. Choose “My own song”, pick an MP3 or M4A, and tick “Fit the photos to the length of my song” to time the slideshow to it.'),
+        ('Is the built-in music copyright-free?', 'Yes. It is composed on your device for your video, so you can use it on YouTube, Instagram and TikTok without claims.'),
+        ('How many photos can I add?', 'As many as you like. A 60-second Reel fits about 20 photos at 3 seconds each.'),
+        ('Are my photos uploaded?', 'No. The video is made in your browser, which keeps family and private photos private.')])

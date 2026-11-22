@@ -67,6 +67,7 @@ ICONS = {
   'vcrop': '<rect x="6" y="3" width="12" height="18" rx="2"/><path d="M2 9h4M18 15h4M10 10.5l4 1.5-4 1.5z"/>',
   'cutter': '<path d="M3 12h2M7 8v8M11 5v14M15 9v6M19 11v2"/><path d="M14 3l7 7" opacity=".6"/>',
   'pdfcompress': '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 11v6M9.5 14.5 12 17l2.5-2.5"/>',
+  'slides': '<rect x="2.5" y="5" width="15" height="11" rx="1.5"/><path d="M6.5 19.5h13a2 2 0 0 0 2-2V9"/><path d="M8.5 8.5l4 2-4 2z" fill="currentColor"/>',
 }
 def icon(k, size=22):
     return f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{ICONS[k]}</svg>'
@@ -97,6 +98,7 @@ TOOLS = [
   ('/auto-captions', 'Auto captions & subtitles', 'video', 'cc', 'Captions from your browser\'s speech recognition or your SRT, animated or burned in.', False),
   ('/silence-remover', 'Silence remover', 'video', 'silence', 'Cut pauses out of talking videos automatically.', False),
   ('/auto-reframe', 'Auto-reframe to vertical', 'video', 'reframe', 'Landscape to 9:16 that follows the speaker\'s face.', False),
+  ('/slideshow-maker', 'Slideshow maker', 'video', 'slides', 'Photos + music into an MP4 with zoom, transitions and a title.', True),
   ('/video-converter', 'Video converter', 'video', 'vconvert', 'MOV, WebM or MKV to MP4 (and back), without quality loss when possible.', True),
   ('/merge-videos', 'Merge videos', 'video', 'vmerge', 'Join clips into one MP4, in any order, any size.', True),
   ('/crop-video', 'Crop & rotate video', 'video', 'vcrop', 'Crop to 9:16, 1:1 or 16:9, rotate and flip videos.', True),

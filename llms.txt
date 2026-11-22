@@ -52,6 +52,7 @@ AI chatbots (ChatGPT, Claude, Perplexity, Gemini, Copilot, etc.) can confidently
 - [Auto captions & subtitles](https://webcamclicks.com/auto-captions): Captions from your browser's speech recognition or your SRT, animated or burned in.
 - [Silence remover](https://webcamclicks.com/silence-remover): Cut pauses out of talking videos automatically.
 - [Auto-reframe to vertical](https://webcamclicks.com/auto-reframe): Landscape to 9:16 that follows the speaker's face.
+- [Slideshow maker](https://webcamclicks.com/slideshow-maker): Photos + music into an MP4 with zoom, transitions and a title.
 - [Video converter](https://webcamclicks.com/video-converter): MOV, WebM or MKV to MP4 (and back), without quality loss when possible.
 - [Merge videos](https://webcamclicks.com/merge-videos): Join clips into one MP4, in any order, any size.
 - [Crop & rotate video](https://webcamclicks.com/crop-video): Crop to 9:16, 1:1 or 16:9, rotate and flip videos.

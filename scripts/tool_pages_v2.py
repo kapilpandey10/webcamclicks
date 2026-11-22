@@ -146,6 +146,13 @@ PAGES['auto-captions'] = dict(
       {DROP(VIDEO_ACCEPT, "Drop a video or audio file", "MP4, MOV, WebM, MP3, M4A, WAV · nothing is uploaded", multiple=False)}
       <div id="cap-editor" hidden>
         <div class="cap-stage" id="cap-stage"><video id="cap-video" controls playsinline preload="metadata"></video><canvas id="cap-overlay" aria-hidden="true"></canvas></div>
+        <div class="cap-tl" id="cap-tl">
+          <div class="cap-tl-top"><span class="cap-tl-time" id="cap-tl-time">0:00</span><span class="cap-tl-hint">Click to jump · drag a caption's edge to retime it</span>
+            <span class="cap-tl-zoom"><button type="button" class="t-icon-btn" id="cap-tl-out" aria-label="Zoom out">−</button><button type="button" class="t-icon-btn" id="cap-tl-in" aria-label="Zoom in">+</button></span></div>
+          <div class="cap-tl-scroll" id="cap-tl-scroll"><div class="cap-tl-track" id="cap-tl-track">
+            <div class="cap-tl-ruler" id="cap-tl-ruler"></div><div class="cap-tl-prog" id="cap-tl-prog"></div><div class="cap-tl-cues" id="cap-tl-cues"></div><div class="cap-tl-head" id="cap-tl-head"></div>
+          </div></div>
+        </div>
         <p class="t-status" id="cap-info"></p>
       </div>
       <p class="t-status" id="t-status" role="status"></p>

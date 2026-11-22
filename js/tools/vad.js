@@ -1,6 +1,7 @@
 /* WebcamClicks — split audio into windows for the speech model.
-   ALL audio is transcribed: windows cover the whole recording back to back, each at most ~24 s and cut at the
-   quietest moment near its end (so words are not split). Loudness is only used to choose those cut points, to
+   ALL audio is transcribed: windows cover the whole recording back to back, each at most ~28 s and cut at a pause
+   near its end (so words are not split). Whisper always works on 30 s blocks, so long windows waste the least work;
+   the first window is short so the first captions appear quickly. Loudness is only used to choose those cut points, to
    skip stretches of true silence, and to know roughly where speech is inside a window (timing fallback). */
 
 const FRAME = 0.02;   // 20 ms
@@ -8,7 +9,7 @@ const FRAME = 0.02;   // 20 ms
 /** Speech regions between two times (seconds) — used to re-check a window for untranscribed speech. */
 export function speechAfter(win, t) { return win.regions.reduce((acc, [x, y]) => acc + Math.max(0, y - Math.max(x, t)), 0); }
 
-export function planWindows(audio, sr = 16000, maxLen = 24) {
+export function planWindows(audio, sr = 16000, { maxLen = 28, pauseAfter = 20, firstLen = 12, firstPause = 5 } = {}) {
   const hop = Math.round(sr * FRAME), n = Math.floor(audio.length / hop);
   if (!n) return [];
   const rms = new Float32Array(n);
@@ -22,13 +23,14 @@ export function planWindows(audio, sr = 16000, maxLen = 24) {
   const thr = Math.max(0.0006, noise * 1.8, peak * 0.005);
   const silentBelow = Math.max(0.0006, peak * 0.004);   // windows quieter than this everywhere are skipped
 
-  const maxF = Math.round(maxLen / FRAME), minF = Math.round(maxF * 0.55), pauseFrom = Math.round(8 / FRAME), wins = [];
+  const wins = [];
   let a = 0;
   while (a < n - 5) {
+    const first = !wins.length;
+    const maxF = Math.round((first ? firstLen : maxLen) / FRAME), minF = Math.round(maxF * 0.55), pauseFrom = Math.round((first ? firstPause : pauseAfter) / FRAME);
     let b = Math.min(n, a + maxF);
     if (b < n || b - a > pauseFrom + 150) {   // also split a long final stretch at a pause
-      // prefer the first natural pause (≥ 0.3 s of quiet) once the window is 8 s long: Whisper sometimes stops
-      // after one sentence in long windows, so shorter, sentence-shaped windows lose less speech
+      // cut at the first natural pause (≥ 0.3 s of quiet) once the window is long enough
       let cut = -1, run = 0;
       for (let i = a + pauseFrom; i < b; i++) { if (rms[i] < thr) { run++; if (run >= 15) { cut = i - 7; break; } } else run = 0; }
       if (cut < 0 && b === n) cut = b;
@@ -62,4 +64,21 @@ export function spreadOverRegions(tokens, regions) {
   const at = (f) => { let d = f * total; for (const [s, e] of regions) { if (d <= e - s) return s + d; d -= e - s; } return regions[regions.length - 1][1]; };
   let acc = 0;
   return tokens.map((w, i) => { const s = at(acc / sum); acc += weight[i]; return { text: w, start: +s.toFixed(3), end: +at(acc / sum).toFixed(3) }; });
+}
+
+/** Collapse any word or phrase (1–6 words) repeated 3+ times in a row to one copy: Whisper's classic loop. */
+export function dedupeLoops(words) {
+  const key = (w) => w.text.trim().toLowerCase().replace(/[.,!?।、。]+$/u, '');
+  let out = words;
+  for (let n = 1; n <= 6; n++) {
+    const res = []; let i = 0;
+    while (i < out.length) {
+      const g = out.slice(i, i + n).map(key).join('\u0001');
+      let k = 1;
+      while (i + (k + 1) * n <= out.length && out.slice(i + k * n, i + (k + 1) * n).map(key).join('\u0001') === g) k++;
+      if (k >= 3 && g.replace(/\u0001/g, '')) { res.push(...out.slice(i, i + n)); i += k * n; } else { res.push(out[i]); i++; }
+    }
+    out = res;
+  }
+  return out;
 }

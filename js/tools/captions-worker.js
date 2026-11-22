@@ -1,9 +1,10 @@
 /* WebcamClicks — on-device speech recognition worker (Whisper via transformers.js).
    - Word-level timestamps with the "_timestamped" Whisper models; falls back to the standard models.
-   - Audio is cut at pauses into windows ≤ 24 s, so timings never drift across chunk boundaries.
+   - The page cuts the audio into windows (≤ 28 s, at pauses) and hands them to one or more of these workers,
+     so captions appear window by window and several processor cores work at once.
    - Models download once from the Hugging Face hub and are cached by the browser (works offline after). */
 
-import { planWindows, spreadOverRegions, speechAfter } from './vad.js';
+import { spreadOverRegions, speechAfter } from './vad.js';
 
 const TRANSFORMERS = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.2/dist/transformers.min.js';   // self-contained build: bundles onnxruntime-web (the .web build needs a bundler)
 let T = null, gpuOk = null;
@@ -62,13 +63,19 @@ async function getAsr(size) {
  * read the decoder's scores for every language token after <|startoftranscript|>, and add them up.
  * transformers.js would otherwise silently assume English when no language is given.
  */
-async function detectLanguage(asr, audio, wins, sr, prefer = []) {
+async function detectLanguage(asr, clips, prefer = []) {
   const gc = asr.model.generation_config || {}, langs = Object.entries(gc.lang_to_id || {});
   if (!langs.length || gc.decoder_start_token_id == null) return null;
-  const picks = wins.map((w) => ({ w, speech: w.regions.reduce((a, [x, y]) => a + (y - x), 0) })).sort((a, b) => b.speech - a.speech).slice(0, 3);
   const score = new Map();
-  for (const { w, speech } of picks) {
-    const slice = audio.subarray(Math.floor(w.start * sr), Math.min(audio.length, Math.ceil(Math.min(w.end, w.start + 30) * sr)));
+  const rank = () => {
+    // languages set in the browser get extra weight: Hindi and Urdu (or Nepali and Hindi) sound alike and only the
+    // writing differs, so a viewer's own language settles close calls
+    const sc = new Map(score);
+    for (const code of prefer) { const k = `<|${code}|>`; if (sc.has(k)) sc.set(k, sc.get(k) * 3); }
+    const total = [...sc.values()].reduce((a, b) => a + b, 0) || 1;
+    return [...sc].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([tok, v]) => ({ code: tok.replace(/[<|>]/g, ''), p: v / total }));
+  };
+  for (const { audio: slice, speech } of clips) {
     const { input_features } = await asr.processor(slice);
     const dec = new T.Tensor('int64', BigInt64Array.from([BigInt(gc.decoder_start_token_id)]), [1, 1]);
     const out = await asr.model({ input_features, decoder_input_ids: dec });
@@ -76,13 +83,9 @@ async function detectLanguage(asr, audio, wins, sr, prefer = []) {
     const vals = langs.map(([, id]) => Number(lg[off + id])), mx = Math.max(...vals);
     const ex = vals.map((v) => Math.exp(v - mx)), sum = ex.reduce((a, b) => a + b, 0);
     langs.forEach(([tok], i) => score.set(tok, (score.get(tok) || 0) + (ex[i] / sum) * speech));
+    if (rank()[0].p >= 0.85) break;   // clear answer from the first clip: skip the rest (saves seconds)
   }
-  // languages set in the browser get extra weight: Hindi and Urdu (or Nepali and Hindi) sound alike and only the
-  // writing differs, so a viewer's own language settles close calls
-  for (const code of prefer) { const k = `<|${code}|>`; if (score.has(k)) score.set(k, score.get(k) * 3); }
-  const total = [...score.values()].reduce((a, b) => a + b, 0) || 1;
-  const ranked = [...score].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([tok, v]) => ({ code: tok.replace(/[<|>]/g, ''), p: v / total }));
-  return ranked;
+  return rank();
 }
 
 /* ---------------------------------------------------------------- script guard
@@ -159,22 +162,6 @@ function dropPhrases(chunks) {
   for (const m of text.matchAll(HALLUCINATIONS)) for (let k = m.index; k < m.index + m[0].length; k++) if (/\S/.test(text[k])) bad.add(at[k]);
   return bad.size ? chunks.filter((_, i) => !bad.has(i)) : chunks;
 }
-/** Collapse any word or phrase (1–6 words) repeated 3+ times in a row to one copy: Whisper's classic loop. */
-function dedupeLoops(words) {
-  const key = (w) => w.text.trim().toLowerCase().replace(/[.,!?।、。]+$/u, '');
-  let out = words;
-  for (let n = 1; n <= 6; n++) {
-    const res = []; let i = 0;
-    while (i < out.length) {
-      const g = out.slice(i, i + n).map(key).join('\u0001');
-      let k = 1;
-      while (i + (k + 1) * n <= out.length && out.slice(i + k * n, i + (k + 1) * n).map(key).join('\u0001') === g) k++;
-      if (k >= 3 && g.replace(/\u0001/g, '')) { res.push(...out.slice(i, i + n)); i += k * n; } else { res.push(out[i]); i++; }
-    }
-    out = res;
-  }
-  return out;
-}
 function collapseRepeats(chunks) {
   const out = []; let run = 0;
   for (const c of chunks) { const k = c.text.trim().toLowerCase(); run = out.length && out[out.length - 1].text.trim().toLowerCase() === k ? run + 1 : 0; if (run < 2) out.push(c); }
@@ -200,90 +187,89 @@ const tokensOf = (text) => {
   const out = []; for (let i = 0; i < t.length; i += 2) out.push(t.slice(i, i + 2)); return out;
 };
 
-// languages the tiny and base models transcribe well; for all others a bigger model is used automatically
-const WELL_SUPPORTED = new Set(['en', 'es', 'fr', 'de', 'it', 'pt', 'nl', 'ru', 'ja', 'zh', 'ko', 'pl', 'tr', 'sv', 'ca', 'id', 'uk', 'cs', 'ro', 'da', 'no', 'fi', 'hu', 'el', 'vi', 'ms']);
+const SR = 16000;
+const suppressCache = new Map();
+function suppressFor(asr, language, task) {
+  if (task === 'translate') return null;
+  if (suppressCache.has(language)) return suppressCache.get(language);
+  const extra = scriptGuard(asr, language);
+  const out = extra ? [...new Set([...(asr.model.generation_config.suppress_tokens || []), ...extra])] : null;
+  suppressCache.set(language, out);
+  return out;
+}
 
-async function run({ id, audio, size, language: lang0, task, autoUpgrade = true, prefer = [] }) {
-  let language = lang0;
-  const post = (m) => self.postMessage({ id, ...m });
-  post({ type: 'status', text: 'Preparing the speech model…' });
-  let { asr, word, device } = await getAsr(size);
-  const sr = 16000;
-  const wins = planWindows(audio, sr);
-  if (!wins.length) { post({ type: 'done', words: [], mode: word ? 'word' : 'segment' }); return; }
-  if (!language) {
-    post({ type: 'status', text: 'Detecting the spoken language…' });
-    let ranked = null;
-    try { ranked = await detectLanguage(asr, audio, wins, sr, prefer); } catch (e) { console.warn('language detection failed', e); }
-    if (!ranked || !ranked.length) throw new Error('NO_LANG');
-    language = ranked[0].code;
-    post({ type: 'language', ranked });
+/** Transcribe one window. `audio` starts at w.start; returned word times are absolute (seconds in the file). */
+async function decodeWindow(asr, word, audio, w, language, task, suppress, post, isRetry = false) {
+  const len = w.end - w.start;
+  const opts = { language, task: task || 'transcribe' };
+  if (suppress) opts.suppress_tokens = suppress;
+  let out = null;
+  try { out = await asr(audio, { ...opts, return_timestamps: word ? 'word' : true }); }
+  catch (e) {
+    try { out = await asr(audio, { ...opts, return_timestamps: true }); }
+    catch (e2) { try { out = await asr(audio, { language, task: opts.task, return_timestamps: true }); } catch (e3) { console.warn('window skipped', e3); out = { text: '', chunks: [] }; } }   // one bad window must not stop the rest
   }
-  if (autoUpgrade && /^(tiny|base)$/.test(size) && !WELL_SUPPORTED.has(language)) {
-    const up = (await webgpuOk()) ? 'large-v3-turbo' : 'small';
-    post({ type: 'status', text: `This language needs a larger speech model for good text. Switching to ${up === 'small' ? 'Accurate' : 'Best'} (one-time download)…` });
-    try { ({ asr, word, device } = await getAsr(up)); post({ type: 'upgraded', size: up }); }
-    catch (e) { if (up !== 'small') { try { ({ asr, word, device } = await getAsr('small')); post({ type: 'upgraded', size: 'small' }); } catch (_) { /* keep the current model */ } } }
+  if (looping(out.chunks || [])) {   // stuck in a loop: decode again with some randomness (Whisper's temperature fallback)
+    try { const again = await asr(audio, { ...opts, return_timestamps: word ? 'word' : true, do_sample: true, temperature: 0.4, top_k: 0, no_repeat_ngram_size: 3 }); if (!looping(again.chunks || [])) out = again; } catch (_) { /* keep the first result */ }
   }
-  // script guard: the text can only come out in the language's own alphabet
-  let suppress = null;
-  if (task !== 'translate') {
-    const extra = scriptGuard(asr, language);
-    if (extra) { suppress = [...new Set([...(asr.model.generation_config.suppress_tokens || []), ...extra])]; post({ type: 'debug', text: `script guard: ${extra.length} tokens suppressed for ${language}`, win: [0, 0], n: 0 }); }
-  }
-  post({ type: 'status', text: `Listening on your ${device === 'webgpu' ? 'graphics chip' : 'processor'}…` });
+  out.text = String(out.text || '').replace(HALLUCINATIONS, '');
+  const chunks = collapseRepeats(dropPhrases((out.chunks || []).filter((c) => c.text && !NOISE.test(c.text))));
+  post({ type: 'debug', win: [w.start, w.end], text: out.text, n: (out.chunks || []).length, valid: word ? validWords(chunks, len) : null, first: (out.chunks || []).slice(0, 3), last: (out.chunks || []).slice(-2) });
   const words = [];
-  for (let i = 0; i < wins.length; i++) {
-    const w = wins[i], len = w.end - w.start;
-    const slice = audio.subarray(Math.floor(w.start * sr), Math.min(audio.length, Math.ceil(w.end * sr)));
-    const opts = { language, task: task || 'transcribe' };
-    if (suppress) opts.suppress_tokens = suppress;
-    let out = null;
-    try { out = await asr(slice, { ...opts, return_timestamps: word ? 'word' : true }); }
-    catch (e) {
-      try { out = await asr(slice, { ...opts, return_timestamps: true }); }
-      catch (e2) { try { out = await asr(slice, { language, task: opts.task, return_timestamps: true }); } catch (e3) { console.warn('window skipped', e3); out = { text: '', chunks: [] }; } }   // one bad window must not stop the rest
+  if (word && validWords(chunks, len)) {
+    for (const c of chunks) {
+      const s = w.start + c.timestamp[0], e = w.start + (Number.isFinite(c.timestamp[1]) ? c.timestamp[1] : c.timestamp[0] + 0.35);
+      words.push({ text: c.text, start: +s.toFixed(3), end: +Math.max(s + 0.05, e).toFixed(3) });
     }
-    if (looping(out.chunks || [])) {   // stuck in a loop: decode again with some randomness (Whisper's temperature fallback)
-      try { const again = await asr(slice, { ...opts, return_timestamps: word ? 'word' : true, do_sample: true, temperature: 0.4, top_k: 0, no_repeat_ngram_size: 3 }); if (!looping(again.chunks || [])) out = again; } catch (_) { /* keep the first result */ }
+  } else if (!word && chunks.length > 1 && chunks.every((c) => Number.isFinite(c.timestamp?.[0]))) {
+    for (const c of chunks) {
+      const s = w.start + c.timestamp[0], e = w.start + (Number.isFinite(c.timestamp[1]) ? c.timestamp[1] : len);
+      words.push(...spreadOverRegions(tokensOf(c.text), [[s, Math.max(s + 0.2, e)]]));
     }
-    out.text = String(out.text || '').replace(HALLUCINATIONS, '');
-    const chunks = collapseRepeats(dropPhrases((out.chunks || []).filter((c) => c.text && !NOISE.test(c.text))));
-    post({ type: 'debug', win: [w.start, w.end], text: out.text, n: (out.chunks || []).length, valid: word ? validWords(chunks, len) : null, first: (out.chunks || []).slice(0, 3), last: (out.chunks || []).slice(-2) });
-    const first = words.length;
-    if (word && validWords(chunks, len)) {
-      for (const c of chunks) {
-        const s = w.start + c.timestamp[0], e = w.start + (Number.isFinite(c.timestamp[1]) ? c.timestamp[1] : c.timestamp[0] + 0.35);
-        words.push({ text: c.text, start: +s.toFixed(3), end: +Math.max(s + 0.05, e).toFixed(3) });
-      }
-    } else if (!word && chunks.length > 1 && chunks.every((c) => Number.isFinite(c.timestamp?.[0]))) {
-      for (const c of chunks) {
-        const s = w.start + c.timestamp[0], e = w.start + (Number.isFinite(c.timestamp[1]) ? c.timestamp[1] : len);
-        words.push(...spreadOverRegions(tokensOf(c.text), [[s, Math.max(s + 0.2, e)]]));
-      }
-    } else {
-      words.push(...spreadOverRegions(tokensOf(String(out.text || '').replace(NOISE, '')), w.regions));
-    }
-    // the first word of a new window needs a leading space in space-separated languages
-    if (first > 0 && words[first] && !/^\s/.test(words[first].text) && (/^\s/.test(words[first - 1].text) || /^\s/.test(words[first + 1]?.text || ''))) words[first].text = ` ${words[first].text}`;
-    // Whisper occasionally stops after a sentence: if clear speech follows the last word, transcribe the rest again
-    const lastEnd = words.length > first ? words[words.length - 1].end : w.start;
-    if (lastEnd < w.end - 1.5 && lastEnd > w.start + 0.5 && speechAfter(w, lastEnd + 0.4) > 1 && !w.retry) {
-      wins.splice(i + 1, 0, { start: lastEnd + 0.05, end: w.end, regions: w.regions.map(([x, y]) => [Math.max(x, lastEnd), y]).filter(([x, y]) => y > x), retry: true });
-    }
-    post({ type: 'progress', done: (i + 1) / wins.length, words: words.length });
+  } else {
+    words.push(...spreadOverRegions(tokensOf(String(out.text || '').replace(NOISE, '')), w.regions));
   }
-  post({ type: 'done', words: dedupeLoops(words), mode: word ? 'word' : 'segment' });
+  // Whisper occasionally stops after a sentence: if clear speech follows the last word, transcribe the rest again
+  const lastEnd = words.length ? words[words.length - 1].end : w.start;
+  if (!isRetry && lastEnd < w.end - 1.5 && lastEnd > w.start + 0.5 && speechAfter(w, lastEnd + 0.4) > 1) {
+    const from = lastEnd + 0.05;
+    const rest = { start: from, end: w.end, regions: w.regions.map(([x, y]) => [Math.max(x, from), y]).filter(([x, y]) => y > x) };
+    if (!rest.regions.length) rest.regions = [[from, w.end]];
+    const more = await decodeWindow(asr, word, audio.subarray(Math.floor((from - w.start) * SR)), rest, language, task, suppress, post, true);
+    if (more.length && !/^\s/.test(more[0].text) && /^\s/.test(more[1]?.text || words[words.length - 1]?.text || '')) more[0].text = ` ${more[0].text}`;
+    words.push(...more);
+  }
+  return words;
+}
+
+async function detect({ size, clips, prefer = [] }, post) {
+  const { asr } = await getAsr(size);
+  post({ type: 'status', text: 'Detecting the spoken language…' });
+  const ranked = await detectLanguage(asr, clips, prefer);
+  if (!ranked || !ranked.length) throw new Error('NO_LANG');
+  return { ranked };
+}
+
+async function transcribe({ size, language, task, win, audio }, post) {
+  const { asr, word } = await getAsr(size);
+  const suppress = suppressFor(asr, language, task);
+  const words = await decodeWindow(asr, word, audio, win, language, task, suppress, post);
+  return { words, mode: word ? 'word' : 'segment' };
 }
 
 self.onmessage = async (e) => {
-  const m = e.data;
-  if (m.type === 'preload') {
-    try { await getAsr(m.size); } catch (err) { self.postMessage({ type: 'model', size: m.size, state: 'error', error: String(err && err.message || err) }); }
-    return;
-  }
-  if (m.type === 'run') {
-    try { await run(m); }
-    catch (err) { self.postMessage({ id: m.id, type: 'error', text: String(err && err.message || err) }); }
+  const m = e.data, post = (x) => self.postMessage({ rid: m.rid, ...x });
+  try {
+    if (m.type === 'preload') {
+      const r = await getAsr(m.size);
+      if (m.warm && r.device === 'webgpu' && !r.asr.__warmed) {   // compile the graphics-chip shaders now, not on the first real window
+        r.asr.__warmed = true; try { await r.asr(new Float32Array(SR), { language: 'en' }); } catch (_) { /* ignore */ }
+      }
+      post({ type: 'result', device: r.device, word: r.word });
+    } else if (m.type === 'detect') post({ type: 'result', ...(await detect(m, post)) });
+    else if (m.type === 'win') post({ type: 'result', ...(await transcribe(m, post)) });
+  } catch (err) {
+    if (m.type === 'preload') self.postMessage({ type: 'model', size: m.size, state: 'error', error: String(err && err.message || err) });
+    post({ type: 'error', text: String(err && err.message || err) });
   }
 };

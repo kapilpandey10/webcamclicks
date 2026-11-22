@@ -249,6 +249,36 @@ input[type=range].t-range { width: 100%; accent-color: var(--accent); }
 .cap-stage:has(video.audio-only) { background: transparent; }
 .cap-stage:has(video.audio-only) canvas { display: none; }
 .cap-h { font-size: 1rem; margin: 18px 0 8px; }
+/* caption timeline */
+.cap-tl { margin-top: 10px; border: 1px solid var(--line); border-radius: 12px; background: #fff; overflow: hidden; width: 100%; min-width: 0; contain: inline-size; }
+#cap-editor { min-width: 0; }
+.cap-tl-top { display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 12px; border-bottom: 1px solid var(--line); font-size: .78rem; color: var(--ink-3); }
+.cap-tl-time { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--ink-2); }
+.cap-tl-hint { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cap-tl-zoom { display: flex; gap: 4px; }
+.cap-tl-zoom .t-icon-btn { width: 30px; height: 30px; font-size: 1rem; line-height: 1; touch-action: manipulation; }
+.cap-tl-scroll { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+.cap-tl-track { position: relative; height: 92px; min-width: 100%; cursor: pointer; touch-action: pan-x; user-select: none; -webkit-user-select: none; }
+.cap-tl-ruler { position: absolute; inset: 0 0 auto; height: 20px; border-bottom: 1px solid var(--line); }
+.cap-tl-ruler span { position: absolute; top: 3px; padding-left: 4px; border-left: 1px solid var(--line-strong); font-size: .66rem; line-height: 14px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.cap-tl-prog { position: absolute; left: 0; right: 0; top: 20px; height: 5px; }
+.tl-w { position: absolute; top: 0; height: 100%; border-right: 1px solid #fff; background: var(--surface-3); }
+.tl-w.work { background: repeating-linear-gradient(-45deg, var(--accent) 0 6px, #ffb4a3 6px 12px); background-size: 17px 17px; animation: tl-work 0.8s linear infinite; }
+.tl-w.done { background: var(--ok, #12b76a); }
+@keyframes tl-work { to { background-position: 17px 0; } }
+@media (prefers-reduced-motion: reduce) { .tl-w.work { animation: none; } }
+.cap-tl-cues { position: absolute; left: 0; right: 0; top: 32px; height: 52px; }
+.tl-cue { position: absolute; top: 0; height: 100%; box-sizing: border-box; padding: 4px 8px; border-radius: 8px; background: #eef2ff; border: 1px solid #c7d2fe; color: #1e1b4b; font-size: .74rem; line-height: 1.25; overflow: hidden; }
+.tl-cue span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; pointer-events: none; }
+.tl-cue.on { background: var(--accent-soft); border-color: var(--accent); color: #7c2d12; box-shadow: 0 0 0 1px var(--accent); }
+.tl-h { position: absolute; top: 0; bottom: 0; width: 10px; cursor: ew-resize; z-index: 1; }
+.tl-h.l { left: -2px; } .tl-h.r { right: -2px; }
+.tl-cue:hover .tl-h, .tl-cue.on .tl-h { background: linear-gradient(90deg, transparent 3px, rgba(0, 0, 0, .25) 3px 5px, transparent 5px); }
+.cap-tl-head { position: absolute; top: 0; bottom: 0; left: 0; width: 2px; margin-left: -1px; background: var(--accent); pointer-events: none; z-index: 2; }
+.cap-tl-head::before { content: ''; position: absolute; top: 0; left: -5px; border: 6px solid transparent; border-top-color: var(--accent); }
+.cap-tl.working .cap-tl-cues:empty::before { content: 'Captions appear here as they are written…'; position: absolute; left: 12px; top: 16px; font-size: .78rem; color: var(--ink-3); white-space: nowrap; }
+.cue.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+@media (max-width: 600px) { .cap-tl-hint { display: none; } .cap-tl-top { justify-content: space-between; } .tl-h { width: 16px; } }
 .cap-cues { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 460px; overflow-y: auto; }
 .cap-cues:empty::before { content: 'Captions will appear here after you generate or import them.'; display: block; padding: 14px; border: 1px dashed var(--line-strong); border-radius: 12px; color: var(--ink-3); font-size: .88rem; }
 .cue { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }

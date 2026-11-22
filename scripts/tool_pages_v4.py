@@ -526,43 +526,87 @@ PAGES['crop-image'] = dict(
 # ------------------------------------------------------------------------------------------- slideshow maker
 PAGES['slideshow-maker'] = dict(
   name='Slideshow maker', cat='video', script='slideshow.js', appcat='MultimediaApplication',
-  title='Slideshow Maker — Photos to Video with Music, Free, No Watermark | WebcamClicks',
-  desc='Turn photos into a video slideshow with music: slow zoom and pan, smooth transitions, a title, royalty-free music or your own song. Reels, TikTok, YouTube sizes. Free MP4, no upload.',
-  lead='Turn your photos into a video in a minute. Add photos, pick a size for Reels, TikTok or YouTube, choose a transition and royalty-free music (or your own song), add a title, and download an MP4. Every photo gets a slow, cinematic zoom.',
-  ui=f'''<div class="t-grid">
+  title='Slideshow Maker — Photos to Video with Music, 35 Transitions & Effects, Free | WebcamClicks',
+  desc='Pro photo slideshow maker: 12 editing styles, 35 transitions (random or your pick), 17 colour looks, film grain, light leaks, confetti, snow, text styles, music, beat sync, full-screen preview. Free MP4, no watermark.',
+  lead='Turn photos into a video that looks professionally edited. Pick an editing style (Wedding, Travel, Birthday, Cinematic, Hype…) or mix your own from 35 transitions, 17 colour looks, animated effects and text styles. Add music, preview in full screen, and download an MP4.',
+  ui=f'''<div class="t-grid ss-grid">
     <div>
       {DROP("image/*,.heic,.heif", "Drop your photos", "JPG, PNG, HEIC, WebP · as many as you like · nothing is uploaded")}
       <div id="ss-work" hidden>
-        <div class="ss-stage"><canvas id="ss-canvas" aria-label="Slideshow preview"></canvas></div>
-        <div class="vc-controls"><button class="t-icon-btn" id="ss-play" type="button" aria-label="Play or pause">▶</button><input type="range" id="ss-seek" min="0" max="1000" value="0" aria-label="Seek"><span id="ss-time" class="muted">0:00</span></div>
-        <ol class="ss-strip" id="ss-strip" aria-label="Photos in order"></ol>
-        <div class="t-actions" style="margin-top:6px"><button class="t-btn sm" id="ss-add" type="button">+ Add photos</button><input type="file" id="ss-add-in" accept="image/*,.heic,.heif" multiple hidden><span class="muted" id="ss-total" style="align-self:center;font-size:.85rem"></span></div>
+        <div class="ss-player" id="ss-player">
+          <canvas id="ss-canvas" aria-label="Slideshow preview: click to play or pause"></canvas>
+          <button class="ss-bigplay" id="ss-bigplay" type="button" aria-label="Play">▶</button>
+          <div class="ss-bar">
+            <button type="button" id="ss-play" aria-label="Play or pause">▶</button>
+            <input type="range" id="ss-seek" min="0" max="1000" value="0" aria-label="Seek">
+            <span id="ss-time">0:00</span>
+            <button type="button" id="ss-fs" aria-label="Full screen" title="Full screen (F)">⛶</button>
+          </div>
+        </div>
+        <div class="ss-striphead"><b>Photos</b><span class="muted" id="ss-total"></span>
+          <span class="ss-stripbtns"><button class="t-btn sm" id="ss-shuffle" type="button">🔀 Shuffle</button><button class="t-btn sm" id="ss-add" type="button">+ Add photos</button></span><input type="file" id="ss-add-in" accept="image/*,.heic,.heif" multiple hidden></div>
+        <ol class="ss-strip" id="ss-strip" aria-label="Photos in order: click one to edit it, drag to reorder"></ol>
+        <div class="ss-sel" id="ss-sel" hidden>
+          <div class="ss-selhead"><b id="ss-sel-name"></b><span><button class="t-icon-btn" id="ss-sel-prev" type="button" aria-label="Move earlier">‹</button><button class="t-icon-btn" id="ss-sel-next" type="button" aria-label="Move later">›</button><button class="t-btn sm" id="ss-sel-dup" type="button">Duplicate</button><button class="t-btn sm" id="ss-sel-del" type="button">Remove</button></span></div>
+          <div class="t-row">
+            <label class="t-field">Caption <input class="t-input" id="ss-sel-cap" maxlength="80" placeholder="Text on this photo"></label>
+            <label class="t-field">Duration <select class="t-select" id="ss-sel-dur"></select></label>
+          </div>
+          <label class="t-field">Transition into this photo <select class="t-select" id="ss-sel-trans"></select></label>
+        </div>
       </div>
       <p class="t-status" id="t-status" role="status"></p>
       <div class="sr-progress" id="ss-bar" hidden><div id="ss-fill"></div></div>
       <div class="vt-result" id="ss-result" hidden><video controls playsinline class="vt-video"></video><p id="ss-result-info"></p><button class="t-btn primary" id="ss-dl" type="button">⬇ Download MP4</button></div>
     </div>
-    <div class="t-panel">
-      <h2>Video</h2>
+    <div class="t-panel ss-panel">
       <div class="t-row">
         <label class="t-field">Size <select class="t-select" id="ss-aspect"><option value="9:16">9:16 Reels / TikTok / Shorts</option><option value="1:1">1:1 Square</option><option value="4:5">4:5 Instagram feed</option><option value="16:9">16:9 YouTube / TV</option></select></label>
-        <label class="t-field">Transition <select class="t-select" id="ss-trans"><option value="fade">Crossfade</option><option value="mixed">Mixed</option><option value="slide">Slide</option><option value="zoom">Zoom</option><option value="wipe">Wipe</option><option value="none">Cut (none)</option></select></label>
+        <label class="t-field">Quality <select class="t-select" id="ss-quality"><option value="1080">1080p</option><option value="720">720p (faster)</option></select></label>
       </div>
-      <label class="t-field">Seconds per photo <span class="muted" id="ss-per-v">3.0 s</span><input class="t-range" type="range" id="ss-per" min="1" max="10" step="0.1" value="3"></label>
-      <div class="t-row">
-        <label class="t-field">Photo fit <select class="t-select" id="ss-fit"><option value="blur">Whole photo, blurred edges</option><option value="fill">Fill the frame (crop)</option><option value="color">Whole photo, colour edges</option></select></label>
+      <div class="ss-tabs" id="ss-tabs" role="tablist">
+        <button type="button" role="tab" data-tab="style" aria-selected="true">✨ Styles</button><button type="button" role="tab" data-tab="trans" aria-selected="false">🔀 Transitions</button>
+        <button type="button" role="tab" data-tab="fx" aria-selected="false">🎨 Effects</button><button type="button" role="tab" data-tab="text" aria-selected="false">🔤 Text</button><button type="button" role="tab" data-tab="music" aria-selected="false">🎵 Music</button>
+      </div>
+      <div class="ss-pane" data-pane="style">
+        <div class="ss-templates" id="ss-templates"></div>
+        <button class="t-btn" id="ss-surprise" type="button" style="width:100%;margin-top:8px">🎲 Surprise me (random style)</button>
+        <label class="t-field" style="margin-top:12px">Seconds per photo <span class="muted" id="ss-per-v">3.0 s</span><input class="t-range" type="range" id="ss-per" min="0.8" max="10" step="0.1" value="3"></label>
+      </div>
+      <div class="ss-pane" data-pane="trans" hidden>
+        <div class="t-row">
+          <label class="t-field">Use <select class="t-select" id="ss-tmode"><option value="random">Random from the ones picked</option><option value="cycle">In turn (cycle)</option><option value="one">The same for every photo</option></select></label>
+          <label class="t-field">Length <span class="muted" id="ss-tdur-v">0.8 s</span><input class="t-range" type="range" id="ss-tdur" min="0.2" max="2" step="0.1" value="0.8"></label>
+        </div>
+        <div class="t-actions" style="margin:0 0 6px"><button class="t-btn sm" id="ss-reshuffle" type="button">🎲 Reshuffle random</button><button class="t-btn sm" id="ss-tall" type="button">Use all</button></div>
+        <p class="muted" style="font-size:.8rem;margin:0 0 6px">Tap transitions to add or remove them. Tap one to preview it.</p>
+        <div id="ss-tlist"></div>
+      </div>
+      <div class="ss-pane" data-pane="fx" hidden>
+        <p class="ss-tgroup">Colour look</p><div class="ss-looks" id="ss-looks"></div>
+        <p class="ss-tgroup">Overlays &amp; particles</p><div class="ss-chips" id="ss-overlays"></div>
+        <div class="t-row" style="margin-top:10px">
+          <label class="t-field">Motion <select class="t-select" id="ss-motion"><option value="kb">Ken Burns (random)</option><option value="in">Slow zoom in</option><option value="out">Slow zoom out</option><option value="pan">Pan</option><option value="beat">Beat pulse</option><option value="none">Still</option></select></label>
+          <label class="t-field">Photo frame <select class="t-select" id="ss-fit"><option value="blur">Whole photo, blurred edges</option><option value="fill">Fill the screen</option><option value="polaroid">Polaroid card</option><option value="card">Rounded card</option><option value="color">Whole photo, colour edges</option></select></label>
+        </div>
         <label class="t-field"><span>Edge colour</span><input type="color" id="ss-bg" value="#111111" style="width:100%;height:40px"></label>
       </div>
-      <label class="t-check"><input type="checkbox" id="ss-kb" checked> Slow zoom &amp; pan (Ken Burns)</label>
-      <h2 style="margin-top:14px">Title</h2>
-      <label class="t-field">Title <input class="t-input" id="ss-title" maxlength="60" placeholder="e.g. Summer in Pokhara"></label>
-      <label class="t-field">Subtitle <input class="t-input" id="ss-sub" maxlength="80" placeholder="e.g. July 2026"></label>
-      <h2 style="margin-top:14px">Music</h2>
-      <label class="t-field">Track <select class="t-select" id="ss-music"></select></label><input type="file" id="ss-music-in" accept="audio/*,.mp3,.m4a,.wav,.ogg" hidden>
-      <p class="muted" id="ss-music-name" style="margin:-4px 0 6px;font-size:.85rem"></p>
-      <label class="t-check" hidden><input type="checkbox" id="ss-fitmusic" checked> Fit the photos to the length of my song</label>
-      <label class="t-field">Volume <input class="t-range" type="range" id="ss-vol" min="0" max="100" value="80"></label>
-      <button class="t-btn primary" id="ss-run" type="button" disabled style="width:100%;margin-top:8px">🎬 Create video</button>
+      <div class="ss-pane" data-pane="text" hidden>
+        <label class="t-field">Title <input class="t-input" id="ss-title" maxlength="60" placeholder="e.g. Summer in Pokhara"></label>
+        <label class="t-field">Subtitle <input class="t-input" id="ss-sub" maxlength="80" placeholder="e.g. July 2026"></label>
+        <p class="ss-tgroup">Text style</p><div class="ss-tstyles" id="ss-tstyles"></div>
+        <label class="t-check" style="margin-top:10px"><input type="checkbox" id="ss-captions" checked> Show photo captions (click a photo to write one)</label>
+        <label class="t-check"><input type="checkbox" id="ss-end"> End card</label>
+        <div class="t-row"><label class="t-field">End title <input class="t-input" id="ss-end-title" placeholder="Thanks for watching"></label><label class="t-field">End subtitle <input class="t-input" id="ss-end-sub" placeholder="@yourname"></label></div>
+      </div>
+      <div class="ss-pane" data-pane="music" hidden>
+        <label class="t-field">Track <select class="t-select" id="ss-music"></select></label><input type="file" id="ss-music-in" accept="audio/*,.mp3,.m4a,.wav,.ogg" hidden>
+        <p class="muted" id="ss-music-name" style="margin:-4px 0 6px;font-size:.85rem"></p>
+        <label class="t-check" hidden><input type="checkbox" id="ss-fitmusic" checked> Fit the photos to the length of my song</label>
+        <label class="t-check" hidden><input type="checkbox" id="ss-beat"> Sync photo changes to the beat</label>
+        <label class="t-field">Volume <input class="t-range" type="range" id="ss-vol" min="0" max="100" value="80"></label>
+      </div>
+      <button class="t-btn primary" id="ss-run" type="button" disabled style="width:100%;margin-top:12px">🎬 Create video</button>
     </div>
   </div>''',
   article='''<h2>How to make a photo slideshow</h2>
@@ -570,7 +614,12 @@ PAGES['slideshow-maker'] = dict(
 <li><strong>Pick a size:</strong> 9:16 for Reels, TikTok, Shorts and WhatsApp Status, square or 4:5 for the feed, 16:9 for YouTube and TVs.</li>
 <li><strong>Style it:</strong> seconds per photo, a transition (crossfade, slide, zoom, wipe or a mix), the slow zoom and a title for the first photo.</li>
 <li><strong>Add music:</strong> five royalty-free tracks are built in (lo-fi, upbeat, ambient, corporate, cinematic), or use your own song. With your own song, the photos can be timed to fit it exactly.</li>
-<li><strong>Preview</strong> with ▶, then <strong>Create video</strong> and download the MP4.</li></ol>
+<li><strong>Preview</strong> with ▶ or in full screen (⛶ or the F key), then <strong>Create video</strong> and download the MP4.</li></ol>
+<h2>Editing styles, transitions and effects</h2>
+<ul><li><strong>12 editing styles</strong> set everything in one click: Travel vlog, Wedding, Birthday, Memories, Cinematic, Hype (cuts on the beat), Love story, Retro VHS, Holidays, Film noir, Polaroid and Business. Or press <em>Surprise me</em> for a random look.</li>
+<li><strong>35 transitions</strong>: crossfades, fades through black or white, slides, pushes, whip pans, zooms, spins, wipes, circle, diamond and heart reveals, blinds, checkerboard, doors, flip, cube, flash, glitch, pixelate and film burn. Use them at random, in turn, or one for every photo, and set a different one for any photo.</li>
+<li><strong>17 colour looks</strong> such as Film, Cinematic teal &amp; orange, Golden hour, Vintage, Noir and Duotone, plus overlays: film grain, vignette, light leaks, cinematic bars, VHS, dust &amp; scratches, and animated snow, confetti, hearts, sparkles, bubbles, petals and bokeh lights.</li>
+<li><strong>Text styles</strong> for the title, captions and an end card: clean, bold, elegant, script, neon, typewriter, comic and label.</li></ul>
 <h2>Ideas</h2>
 <ul><li>Birthday, wedding and anniversary videos, or a memorial tribute.</li>
 <li>Travel recaps and “photo dump” Reels.</li>

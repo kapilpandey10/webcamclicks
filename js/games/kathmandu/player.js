@@ -355,10 +355,12 @@
   PL.update = (dt) => {
     if (PL.mode === 'plane' || PL.mode === 'fall' || PL.mode === 'chute') { KS.Drop.update(dt); PL.len = 0.5; PL.wid = 0.6; PL.torch.intensity = 0; PL.headlight.intensity = 0; return; }
     if (PL.mode === 'dead') { PL.speed = 0; return; }
+    if (PL.mode === 'heli') { PL.len = 0.5; PL.wid = 0.6; PL.speed = 0; return; } // flown by Sadbhav Air (places.js)
+    if (PL.mode === 'ride') { KS.Net && KS.Net.rideUpdate(dt); return; } // a passenger in a friend's vehicle
     if (I.hit('KeyE') || I.hit('KeyEnter')) {
       if (PL.mode === 'boat') PL.leaveBoat();
       else if (PL.mode === 'drive') PL.exit();
-      else { const v = KS.Traffic.nearest(PL.x, PL.z, 3.6); if (v) PL.enter(v); else KS.Game && KS.Game.interact(); }
+      else if (!(KS.Net && KS.Net.tryBoard && KS.Net.tryBoard())) { const v = KS.Traffic.nearest(PL.x, PL.z, 3.6); if (v) PL.enter(v); else KS.Game && KS.Game.interact(); }
     }
     if (PL.mode === 'foot') footUpdate(dt); else if (PL.mode === 'boat') boatUpdate(dt); else driveUpdate(dt);
     PL.health = Math.min(100, PL.health + dt * (KS.Battle && KS.Battle.on ? 0.3 : 2.5)); // in Battle mode medkits heal, not time

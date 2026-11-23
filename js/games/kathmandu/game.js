@@ -26,7 +26,7 @@
   Object.defineProperty(Game, 'karmaV', { get: () => D.karma });
   Game.fine = (n, why, force) => {
     if (!force && KS.clock - Game.fineT < 6) return; Game.fineT = KS.clock;
-    A.whistle(0.9); Game.pay(-n, '🚓 Fine: ' + why); KS.Uthao.event('fine'); flash('fine');
+    n = Math.min(KS.MAXFINE || 500, n); A.whistle(0.9); Game.pay(-n, '🚓 Fine: ' + why); KS.Uthao.event('fine'); flash('fine');
   };
   Game.policeNear = (x, z, r) => KS.Peds.police.some((p) => Math.hypot(p.x - x, p.z - z) < r) || KS.Traffic.list.some((v) => v.kind === 'police' && v.ai && Math.hypot(v.x - x, v.z - z) < r * 0.6);
   Game.hurt = (dmg) => {
@@ -35,7 +35,7 @@
     if (PL.health <= 0) {
       PL.health = 100; if (PL.vehicle) PL.exit();
       PL.x = KS.hospital.x; PL.z = KS.hospital.z + 6; PL.y = 0.2;
-      Game.pay(-800, 'You blacked out. Hospital bill'); Game.notify('🏥 You woke up at the City Hospital.', 'bad');
+      Game.pay(-300, 'You blacked out. Hospital bill'); Game.notify('🏥 You woke up at the City Hospital.', 'bad');
       KS.Peds.list.forEach((p) => (p.fight = 0));
     }
   };
@@ -83,6 +83,11 @@
     const PL = KS.Player;
     if (KS.trialGround && Math.hypot(PL.x - KS.trialGround.counter.x, PL.z - KS.trialGround.counter.z) < 3.5) { KS.Law.openCounter(); return; }
     if (KS.agent && Math.hypot(PL.x - KS.agent.x, PL.z - KS.agent.z) < 2.6) { KS.Law.agentTalk(); return; }
+    if (KS.Heli.nearBooth(PL)) {
+      KS.modal('🚁 Sadbhav Air · सद्भाव एयर', `<p>"Namaste! A two-minute helicopter tour over Rani Pokhari, Narayanhiti, Boudhanath, Pashupati, the airport, Basantapur Durbar Square and Swayambhu, then a circle round Dharahara."</p><p>Ticket: <b>रु ${KS.Heli.price}</b>. You have रु ${Math.round(D.cash).toLocaleString('en-IN')}.</p>`,
+        [[`Fly now · रु ${KS.Heli.price}`, () => { KS.modalClose(); KS.Heli.start(); }], ['Maybe later', () => KS.modalClose()]]);
+      return;
+    }
     const lift = (KS.lifts || []).find((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5);
     if (lift) { flash('photo'); A.ding(); PL.x = lift.to.x; PL.z = lift.to.z; PL.y = lift.to.y; PL.vy = 0; if (lift.to.y > 10) { KS.Guide.flag('lift', true); Game.notify('🗼 Welcome to the Dharahara viewing deck. Look north for the Himalaya.'); KS.Cam.yaw = Math.PI; } return; }
     if (KS.pond && !PL.boat && Math.hypot(PL.x - KS.pond.jetty.x, PL.z - KS.pond.jetty.z) < 2.8) {
@@ -288,6 +293,10 @@
     g.setLineDash([6, 5]); g.strokeStyle = '#f3d27a'; g.lineWidth = 2; g.beginPath(); g.moveTo(mx(KS.HW.pW), mz(KS.HW.z)); g.lineTo(mx(KS.HW.pE), mz(KS.HW.z)); g.stroke(); g.setLineDash([]);
     g.fillStyle = '#d98f6f'; g.fillRect(mx(-176), mz(4), 82 * MAP.px, 172 * MAP.px);
     g.fillStyle = '#e6c66a'; g.fillRect(mx(368), mz(368), 74 * MAP.px, 90 * MAP.px);
+    if (KS.TPATHS) { // the road and steps up to Chhahare Jharna, and the stream
+      for (const P of KS.TPATHS) { g.strokeStyle = P.id === 'stream' ? '#6fa3c4' : P.id === 'road' ? '#f3d27a' : '#b8a888'; g.lineWidth = P.id === 'road' ? 7 * MAP.px * 2 : 3; g.setLineDash(P.id === 'steps' ? [3, 3] : []); g.beginPath(); P.pts.forEach(([x, z], i) => (i ? g.lineTo(mx(x), mz(z)) : g.moveTo(mx(x), mz(z)))); g.stroke(); }
+      g.setLineDash([]); const J = KS.JHARNA; g.fillStyle = '#4f7a3a'; g.beginPath(); g.arc(mx(J.x), mz(J.z), 34 * MAP.px, 0, 7); g.fill(); g.fillStyle = '#6fa3c4'; g.beginPath(); g.arc(mx(J.pool.x), mz(J.pool.z), J.pool.r * MAP.px, 0, 7); g.fill();
+    }
     if (KS.policeStation) { g.fillStyle = '#1d3a8a'; g.fillRect(mx(KS.policeStation.x) - 4, mz(KS.policeStation.z) - 4, 8, 8); }
     for (const s of KS.signals) { g.fillStyle = '#c8102e'; g.beginPath(); g.arc(mx(s.x), mz(s.z), 2.5, 0, 7); g.fill(); }
     for (const c3 of KS.speedCams) { g.fillStyle = '#1d4fb8'; g.fillRect(mx(c3.x) - 2.5, mz(c3.z) - 2.5, 5, 5); }
@@ -426,7 +435,7 @@
     KS.reseed(2); KS.Nature.build(scene);
     await step('Digging the Nagdhunga tunnel, planting rice terraces…');
     KS.Weather.init(scene, renderer);
-    KS.Player.init(scene); KS.Battle.init(scene);
+    KS.Player.init(scene); KS.Battle.init(scene); KS.Places.initHeli(scene);
     await step('Waking up the city: pilgrims, porters, cows…');
     KS.reseed(3); KS.Animals.init(scene);
     KS.reseed(4); KS.Peds.init(scene, KS.quality.peds, KS.Player.x, KS.Player.z);
@@ -601,7 +610,7 @@
       }
       PL.update(dt);
     }
-    KS.Battle.update(dt);
+    KS.Battle.update(dt); KS.Places.update(dt);
     Game.honk = Math.max(0, (Game.honk || 0) - dt);
     KS.Weather.update(dt, camera, { focus: tmpV.set(PL.x, PL.y, PL.z) });
     const ctx = { px: PL.x, pz: PL.z, cx: camera.position.x, cz: camera.position.z, night: KS.night, rain: KS.Weather.wet > 0.3, playerVehicle: PL.vehicle, player: { x: PL.x, z: PL.z, len: PL.len, wid: PL.wid } };
@@ -694,7 +703,7 @@
       $('nitro').hidden = !(PL.vehicle.up && PL.vehicle.up.nitro); $('nitro').textContent = PL.nitro > 0 ? '🔥 NITRO' : PL.nitroCool > 0 ? `Nitro ${Math.ceil(PL.nitroCool)}s` : 'Nitro ready (B)';
     }
     if (Rec.on) $('recTime').textContent = Math.floor((KS.clock - Rec.t0) / 60) + ':' + String(Math.floor((KS.clock - Rec.t0) % 60)).padStart(2, '0');
-    let prompt = '';
+    let prompt = '', bh = '';
     if (promptT > 0) { promptT -= 0.2; prompt = promptOverride; }
     else if (!PL.vehicle) {
       const v = KS.Traffic.nearest(PL.x, PL.z, 3.6);
@@ -703,6 +712,8 @@
       else if (PL.swim) prompt = 'Swimming in the Bagmati… head for the bank!';
       else if (Game.momoPending && Math.hypot(PL.x - MOMO.x, PL.z - MOMO.z) < 12) prompt = 'Step into the beam to collect the <b>momo order</b>';
       else if ((KS.lifts || []).some((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5)) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ${(KS.lifts.find((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5)).label}`;
+      else if (KS.Heli.nearBooth(PL) && !KS.Heli.flying) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> 🚁 Sadbhav Air helicopter tour · रु ${KS.Heli.price}`;
+      else if (KS.Net && KS.Net.boardHint && (bh = KS.Net.boardHint())) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ${bh}`;
       else if (KS.agent && Math.hypot(PL.x - KS.agent.x, PL.z - KS.agent.z) < 2.6) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Talk to the man in sunglasses 🕶️`;
       else if (KS.pond && !PL.boat && Math.hypot(PL.x - KS.pond.jetty.x, PL.z - KS.pond.jetty.z) < 2.8) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Hire a rowing boat (रु 100)`;
       else if (PL.boat && PL.boat.nearJetty) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Get off at the jetty`;

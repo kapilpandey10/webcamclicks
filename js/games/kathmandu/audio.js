@@ -138,6 +138,25 @@
   A.reload = () => { noise(0.05, 0.07, 2500, 'bandpass', 0, 2); noise(0.06, 0.08, 1800, 'bandpass', 0.35, 2); noise(0.04, 0.09, 3200, 'bandpass', 0.7, 2); };
   A.whiz = (vol = 1) => noise(0.12, 0.05 * vol, 3500, 'bandpass', 0, 3);
   A.chute = () => { noise(0.5, 0.25, 600, 'lowpass'); noise(0.3, 0.12, 1500, 'bandpass', 0.05, 1); };
+  /** helicopter: the thump of the rotor blades and the whine of the turbine (0 = off) */
+  A.heli = (v) => {
+    if (!ctx) return;
+    if (!A.heliN) {
+      const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 420; const g = ctx.createGain(); g.gain.value = 0;
+      const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.type = 'square'; lfo.frequency.value = 17; lg.gain.value = 0.5; lfo.connect(lg).connect(g.gain);
+      const am = ctx.createGain(); am.gain.value = 0; s.connect(f).connect(g).connect(am).connect(bus.sfx); s.start(); lfo.start();
+      const t = ctx.createOscillator(), tg = ctx.createGain(); t.frequency.value = 1350; t.type = 'sine'; tg.gain.value = 0; t.connect(tg).connect(bus.sfx); t.start();
+      A.heliN = { am, g, base: 0.5, tg };
+      g.gain.value = 0.5;
+    }
+    A.heliN.am.gain.setTargetAtTime(A.on ? v * 0.55 : 0, now(), 0.4); A.heliN.tg.gain.setTargetAtTime(A.on ? v * 0.012 : 0, now(), 0.4);
+  };
+  /** the roar and hiss of a waterfall (0 = far away) */
+  A.waterfall = (v) => {
+    if (!ctx) return;
+    if (!A.fallN) { const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900; const f2 = ctx.createBiquadFilter(); f2.type = 'highpass'; f2.frequency.value = 2500; const g = ctx.createGain(), g2 = ctx.createGain(); g.gain.value = g2.gain.value = 0; s.connect(f).connect(g).connect(bus.amb); s.connect(f2).connect(g2).connect(bus.amb); s.start(); A.fallN = { g, g2 }; }
+    const k = A.on ? v * v : 0; A.fallN.g.gain.setTargetAtTime(k * 0.35, now(), 0.5); A.fallN.g2.gain.setTargetAtTime(k * 0.06, now(), 0.5);
+  };
   /** a steady engine drone for the drop plane (0 = off) */
   A.planeHum = (v) => {
     if (!ctx) return;

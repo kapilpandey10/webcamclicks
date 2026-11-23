@@ -113,6 +113,50 @@
       while (p.cops.length > want) { const v = p.cops.pop(); v.netTarget = null; KS.Traffic.endChase(v); }
     }
   }
+  /* ---------- sharing a vehicle: bikes carry 2 people, cars, trucks and buses up to 10 ---------- */
+  const seatsFor = (kind) => (KS.isBike(kind) ? 1 : 9); // passengers besides the driver
+  function driverOf(id) {
+    if (id === N.me) { const P = KS.Player, v = P.vehicle; return v ? { x: v.x, y: v.y, z: v.z, h: v.h, kind: v.kind, speed: v.speed } : null; }
+    const p = N.players.get(id); return p && p.v && KS.VTYPES[p.v] ? { x: p.x, y: p.y, z: p.z, h: p.h, kind: p.v, speed: 0, name: p.name } : null;
+  }
+  function seatWorld(D2, seat) {
+    const t = KS.VTYPES[D2.kind] || { len: 4.2, wid: 1.8 }; let lx = 0, lz = 0, ly = 0.2;
+    if (KS.isBike(D2.kind)) { lz = -0.62; ly = 0.24; }
+    else if (t.len > 6) { lz = t.len / 2 - 2.2 - Math.floor((seat - 1) / 2) * 1.05; lx = seat % 2 ? -0.55 : 0.55; ly = 0.6; } // bus and truck rows
+    else { const row = seat === 1 ? 0 : 1 + Math.floor((seat - 2) / 3); lz = 0.2 - row * 0.85; lx = seat === 1 ? -0.42 : [-0.5, 0, 0.5][(seat - 2) % 3]; }
+    const sh = Math.sin(D2.h), ch = Math.cos(D2.h);
+    return { x: D2.x + sh * lz + ch * lx, y: D2.y + ly, z: D2.z + ch * lz - sh * lx };
+  }
+  function freeSeat(id, kind) { const used = new Set(); for (const p of N.players.values()) if (p.v && p.v.startsWith(`pass:${id}:`)) used.add(+p.v.split(':')[2]); for (let k = 1; k <= seatsFor(kind); k++) if (!used.has(k)) return k; return 0; }
+  function nearDriver() {
+    const P = KS.Player; if (P.mode !== 'foot' || !(N.state === 'host' || N.state === 'guest')) return null;
+    let best = null, bd = 1e9;
+    for (const p of N.players.values()) { if (!p.v || !KS.VTYPES[p.v]) continue; const t = KS.VTYPES[p.v], d = Math.hypot(p.x - P.x, p.z - P.z), r = KS.isBike(p.v) ? 2.6 : t.len / 2 + 2; if (d < r && d < bd) { bd = d; best = p; } }
+    return best;
+  }
+  N.boardHint = () => { const p = nearDriver(); if (!p) return ''; const free = freeSeat(p.id, p.v); return free ? `Ride with ${esc(p.name)} (${KS.isBike(p.v) ? 'pillion seat' : `seat ${free + 1} of ${seatsFor(p.v) + 1}`})` : `${esc(p.name)}'s ${KS.VTYPES[p.v].name} is full`; };
+  N.tryBoard = () => {
+    const p = nearDriver(); if (!p) return false;
+    const seat = freeSeat(p.id, p.v); if (!seat) { KS.Game.notify(`${esc(p.name)}'s ${KS.VTYPES[p.v].name} is full.`); return true; }
+    const P = KS.Player; P.mode = 'ride'; P.ride = { id: p.id, seat, name: p.name }; P.speed = 0; KS.Cam.want = KS.isBike(p.v) ? 6 : 9;
+    KS.Game.notify(`🚗 You are riding with <b>${esc(p.name)}</b>. Press <b>E</b> to get out.`); return true;
+  };
+  N.rideUpdate = (dt) => {
+    const P = KS.Player, R = P.ride, D2 = R && driverOf(R.id), pr = P.person;
+    if (!D2) { N.leaveRide(); return; }
+    const w = seatWorld(D2, R.seat), bike = KS.isBike(D2.kind);
+    P.speed = Math.hypot(w.x - P.x, w.z - P.z) / Math.max(dt, 0.001); P.x = w.x; P.y = w.y; P.z = w.z; P.h = D2.h;
+    pr.root.visible = bike; pr.root.position.set(w.x, w.y, w.z); pr.root.rotation.y = D2.h;
+    if (bike) { KS.animSit(pr); pr.armL.rotation.x = pr.armR.rotation.x = -0.9; }
+    if (KS.Input.hit('KeyE') || KS.Input.hit('KeyEnter')) N.leaveRide();
+  };
+  N.leaveRide = () => {
+    const P = KS.Player, R = P.ride; if (!R) { P.mode = 'foot'; return; }
+    const D2 = driverOf(R.id), h = D2 ? D2.h : P.h, side = KS.VTYPES[D2 ? D2.kind : 'car'] ? KS.VTYPES[D2 ? D2.kind : 'car'].wid / 2 + 1 : 1.5;
+    let x = P.x + Math.cos(h) * -side, z = P.z - Math.sin(h) * -side; const c = KS.collide(x, z, 0.4, 0, 1); x = c.x; z = c.z;
+    P.x = x; P.z = z; P.y = KS.groundAt(x, z, P.y + 1, 1.2); P.vy = 0; P.mode = 'foot'; P.ride = null;
+    const pr = P.person; pr.root.visible = true; pr.legL.rotation.x = pr.legR.rotation.x = 0; pr.armL.rotation.x = pr.armR.rotation.x = 0; KS.Cam.want = 4;
+  };
   /** friends that have sent a position, for the maps */
   N.visible = () => [...N.players.values()].filter((p) => p.placed);
   /** jump to a friend (on foot, next to them) */
@@ -148,6 +192,10 @@
   function setVehicle(p, kind) {
     if (p.veh) { p.root.remove(p.veh.root); p.veh = null; }
     p.v = kind;
+    if (kind && kind.startsWith('pass:')) { // riding in someone else's vehicle
+      const [, drv] = kind.split(':'); if (drv === N.me) KS.Game.notify(`🙋 ${esc(p.name)} got in with you.`);
+      p.person.root.position.set(0, 0, 0); return;
+    }
     if (kind && KS.VTYPES[kind]) { p.veh = KS.buildVehicle(kind, { rider: false, conductor: false }); p.root.add(p.veh.root); }
     const bike = kind && KS.isBike(kind);
     p.person.root.visible = !kind || bike;
@@ -219,6 +267,7 @@
     for (const id of [...N.players.keys()]) dropPlayer(id);
     if (N.peer) try { N.peer.destroy(); } catch (e) { /* ignore */ }
     if (N.mic) N.mic.getTracks().forEach((t) => t.stop());
+    if (KS.Player.mode === 'ride') N.leaveRide();
     N.peer = null; N.mic = null; N.micOn = false; N.arrived = false; N.follow = null; N.state = 'off';
     if (N.worldSynced) { N.worldSynced = false; KS.Weather.auto = true; KS.Weather.timer = 60; } N.room = ''; N.roster = null;
     if (!silent) sys('You left the room.');
@@ -239,10 +288,15 @@
     N.sendT -= dt;
     if (N.sendT <= 0) {
       N.sendT = 0.1;
-      const m = { t: 's', id: N.me, name: N.name(), x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), h: +(P.vehicle ? P.vehicle.h : P.h).toFixed(3), v: P.vehicle ? P.vehicle.kind : '', talk: N.micOn && N.talking, w: KS.Law ? KS.Law.heat : 0, wp: KS.Battle && KS.Battle.armed() ? (KS.Battle.slot === 1 ? KS.Battle.inv.primary.kind : 'pistol') : '', al: KS.Battle && KS.Battle.on && KS.Battle.match && !KS.Battle.match.over ? KS.Battle.alive : undefined, look: KS.clock % 3 < 0.1 ? look() : undefined };
+      const m = { t: 's', id: N.me, name: N.name(), x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), h: +(P.vehicle ? P.vehicle.h : P.h).toFixed(3), v: P.vehicle ? P.vehicle.kind : P.mode === 'ride' && P.ride ? `pass:${P.ride.id}:${P.ride.seat}` : '', talk: N.micOn && N.talking, w: KS.Law ? KS.Law.heat : 0, wp: KS.Battle && KS.Battle.armed() ? (KS.Battle.slot === 1 ? KS.Battle.inv.primary.kind : 'pistol') : '', al: KS.Battle && KS.Battle.on && KS.Battle.match && !KS.Battle.match.over ? KS.Battle.alive : undefined, look: KS.clock % 3 < 0.1 ? look() : undefined };
       if (N.host) broadcast(m); else { const c = N.conns.get(N.hostId); c && c.open && c.send(m); }
     }
     for (const p of N.players.values()) {
+      if (p.v && p.v.startsWith('pass:') && p.person) { // sit them in the driver's vehicle
+        const [, drv, seat] = p.v.split(':'), D2 = driverOf(drv);
+        if (D2) { const w = seatWorld(D2, +seat); p.x = p.tx = w.x; p.y = p.ty = w.y; p.z = p.tz = w.z; p.h = p.th = D2.h; p.root.position.set(w.x, w.y, w.z); p.root.rotation.y = D2.h; const bike = KS.isBike(D2.kind); p.person.root.visible = bike; if (bike) { KS.animSit(p.person); p.person.armL.rotation.x = p.person.armR.rotation.x = -0.9; } }
+        continue;
+      }
       const k = Math.min(1, dt * 10);
       p.x += (p.tx - p.x) * k; p.y += (p.ty - p.y) * k; p.z += (p.tz - p.z) * k; p.h = KS.angLerp(p.h, p.th, k);
       const mv = Math.hypot(p.tx - p.x, p.tz - p.z);

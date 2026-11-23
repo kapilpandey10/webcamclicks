@@ -133,7 +133,51 @@
     return 22;
   };
   KS.inTunnel = (x, z) => x < HW.pE && x > HW.pW && Math.abs(z - HW.z) < 8;
-  function natural(x, z) {
+  /* Chhahare Jharna, a waterfall in the hills to the north (towards Nuwakot): a glen with a plunge pool, a stream
+     running down the hillside, a road up from the Ring Road and stone steps through the jungle */
+  const J = (KS.JHARNA = { x: -150, z: -1066, base: 70, pool: { x: -150, z: -1080, r: 11 }, cliffZ: -1094, top: 142, park: { x: -100, z: -996, h: 58, r: 13 } });
+  const TPATHS = (KS.TPATHS = [
+    { id: 'road', w: 5, pts: [[-90, -548, 0], [-90, -800, 0], [-94, -900, 24], [-100, -988, 58]] },
+    { id: 'steps', w: 1.8, pts: [[-100, -1000, 58], [-117, -1015, 61], [-132, -1031, 65], [-146, -1046, 69.6]] },
+    { id: 'stream', w: 2.4, bed: true, pts: [[-150, -1070, 69.4], [-162, -1052, 66], [-176, -1030, 60], [-190, -1000, 50], [-202, -965, 39], [-210, -930, 28], [-214, -890, 16]] },
+  ]);
+  for (const P of TPATHS) { const xs = P.pts.map((p) => p[0]), zs = P.pts.map((p) => p[1]), m = P.w + 8; P.bx0 = Math.min(...xs) - m; P.bx1 = Math.max(...xs) + m; P.bz0 = Math.min(...zs) - m; P.bz1 = Math.max(...zs) + m; }
+  /** distance from (x,z) to a polyline: { d, h (interpolated height), u (0..1 along) } */
+  KS.pathNear = (P, x, z) => {
+    let best = { d: 1e9, h: 0 };
+    for (let k = 0; k < P.pts.length - 1; k++) {
+      const [ax, az, ah] = P.pts[k], [bx, bz, bh] = P.pts[k + 1], dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2)), px = ax + dx * t, pz = az + dz * t, d = Math.hypot(x - px, z - pz);
+      if (d < best.d) best = { d, h: ah + (bh - ah) * t, k, t };
+    }
+    return best;
+  };
+  // heights follow the natural hillside (worked out once): the road climbs with the hill, the stream runs just below it
+  let shaped = false;
+  function shapeInit() {
+    shaped = true; const n0 = (x, z) => natural0(x, z);
+    J.base = Math.round(Math.min(n0(J.x, J.z), n0(J.x, J.z - 20)) - 12); J.top = J.base + 72;
+    J.park.h = Math.round(n0(J.park.x, J.park.z) * 10) / 10;
+    const R = TPATHS[0].pts; for (let k = 2; k < R.length; k++) R[k][2] = n0(R[k][0], R[k][1]); R[R.length - 1][2] = J.park.h;
+    const St = TPATHS[1].pts; St[0][2] = J.park.h; St[St.length - 1][2] = J.base - 0.2; for (let k = 1; k < St.length - 1; k++) St[k][2] = KS.lerp(J.park.h, J.base, k / (St.length - 1)) * 0.5 + n0(St[k][0], St[k][1]) * 0.5;
+    const Sm = TPATHS[2].pts; Sm[0][2] = J.base - 0.6; for (let k = 1; k < Sm.length; k++) Sm[k][2] = Math.min(Sm[k - 1][2] - 0.4, n0(Sm[k][0], Sm[k][1]) - 1.2);
+  }
+  function shapeNorth(x, z, h) {
+    if (z > -540 || x < -300 || x > 40) return h;
+    if (!shaped) shapeInit();
+    const dj = Math.hypot(x - J.x, z - J.z); if (dj < 62) h = KS.lerp(h, J.base, KS.smooth(62, 38, dj));
+    const dk = Math.hypot(x - J.park.x, z - J.park.z); if (dk < J.park.r + 6) h = KS.lerp(h, J.park.h, KS.smooth(J.park.r + 6, J.park.r, dk));
+    for (const P of TPATHS) {
+      if (x < P.bx0 || x > P.bx1 || z < P.bz0 || z > P.bz1) continue;
+      const n = KS.pathNear(P, x, z), edge = P.w + (P.bed ? 12 : 9); if (n.d > edge) continue;
+      const tgt = P.bed ? n.h - 0.8 * Math.max(0, 1 - n.d / P.w) : n.h;
+      h = KS.lerp(h, tgt, KS.smooth(edge, P.w, n.d));
+    }
+    const dp = Math.hypot(x - J.pool.x, z - J.pool.z); if (dp < J.pool.r + 4) h = KS.lerp(h, J.base - 1.8, KS.smooth(J.pool.r + 4, J.pool.r - 2, dp));
+    return h;
+  }
+  function natural(x, z) { return shapeNorth(x, z, natural0(x, z)); }
+  function natural0(x, z) {
     let h = 0;
     // valley rim hills (Shivapuri, Nagarjun, Chandragiri, Phulchoki)
     const m = Math.max(Math.abs(x), Math.abs(z));

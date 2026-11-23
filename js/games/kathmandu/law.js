@@ -11,6 +11,7 @@
   const CAT = { A: 'Motorcycle & scooter', B: 'Car, jeep, pickup & tempo', G: 'Bus & truck' };
   const FEES = { A: 1000, B: 1800, G: 3000 };
 
+  const MAXFINE = (KS.MAXFINE = 500); // no single fine is ever more than रु 500
   /** riding a bicycle: no fines and no demerit points */
   const onCycle = () => { const v = KS.Player && KS.Player.vehicle; return !!v && v.kind === 'bicycle'; };
   /** a Nepali-style smart licence card (in-game) */
@@ -40,14 +41,14 @@
 
   /* ---------- offences ---------- */
   const OFF = {
-    speeding: (o) => { const over = o.over || 10; return { name: `Speeding: ${Math.round(o.kmh || 0)} km/h in a ${o.limit || 40} zone`, fine: over <= 10 ? 300 : over <= 20 ? 700 : 1500, pts: over <= 10 ? 1 : over <= 20 ? 2 : 4, minor: over <= 10 }; },
-    redlight: () => ({ name: 'Jumped a red light', fine: 1000, pts: 3 }),
-    horn: () => ({ name: 'Unnecessary horn (no-horn zone)', fine: 200, pts: 0, minor: true }),
-    reckless: () => ({ name: 'Reckless driving near pedestrians', fine: 1000, pts: 3 }),
-    nolicense: (o) => ({ name: `Driving without a category ${o.cat} licence`, fine: 1500, pts: 0 }),
-    suspended: () => ({ name: 'Driving while your licence is suspended', fine: 3000, pts: 0, extend: 480 }),
-    accident: () => ({ name: 'Injured a pedestrian (stayed at the scene)', fine: 2500, pts: 6 }),
-    wrongway: () => ({ name: 'Driving on the wrong side of the road', fine: 500, pts: 2 }),
+    speeding: (o) => { const over = o.over || 10; return { name: `Speeding: ${Math.round(o.kmh || 0)} km/h in a ${o.limit || 40} zone`, fine: over <= 10 ? 100 : over <= 20 ? 250 : 400, pts: over <= 10 ? 1 : over <= 20 ? 2 : 4, minor: over <= 10 }; },
+    redlight: () => ({ name: 'Jumped a red light', fine: 400, pts: 3 }),
+    horn: () => ({ name: 'Unnecessary horn (no-horn zone)', fine: 100, pts: 0, minor: true }),
+    reckless: () => ({ name: 'Reckless driving near pedestrians', fine: 400, pts: 3 }),
+    nolicense: (o) => ({ name: `Driving without a category ${o.cat} licence`, fine: 500, pts: 0 }),
+    suspended: () => ({ name: 'Driving while your licence is suspended', fine: 500, pts: 0, extend: 480 }),
+    accident: () => ({ name: 'Injured a pedestrian (stayed at the scene)', fine: 500, pts: 6 }),
+    wrongway: () => ({ name: 'Driving on the wrong side of the road', fine: 250, pts: 2 }),
   };
   function record(o, how) {
     const d = D(); d.history.unshift({ name: o.name, fine: how === 'warning' ? 0 : o.fine, pts: how === 'warning' ? 0 : o.pts, how, at: new Date().toLocaleDateString() });
@@ -65,7 +66,7 @@
   }
   function charge(o, how) {
     const d = D();
-    if (how !== 'warning') { KS.Shop.data.cash -= o.fine; d.paid += o.fine; addPoints(o.pts); if (o.extend) d.suspend += o.extend; }
+    if (how !== 'warning') { o.fine = Math.min(MAXFINE, o.fine); KS.Shop.data.cash -= o.fine; d.paid += o.fine; addPoints(o.pts); if (o.extend) d.suspend += o.extend; }
     else d.warnings++;
     record(o, how); KS.Game.save(); KS.Uthao && KS.Uthao.event('fine');
   }
@@ -105,9 +106,9 @@
     const finish = (how, mult = 1, extraPts = 0) => {
       close(); if (s.officer.v) KS.Traffic.endChase(s.officer.v); L.stop = null;
       if (how === 'warning') { offs.forEach((o) => record(o, 'warning')); d.warnings++; KS.Game.notify('👮 Warning only: "Ali bistarai, bhai. Yes palta maaf."', 'good'); KS.Game.karma(+1, 'Took the warning politely'); KS.Game.save(); return; }
-      offs.forEach((o) => charge({ ...o, fine: Math.round((o.fine * mult) / 50) * 50 }, 'police'));
+      offs.forEach((o) => charge({ ...o, fine: Math.min(MAXFINE, Math.round((o.fine * mult) / 50) * 50) }, 'police'));
       addPoints(extraPts);
-      KS.Game.notify(`🧾 Challan: −${fmt(Math.round((total * mult) / 50) * 50)}${pts + extraPts ? ` · ${pts + extraPts} points` : ''}`, 'bad'); KS.audio.fail();
+      KS.Game.notify(`🧾 Challan: −${fmt(Math.min(MAXFINE * offs.length, Math.round((total * mult) / 50) * 50))}${pts + extraPts ? ` · ${pts + extraPts} points` : ''}`, 'bad'); KS.audio.fail();
       if (offs.some((o) => o.name.startsWith('Driving without') || o.name.startsWith('Driving while'))) KS.Game.notify('Your vehicle stays here. Get a licence at the Transport Management Office.', 'bad');
     };
     const list = offs.map((o) => `<li><span>${o.name}</span><b>${fmt(o.fine)}${o.pts ? ` · ${o.pts} pt` : ''}</b></li>`).join('');
@@ -133,7 +134,7 @@
       .sort((a, b) => Math.hypot(a.x - P.x, a.z - P.z) - Math.hypot(b.x - P.x, b.z - P.z)).slice(0, Math.max(0, level * 2 - have)).forEach((v) => KS.Traffic.startChase(v));
   };
   function arrest() {
-    const P = KS.Player, d = D(), h = L.heat, fine = [0, 2000, 4500, 8000][h], pts = [0, 3, 6, 9][h];
+    const P = KS.Player, d = D(), h = L.heat, fine = [0, 300, 400, 500][h], pts = [0, 3, 6, 9][h];
     for (const v of KS.Traffic.chasers()) KS.Traffic.endChase(v);
     L.heat = 0; L.caught = 0; L.lose = 0;
     const v = P.vehicle;
@@ -358,7 +359,7 @@
     if (L.stop) sb.innerHTML = `🚓 Police signal: pull over and stop near the officer <b>${Math.max(0, Math.ceil(L.stop.t))} s</b>`;
     const tb = $('trialBanner'); tb.hidden = !L.trial || !L.trial.started || L.trial.over;
     if (L.trial && L.trial.started) tb.innerHTML = `🏁 Trial ${L.trial.cat} · step ${Math.min(L.trial.i + 1, L.trial.cps.length)}/${L.trial.cps.length} · <b>${Math.max(0, Math.ceil(L.trial.limit - L.trial.t))} s</b>`;
-    if (v && !L.trial && !v.warnedLic) { v.warnedLic = true; const m = L.missingFor(v.kind); if (m) KS.Game.notify(m === 'suspended' ? '⚠ Your licence is suspended. If police stop you: big fine.' : `⚠ You have no category ${m} licence. Police checks will fine you ${fmt(1500)}.`, 'bad'); }
+    if (v && !L.trial && !v.warnedLic) { v.warnedLic = true; const m = L.missingFor(v.kind); if (m) KS.Game.notify(m === 'suspended' ? '⚠ Your licence is suspended. If police stop you: रु 500 fine.' : `⚠ You have no category ${m} licence. Police checks will fine you ${fmt(500)}.`, 'bad'); }
   };
   L.renderCard = (el) => {
     const d = D();

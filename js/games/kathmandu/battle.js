@@ -202,7 +202,8 @@
     cam.getWorldDirection(dir); camO.copy(cam.position);
     const mz = muzzlePos(PL.person).clone(), toPl = (PL.x - camO.x) * dir.x + (PL.y + 1.4 - camO.y) * dir.y + (PL.z - camO.z) * dir.z;
     KS.audio.gun(w.kind, 1); KS.Cam.shake = Math.max(KS.Cam.shake, w.kind === 'shotgun' || w.kind === 'sniper' ? 0.12 : 0.05);
-    KS.Cam.pitch = Math.min(1.3, KS.Cam.pitch + (def.dmg > 50 ? 0.04 : 0.008) * (aimK > 0.5 ? 0.5 : 1));
+    // recoil kicks the aim up (a lower camera pitch looks higher), then settles back
+    const kick = (def.dmg > 50 ? 0.035 : 0.007) * (aimK > 0.5 ? 0.5 : 1); KS.Cam.pitch = Math.max(-0.35, KS.Cam.pitch - kick); B.recoil = (B.recoil || 0) + kick;
     const pellets = def.pellets || 1, spread = def.spread * (aimK > 0.5 ? 0.35 : 1) * (Math.abs(PL.speed) > 1 ? 1.8 : 1);
     let lastEnd = null;
     for (let k = 0; k < pellets; k++) {
@@ -484,6 +485,7 @@
       if (I.hit('KeyMed')) B.useMed();
       const firing = I.down('Mouse0') || I.down('KeyFire'), fireHit = I.hit('Mouse0') || I.hit('KeyFire');
       cool -= dt;
+      if (B.recoil > 0 && !firing) { const back = Math.min(B.recoil, dt * 0.25); B.recoil -= back; KS.Cam.pitch = Math.min(1.35, KS.Cam.pitch + back); } // recover
       if (reloadT > 0) { reloadT -= dt; if (reloadT <= 0) finishReload(); }
       const w = cur();
       if (w && reloadT <= 0 && cool <= 0 && (W[w.kind].auto ? firing : fireHit)) fire();

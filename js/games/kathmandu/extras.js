@@ -321,6 +321,24 @@
     paint.box(PB.x, 0.13, PB.z - PB.d / 2, PB.w, 0.01, 0.14, 0xf2c418); paint.box(PB.x - PB.w / 2, 0.13, PB.z, 0.14, 0.01, PB.d, 0xf2c418); paint.box(PB.x + PB.w / 2, 0.13, PB.z, 0.14, 0.01, PB.d, 0xf2c418);
     paint.box(322, 0.13, 236, 5, 0.01, 0.3, 0xf4f4ee);
     guide([[335, 232], [332.4, 228], [337.6, 221], [335, 216]]); guide([[335, 195], [334, 192.5], [328, 192.5], [322, 196], [322, 201], [322, 205]], 0x9fe0ff); guide([[322, 216], [322, 222], [322, 235]]);
+    // a better trial ground: a spectator stand, bunting, numbered station signs, chequered start and finish banners
+    for (let k = 0; k < 3; k++) { b.box(331, 0.12, 254.4 + k, 26, 0.35 + k * 0.4, 1, k % 2 ? 0x8a8a8a : 0x9a9a9a); KS.addBox(331, 254.4 + k, 26, 1, 0.47 + k * 0.4); }
+    b.box(331, 2.9, 256, 27, 0.1, 3.4, 0xc81e1e); for (const sx of [-13, 0, 13]) b.box(331 + sx, 0.12, 257.6, 0.12, 2.8, 0.12, 0x666666);
+    for (let k = 0; k < 9; k++) KS.sitSpots.push([320 + k * 2.6, 254.4 + (k % 3), 0.47 + (k % 3) * 0.4, KS.pick(['student', 'man', 'woman', 'office', 'kid'])]);
+    W.flags([x0 + 1, 3.2, z0 + 1], [x1 - 1, 3.2, z0 + 1], 1.0, 0.9); W.flags([x1 - 1, 3.2, z0 + 1], [x1 - 1, 3.2, z1 - 1], 1.0, 0.9); W.flags([x0 + 1, 3.2, z1 - 1], [298, 3.2, z1 - 1], 1.0, 0.9);
+    const station = (n, np, en, x, z, ry, bg) => { b.box(x - 1.1, 0.12, z, 0.1, 2.4, 0.1, 0x666666); b.box(x + 1.1, 0.12, z, 0.1, 2.4, 0.1, 0x666666); board(scene, `${n} ${np}`, en, x, 2.2, z, ry, 2.6, 0.82, bg); };
+    station('①', 'आठ', 'FIGURE EIGHT', 288, 209, 0, '#1d4fb8'); station('②', 'फल्याक', 'PLANK RAMP', 311, 239.4, 0, '#1d4fb8'); station('③', 'कोन', 'CONE SLALOM', 330, 251.7, Math.PI, '#1d4fb8');
+    station('①', 'कोन', 'CAR · CONES', 341, 230, -Math.PI / 2, '#6d1a8a'); station('②', 'उकालो', 'HILL START', 339.5, 205, -Math.PI / 2, '#6d1a8a'); station('③', 'पार्किङ', 'PARKING BOX', 316.5, 212, Math.PI / 2, '#6d1a8a');
+    const checker = new T.MeshLambertMaterial({ side: T.DoubleSide, map: KS.tex(256, 64, (g, w, h) => { for (let i = 0; i < 16; i++) for (let j = 0; j < 4; j++) { g.fillStyle = (i + j) % 2 ? '#111' : '#fff'; g.fillRect(i * 16, j * 16, 16, 16); } }) });
+    const banner = (x, z, ry, w, text) => { for (const sx of [-1, 1]) b.box(x + Math.cos(ry) * sx * w / 2, 0.12, z - Math.sin(ry) * sx * w / 2, 0.14, 3.4, 0.14, 0xdddddd); const m = new T.Mesh(new T.PlaneGeometry(w, 0.5), checker); m.position.set(x, 3.3, z); m.rotation.y = ry; scene.add(m); board(scene, text, null, x, 2.85, z, ry, Math.min(w * 0.6, 3), 0.45, '#c81e1e'); };
+    banner(345.5, 248, Math.PI / 2, 5.5, 'FINISH'); banner(322, 236, 0, 6, 'FINISH'); banner(285.6, 225, Math.PI / 2, 4.5, 'START'); banner(335, 234.5, 0, 6, 'START');
+    // a tiny tea stall on the pavement outside the south-east corner of the fence, and the man in sunglasses behind it
+    { const tx2 = R.x1 - 1.6, tz2 = R.z1 - 6;
+      b.box(tx2, 0.2, tz2, 1.2, 0.9, 1.8, 0x7a4a2a); b.box(tx2, 1.1, tz2, 1.3, 0.06, 1.9, 0x5a3a22); b.cyl(tx2, 1.16, tz2 - 0.4, 0.12, 0.3, 0x9a9a9a, 8); b.box(tx2, 2.3, tz2, 1.8, 0.08, 2.4, 0x2a6a3a); for (const sz of [-1, 1]) b.box(tx2 + 0.55, 0.2, tz2 + sz * 1.05, 0.06, 2.1, 0.06, 0x555555);
+      KS.addBox(tx2, tz2, 1.2, 1.8, 1.1);
+      const o = KS.outfitFor('office'); Object.assign(o, { topStyle: 'jacket', jacket: 0x161616, top: 0x2a2a2a, bottom: 0x1a1a1a, glasses: true, hat: 'cap', hatColor: 0x111111, tie: null });
+      const ag = KS.makePerson('office', o); ag.root.position.set(tx2 - 0.2, 0.2, tz2 + 2.1); ag.root.rotation.y = -Math.PI / 2; ag.armL.rotation.x = -0.3; ag.armR.rotation.set(-1.9, 0, -0.3); scene.add(ag.root);
+      KS.agent = { root: ag.root, x: tx2 - 0.2, z: tz2 + 2.1 }; }
     // examiners with clipboards
     for (const [ex, ez] of [[289, 236], [331, 230]]) { const p = KS.makePerson('office'); KS.animSit(p); p.legL.rotation.x = p.legR.rotation.x = 0; p.armR.rotation.x = -1.1; p.root.position.set(ex, 0.12, ez); p.root.rotation.y = Math.PI * 0.75; scene.add(p.root); b.box(ex + 0.4, 0, ez + 0.4, 0.6, 0.75, 0.6, 0x5a3a22); }
     scene.add(KS.mesh(b));

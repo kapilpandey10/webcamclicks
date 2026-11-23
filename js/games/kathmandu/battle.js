@@ -112,6 +112,34 @@
     if (PL.y <= g2) { PL.y = g2; if (Drop.phase === 'fall') { KS.Game && KS.Game.hurt(35); } land(); }
   };
 
+  /* ======================= coins to collect on the streets and up on the roofs ======================= */
+  const Coins = (KS.Coins = { list: [] });
+  let coinMesh; const cd = new T.Object3D();
+  Coins.init = () => {
+    const save = KS.rng; KS.reseed(88);
+    const lots = (KS.World.lots || []).filter((l) => Math.abs(l.x) < 540 && Math.abs(l.z) < 440);
+    for (let k = 0; k < 70 && lots.length; k++) { const l = lots[Math.floor(KS.rng() * lots.length)]; const x = l.x + l.fx * 2.2, z = l.z + l.fz * 2.2; Coins.list.push({ x, z, y: KS.groundAt(x, z, 50, 60) + 0.9, v: 1 }); }
+    const tall = (KS.World.tall || []).slice(); for (let k = 0; k < 45 && tall.length; k++) { const t = tall.splice(Math.floor(KS.rng() * tall.length), 1)[0]; Coins.list.push({ x: t.cx, z: t.cz, y: t.H + 0.9, v: 3, roof: true }); }
+    if (KS.dharahara) Coins.list.push({ x: KS.dharahara.x, z: KS.dharahara.z + KS.dharahara.deckR - 0.8, y: KS.dharahara.deck + 0.9, v: 5 });
+    KS.rng = save;
+    const geo = new T.CylinderGeometry(0.32, 0.32, 0.07, 18).rotateX(Math.PI / 2);
+    coinMesh = new T.InstancedMesh(geo, new T.MeshLambertMaterial({ color: 0xf2c418, emissive: 0x6a4a00 }), Coins.list.length); coinMesh.frustumCulled = false; scene.add(coinMesh);
+  };
+  Coins.update = (dt) => {
+    if (!coinMesh) return;
+    const PL = KS.Player, r = KS.clock * 2.5, cam = KS.camera.position;
+    Coins.list.forEach((c, i) => {
+      if (c.taken) { c.respawn -= dt; if (c.respawn <= 0) c.taken = false; }
+      const show = !c.taken && Math.abs(c.x - cam.x) + Math.abs(c.z - cam.z) < 220;
+      cd.position.set(c.x, c.y + Math.sin(r + i) * 0.12, c.z); cd.rotation.set(0, r + i, 0); cd.scale.setScalar(show ? (c.v > 1 ? 1.5 : 1) : 0); cd.updateMatrix(); coinMesh.setMatrixAt(i, cd.matrix);
+      if (show && Math.abs(c.x - PL.x) < 1.1 && Math.abs(c.z - PL.z) < 1.1 && Math.abs(c.y - 0.9 - PL.y) < 1.6) {
+        c.taken = true; c.respawn = 240; KS.Shop.data.tokens += c.v; KS.Shop.save(); KS.audio.coin && KS.audio.coin();
+        KS.Game.notify(`🪙 +${c.v} coin${c.v > 1 ? 's' : ''}${c.roof ? ' (rooftop bonus!)' : ''}`, 'good');
+      }
+    });
+    coinMesh.instanceMatrix.needsUpdate = true;
+  };
+
   /* ======================= Battle mode ======================= */
   const B = (KS.Battle = { on: false, slot: 0, kills: 0, alive: true, armor: 0, zone: null, match: null, bots: [], loot: [] });
   const W = {
@@ -470,7 +498,7 @@
 
   /* ---------- per frame ---------- */
   B.update = (dt) => {
-    fxUpdate(dt); projUpdate(dt);
+    fxUpdate(dt); projUpdate(dt); Coins.update(dt);
     if (!B.on) return;
     const I = KS.Input, PL = KS.Player, person = PL.person, play = KS.state === 'play';
     lootUpdate(dt); zoneUpdate(dt);
@@ -528,5 +556,5 @@
   /** for the maps */
   B.mapInfo = () => (B.zone ? { x: B.zone.x, z: B.zone.z, r: KS.clock < B.zone.t0 ? 700 : zoneR() } : null);
   B.botList = () => B.bots;
-  B.init = (sc) => { scene = sc; Drop.init(sc); };
+  B.init = (sc) => { scene = sc; Drop.init(sc); Coins.init(); };
 })();

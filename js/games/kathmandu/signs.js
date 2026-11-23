@@ -235,7 +235,16 @@
     // luxury cars in the drive, guards at the gate
     KS.mansionCars = [['suv', vx + 6, vz + 15, 0.3], ['sedan', vx - 6, vz + 15, -0.3], ['suv', vx + 26, vz + 10, 0]].map(([k, x, z, h]) => [k, x, z, h]);
     KS.mansionGuards = [[M.gx - 6, M.z1 + 2.2], [M.gx + 6, M.z1 + 2.2]];
-    KS.landmarks.push({ id: 'mansion', name: 'VIP Mansion', np: 'भीआईपी निवास', x: cx, z: cz, r: 50, stop: { x: M.gx + 4, z: M.z1 + 8 }, fact: 'Home of a very rich family: gold domes, a pool and a helipad. Their VIP guests book Uthao cars and tip well.' });
+    // brass nameplate on black marble beside the gate, and a smaller one on the other pillar
+    const plate = tex(512, 192, (g, w, h) => {
+      const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#15151a'); gr.addColorStop(1, '#2a2a30'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+      g.strokeStyle = '#d9a52b'; g.lineWidth = 8; g.strokeRect(10, 10, w - 20, h - 20); g.lineWidth = 2; g.strokeRect(22, 22, w - 44, h - 44);
+      g.fillStyle = '#e8c15a'; g.textAlign = 'center'; g.font = `700 50px ${KS.FONT}`; g.fillText('सद्भाव ठकुरी निवास', w / 2, 84);
+      g.font = '700 38px "Barlow Condensed", Georgia, serif'; g.fillText('SADBHAV THAKURI RESIDENCE', w / 2, 146, w - 60);
+    });
+    const pm = new T.MeshLambertMaterial({ map: plate });
+    for (const [sx, sc] of [[-1, 1], [1, 0.62]]) { const m = new T.Mesh(new T.PlaneGeometry(4.2 * sc, 1.58 * sc), pm); m.position.set(M.gx + sx * 9.4, 2.1, M.z1 + 0.42); scene.add(m); }
+    KS.landmarks.push({ id: 'mansion', name: 'Sadbhav Thakuri Residence', np: 'सद्भाव ठकुरी निवास', x: cx, z: cz, r: 50, stop: { x: M.gx + 4, z: M.z1 + 8 }, fact: 'The walled home of the Thakuri family: gold domes, a pool and a helipad. Their VIP guests book Uthao cars and tip well.' });
   }
 
   S.build = (scene, W) => { lots(scene, W); busStops(scene); streetNames(scene); gantries(scene); roadSigns(scene); billboards(scene); mansion(scene); };

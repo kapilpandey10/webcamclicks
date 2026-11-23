@@ -14,10 +14,10 @@
   Wx.ORDER = ['clear', 'cloudy', 'haze', 'rain', 'storm', 'fog'];
   const cur = { cloud: 0.18, dark: 0, rain: 0, near: 260, far: 2600, mtn: 1, wind: 2, temp: 2, aqi: 78, fogMix: 0 };
   Wx.cur = cur; Wx.type = 'clear'; Wx.auto = true; Wx.timer = 160;
-  KS.time = 8.5; KS.timeSpeed = 24 / (16 * 60); // a full day in 16 minutes
+  KS.time = 12.5; KS.timeSpeed = 24 / (16 * 60); // a full day in 16 minutes
   let flash = 0, nextBolt = 6, thunderAt = -1, fogColor = new T.Color(0xd5dade), hazeColor = new T.Color(0xbba98c);
 
-  Wx.set = (type) => { Wx.type = type; Wx.timer = type === 'rain' || type === 'storm' ? KS.r(50, 100) : KS.r(180, 320); }; // showers pass quickly
+  Wx.set = (type) => { Wx.type = type; Wx.timer = type === 'rain' || type === 'storm' ? KS.r(45, 90) : KS.r(90, 240); }; // weather turns at random times; showers pass quickly
   Wx.next = () => Wx.set(Wx.ORDER[(Wx.ORDER.indexOf(Wx.type) + 1) % Wx.ORDER.length]);
 
   Wx.init = (scene, renderer) => {
@@ -93,9 +93,9 @@
     for (const key of ['cloud', 'dark', 'rain', 'near', 'far', 'mtn', 'wind', 'temp', 'aqi']) cur[key] += (tgt[key] - cur[key]) * k;
     cur.fogMix += ((Wx.type === 'fog' ? 1 : 0) - cur.fogMix) * k; cur.hazeMix = (cur.hazeMix || 0) + ((Wx.type === 'haze' ? 1 : 0) - (cur.hazeMix || 0)) * k;
     // time
-    const tm = (KS.Net && KS.Net.worldSynced && KS.Net.hostTimeMode) || (KS.Settings && KS.Settings.data().timeMode); // in a room the host's clock rules
-    if (tm === 'real') { const n = new Date(Date.now() + (5 * 60 + 45) * 60000); KS.time = n.getUTCHours() + n.getUTCMinutes() / 60 + n.getUTCSeconds() / 3600; } // Nepal time, UTC+5:45
-    else KS.time = (KS.time + dt * KS.timeSpeed * (tm === 'slow' ? 0.25 : 1)) % 24;
+    // always daytime: the sun drifts very slowly between late morning and mid-afternoon (in a room the host's sun rules)
+    if (!(KS.Net && KS.Net.worldSynced)) { Wx.dayT = (Wx.dayT || 0) + dt * 0.004; KS.time = 12.5 + Math.sin(Wx.dayT) * 2.2; }
+    else KS.time = KS.clamp(KS.time, 10, 15);
     const th = ((KS.time - 6) / 12) * Math.PI;
     sunDir.set(Math.cos(th), Math.sin(th), 0.42).normalize();
     const sunY = sunDir.y;

@@ -87,7 +87,7 @@
     { name: 'Shankha Park', np: 'शंख पार्क', x0: 180, x1: 270, z0: -450, z1: -360 },
     { name: 'Bir Hospital area', np: 'अस्पताल', x0: 90, x1: 180, z0: -90, z1: 0 },
     { name: 'Transport Office · Trial ground', np: 'यातायात कार्यालय · ट्रायल स्थल', x0: 270, x1: 360, z0: 180, z1: 270 },
-    { name: 'VIP Mansion · Budhanilkantha road', np: 'भीआईपी निवास', x0: 110, x1: 250, z0: -740, z1: -560 },
+    { name: 'Sadbhav Thakuri Residence', np: 'सद्भाव ठकुरी निवास', x0: 110, x1: 250, z0: -740, z1: -560 },
     { name: 'Bhrikutimandap Car Park', np: 'भृकुटीमण्डप पार्किङ', x0: 90, x1: 180, z0: 0, z1: 90 },
     { name: 'Ratna Park Bus Station', np: 'रत्नपार्क बसपार्क', x0: 180, x1: 270, z0: 0, z1: 90 },
     { name: 'Kalimati Market', np: 'कालीमाटी तरकारी बजार', x0: -360, x1: -270, z0: 90, z1: 180 },

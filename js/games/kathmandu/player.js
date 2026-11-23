@@ -163,7 +163,24 @@
     const st2 = Math.floor(b.ph / Math.PI); if (stroke && st2 !== b.lastSt) { b.lastSt = st2; KS.audio && KS.audio.paddle && KS.audio.paddle(); }
   }
 
+  /* climbing: jump at a wall and keep pushing forward to climb it, pulling yourself up onto the roof */
+  function climbUpdate(dt) {
+    const C = PL.climb, a = axis(), p = PL.person, s = C.solid;
+    if ((I.hit('Space') && C.t > 0.3) || a.y < -0.3) { PL.climb = null; PL.vy = 0; PL.person.busyArm = false; PL.x -= Math.sin(PL.h) * 0.3; PL.z -= Math.cos(PL.h) * 0.3; return true; } // let go
+    C.t += dt;
+    if (a.y > 0.2) { PL.y += 2.6 * dt; C.ph += dt * 7; }
+    p.busyArm = true; const sw = Math.sin(C.ph);
+    p.armL.rotation.set(-2.8 + sw * 0.35, 0, 0.15); p.armR.rotation.set(-2.8 - sw * 0.35, 0, -0.15); p.legL.rotation.x = -0.6 + sw * 0.5; p.legR.rotation.x = -0.6 - sw * 0.5;
+    p.inner.rotation.x = 0.05;
+    if (PL.y >= s.top - 0.15) { // over the top: pull up and step onto the roof
+      PL.y = s.top; PL.x += Math.sin(PL.h) * 0.9; PL.z += Math.cos(PL.h) * 0.9; PL.climb = null; PL.vy = 0; p.busyArm = false; KS.audio && KS.audio.step(true);
+      KS.Game && KS.Game.notify && s.top > 12 && KS.Game.notify('🧗 On the roof! Look around for coins.');
+    }
+    p.root.position.set(PL.x, PL.y, PL.z); p.root.rotation.y = PL.h; PL.speed = 0;
+    return true;
+  }
   function footUpdate(dt) {
+    if (PL.climb) { climbUpdate(dt); return; }
     const a = axis(), run = I.down('ShiftLeft') || I.down('ShiftRight') || I.down('KeyRun');
     const fx = Math.sin(cam.yaw), fz = Math.cos(cam.yaw), rx = -fz, rz = fx;
     let mx = fx * a.y + rx * a.x, mz = fz * a.y + rz * a.x; const m = Math.hypot(mx, mz);
@@ -180,19 +197,29 @@
     const c = KS.collide(nx, nz, 0.38, PL.y, 1.05); nx = c.x; nz = c.z;
     if (KS.Traffic.pushOut && PL.y < 2.5) { const o = KS.Traffic.pushOut(nx, nz, 0.38); if (o.hit) { const c2 = KS.collide(o.x, o.z, 0.38, PL.y, 1.05); nx = c2.x; nz = c2.z; } } // buses, cars and bikes are solid
     PL.x = nx; PL.z = nz;
+    // jumping at a wall that is too high to step on starts a climb
+    if ((I.hit('Space') || I.hit('KeyJump')) && c.hit && c.solid && c.solid.top > PL.y + 1.05 && c.solid.top < PL.y + 60 && c.solid.base <= PL.y + 0.5 && !PL.swim && !(KS.Battle && KS.Battle.armed() && KS.Cam.aim > 0.5)) {
+      PL.climb = { solid: c.solid, t: 0, ph: 0 }; const sx = c.solid.t === 1 ? c.solid.cx : KS.clamp(PL.x, c.solid.x0, c.solid.x1), sz = c.solid.t === 1 ? c.solid.cz : KS.clamp(PL.z, c.solid.z0, c.solid.z1);
+      PL.h = Math.atan2(sx - PL.x, sz - PL.z); KS.Game && KS.Game.notify && !PL.climbTold && (PL.climbTold = true, KS.Game.notify('🧗 Climbing: hold <b>W</b> to climb, <b>S</b> or <b>Space</b> to let go.'));
+      return;
+    }
     if ((I.hit('Space') || I.hit('KeyJump')) && PL.grounded && !PL.swim) { PL.vy = 6.4; PL.grounded = false; }
     PL.vy -= 20 * dt; PL.y += PL.vy * dt;
     let g = KS.groundAt(PL.x, PL.z, PL.y, 1.05);
     PL.swim = g < KS.RIVER.water - 0.6;
     if (PL.swim) g = KS.RIVER.water - 1.25;
-    if (PL.y <= g) { PL.y = g; PL.vy = 0; PL.grounded = true; } else PL.grounded = PL.y - g < 0.05;
+    if (PL.y <= g) {
+      // a hard landing hurts: about 6 m is a bad fall, 15 m can knock you out
+      if (PL.vy < -11.5 && !PL.swim) { const dmg = Math.round((-PL.vy - 11.5) * 6.5); KS.Game && KS.Game.hurt(dmg); KS.Game && KS.Game.notify(`🤕 Hard landing! −${dmg} health`, 'bad'); }
+      PL.y = g; PL.vy = 0; PL.grounded = true;
+    } else PL.grounded = PL.y - g < 0.05;
     let vy = PL.y;
     if (vy < 0.3 && vy > -0.2 && onSidewalk(PL.x, PL.z)) vy = Math.max(vy, 0.22);
     const pr = PL.person.root; pr.position.set(PL.x, vy, PL.z); pr.rotation.y = PL.h;
     const p = PL.person;
     if (PL.swim) { p.armL.rotation.x = Math.sin(KS.clock * 5) * 2; p.armR.rotation.x = -Math.sin(KS.clock * 5) * 2; p.legL.rotation.x = p.legR.rotation.x = 0.3; }
     else KS.animWalk(p, dt, PL.grounded ? PL.speed : 0.01);
-    if (!PL.grounded && !PL.swim) { p.legL.rotation.x = -0.5; p.legR.rotation.x = 0.4; }
+    if (!PL.grounded && !PL.swim) { p.legL.rotation.x = -0.7; p.legR.rotation.x = 0.35; if (!p.busyArm) { p.armL.rotation.set(-0.9, 0, 0.5); p.armR.rotation.set(-0.6, 0, -0.5); } }
     // footsteps
     if (PL.grounded && PL.speed > 0.5) { const ph = Math.floor(p.phase / Math.PI); if (ph !== PL.stepPh) { PL.stepPh = ph; KS.audio && KS.audio.step(PL.speed > 6); } }
     // punch
@@ -209,10 +236,14 @@
     if (PL.eatT > 0) { PL.eatT -= dt; p.busyArm = true; p.armR.rotation.x = -2.2 + Math.sin(KS.clock * 9) * 0.15; p.armR.rotation.z = 0.35; if (PL.eatT <= 0) p.busyArm = false; }
     else if (PL.idleT > 6 && PL.punchA == null) {
       const k = Math.floor((PL.idleT - 6) / 5) % 3, t = (PL.idleT - 6) % 5; p.busyArm = true;
-      if (k === 0) { p.armR.rotation.x = -1.5; p.armR.rotation.z = 0.45; p.torso.rotation.x = 0.12; } // looks at phone
+      if (!PL.phoneProp) { PL.phoneProp = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.14, 0.012), new THREE.MeshLambertMaterial({ color: 0x111418, emissive: 0x1a2a4a })); PL.phoneProp.position.set(0.02, -0.7, 0.05); PL.phoneProp.rotation.x = 1.2; }
+      if (PL.phoneProp.parent !== p.armR) p.armR.add(PL.phoneProp);
+      PL.phoneProp.visible = k === 0;
+      if (k === 0) { p.armR.rotation.x = -1.15; p.armR.rotation.z = 0.62; p.armL.rotation.x = -0.35; p.torso.rotation.x = 0.1; } // looks at the phone in hand
       else if (k === 1) { p.armR.rotation.x = 0; p.armR.rotation.z = 0; p.torso.rotation.y = Math.sin(t * 1.3) * 0.5; p.torso.rotation.x = 0; } // looks around
       else { const u = Math.sin(Math.min(1, t / 1.5) * Math.PI); p.armL.rotation.x = p.armR.rotation.x = -2.8 * u; p.armL.rotation.z = p.armR.rotation.z = 0; } // stretches
     } else if (p.busyArm && PL.punchA == null && !(PL.eatT > 0)) { p.busyArm = false; p.torso.rotation.x = 0; }
+    if (PL.phoneProp && (PL.idleT <= 6 || PL.eatT > 0)) PL.phoneProp.visible = false;
   }
   function onSidewalk(x, z) {
     const G = KS.G; const bx = ((x - G.O) % G.B + G.B) % G.B, bz = ((z - G.O) % G.B + G.B) % G.B;

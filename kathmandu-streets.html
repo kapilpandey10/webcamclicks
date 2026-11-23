@@ -10,6 +10,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Mukta:wght@400;600;700&family=Yatra+One&display=swap">
 <style>
+.dl { width: min(340px, 100%); border-radius: 12px; overflow: hidden; background: linear-gradient(160deg, #f7f3e8, #e9eef8 60%, #f4e9ea); color: #142040; box-shadow: 0 4px 14px rgba(0,0,0,.35); font-size: 12px; margin: 6px 0; position: relative; }
+.dl::after { content: 'KATHMANDU STREETS'; position: absolute; right: 8px; bottom: 26px; font: 700 18px var(--hud); color: rgba(20,32,64,.06); letter-spacing: .2em; pointer-events: none; }
+.dlh { display: flex; gap: 8px; align-items: center; background: #1d3a8a; color: #fff; padding: 6px 10px; } .dlh small { display: block; font-size: 10px; opacity: .85; } .dlh b { font-size: 12px; }
+.dlflag { width: 18px; height: 24px; background: #c8102e; clip-path: polygon(0 0, 100% 45%, 40% 45%, 100% 100%, 0 100%); border-left: 2px solid #fff; flex: none; }
+.dlt { text-align: center; padding: 4px; color: #c8102e; letter-spacing: .06em; border-bottom: 1px solid rgba(20,32,64,.15); }
+.dlb { display: flex; gap: 10px; padding: 8px 10px; } .dlp { width: 64px; height: 78px; border: 1px solid #9aa4bd; background: #dfe6f3; display: grid; place-items: center; font-size: 40px; flex: none; }
+.dlb dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; } .dlb dt { color: #5a6680; } .dlb dd { margin: 0; font-weight: 700; }
+.dlf { display: flex; justify-content: space-between; padding: 3px 10px 6px; color: #5a6680; font-size: 10px; font-style: italic; }
 /* Layout: full-bleed 3D canvas; HUD pinned to the four corners like a street-level dashboard. Single dark "dusk over the valley" look. */
 :root {
   --ink: #15110e; --panel: rgba(24, 18, 14, 0.78); --panel-solid: #1f1812; --line: rgba(246, 241, 231, 0.14);
@@ -275,11 +283,13 @@ ul.challan li b { color: #ffe27a; white-space: nowrap; font-family: var(--hud); 
 .set input[type=text], .set input:not([type]), .chatform input { background: rgba(255,255,255,.08); border: 1px solid var(--line); border-radius: 8px; color: var(--snow); padding: 7px 10px; font: inherit; min-width: 0; }
 .setgrid { display: grid; gap: 10px; } .setgrid h4 { margin: 6px 0 0; font-family: var(--hud); letter-spacing: .14em; text-transform: uppercase; font-size: 13px; color: var(--marigold); }
 .linkbtn { border: 0; background: none; color: #7fb4ff; text-decoration: underline; padding: 0; font-size: 12px; }
-#guide { background: var(--panel); border-radius: 10px; padding: 8px 12px; font-size: 13px; max-width: 300px; pointer-events: auto; backdrop-filter: blur(6px); }
+#guide { background: var(--panel); border-radius: 10px; padding: 5px 10px; font-size: 12px; max-width: 230px; pointer-events: auto; backdrop-filter: blur(6px); }
 #guide .gh { display: flex; justify-content: space-between; align-items: center; font-family: var(--hud); letter-spacing: .1em; text-transform: uppercase; color: var(--marigold); }
 #guide .gh button { border: 0; background: none; font-size: 18px; color: var(--muted); }
 #guide ol { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 3px; } #guide li.done { opacity: .5; text-decoration: line-through; } #guide kbd { font-size: 11px; padding: 0 4px; }
 #guide li small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; } #guide li:not(.cur) { opacity: .65; } #guide .gr { display: block; color: #9fe0a0; font-size: 12px; } #guide .gp, .goallist .gp { color: var(--marigold); font-weight: 700; }
+#guide .gtog { border: 0; background: none; color: var(--marigold); font: inherit; font-size: 12px; letter-spacing: .1em; padding: 0; cursor: pointer; } #guide .gh button#guideHide { font-size: 15px; }
+#guide .gcur { margin-top: 2px; line-height: 1.35; } #guide .gcur small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 2px; } #guide .gcur kbd { font-size: 10px; padding: 0 3px; }
 #guide .glow { margin-top: 4px; padding: 4px 8px; border-radius: 8px; background: rgba(200,16,46,.35); }
 .goallist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; } .goallist li { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: start; } .goallist li small { display: block; color: var(--muted); } .goallist li em { font-style: normal; color: #9fe0a0; white-space: nowrap; font-size: 13px; } .goallist li.done { opacity: .55; }
 .howgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; } .howgrid div { display: grid; gap: 4px; background: rgba(255,255,255,.05); border-radius: 10px; padding: 10px; } .howgrid span { font-size: 14px; color: #ddd; }
@@ -298,6 +308,7 @@ ul.challan li b { color: #ffe27a; white-space: nowrap; font-family: var(--hud); 
 #dropHud { position: absolute; left: 50%; bottom: 22%; transform: translateX(-50%); background: rgba(20,14,10,0.8); padding: 8px 16px; border-radius: 12px; text-align: center; font-size: 15px; line-height: 1.5; pointer-events: none; }
 #touch .bt { display: none; } body.battle #touch .bt { display: inline-block; } body.battle #touch [data-key="KeyHorn"], body.battle #touch [data-key="KeyNitro"], body.battle #touch [data-key="KeyAccept"] { display: none; }
 body.battle .tr #karma, body.battle .tr #lawHud { display: none; }
+#bagHud { font-size: 13px; background: rgba(20,14,10,.6); border-radius: 99px; padding: 1px 9px; }
 #mouseHint { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); background: rgba(20,14,10,0.78); padding: 6px 14px; border-radius: 99px; font-size: 14px; pointer-events: none; white-space: nowrap; }
 .howto { margin: 0 0 8px; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
 #lowHealth { position: fixed; inset: 0; pointer-events: none; z-index: 8; opacity: 0; background: radial-gradient(circle, rgba(0,0,0,0) 55%, rgba(160,0,20,.55) 100%); transition: opacity .4s; }
@@ -326,8 +337,9 @@ body.is-touch #chatFeed { bottom: 190px; }
 
 
 /* v5: navigation, road name, map shortcuts */
-#navBox { position: absolute; top: max(130px, calc(env(safe-area-inset-top) + 116px)); left: 50%; transform: translateX(-50%); background: rgba(16,70,170,.9); border-radius: 12px; padding: 7px 14px; font-size: 16px; display: grid; justify-items: center; gap: 1px; max-width: calc(100vw - 32px); text-align: center; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
-#navBox b { font-family: var(--hud); font-size: 20px; letter-spacing: .04em; } #navBox span { font-size: 14px; } #navBox small { color: #cfe0ff; font-size: 12px; }
+#navBox { position: absolute; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); background: rgba(16,70,170,.88); border-radius: 99px; padding: 4px 14px; font-size: 13px; display: flex; align-items: center; gap: 10px; max-width: min(560px, calc(100vw - 32px)); white-space: nowrap; overflow: hidden; box-shadow: 0 3px 10px rgba(0,0,0,.3); pointer-events: none; }
+#navBox b { font-family: var(--hud); font-size: 16px; letter-spacing: .03em; } #navBox span { font-size: 13px; } #navBox span + span { opacity: .85; } #navBox small { color: #cfe0ff; font-size: 11px; }
+body.battle #navBox { top: 50px; }
 #road { font-family: var(--hud); font-size: 13px; letter-spacing: .08em; color: #e6e9ee; text-shadow: 0 2px 6px rgba(0,0,0,.9); }
 #bigDest { display: flex; flex-wrap: wrap; gap: 6px; max-height: 76px; overflow-y: auto; }
 #bigwrap { grid-template-rows: auto auto 1fr; }
@@ -387,12 +399,13 @@ body.is-touch #chatFeed { bottom: 190px; }
   <div id="trialBanner" hidden></div>
   <div id="himal" hidden>Himalaya in view · Langtang · Ganesh Himal · Dorje Lakpa</div>
   <div class="tr">
-    <div id="clock">08:30</div>
+    <div id="clock" hidden></div>
     <div class="wxline"><span id="wx">☀ Clear</span><span id="temp">18°C</span><span id="aqi">AQI 80</span></div>
     <div id="money">रु 2,500</div>
     <div id="tokens">10 🪙</div>
     <div id="karma">Karma <span class="bar"><i></i></span><span id="karmaV">50</span></div>
     <div class="hrow">Health <span id="health"><i></i></span></div>
+    <div id="bagHud" hidden></div>
     <div id="lawHud"></div>
     <div id="recDot" hidden>● REC <span id="recTime">0:00</span></div>
     <div class="hudbtns"><button id="btnPhoto" type="button" title="Photo (J)">Photo</button><button id="btnRec" type="button" title="Record video (K)">Rec</button><button id="btnGarage" type="button">Garage</button><button id="btnMenu" type="button">Menu</button></div>
@@ -450,6 +463,7 @@ body.is-touch #chatFeed { bottom: 190px; }
     <button type="button" data-key="KeyPhone">Phone</button>
     <button type="button" data-key="KeyAccept">Accept</button>
     <button type="button" data-key="KeyNitro">Nitro</button>
+    <button type="button" data-key="KeyEat">Eat</button>
     <button type="button" class="bt big" data-key="KeyFire">Fire</button>
     <button type="button" class="bt" data-key="KeyAim">Aim</button>
     <button type="button" class="bt" data-key="KeyReload">Reload</button>
@@ -486,7 +500,6 @@ body.is-touch #chatFeed { bottom: 190px; }
     <div data-tab-panel="play" hidden>
       <div class="mgrid">
         <div class="msec"><h3>Weather</h3><div class="chips" id="wxbtns"></div></div>
-        <div class="msec"><h3>Time of day <span id="timeVal">08:30</span></h3><input type="range" id="timeRange" min="0" max="23.9" step="0.1" value="8.5" aria-label="Time of day"><span class="small">Dawn turns the Himalaya pink; at night shop signs and windows light up.</span></div>
         <div class="msec"><h3>Camera angle</h3><div class="chips" id="cambtns"></div><span class="small">V cycles angles. Cinematic and Side look great while recording.</span></div>
         <div class="msec" style="grid-column: 1 / -1"><h3>Places <span id="lmcount">0 / 0</span></h3><ul id="lmlist"></ul></div>
       </div>
@@ -515,10 +528,12 @@ body.is-touch #chatFeed { bottom: 190px; }
           <div><b>❤️ Health</b><span>Crashes, falls, fights and being hit by traffic hurt. Buy fruit at a street stall (Phone → Food shows the nearest) or rest. At 0% you wake up at the hospital and pay the bill.</span></div>
           <div><b>🛵 Making a living</b><span>Phone → Jobs for momo deliveries; press <kbd>U</kbd> to go online on Uthao, <kbd>Y</kbd> accepts a request. Pick up at the yellow beam, follow the blue line, drive smoothly.</span></div>
           <div><b>🪪 Licences &amp; police</b><span>Start with the bicycle. Pass the written test and trial at the Trial ground for a bike (A) or car (B) licence. Blue shields on the map are traffic police: slow down near them and near 📷 camera signs.</span></div>
-          <div><b>🌙 Night</b><span>Vehicles switch on headlights and walkers carry torches. Press <kbd>L</kbd> for your own torch on foot. Traffic is busiest at 8–10 and 16–19, quiet after 22:00.</span></div>
+          <div><b>🌦 Weather</b><span>It is always daytime. The weather turns by itself at random: clear, cloudy, dust &amp; haze, fog, a quick shower or a storm. Press <kbd>T</kbd> to pick the weather yourself.</span></div>
           <div><b>💬 Multiplayer</b><span>Phone → Friends → <b>Create room</b> → <b>Copy invite link</b> and send it. Friends open the link and tap Join (up to 8 players). Tap <b>Turn mic on</b> and allow the microphone in your browser to talk; hold <kbd>G</kbd> for push to talk. Everyone shares the host's time and weather, and police chases are seen by all.</span></div>
           <div><b>🖱 Camera &amp; mouse</b><span>Click the game and the mouse turns the camera (over-the-shoulder view). Press <kbd>Alt</kbd> (or <kbd>Esc</kbd>) to get the cursor back without pausing; <kbd>P</kbd> or Menu pauses. <kbd>V</kbd> changes the view, the mouse wheel zooms.</span></div>
           <div><b>🚣 Things to do</b><span>Take the lift up Dharahara (door on the upper step, press <kbd>E</kbd>). Hire a rowing boat at the wooden jetty inside Rani Pokhari's south gate (रु 100) and row out round the shrine.</span></div>
+          <div><b>🧗 Climb &amp; collect</b><span>Jump at a wall (<kbd>Space</kbd>) and hold <kbd>W</kbd> to climb buildings; <kbd>S</kbd> lets go. Gold coins 🪙 float along the pavements, and rooftop coins are worth 3. Careful: falling from high up hurts.</span></div>
+          <div><b>🎒 Fruit bag</b><span>At a fruit stall choose "Pack 3 fruits in your bag". Press <kbd>Z</kbd> (or Eat) whenever you need +20 health.</span></div>
           <div><b>✈️ Sky drop</b><span>You arrive by plane. Press <kbd>Space</kbd> (Jump) to jump, steer the free fall with <kbd>W A S D</kbd>, press <kbd>Space</kbd> again (or wait) for the parachute. Tap the map first to mark where you want to land. Menu → Home → "Fly &amp; parachute somewhere" any time.</span></div>
           <div><b>⚔️ Battle mode</b><span>No police, just survival. Pick up weapons, ammo, grenades, time bombs, medkits and armour at the glowing beams. <kbd>1</kbd> main gun · <kbd>2</kbd> pistol · <kbd>3</kbd> grenade · <kbd>4</kbd> time bomb · <kbd>5</kbd> medkit · <kbd>R</kbd> reload · click to shoot / throw · right-click to aim. Stay inside the blue zone. Alone you face 11 opponents; in a room the host taps "Start a battle match" and friends fight each other.</span></div>
           <div><b>🗺️ Getting around</b><span><kbd>M</kbd> opens the map: tap anywhere for turn-by-turn directions. <kbd>C</kbd> calls your vehicle to you. Overhead signs say "… जाने बाटो" (the way to …).</span></div>
@@ -542,7 +557,7 @@ body.is-touch #chatFeed { bottom: 190px; }
         <div class="msec"><h3>Rules of the road</h3><div class="ctl" style="grid-template-columns:1fr">
           <span>Drive on the left. The only speed limit is 25 km/h in school zones from 9:00 to 16:00 (yellow signs with flashing lamps).</span>
           <span>School speed cameras and red-light cameras send e-challans. Traffic police whistle you over: stop, then pay, say sorry or argue. Polite drivers with clean records often get a warning.</span>
-          <span>12 demerit points suspend your licence for a day. No licence? Ride the bicycle, or pass the written test and trial at the Trial ground.</span>
+          <span>12 demerit points suspend your licence for a day. No licence? Ride the bicycle: no licence, no fines and no points on a bicycle. Or pass the written test and trial at the Trial ground; if you fail, retry straight away for 3 🪙.</span>
           <span>Run from the police, hit someone and drive off, or fight in front of them and a police alert starts: lose them, or get arrested.</span></div></div>
       </div>
     </div>

@@ -198,12 +198,16 @@
     return { root, inner, torso, legL: lL, legR: lR, armL: aL, armR: aR, kind, phase: KS.r(0, 6), skirt, cfg: o };
   };
   KS.animWalk = (p, dt, speed) => {
-    p.phase += dt * (2.2 + speed * 2.2);
-    const a = Math.min(0.85, 0.22 + speed * 0.11) * (speed > 0.05 ? 1 : 0), s = Math.sin(p.phase) * a;
+    // walk and run cycles: longer strides, bent swinging arms, a forward lean and more bounce when running; breathing when still
+    const run = KS.smooth(3.5, 7.5, speed), moving = speed > 0.05;
+    p.phase += dt * (2.2 + speed * (2.2 - run * 0.55));
+    const a = Math.min(0.95, 0.22 + speed * 0.11 + run * 0.12) * (moving ? 1 : 0), s = Math.sin(p.phase) * a;
     p.legL.rotation.x = s * (p.skirt ? 0.4 : 1); p.legR.rotation.x = -s * (p.skirt ? 0.4 : 1);
-    if (!p.busyArm) { p.armL.rotation.x = -s * 0.75; p.armR.rotation.x = s * 0.75; p.armL.rotation.z = 0.06; p.armR.rotation.z = -0.06; }
-    p.torso.position.y = Math.abs(Math.cos(p.phase)) * 0.035 * (a > 0 ? 1 : 0);
-    p.torso.rotation.y = Math.sin(p.phase) * 0.05 * (a > 0 ? 1 : 0);
+    if (!p.busyArm) { const k = 0.75 + run * 0.45; p.armL.rotation.x = -s * k - run * 0.25; p.armR.rotation.x = s * k - run * 0.25; p.armL.rotation.z = 0.06 + run * 0.12; p.armR.rotation.z = -0.06 - run * 0.12; }
+    p.torso.position.y = moving ? Math.abs(Math.cos(p.phase)) * (0.035 + run * 0.045) : Math.sin(KS.clock * 1.9 + p.phase) * 0.006;
+    p.torso.rotation.y = Math.sin(p.phase) * (0.05 + run * 0.05) * (moving ? 1 : 0);
+    const lean = moving ? 0.03 + run * 0.14 : 0;
+    p.inner.rotation.x += (lean - p.inner.rotation.x) * Math.min(1, dt * 6);
   };
   KS.animSit = (p) => { p.legL.rotation.x = p.legR.rotation.x = -1.45; p.armL.rotation.x = p.armR.rotation.x = -0.5; };
   KS.animPunch = (p, t) => { p.armR.rotation.x = -1.55 * Math.sin(Math.min(1, t) * Math.PI); p.armR.rotation.z = 0.2; };
@@ -637,19 +641,23 @@
       dg.t += dt;
       const dist = Math.hypot(dg.x - px, dg.z - pz);
       // bikes get chased; anyone walking close gets barked at
-      if (inVehicle && vehicleKind === 'bike' && playerSpeed > 6 && dist < 9 && dg.chase <= 0 && KS.chance(0.5)) { dg.chase = 4; wake(dg); }
+      // street dogs guard their own patch: a short chase, then a long rest
+      dg.tired = Math.max(0, (dg.tired || 0) - dt);
+      if (inVehicle && vehicleKind === 'bike' && playerSpeed > 6 && dist < 9 && dg.chase <= 0 && dg.tired <= 0 && KS.chance(0.5)) { dg.chase = KS.r(2.5, 4); wake(dg); }
       if (dg.sleep && dist < (playerSpeed > 3 ? 7 : 3.5)) { wake(dg); dg.alert = 4; }
-      if (!dg.sleep && dist < 11 && dg.chase <= 0) dg.alert = Math.max(dg.alert || 0, 1);
+      if (!dg.sleep && dist < 11 && dg.chase <= 0 && dg.tired <= 0 && !(dg.alert > 0)) dg.alert = KS.r(4, 7); // bark for a few seconds, not forever
       dg.bark -= dt;
       if (dg.chase > 0) {
-        dg.chase -= dt; const dx = px - dg.x, dz = pz - dg.z, e = Math.hypot(dx, dz) || 1, sp = Math.min(playerSpeed + 1, 9);
+        dg.chase -= dt; const dx = px - dg.x, dz = pz - dg.z, e = Math.hypot(dx, dz) || 1, sp = Math.min(playerSpeed * 0.9, 7.5);
+        if (Math.hypot(dg.x - dg.homeXY[0], dg.z - dg.homeXY[1]) > 35 || e > 18) dg.chase = 0; // end of its territory: give up
+        if (dg.chase <= 0) { dg.tired = KS.r(25, 50); dg.alert = 0; }
         if (e > 2.2) { dg.x += (dx / e) * sp * dt; dg.z += (dz / e) * sp * dt; }
         dg.h = Math.atan2(dx, dz); dg.ph += dt * 16; walkLegs(dg, dg.ph, 0.7);
         if (dg.bark <= 0) { dg.bark = KS.r(0.35, 0.7); A && A.bark(Math.max(0.1, 1 - e / 40), dg.big); KS.say(dg.g, 'Bhau! Bhau!', 0.6); }
       } else if (dg.alert > 0) { // stand and bark at you
         dg.alert -= dt; dg.h = KS.angLerp(dg.h, Math.atan2(px - dg.x, pz - dg.z), Math.min(1, dt * 6));
         if (dist < 11 && dg.bark <= 0) { dg.bark = KS.r(0.5, 1.4); if (KS.chance(0.25)) A && A.growl(1 - dist / 12); else A && A.bark(1 - dist / 14, dg.big); KS.say(dg.g, KS.pick(['Bhau!', 'Woof!', 'Grrr…']), 0.7); }
-        if (dist > 14) dg.alert = 0;
+        if (dist > 14 || dg.alert <= 0) { dg.alert = 0; dg.tired = Math.max(dg.tired, 8); }
       } else if (!dg.sleep) {
         const hx = dg.homeXY[0] - dg.x, hz = dg.homeXY[1] - dg.z, e = Math.hypot(hx, hz);
         if (e > 1) { dg.x += (hx / e) * 1.6 * dt; dg.z += (hz / e) * 1.6 * dt; dg.h = Math.atan2(hx, hz); dg.ph += dt * 8; walkLegs(dg, dg.ph, 0.5); }

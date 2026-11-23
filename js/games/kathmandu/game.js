@@ -71,9 +71,18 @@
     KS.Uthao.render();
   };
   let wheelT = -10;
+  /** eat a fruit from your bag */
+  Game.eatFromBag = () => {
+    const PL = KS.Player, b = D.bag || {};
+    if (!b.fruit) { Game.notify('Your bag is empty. Buy fruit to pack at any fruit stall (E).'); return; }
+    if (PL.health >= 100) { Game.notify('Health is already full.'); return; }
+    b.fruit--; PL.health = Math.min(100, PL.health + 20); PL.eatT = 1.6; Game.save(); A.coin();
+    KS.say(PL.person.root, 'Mmm… 🍎', 1.4, 'calm'); Game.notify(`🍎 +20 health · ${b.fruit} left in the bag`, 'good');
+  };
   Game.interact = () => {
     const PL = KS.Player;
     if (KS.trialGround && Math.hypot(PL.x - KS.trialGround.counter.x, PL.z - KS.trialGround.counter.z) < 3.5) { KS.Law.openCounter(); return; }
+    if (KS.agent && Math.hypot(PL.x - KS.agent.x, PL.z - KS.agent.z) < 2.6) { KS.Law.agentTalk(); return; }
     const lift = (KS.lifts || []).find((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5);
     if (lift) { flash('photo'); A.ding(); PL.x = lift.to.x; PL.z = lift.to.z; PL.y = lift.to.y; PL.vy = 0; if (lift.to.y > 10) { KS.Guide.flag('lift', true); Game.notify('🗼 Welcome to the Dharahara viewing deck. Look north for the Himalaya.'); KS.Cam.yaw = Math.PI; } return; }
     if (KS.pond && !PL.boat && Math.hypot(PL.x - KS.pond.jetty.x, PL.z - KS.pond.jetty.z) < 2.8) {
@@ -88,7 +97,11 @@
         if (D.cash < price) { Game.notify('Not enough cash.', 'bad'); return; }
         D.cash -= price; PL.health = Math.min(100, PL.health + hp); KS.Guide.flag('fruit', true); Game.save(); A.coin(); KS.modalClose();
         PL.eatT = 1.6; KS.say(PL.person.root, 'Mmm… ' + n.split(' ').slice(1).join(' ') + '!', 1.8, 'calm'); Game.notify(`${n} · −रु ${price} · health ${Math.round(PL.health)}%`, 'good');
-      }]).concat([['Maybe later', () => KS.modalClose()]]));
+      }]).concat([['🎒 Pack 3 fruits in your bag for later · रु 90', () => {
+        if (D.cash < 90) { Game.notify('Not enough cash.', 'bad'); return; }
+        D.cash -= 90; D.bag = D.bag || {}; D.bag.fruit = (D.bag.fruit || 0) + 3; Game.save(); A.coin(); KS.modalClose();
+        Game.notify(`🎒 ${D.bag.fruit} fruit in your bag. Press <b>Z</b> (or Eat) any time for +20 health.`, 'good');
+      }], ['Maybe later', () => KS.modalClose()]]));
       return;
     }
     for (const [x, z] of KS.prayerWheels) if (Math.hypot(x - PL.x, z - PL.z) < 2.4) {
@@ -208,7 +221,8 @@
     }
     if (!msg) { msg = '↑ Continue to your destination'; dist = total; }
     box.hidden = false;
-    box.innerHTML = `<b>${msg}</b>${msg.startsWith('↑') ? '' : ` in ${Math.max(10, Math.round(dist / 10) * 10)} m`}${road ? ` <span>onto ${road[1]}</span>` : ''}<small>${Game.targetLabel && target.visible ? Game.targetLabel + ' · ' : ''}${total} m</small>`;
+    const html = `<b>${msg.replace('Turn ', '').replace('Continue to your destination', 'Straight on')}</b>${msg.startsWith('↑') ? '' : `<span>${Math.max(10, Math.round(dist / 10) * 10)} m</span>`}${road ? `<span>${road[1].replace(/ · .*/, '')}</span>` : ''}<small>${Game.targetLabel && target.visible ? Game.targetLabel + ' · ' : ''}${total} m</small>`;
+    if (box._h !== html) { box._h = html; box.innerHTML = html; } // a slim strip at the top, out of the way of the road
   }
   function flash(kind) { const f = $('flash'); f.className = 'flash ' + kind; void f.offsetWidth; f.classList.add('go'); }
 
@@ -489,7 +503,6 @@
     for (const k of KS.Weather.ORDER) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.dataset.wx = k; const t = KS.Weather.TYPES[k]; b.innerHTML = `<span>${t.icon}</span>${t.name}`; b.onclick = () => { KS.Weather.auto = false; KS.Weather.set(k); Game.refreshMenu(); }; wx.appendChild(b); }
     const ab = document.createElement('button'); ab.type = 'button'; ab.className = 'chip'; ab.dataset.wx = 'auto'; ab.innerHTML = '<span>↻</span>Changing'; ab.onclick = () => { KS.Weather.auto = true; Game.refreshMenu(); }; wx.appendChild(ab);
     const cams = $('cambtns'); KS.CAMS.forEach((n, i) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.dataset.cam = i; b.textContent = n; b.onclick = () => { KS.Player.setCam(i); Game.refreshMenu(); }; cams.appendChild(b); });
-    $('timeRange').addEventListener('input', (e) => { KS.time = +e.target.value; Game.refreshMenu(); });
     $('btnResume').onclick = () => pause(false);
     $('btnSound').onclick = () => { A.setOn(!A.on); Game.save(); Game.refreshMenu(); };
     $('btnQuality').onclick = () => { KS.quality.level = KS.quality.level === 'high' ? 'low' : 'high'; Game.save(); $('qnote').hidden = false; Game.refreshMenu(); };
@@ -528,7 +541,6 @@
   Game.refreshMenu = () => {
     document.querySelectorAll('[data-wx]').forEach((b) => b.classList.toggle('on', b.dataset.wx === 'auto' ? KS.Weather.auto : !KS.Weather.auto && b.dataset.wx === KS.Weather.type));
     document.querySelectorAll('[data-cam]').forEach((b) => b.classList.toggle('on', +b.dataset.cam === KS.Cam.mode));
-    $('timeRange').value = KS.time.toFixed(1); $('timeVal').textContent = fmtTime(KS.time);
     $('btnSound').textContent = A.on ? 'Sound: on' : 'Sound: off';
     $('btnQuality').textContent = 'Graphics: ' + KS.quality.level;
     const list = $('lmlist'); list.innerHTML = '';
@@ -573,7 +585,7 @@
     if (play) {
       if ((I.hit('Escape') && performance.now() - (I.unlockedAt || 0) > 500) || I.hit('KeyP')) pause(true); // the Esc that freed the mouse does not also pause
       if (I.hit('KeyM') || I.hit('KeyMap')) { const b = $('bigwrap'); if (b.hidden) Game.openMap(); else b.hidden = true; }
-      if (I.hit('KeyT')) { if (I.down('ShiftLeft') || I.down('ShiftRight')) { KS.time = (KS.time + 3) % 24; Game.notify('Skipped 3 hours → ' + fmtTime(KS.time)); } else { KS.Weather.auto = false; KS.Weather.next(); Game.notify(`Weather: <b>${KS.Weather.TYPES[KS.Weather.type].name}</b>`); } }
+      if (I.hit('KeyT')) { KS.Weather.auto = false; KS.Weather.next(); Game.notify(`Weather: <b>${KS.Weather.TYPES[KS.Weather.type].name}</b> · press T again to change, Menu → World → Auto to let it change by itself`); }
       if ((I.hit('KeyR') && !KS.Battle.on) || I.hit('KeyRadio')) { A.init(); const st = KS.Radio.next(I.down('ShiftLeft') ? -1 : 1); Game.notify(st ? `📻 <b>${st.name}</b>${PL.vehicle || KS.Radio.onFoot ? '' : ' <span>(plays in vehicles, or turn on earphones in Phone → Radio)</span>'}` : '📻 Radio off'); if (KS.Phone.app === 'radio') KS.Phone.refresh(); }
       if (I.hit('KeyU')) KS.Uthao.toggle();
       if (I.hit('KeyQ') || I.hit('KeyPhone')) KS.Phone.toggle();
@@ -582,6 +594,7 @@
       if (I.hit('KeyK')) Rec.toggle();
       if (I.hit('KeyC') && !PL.vehicle && PL.mode === 'foot') KS.Shop.deliver(D.lastRide && D.garage.some((g) => g.id === D.lastRide) ? D.lastRide : 'cycle');
       if (I.hit('KeyJ')) Rec.photo();
+      if (I.hit('KeyZ') || I.hit('KeyEat')) Game.eatFromBag();
       if (I.hit('KeyH') || I.hit('KeyHorn')) {
         if (PL.vehicle) { const h = PL.vehicle.horn; A.horn(h && h !== 'standard' ? h : PL.vehicle.kind, 1); Game.honk = 0.4; }
         else { KS.say(PL.person.root, KS.pick(['Oi dai!', 'Namaste!', 'Eh sathi!']), 1.4); Game.honk = 0.4; }
@@ -673,6 +686,7 @@
     $('money').textContent = 'रु ' + Math.round(D.cash).toLocaleString('en-IN'); $('tokens').textContent = D.tokens + ' 🪙';
     $('karma').style.setProperty('--k', D.karma + '%'); $('karmaV').textContent = Math.round(D.karma);
     $('health').style.setProperty('--h', Math.max(0, PL.health) + '%');
+    const bagN = (D.bag && D.bag.fruit) || 0, bg = $('bagHud'); if (bg) { bg.hidden = !bagN; bg.textContent = `🎒 🍎×${bagN} (Z)`; }
     if (PL.vehicle) {
       const kmh = Math.round(Math.abs(PL.vehicle.speed) * 3.6), lim = KS.speedLimit(PL.x, PL.z);
       $('kmh').textContent = kmh; $('limit').hidden = !lim; if (lim) { $('limit').textContent = lim; $('limit').classList.toggle('over', kmh > lim + 2); }
@@ -689,6 +703,7 @@
       else if (PL.swim) prompt = 'Swimming in the Bagmati… head for the bank!';
       else if (Game.momoPending && Math.hypot(PL.x - MOMO.x, PL.z - MOMO.z) < 12) prompt = 'Step into the beam to collect the <b>momo order</b>';
       else if ((KS.lifts || []).some((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5)) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ${(KS.lifts.find((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5)).label}`;
+      else if (KS.agent && Math.hypot(PL.x - KS.agent.x, PL.z - KS.agent.z) < 2.6) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Talk to the man in sunglasses 🕶️`;
       else if (KS.pond && !PL.boat && Math.hypot(PL.x - KS.pond.jetty.x, PL.z - KS.pond.jetty.z) < 2.8) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Hire a rowing boat (रु 100)`;
       else if (PL.boat && PL.boat.nearJetty) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Get off at the jetty`;
       else if (KS.fruitStalls.some(([x, z]) => Math.hypot(x - PL.x, z - PL.z) < 2.6)) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Buy fruit (health ${Math.round(PL.health)}%)`;

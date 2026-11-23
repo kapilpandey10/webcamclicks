@@ -22,9 +22,6 @@
       <label class="set tog"><input type="checkbox" data-set="invertY" ${st.invertY ? 'checked' : ''}><span>Invert vertical look</span></label>
       <label class="set tog"><input type="checkbox" data-set="minimap" ${st.minimap ? 'checked' : ''}><span>Show minimap</span></label>
       <label class="set tog"><input type="checkbox" data-set="guide" ${st.guide ? 'checked' : ''}><span>Show goals on screen</span></label>
-      <h4>Time</h4>
-      <label class="set"><span>Clock</span><select data-set="timeMode" aria-label="Clock speed">${[['fast', 'Game time (1 day = 16 min)'], ['slow', 'Slow (1 day ≈ 1 hour)'], ['real', 'Real Nepal time']].map(([k, t]) => `<option value="${k}" ${(st.timeMode || 'fast') === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
-      <span class="small">Traffic follows the clock: rush hours are busy, nights are quiet.</span>
       <label class="set tog"><input type="checkbox" data-set="high" ${KS.quality.level === 'high' ? 'checked' : ''}><span>High graphics (shadows, more traffic) · reload to apply</span></label>
     </div>`;
     el.querySelectorAll('[data-set]').forEach((inp) => {
@@ -85,11 +82,12 @@
     const st = S.data(), todo = Guide.current(), P = KS.Player, low = P.health < 35;
     el.hidden = !st.guide || (!todo.length && !low) || KS.state !== 'play';
     if (el.hidden) { lastHtml = ''; return; }
-    const show = todo.slice(0, 2), n = GOALS.length - todo.length;
-    const line = (g, first) => { const p = g.prog && g.prog(); return `<li class="${first ? 'cur' : ''}">${g.text}${p ? ` <span class="gp">${p[1] > 1000 ? fmt(p[0]) : p[0]} / ${p[1] > 1000 ? fmt(p[1]) : p[1]}</span>` : ''}${first ? `<small>${g.how}</small><span class="gr">Reward ${Guide.reward(g)}</span>` : ''}${g.nav && first ? ` <button type="button" class="linkbtn" data-nav="${g.id}">Show me</button>` : ''}</li>`; };
-    const html = `<div class="gh"><b>Goals ${n} / ${GOALS.length}</b><button type="button" id="guideHide" aria-label="Hide goals">×</button></div>${low ? `<div class="glow">❤️ Health ${Math.round(P.health)}%: eat fruit at a stall <button type="button" class="linkbtn" data-nav="fruit">Show me</button></div>` : ''}<ol>${show.map((g, i) => line(g, !i)).join('')}</ol>`;
+    const n = GOALS.length - todo.length, g = todo[0], open = !!Guide.open;
+    const p = g && g.prog && g.prog(), pr = p ? ` <span class="gp">${p[1] > 1000 ? fmt(p[0]) : p[0]}/${p[1] > 1000 ? fmt(p[1]) : p[1]}</span>` : '';
+    const html = `<div class="gh"><button type="button" class="gtog" id="guideTog" aria-expanded="${open}">🎯 ${n}/${GOALS.length} ${open ? '▴' : '▾'}</button><button type="button" id="guideHide" aria-label="Hide goals">×</button></div>${low ? `<div class="glow">❤️ ${Math.round(P.health)}% · eat fruit <button type="button" class="linkbtn" data-nav="fruit">Show me</button></div>` : ''}${g ? `<div class="gcur">${g.text}${pr}${g.nav ? ` <button type="button" class="linkbtn" data-nav="${g.id}">Show me</button>` : ''}${open ? `<small>${g.how}</small><span class="gr">Reward ${Guide.reward(g)}</span>` : ''}</div>` : ''}`;
     if (html === lastHtml) return; lastHtml = html;
     el.innerHTML = html;
+    $('guideTog').onclick = () => { Guide.open = !Guide.open; lastHtml = ''; Guide.render(); };
     $('guideHide').onclick = () => { st.guide = false; KS.Shop.save(); Guide.render(); KS.Game.notify('Goals hidden. Turn them back on in Settings.'); };
     el.querySelectorAll('[data-nav]').forEach((b) => (b.onclick = () => { GOALS.find((s2) => s2.id === b.dataset.nav).nav(); KS.Game.notify('📍 Follow the blue GPS line.'); }));
   };
@@ -167,7 +165,9 @@
     }
     if (id === 'food') {
       const P = KS.Player;
-      el.innerHTML = `<p>Health: <b>${Math.round(P.health)}%</b></p><p class="ph-muted">Fruit stalls with coloured umbrellas line the pavements. Walk up to one and press <kbd>E</kbd> to buy fruit.</p><button type="button" class="btn small-btn" id="phFruit">Navigate to the nearest fruit stall</button>`;
+      const bag = (KS.Shop.data.bag && KS.Shop.data.bag.fruit) || 0;
+      el.innerHTML = `<p>Health: <b>${Math.round(P.health)}%</b> · 🎒 Fruit in your bag: <b>${bag}</b></p><button type="button" class="btn small-btn" id="phEat" ${bag ? '' : 'disabled'}>🍎 Eat one (+20 health)</button><p class="ph-muted">Fruit stalls with coloured umbrellas line the pavements. Walk up to one and press <kbd>E</kbd>: eat now, or pack 3 in your bag for later.</p><button type="button" class="btn small-btn" id="phFruit">Navigate to the nearest fruit stall</button>`;
+      $('phEat').onclick = () => { KS.Game.eatFromBag(); Ph.refresh(); };
       $('phFruit').onclick = () => { let best = null, bd = 1e9; for (const [x, z] of KS.fruitStalls) { const d = Math.hypot(x - P.x, z - P.z); if (d < bd) { bd = d; best = [x, z]; } } if (best) { KS.Game.setWaypoint(best[0], best[1]); KS.Game.notify(`🍎 Fruit stall ${Math.round(bd)} m away.`); } };
       return;
     }

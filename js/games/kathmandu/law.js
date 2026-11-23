@@ -11,11 +11,25 @@
   const CAT = { A: 'Motorcycle & scooter', B: 'Car, jeep, pickup & tempo', G: 'Bus & truck' };
   const FEES = { A: 1000, B: 1800, G: 3000 };
 
+  /** riding a bicycle: no fines and no demerit points */
+  const onCycle = () => { const v = KS.Player && KS.Player.vehicle; return !!v && v.kind === 'bicycle'; };
+  /** a Nepali-style smart licence card (in-game) */
+  L.cardHTML = (d) => {
+    const P = KS.Shop.data, name = (P.netName || 'Rider').toUpperCase(), issue = new Date(d.issued || Date.now()), exp = new Date(issue); exp.setFullYear(exp.getFullYear() + 5);
+    const f = (dt) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    const cats = Object.entries(d.lic).filter(([, v]) => v).map(([k]) => k).join(', ') || '—';
+    return `<div class="dl"><div class="dlh"><span class="dlflag"></span><div><b lang="ne">यातायात व्यवस्था कार्यालय · काठमाडौं</b><small>Transport Management Office · Kathmandu</small></div></div>
+      <div class="dlt"><b lang="ne">सवारी चालक अनुमतिपत्र</b> · <b>DRIVING LICENCE</b></div>
+      <div class="dlb"><div class="dlp"><span>👤</span></div><dl>
+        <dt>D.L. No.</dt><dd>${d.no}</dd><dt>Name</dt><dd>${name.replace(/[<>&"]/g, '')}</dd><dt>Address</dt><dd>Kathmandu-${d.ward || 17}, Bagmati</dd>
+        <dt>Blood group</dt><dd>${d.blood || 'B+'}</dd><dt>Category</dt><dd><b>${cats}</b></dd><dt>Issued / Expires</dt><dd>${f(issue)} · ${f(exp)}</dd></dl></div>
+      <div class="dlf"><span>Holder's signature ~~~</span><span>Kathmandu Streets · in-game card</span></div></div>`;
+  };
   function D() {
     const d = KS.Shop.data;
     if (!d.law) {
       const veteran = KS.Shop.hadSave; // players from before licences existed keep riding their bikes
-      d.law = { lic: { A: veteran, B: false, G: false }, points: 0, suspend: 0, clean: 0, history: [], paid: 0, warnings: 0, cool: { A: 0, B: 0, G: 0 }, no: 'KTM-' + (10 + KS.ri(0, 89)) + '-' + KS.ri(100000, 999999) };
+      d.law = { lic: { A: veteran, B: false, G: false }, points: 0, suspend: 0, clean: 0, history: [], paid: 0, warnings: 0, cool: { A: 0, B: 0, G: 0 }, no: '01-06-' + String(KS.ri(10000000, 99999999)), blood: KS.pick(['A+', 'B+', 'O+', 'AB+', 'O-', 'B-']), ward: KS.ri(1, 32) };
       KS.Shop.save();
     }
     return d.law;
@@ -56,14 +70,14 @@
     record(o, how); KS.Game.save(); KS.Uthao && KS.Uthao.event('fine');
   }
   /** automatic e-challan from a speed or red-light camera */
-  L.ticket = (code, opts = {}) => { if (KS.Battle && KS.Battle.on) return;
+  L.ticket = (code, opts = {}) => { if (KS.Battle && KS.Battle.on) return; if (onCycle()) return;
     if (L.trial) return;
     const o = OFF[code](opts); charge(o, 'camera');
     KS.Game.notify(`📸 E-challan: ${o.name} · −${fmt(o.fine)}${o.pts ? ` · ${o.pts} point${o.pts > 1 ? 's' : ''}` : ''}`, 'bad');
     KS.audio.speedcam();
   };
   /** a police officer or patrol saw something: whistle and ask you to pull over */
-  L.offense = (code, opts = {}) => { if (KS.Battle && KS.Battle.on) return;
+  L.offense = (code, opts = {}) => { if (KS.Battle && KS.Battle.on) return; if (onCycle()) return;
     if (L.trial || L.heat > 0) return;
     const o = OFF[code](opts); o.code = code;
     if (L.stop) { if (!L.stop.offs.some((x) => x.code === code)) L.stop.offs.push(o); return; }
@@ -177,7 +191,10 @@
     const d = D();
     const rows = ['A', 'B'].map((c) => `<li><span><b>Category ${c}</b> · ${CAT[c]}</span><b>${d.lic[c] ? '✔ Held' : fmt(FEES[c])}</b></li>`).join('');
     const btns = [];
-    for (const c of ['A', 'B']) if (!d.lic[c]) btns.push([d.cool[c] > 0 ? `Retake ${c} in ${Math.ceil(d.cool[c])} s` : `Apply for ${c}: written test + trial`, () => { if (d.cool[c] > 0) return; if (KS.Shop.data.cash < FEES[c]) { KS.Game.notify(`The ${c} test costs ${fmt(FEES[c])}.`, 'bad'); return; } KS.Shop.data.cash -= FEES[c]; KS.Game.save(); quiz(c); }]);
+    for (const c of ['A', 'B']) if (!d.lic[c]) btns.push([d.cool[c] > 0 ? `Retake ${c} now · 3 🪙 (or wait ${Math.ceil(d.cool[c])} s)` : `Apply for ${c}: written test + trial`, () => {
+      if (d.cool[c] > 0) { const P = KS.Shop.data; if (P.tokens < 3) { KS.Game.notify('You need 3 coins to skip the wait.', 'bad'); return; } P.tokens -= 3; d.cool[c] = 0; KS.Game.save(); close(); startTrial(c); return; }
+      if (KS.Shop.data.cash < FEES[c]) { KS.Game.notify(`The ${c} test costs ${fmt(FEES[c])}.`, 'bad'); return; } KS.Shop.data.cash -= FEES[c]; KS.Game.save(); quiz(c); }]);
+    if (Object.values(d.cool).some((x) => x > 0) || d.failed) { d.failed = true; KS.Game.notify('🤫 A man in the queue whispers: "Trial is hard, hai? Look for the man in sunglasses at the little tea stall outside the trial ground fence, south-east corner…"'); }
     btns.push(['Close', close]);
     modal('🪪 Licence counter', `<p>Namaste! Licences are issued after a computer written test and a practical trial on the ground behind this office.</p><ul class="challan">${rows}</ul>${d.suspend > 0 ? `<p class="bad">Your licence is suspended for ${Math.ceil(d.suspend / 60)} more minutes.</p>` : ''}`, btns);
   };
@@ -218,12 +235,14 @@
   function trialFail(why) {
     const t = L.trial; if (!t || t.over) return; t.over = true;
     D().cool[t.cat] = 90; KS.audio.fail(); KS.Game.clearTarget();
-    modal('❌ Trial failed', `<p>${why}.</p><p>Better luck next time! You can apply again in 90 seconds at the licence counter.</p>`, [['OK', () => { close(); endTrial(); }]]);
+    const cat = t.cat, P = KS.Shop.data;
+    modal('❌ Trial failed', `<p>${why}.</p><p>Try again straight away for <b>3 🪙</b> (no new test or fee), or wait 90 seconds and apply again at the counter.</p>`,
+      [[`🔁 Retry now · 3 🪙 (you have ${P.tokens})`, () => { if (P.tokens < 3) { KS.Game.notify('You need 3 coins. Collect coins on the streets and rooftops!', 'bad'); return; } P.tokens -= 3; D().cool[cat] = 0; KS.Game.save(); close(); endTrial(); setTimeout(() => startTrial(cat), 450); }], ['OK', () => { close(); endTrial(); }]]);
   }
   function trialPass() {
     const t = L.trial; t.over = true; const d = D(); d.lic[t.cat] = true; KS.Game.save(); KS.audio.cash(); KS.Game.clearTarget();
     KS.Game.giveTokens(3, 'Licence passed');
-    modal('🎉 Licence issued!', `<p>You passed the category <b>${t.cat}</b> trial in ${Math.round(t.t)} s.</p><div class="lcard"><b>DRIVING LICENCE · सवारी चालक अनुमतिपत्र</b><span>No. ${d.no}</span><span>Categories: ${Object.entries(d.lic).filter(([, v]) => v).map(([k]) => k).join(', ')}</span></div><p>Uthao jobs for ${CAT[t.cat].toLowerCase()} are now open to you.</p>`, [['Great!', () => { close(); endTrial(); }]]);
+    modal('🎉 Licence issued!', `<p>You passed the category <b>${t.cat}</b> trial in ${Math.round(t.t)} s.</p>${(d.issued = d.issued || Date.now(), L.cardHTML(d))}<p>Uthao jobs for ${CAT[t.cat].toLowerCase()} are now open to you.</p>`, [['Great!', () => { close(); endTrial(); }]]);
   }
   function endTrial() {
     const t = L.trial; if (!t) return; L.trial = null;
@@ -267,6 +286,19 @@
     }
     function next() { t.i++; t.still = 0; const n = t.cps[t.i]; if (!n) return; if (n.stopHill) KS.Game.setTarget(g.hill.x, (g.hill.zTop0 + g.hill.zTop1) / 2, 'Hill stop'); else if (n.park) KS.Game.setTarget(g.box.x, g.box.z, 'Parking box'); else KS.Game.setTarget(n.x, n.z, 'Trial'); }
   }
+
+  /* ---------- the secret agent (a "dalal") behind the tea shop: a licence without the trial ---------- */
+  L.agentTalk = () => {
+    const d = D(), P = KS.Shop.data, PRICE = 15000, need = ['A', 'B'].filter((c) => !d.lic[c]);
+    KS.say(KS.agent.root, 'Psst… dai!', 1.6, 'calm');
+    if (!need.length) { modal('🕶️ The man in sunglasses', '<p>"You already have everything, dai. You never saw me, hai?"</p>', [['Leave', close]]); return; }
+    modal('🕶️ The man in sunglasses', `<p>"Psst… Licence chahiyo? No test, no trial, no line. <b>${fmt(PRICE)}</b> per category, card ready tomorrow… I mean, now."</p><p class="small">"Kasailai nabhannu hai. Don't tell anyone."</p>`,
+      need.map((c) => [`Pay ${fmt(PRICE)} for ${c} (${CAT[c]})`, () => {
+        if (P.cash < PRICE) { KS.Game.notify(`"Paisa chaina? Come back with ${fmt(PRICE)}."`, 'bad'); return; }
+        P.cash -= PRICE; d.lic[c] = true; d.agent = true; d.issued = d.issued || Date.now(); KS.Game.save(); KS.audio.cash();
+        modal('🪪 "Here. Fresh card."', `<p>He slips a card into your hand and disappears into the crowd.</p>${L.cardHTML(d)}`, [['Thanks… I think', close]]);
+      }]).concat([['No thanks', close]]));
+  };
 
   /* ---------- modal ---------- */
   function modal(title, html, buttons) {
@@ -330,7 +362,7 @@
   };
   L.renderCard = (el) => {
     const d = D();
-    el.innerHTML = `<div class="lcard big"><b>NEPAL · DRIVING LICENCE</b><b lang="ne">सवारी चालक अनुमतिपत्र</b><span>No. ${d.no}</span>
+    el.innerHTML = `${d.lic.A || d.lic.B ? L.cardHTML(d) : '<p class="small">No licence yet: ride the bicycle (no licence, no fines) or pass the test at the Trial ground.</p>'}<div class="lcard big">
       <span>Categories: ${['A', 'B', 'G'].map((c) => `${c} ${d.lic[c] ? '✔' : '✖'}`).join(' · ')}</span>
       <span>Demerit points: ${d.points}/12 ${d.suspend > 0 ? `· <b class="bad">Suspended ${Math.ceil(d.suspend / 60)} min</b>` : ''}</span>
       <span>Warnings received: ${d.warnings} · Fines paid: ${fmt(d.paid)}</span></div>

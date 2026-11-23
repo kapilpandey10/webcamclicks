@@ -140,7 +140,10 @@
     if (N.micOn) { N.micOn = false; if (N.mic) N.mic.getTracks().forEach((t) => t.stop()); N.mic = null; for (const c of N.calls.values()) c.close(); N.calls.clear(); sys('Microphone off.'); N.render2(); return; }
     try {
       N.mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
-      N.micOn = true; setTalking(!N.ptt); sys(N.ptt ? 'Microphone on. Hold G to talk.' : 'Microphone on: open mic.'); callAll(); N.render2();
+      N.micOn = true; setTalking(!N.ptt); sys(N.ptt ? 'Microphone on. Hold G to talk.' : 'Microphone on: open mic.');
+      // calls answered before the mic was on carry no audio from us: hang up and call everyone again with the mic
+      for (const c of N.calls.values()) try { c.close(); } catch (e) { /* ignore */ }
+      N.calls.clear(); callAll(); N.render2();
     } catch (e) { KS.Game.notify('Microphone not available: ' + (e.message || e.name), 'bad'); }
   };
   function setTalking(on) { N.talking = on; if (N.mic) N.mic.getAudioTracks().forEach((t) => (t.enabled = on)); }

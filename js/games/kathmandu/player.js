@@ -73,6 +73,9 @@
   const exDrivers = [];
   PL.init = (scene) => {
     PL.scene = scene; PL.rebuild();
+    // a real torch for you and real headlights for whatever you drive (other lights are faked with beams)
+    PL.torch = new T.SpotLight(0xfff2d0, 0, 32, 0.5, 0.55, 1.3); PL.torch.target = new T.Object3D(); scene.add(PL.torch, PL.torch.target);
+    PL.headlight = new T.SpotLight(0xfff6e2, 0, 70, 0.62, 0.45, 1.1); PL.headlight.target = new T.Object3D(); scene.add(PL.headlight, PL.headlight.target);
     for (let i = 0; i < 3; i++) { const p = KS.makePerson(KS.pick(['man', 'woman', 'office'])); p.root.visible = false; scene.add(p.root); exDrivers.push({ p, t: 0, x: 0, z: 0, h: 0 }); }
   };
   /** rebuild the player's body from the wardrobe outfit */
@@ -96,7 +99,7 @@
   PL.enter = (v) => {
     if (v.ai && v.speed > 9) return false;
     if (v.ai) ejectDriver(v);
-    v.ai = false; v.parked = false; PL.vehicle = v; PL.mode = 'drive'; v.speed = Math.min(v.speed, 3);
+    v.ai = false; v.parked = false; PL.vehicle = v; PL.mode = 'drive'; v.speed = Math.min(v.speed, 3); v.vx = null; v.lot = null; if (v.bay) { v.bay.v = null; v.bay = null; }
     if (v.rider) v.rider.visible = false;
     if (KS.isBike(v.kind)) { v.root.add(PL.person.root); seatOnBike(); }
     else PL.person.root.visible = false;
@@ -107,13 +110,14 @@
   PL.exit = () => {
     const v = PL.vehicle; if (!v) return;
     if (Math.abs(v.speed) > 6) return;
+    if (v.root.rotation.z) v.root.rotation.z = 0;
     const sx = Math.cos(v.h), sz = -Math.sin(v.h);
     let x = v.x + sx * (v.type.wid / 2 + 0.9), z = v.z + sz * (v.type.wid / 2 + 0.9);
     const c = KS.collide(x, z, 0.4, v.y, 1); x = c.x; z = c.z;
     if (PL.person.root.parent !== PL.scene) PL.scene.add(PL.person.root);
     PL.person.root.visible = true; PL.person.root.rotation.set(0, 0, 0); PL.person.legL.rotation.x = PL.person.legR.rotation.x = 0;
     PL.x = x; PL.z = z; PL.y = Math.max(v.y, KS.groundAt(x, z, v.y + 1, 1.2)); PL.h = v.h; PL.vy = 0;
-    v.parked = true; v.speed = 0; PL.vehicle = null; PL.mode = 'foot'; cam.want = 7;
+    v.parked = true; v.speed = 0; v.vx = null; PL.vehicle = null; PL.mode = 'foot'; cam.want = 7;
     KS.Game && KS.Game.onExit(v);
   };
 
@@ -175,59 +179,100 @@
   }
   PL.onSidewalk = onSidewalk;
 
+  /* ---------- vehicle physics: momentum, grip and sliding, weight, body roll & dive ---------- */
+  const MASS = { bicycle: 0.12, bike: 0.25, scooter: 0.22, sport: 0.27, cruiser: 0.3, policebike: 0.27, car: 1.1, taxi: 1.1, ev: 1.4, sedan: 1.3, suv: 1.8, police: 1.8, pickup: 1.8, micro: 1.9, ambulance: 2.1, tempo: 0.9, minibus: 3.5, bus: 6, truck: 7 };
+  KS.massOf = (k) => MASS[k] || 1;
   function driveUpdate(dt) {
-    const v = PL.vehicle, t = v.type, a = axis(), up = v.up || { engine: 0, brakes: 0, handling: 0, nitro: 0 };
+    const v = PL.vehicle, t = v.type, a = axis(), up = v.up || { engine: 0, brakes: 0, handling: 0, nitro: 0 }, bike = KS.isBike(v.kind), m1 = KS.massOf(v.kind);
     const hand = I.down('Space') || I.down('KeyJump');
     const eng = 1 + up.engine * 0.12, brk = 1 + up.brakes * 0.25, hdl = 1 + up.handling * 0.12;
     PL.nitroCool = Math.max(0, PL.nitroCool - dt);
     if ((I.hit('KeyB') || I.hit('KeyNitro')) && up.nitro && PL.nitroCool <= 0) { PL.nitro = 3; PL.nitroCool = 18; KS.Game && KS.Game.notify('🔥 Nitro!'); KS.audio && KS.audio.nitro(); }
     PL.nitro = Math.max(0, PL.nitro - dt);
-    const boost = PL.nitro > 0 ? 1.45 : 1;
-    const top = t.speed * 1.55 * eng * boost * (KS.Weather.wet > 0.3 ? 0.9 : 1);
-    if (a.y > 0.1) v.speed += (v.speed < 0 ? 16 * brk : t.accel * eng * boost * (1 - Math.max(0, v.speed) / top * 0.6)) * a.y * dt;
-    else if (a.y < -0.1) { const before = v.speed; v.speed += (v.speed > 0.4 ? -16 * brk : -t.accel * 0.6) * -a.y * dt; if (before > 9 && KS.Game) KS.Game.onHardBrake(); }
-    else v.speed -= Math.sign(v.speed) * Math.min(Math.abs(v.speed), (2.2 + Math.abs(v.speed) * 0.25) * dt);
-    if (hand) v.speed -= Math.sign(v.speed) * Math.min(Math.abs(v.speed), 12 * brk * dt);
-    v.speed = KS.clamp(v.speed, -6, top);
-    const grip = KS.clamp(Math.abs(v.speed) / 5, 0, 1) * (hand ? 1.6 : 1) * (1 - Math.min(0.5, Math.abs(v.speed) / (top * 2.4)));
-    v.h += -a.x * t.turn * hdl * grip * Math.sign(v.speed || 1) * dt;
-    const fx = Math.sin(v.h), fz = Math.cos(v.h);
-    let nx = v.x + fx * v.speed * dt, nz = v.z + fz * v.speed * dt;
+    const boost = PL.nitro > 0 ? 1.45 : 1, wet = KS.Weather.wet > 0.3;
+    const top = t.speed * 1.55 * eng * boost * (wet ? 0.9 : 1);
+    if (v.vx == null) { v.vx = Math.sin(v.h) * v.speed; v.vz = Math.cos(v.h) * v.speed; v.yaw = 0; v.roll = 0; v.pitch = 0; }
+    let fx = Math.sin(v.h), fz = Math.cos(v.h), rx = -fz, rz = fx;
+    let vf = v.vx * fx + v.vz * fz, vl = v.vx * rx + v.vz * rz;
+    const vf0 = vf;
+    // engine and brakes act along the wheels
+    if (a.y > 0.1) vf += (vf < 0 ? 16 * brk : t.accel * eng * boost * (1 - Math.max(0, vf) / top * 0.6)) * a.y * dt;
+    else if (a.y < -0.1) { vf += (vf > 0.4 ? -16 * brk : -t.accel * 0.6) * -a.y * dt; if (vf0 > 9 && KS.Game) KS.Game.onHardBrake(); }
+    else vf -= Math.sign(vf) * Math.min(Math.abs(vf), (1.6 + Math.abs(vf) * 0.22) * dt); // rolling resistance & air drag
+    if (hand) vf -= Math.sign(vf) * Math.min(Math.abs(vf), (bike ? 9 : 6) * brk * dt);
+    vf = KS.clamp(vf, -6, top);
+    // steering builds a yaw rate; momentum lags behind the new heading, tyres pull it back
+    const steer = KS.clamp(Math.abs(vf) / 5, 0, 1) * (1 - Math.min(0.5, Math.abs(vf) / (top * 2.4))) * (hand ? 1.4 : 1);
+    v.yaw += (-a.x * t.turn * hdl * steer * Math.sign(vf || 1) - v.yaw) * Math.min(1, dt * (bike ? 10 : 7));
+    v.h += v.yaw * dt;
+    v.vx = fx * vf + rx * vl; v.vz = fz * vf + rz * vl;
+    fx = Math.sin(v.h); fz = Math.cos(v.h); rx = -fz; rz = fx;
+    vf = v.vx * fx + v.vz * fz; vl = v.vx * rx + v.vz * rz;
+    const grip = (bike ? 13 : 8.5) * hdl * (wet ? 0.6 : 1) * (hand && !bike ? 0.16 : 1);
+    vl *= Math.exp(-grip * dt);
+    v.vx = fx * vf + rx * vl; v.vz = fz * vf + rz * vl;
+    // tyre squeal & skid marks when sliding
+    if (Math.abs(vl) > 3 && Math.abs(vf) > 5 && !bike) { if (KS.clock - (PL.squealT || 0) > 0.25) { PL.squealT = KS.clock; KS.audio && KS.audio.screech && KS.audio.screech(Math.min(1, Math.abs(vl) / 8)); } KS.Skid && KS.Skid.add(v.x - fx * t.len * 0.35, v.z - fz * t.len * 0.35, v.h, t.wid); }
+    // move and collide with buildings, walls, poles (bounce off with some energy loss)
+    const nx = v.x + v.vx * dt, nz = v.z + v.vz * dt;
     const c = KS.collide(nx, nz, t.r, v.y, 0.5);
     if (c.hit && c.solid && c.solid.tag === 'trial') KS.Law.trialHit();
-    if (c.hit && Math.abs(v.speed) > 2) { if (Math.abs(v.speed) > 7) { KS.audio && KS.audio.crash(Math.min(1, Math.abs(v.speed) / 20)); cam.shake = 0.5; KS.Game && KS.Game.onCrash(Math.abs(v.speed)); } v.speed *= -0.25; }
+    if (c.hit) {
+      let nnx = c.x - nx, nnz = c.z - nz; const nl = Math.hypot(nnx, nnz) || 1; nnx /= nl; nnz /= nl;
+      const vn = v.vx * nnx + v.vz * nnz;
+      if (vn < 0) {
+        v.vx -= 1.3 * vn * nnx; v.vz -= 1.3 * vn * nnz; v.vx *= 0.85; v.vz *= 0.85;
+        const impact = -vn;
+        if (impact > 6) { KS.audio && KS.audio.crash(Math.min(1, impact / 20)); cam.shake = Math.min(0.7, impact / 25); KS.Game && KS.Game.onCrash(impact); }
+      }
+    }
     v.x = c.x; v.z = c.z;
+    // other vehicles: push by weight (a bus barely notices a scooter)
     for (const o of KS.Traffic.list) {
       if (o === v || !o.root.visible) continue;
       const dx = o.x - v.x, dz = o.z - v.z, d = Math.hypot(dx, dz), rr = t.r * 0.8 + o.type.r * 0.8;
       if (d < rr && d > 0.01) {
-        const push = (rr - d) / d; v.x -= dx * push * 0.6; v.z -= dz * push * 0.6; o.x += dx * push * 0.4; o.z += dz * push * 0.4;
-        if (Math.abs(v.speed) > 4) {
-          KS.audio && KS.audio.crash(Math.min(1, Math.abs(v.speed) / 18)); cam.shake = 0.35;
-          if (o.ai) { o.speed = 0; o.stuck = 0; KS.say(o.root, KS.pick(['Ke garya?!', 'Aankha chaina?!', 'Oi!!', 'Bistarai!']), 2.4, 'angry'); KS.audio && KS.audio.horn(o.kind, 0.8); }
-          if (KS.Game) { KS.Game.onCrash(Math.abs(v.speed)); if ((o.kind === 'police' || o.kind === 'policebike') && Math.abs(v.speed) > 7) KS.Law.raise(2, 'Rammed a police vehicle'); KS.Game.karma(-2, 'Collision'); }
+        const nxo = dx / d, nzo = dz / d, m2 = KS.massOf(o.kind) * (o.ai && !o.chase ? 1.5 : 1), sep = rr - d;
+        v.x -= nxo * sep * (m2 / (m1 + m2)); v.z -= nzo * sep * (m2 / (m1 + m2));
+        const ov = o.ai ? o.speed : 0, ovx = Math.sin(o.h) * ov, ovz = Math.cos(o.h) * ov;
+        const rel = (v.vx - ovx) * nxo + (v.vz - ovz) * nzo;
+        if (rel > 0) {
+          const j = (1.3 * rel) / (1 / m1 + 1 / m2);
+          v.vx -= (j / m1) * nxo; v.vz -= (j / m1) * nzo;
+          o.knockX = (o.knockX || 0) + (j / m2) * nxo * 0.25; o.knockZ = (o.knockZ || 0) + (j / m2) * nzo * 0.25;
+          if (o.ai) { o.speed *= Math.max(0, 1 - (j / m2) * 0.08); o.stunned = Math.min(3, (j / m2) * 0.3); }
+          if (rel > 4) {
+            KS.audio && KS.audio.crash(Math.min(1, rel / 18)); cam.shake = Math.min(0.6, rel / 25);
+            if (o.ai) { KS.say(o.root, KS.pick(['Ke garya?!', 'Aankha chaina?!', 'Oi!!', 'Bistarai!']), 2.4, 'angry'); KS.audio && KS.audio.horn(o.kind, 0.8); }
+            if (KS.Game) { KS.Game.onCrash(rel); if ((o.kind === 'police' || o.kind === 'policebike') && rel > 7) KS.Law.raise(2, 'Rammed a police vehicle'); KS.Game.karma(-2, 'Collision'); }
+          }
         }
-        v.speed *= 0.6;
       }
     }
-    const hits = KS.Peds.bump(v.x, v.z, t.r + 0.9, fx * v.speed, fz * v.speed, Math.abs(v.speed));
+    vf = v.vx * Math.sin(v.h) + v.vz * Math.cos(v.h);
+    const hits = KS.Peds.bump(v.x, v.z, t.r + 0.9, v.vx, v.vz, Math.abs(vf));
     if (hits && KS.Game) { KS.Game.karma(-3 * hits, 'Hit pedestrians'); KS.Game.onCrash(10); if (KS.Law.policeNear(v.x, v.z, 60)) KS.Law.offense('reckless'); }
     for (const cow of KS.Animals.cows) {
       const d = Math.hypot(cow.x - v.x, cow.z - v.z);
-      if (d < t.r + 1.3) { const k = (t.r + 1.3 - d) / (d || 1); v.x -= (cow.x - v.x) * k; v.z -= (cow.z - v.z) * k; if (Math.abs(v.speed) > 3) { v.speed *= 0.3; KS.say(cow.g, 'MOOO!', 1.6); KS.audio && KS.audio.moo(1); KS.Game && KS.Game.karma(-4, 'Bumped a sacred cow'); } }
+      if (d < t.r + 1.3) { const k = (t.r + 1.3 - d) / (d || 1); v.x -= (cow.x - v.x) * k; v.z -= (cow.z - v.z) * k; if (Math.abs(vf) > 3) { v.vx *= 0.3; v.vz *= 0.3; KS.say(cow.g, 'MOOO!', 1.6); KS.audio && KS.audio.moo(1); KS.Game && KS.Game.karma(-4, 'Bumped a sacred cow'); } }
     }
     v.vy = (v.vy || 0) - 22 * dt; v.y += v.vy * dt;
     const g = KS.groundAt(v.x, v.z, v.y, 0.5);
-    if (v.y <= g) { v.y = g; v.vy = 0; }
+    if (v.y <= g) { if (v.vy < -6) cam.shake = 0.3; v.y = g; v.vy = 0; }
     if (v.y < KS.RIVER.water - 0.9) { KS.Game && KS.Game.splash(v); return; }
-    const ahead = KS.groundAt(v.x + fx * 1.5, v.z + fz * 1.5, v.y + 1, 0.6), behind = KS.groundAt(v.x - fx * 1.5, v.z - fz * 1.5, v.y + 1, 0.6);
-    v.root.position.set(v.x, v.y + 0.02, v.z); v.root.rotation.set(-Math.atan2(ahead - behind, 3) * 0.8, v.h, 0, 'YXZ');
-    if (KS.isBike(v.kind)) {
-      v.root.rotation.z = a.x * 0.32 * Math.min(1, Math.abs(v.speed) / 8);
-      if (v.kind === 'bicycle') { PL.pedal = (PL.pedal || 0) + v.speed * dt * 2.2; PL.person.legL.rotation.x = -1.05 + Math.sin(PL.pedal) * 0.55; PL.person.legR.rotation.x = -1.05 - Math.sin(PL.pedal) * 0.55; }
+    // body motion: dive under braking, squat when accelerating, roll in corners (bikes lean in)
+    const accel = (vf - vf0) / Math.max(dt, 1e-3), latG = vf * v.yaw;
+    v.pitch += (KS.clamp(-accel * (bike ? 0.004 : 0.009), -0.07, 0.07) - v.pitch) * Math.min(1, dt * 6);
+    v.roll += ((bike ? KS.clamp(-latG * 0.045, -0.6, 0.6) : KS.clamp(latG * 0.008, -0.09, 0.09)) - v.roll) * Math.min(1, dt * 5);
+    const ahead = KS.groundAt(v.x + Math.sin(v.h) * 1.5, v.z + Math.cos(v.h) * 1.5, v.y + 1, 0.6), behind = KS.groundAt(v.x - Math.sin(v.h) * 1.5, v.z - Math.cos(v.h) * 1.5, v.y + 1, 0.6);
+    const bump = Math.abs(vf) > 1 ? Math.sin(KS.clock * 23 + v.x) * 0.004 * Math.min(1, Math.abs(vf) / 10) : 0;
+    v.root.position.set(v.x, v.y + 0.02 + bump, v.z); v.root.rotation.set(-Math.atan2(ahead - behind, 3) * 0.8 + v.pitch, v.h, v.roll, 'YXZ');
+    v.speed = vf;
+    if (bike) {
+      if (v.kind === 'bicycle') { PL.pedal = (PL.pedal || 0) + vf * dt * 2.2; PL.person.legL.rotation.x = -1.05 + Math.sin(PL.pedal) * 0.55; PL.person.legR.rotation.x = -1.05 - Math.sin(PL.pedal) * 0.55; }
       else PL.person.legL.rotation.x = PL.person.legR.rotation.x = -1.3;
     }
-    PL.x = v.x; PL.z = v.z; PL.y = v.y; PL.h = v.h; PL.speed = v.speed;
+    PL.x = v.x; PL.z = v.z; PL.y = v.y; PL.h = v.h; PL.speed = vf;
     PL.throttle = a.y > 0.1 ? a.y : 0;
   }
 
@@ -245,6 +290,12 @@
       if (d.t <= 0) d.p.root.visible = false;
     }
     PL.len = PL.vehicle ? PL.vehicle.type.len : 0.5; PL.wid = PL.vehicle ? PL.vehicle.type.wid : 0.6;
+    if (I.hit('KeyL')) { PL.torchOff = !PL.torchOff; KS.Game && KS.Game.notify(PL.torchOff ? '🔦 Torch off' : '🔦 Torch on'); }
+    const dark = KS.night > 0.4, fx = Math.sin(PL.h), fz = Math.cos(PL.h), v = PL.vehicle;
+    PL.torch.intensity = !v && dark && !PL.torchOff ? 2.4 : 0;
+    if (PL.torch.intensity) { PL.torch.position.set(PL.x + fx * 0.3, PL.y + 1.35, PL.z + fz * 0.3); PL.torch.target.position.set(PL.x + fx * 9, PL.y, PL.z + fz * 9); }
+    PL.headlight.intensity = v && dark ? (KS.isBike(v.kind) ? 2.2 : 3) : 0;
+    if (PL.headlight.intensity) { const L = v.type.len / 2; PL.headlight.position.set(v.x + fx * L, v.y + 0.9, v.z + fz * L); PL.headlight.target.position.set(v.x + fx * (L + 22), v.y, v.z + fz * (L + 22)); }
   };
 
   /* ================= camera ================= */

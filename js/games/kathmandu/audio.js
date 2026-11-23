@@ -91,6 +91,7 @@
   A.bell = (vol = 0.5) => { [523, 1318, 2093, 2794].forEach((f, i) => tone(f, 3.2 - i * 0.6, 'sine', (0.08 / (i + 1)) * vol, 0, null, 0.003)); };
   A.crash = (vol = 1) => { noise(0.4, 0.5 * vol, 900); tone(80, 0.35, 'sine', 0.4 * vol, 0, 40); noise(0.6, 0.15 * vol, 4000, 'highpass', 0.05); };
   A.splash = () => { noise(1.4, 0.5, 700); noise(0.6, 0.3, 2400, 'bandpass', 0.1); };
+  A.screech = (vol = 1) => { noise(0.28, 0.18 * vol, 2600, 'bandpass', 0, 6); tone(1250, 0.25, 'sawtooth', 0.025 * vol, 0, 1150); };
   A.coin = () => { tone(988, 0.08, 'square', 0.05); tone(1319, 0.3, 'square', 0.05, 0.08); };
   A.cash = () => { [1046, 1318, 1568, 2093].forEach((f, i) => tone(f, 0.18, 'triangle', 0.06, i * 0.06)); };
   A.fail = () => { tone(330, 0.25, 'square', 0.05); tone(247, 0.4, 'square', 0.05, 0.22); };

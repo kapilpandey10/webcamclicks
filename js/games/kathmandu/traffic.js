@@ -86,10 +86,18 @@
     v.root.position.set(x, v.y, z); v.root.rotation.y = h; TR.list.push(v); TR.scene.add(v.root); return v;
   };
   TR.remove = (v) => { const i = TR.list.indexOf(v); if (i >= 0) TR.list.splice(i, 1); v.root.parent && v.root.parent.remove(v.root); };
+  const NARROW = { thamel: 1, old: 1, ason: 1, durbar: 1, durbar2: 1 };
+  function narrow(a, b) {
+    const A = nodes[a], B = nodes[b]; if (A.i == null || B.i == null) return false;
+    const blocks = A.j === B.j ? [[Math.min(A.i, B.i), A.j - 1], [Math.min(A.i, B.i), A.j]] : [[A.i - 1, Math.min(A.j, B.j)], [A.i, Math.min(A.j, B.j)]];
+    return blocks.every(([c, r]) => NARROW[KS.blockType(c, r)]);
+  }
   function startTurn(v) {
     const B = nodes[v.b], from = v.a;
     let opts = B.nb.filter((n) => n !== from);
     if (!opts.length) opts = [from];
+    // cars, buses and trucks mostly stay out of the narrow lanes of Thamel and the old town
+    if (!KS.isBike(v.kind) && opts.length > 1) { const wide = opts.filter((n) => !narrow(v.b, n)); if (wide.length && KS.chance(0.85)) opts = wide; }
     // arriving home: pull into the lot
     if (v.path && v.b === v.home.node) { v.path = null; if (enterLot(v)) return; }
     const straight = opts.find((n) => { const N = nodes[n]; return Math.abs((N.x - B.x) * v.lane.dz - (N.z - B.z) * v.lane.dx) < 1; });
@@ -199,6 +207,7 @@
     const lt = v.lot;
     if (lt.stage === 'park') {
       lt.t -= dt; if (v.rider) v.rider.visible = false;
+      if (lt.t <= 0 && TR.over) lt.t = KS.r(15, 40);
       if (lt.t <= 0) { // leave: back out of the bay to a road leaving the lot junction
         const L = v.home, n = nodes[L.node], b = KS.pick(n.nb), lane = laneOf(v, L.node, b, {});
         if (TR.nearCount(lane.sx, lane.sz, 8) > 0) { lt.t = 2; return; }
@@ -220,19 +229,48 @@
   }
   TR.lotNode = (i, j) => idx(i, j);
 
+  /* ---------- how many vehicles are out depends on the time of day ---------- */
+  TR.density = () => { const H = KS.time; return H < 5 ? 0.12 : H < 6.5 ? 0.3 : H < 7.5 ? 0.6 : H < 10 ? 0.95 : H < 16 ? 0.6 : H < 19.5 ? 0.9 : H < 22 ? 0.42 : 0.18; };
+  let balT = 0;
+  function balance(dt, ctx) {
+    balT -= dt; if (balT > 0) return; balT = 0.4;
+    const fleet = TR.list.filter((v) => v.home), cam = KS.camera.position;
+    const out = fleet.filter((v) => v.ai && !v.lot && !v.dormant && !v.chase), budget = Math.round(fleet.length * TR.density());
+    TR.over = out.length > budget;
+    const hidden = (x, z) => Math.hypot(x - cam.x, z - cam.z) > 330;
+    if (out.length > budget) { // send one home (out of sight)
+      const v = out.find((q) => hidden(q.x, q.z) && q !== ctx.playerVehicle);
+      if (v) { v.path = null; if (!enterLot(v, true)) { v.dormant = true; v.root.visible = false; } }
+    } else if (out.length < budget - 1) { // bring one out
+      const p = fleet.find((q) => q.lot && q.lot.stage === 'park' && hidden(nodes[q.home.node].x, nodes[q.home.node].z));
+      if (p) p.lot.t = 0;
+      else { const d = fleet.find((q) => q.dormant); if (d) { d.dormant = false; placeOnRandomEdge(d, ctx.px, ctx.pz, 0, 1100, true); } }
+    }
+  }
+
   TR.update = (dt, ctx) => {
     const { px, pz, cx, cz, night } = ctx;
     updateSignals();
     const blink = Math.floor(KS.clock * 4) % 2;
     KS.sirenMats[0].color.setHex(blink ? 0xff2020 : 0x400000); KS.sirenMats[1].color.setHex(blink ? 0x001040 : 0x2050ff);
     const ambs = TR.list.filter((v) => v.kind === 'ambulance' && v.ai);
+    balance(dt, ctx);
     for (const v of TR.list) {
       const dCam = Math.hypot(v.x - cx, v.z - cz);
       v.root.visible = dCam < 300 || v === ctx.playerVehicle || v.chase;
       if (v.idlePolice && !v.ai && dCam > 330) { v.idlePolice = false; TR.recycle(v, px, pz); continue; }
       if (v.lot) { lotUpdate(v, dt, dCam); continue; }
+      if (v.dormant) { v.root.visible = false; continue; }
       if (v.chase) { chaseUpdate(v, dt, ctx); continue; }
-      if (!v.ai) continue;
+      if (!v.ai) {
+        if (v.knockX || v.knockZ) { // a parked vehicle that was hit slides a little
+          const c = KS.collide(v.x + v.knockX, v.z + v.knockZ, v.type.r, v.y, 0.5); v.x = c.x; v.z = c.z; v.knockX *= 0.6; v.knockZ *= 0.6;
+          if (Math.abs(v.knockX) + Math.abs(v.knockZ) < 0.01) v.knockX = v.knockZ = 0;
+          if (v !== ctx.playerVehicle) { v.root.position.x = v.x; v.root.position.z = v.z; }
+        }
+        continue;
+      }
+      if (v.stunned > 0) { v.stunned -= dt; v.speed = Math.max(0, v.speed - 20 * dt); v.knockX = v.knockZ = 0; if (v.root.visible) { v.root.rotation.z = Math.sin(KS.clock * 30) * 0.02 * v.stunned; } continue; }
       v.safeT = (v.safeT || KS.r(0, 0.5)) - dt;
       if (v.safeT <= 0) { // if a vehicle ever ends up inside a building or wall, put it back on a road elsewhere
         v.safeT = 0.5; const c = KS.collide(v.x, v.z, Math.min(1.2, v.type.wid * 0.45), v.y, 2.5);

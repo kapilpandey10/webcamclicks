@@ -472,7 +472,7 @@
     KS.poolMat = poolMat;
     const pgeo = new T.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
     const pl = new T.InstancedMesh(pgeo, poolMat, pools.length);
-    pools.forEach(([x, z], i) => { dummy.position.set(x, 0.3, z); dummy.rotation.set(0, 0, 0); dummy.scale.set(13, 1, 13); dummy.updateMatrix(); pl.setMatrixAt(i, dummy.matrix); });
+    pools.forEach(([x, z], i) => { dummy.position.set(x, 0.3, z); dummy.rotation.set(0, 0, 0); dummy.scale.set(18, 1, 18); dummy.updateMatrix(); pl.setMatrixAt(i, dummy.matrix); });
     pl.frustumCulled = false; scene.add(pl);
     KS.lampPositions = pools;
   }

@@ -20,12 +20,16 @@
       ${slider('sens', 'Look sensitivity', st.sens, 0.3, 2, 0.1)}
       <label class="set tog"><input type="checkbox" data-set="invertY" ${st.invertY ? 'checked' : ''}><span>Invert vertical look</span></label>
       <label class="set tog"><input type="checkbox" data-set="minimap" ${st.minimap ? 'checked' : ''}><span>Show minimap</span></label>
-      <label class="set tog"><input type="checkbox" data-set="guide" ${st.guide ? 'checked' : ''}><span>Show the getting-started guide</span></label>
+      <label class="set tog"><input type="checkbox" data-set="guide" ${st.guide ? 'checked' : ''}><span>Show goals on screen</span></label>
+      <h4>Time</h4>
+      <label class="set"><span>Clock</span><select data-set="timeMode" aria-label="Clock speed">${[['fast', 'Game time (1 day = 16 min)'], ['slow', 'Slow (1 day ≈ 1 hour)'], ['real', 'Real Nepal time']].map(([k, t]) => `<option value="${k}" ${(st.timeMode || 'fast') === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+      <span class="small">Traffic follows the clock: rush hours are busy, nights are quiet.</span>
       <label class="set tog"><input type="checkbox" data-set="high" ${KS.quality.level === 'high' ? 'checked' : ''}><span>High graphics (shadows, more traffic) · reload to apply</span></label>
     </div>`;
     el.querySelectorAll('[data-set]').forEach((inp) => {
       inp.addEventListener('input', () => {
-        const k = inp.dataset.set, v = inp.type === 'checkbox' ? inp.checked : +inp.value;
+        const k = inp.dataset.set, v = inp.type === 'checkbox' ? inp.checked : inp.tagName === 'SELECT' ? inp.value : +inp.value;
+        if (k === 'timeMode') { st.timeMode = v; KS.Shop.save(); KS.Game.notify(v === 'real' ? '🕰 Clock set to real Nepal time' : v === 'slow' ? '🕰 Slow clock' : '🕰 Game clock'); return; }
         if (k.startsWith('vol.')) { A.vol[k.slice(4)] = v; A.applyVolumes(); const o = inp.parentElement.querySelector('output'); if (o) o.textContent = Math.round((v / +inp.max) * 100) + '%'; return; }
         if (k === 'mute') { A.setOn(!v); return; }
         if (k === 'high') { KS.quality.level = v ? 'high' : 'low'; KS.Shop.data.quality = KS.quality.level; KS.Shop.save(); return; }
@@ -39,23 +43,57 @@
 
   /* ======================= getting started ======================= */
   const Guide = (KS.Guide = {});
-  const STEPS = [
-    { id: 'bike', text: 'Get on your <b>bicycle</b> (green marker) with <kbd>E</kbd>', done: () => Guide.flag('bike') },
-    { id: 'phone', text: 'Open your <b>phone</b> with <kbd>Q</kbd>', done: () => Guide.flag('phone') },
-    { id: 'licence', text: 'Get a bike <b>licence</b> at the Trial ground', nav: () => KS.trialGround && KS.Game.setWaypoint(KS.trialGround.counter.x, KS.trialGround.counter.z), done: () => KS.Law.data().lic.A },
-    { id: 'job', text: 'Do a <b>delivery</b> or ride (Phone → Jobs or Uthao)', done: () => KS.Shop.data.uthao.trips > 0 || Guide.flag('momo') },
-    { id: 'view', text: 'Take the lift up <b>Dharahara</b> for the view', nav: () => KS.dharahara && KS.Game.setWaypoint(KS.dharahara.x, KS.dharahara.z + 7), done: () => Guide.flag('lift') },
-  ];
-  Guide.flag = (k, set) => { const d = KS.Shop.data; d.guideFlags = d.guideFlags || {}; if (set) { d.guideFlags[k] = true; KS.Shop.save(); } return !!d.guideFlags[k]; };
+  // a career of goals: each one teaches a part of the game and pays a reward
+  const D = () => KS.Shop.data, G2 = () => KS.Game, nearestStall = () => { const P = KS.Player; let best = null, bd = 1e9; for (const [x, z] of KS.fruitStalls || []) { const d = Math.hypot(x - P.x, z - P.z); if (d < bd) { bd = d; best = [x, z]; } } return best; };
+  const wp = (x, z) => G2().setWaypoint(x, z);
+  const GOALS = (KS.GOALS = [
+    { id: 'bike', text: 'Get on your <b>bicycle</b> (green marker) with <kbd>E</kbd>', how: 'Walk to the green marker next to you and press E (or the Ride button).', cash: 200, done: () => Guide.flag('bike'), nav: () => { const b = KS.Shop.delivered; if (b) wp(b.x, b.z); else KS.Shop.deliver('cycle'); } },
+    { id: 'phone', text: 'Open your <b>phone</b> with <kbd>Q</kbd>', how: 'Everything lives on the phone: jobs, Uthao rides, radio, map, licence, garage and friends.', cash: 100, done: () => Guide.flag('phone') },
+    { id: 'momo', text: 'Deliver a <b>momo order</b> (Phone → Jobs)', how: 'Collect the momos at the yellow marker in Thamel and take them to the customer before they go cold.', cash: 300, coins: 1, done: () => Guide.flag('momo'), nav: () => G2().acceptMomo() },
+    { id: 'fruit', text: 'Eat <b>fruit</b> at a street stall to restore health', how: 'Health drops when you fall, crash or fight. Fruit stalls heal you (Phone → Food finds the nearest). Health also slowly recovers while resting.', cash: 100, done: () => Guide.flag('fruit'), nav: () => { const s2 = nearestStall(); if (s2) wp(s2[0], s2[1]); } },
+    { id: 'licA', text: 'Get a <b>bike licence</b> at the Trial ground', how: 'Pass the written test and the figure-of-8 trial. Without a licence you may only ride the bicycle.', cash: 1000, coins: 2, done: () => KS.Law.data().lic.A, nav: () => KS.trialGround && wp(KS.trialGround.counter.x, KS.trialGround.counter.z) },
+    { id: 'ride3', text: 'Finish <b>3 Uthao rides</b>', how: 'Press U (or Phone → Uthao → Go online) on any bike, accept a request with Y and follow the blue line.', cash: 1500, coins: 1, prog: () => [Math.min(3, D().uthao.trips), 3], done: () => D().uthao.trips >= 3 },
+    { id: 'places', text: 'Discover <b>5 places</b>', how: 'White dots on the map are landmarks. Each new place pays रु 500 and a coin.', cash: 1000, coins: 1, prog: () => [Math.min(5, G2().found.size), 5], done: () => G2().found.size >= 5 },
+    { id: 'lift', text: 'Take the lift up <b>Dharahara</b>', how: 'Stand at the lift door at the base of the tower and press E.', cash: 500, done: () => Guide.flag('lift'), nav: () => KS.dharahara && wp(KS.dharahara.x, KS.dharahara.z + 7) },
+    { id: 'shop', text: 'Buy a vehicle or <b>upgrade</b> in the Garage', how: 'Pause (Esc) → Garage, or Phone → Garage. Engine, brakes, handling and nitro upgrades.', coins: 2, done: () => D().garage.length > 2 || D().garage.some((g) => g.up && Object.values(g.up).some((n) => n > 0)) },
+    { id: 'tunnel', text: 'Ride through the <b>Nagdhunga tunnel</b> to Dhunibesi', how: 'Follow the highway west from Kalimati. Villagers pay well for rides home.', cash: 1500, coins: 1, done: () => Guide.flag('tunnel'), nav: () => wp(KS.HW.village.x, KS.HW.z) },
+    { id: 'licB', text: 'Get a <b>car licence</b> (category B)', how: 'Back at the Trial ground: written test plus the reverse-parking trial in a car.', cash: 2000, coins: 2, done: () => KS.Law.data().lic.B, nav: () => KS.trialGround && wp(KS.trialGround.counter.x, KS.trialGround.counter.z) },
+    { id: 'earn', text: 'Earn <b>रु 25,000</b> as an Uthao driver', how: 'Cars, VIPs, tourists and village trips pay the most. Smooth driving earns tips.', coins: 5, prog: () => [Math.min(25000, D().uthao.earned), 25000], done: () => D().uthao.earned >= 25000 },
+    { id: 'friend', text: 'Play with a <b>friend</b> (Phone → Friends)', how: 'One player taps Create room and sends the invite link; the other opens it and taps Join. Turn on the mic to talk.', coins: 3, done: () => Guide.flag('friend') },
+    { id: 'all', text: 'Discover <b>every place</b> in the valley', how: 'Check the map for white dots you have not visited yet.', coins: 10, prog: () => [G2().found.size, KS.landmarks.length], done: () => G2().found.size >= KS.landmarks.length },
+  ]);
+  Guide.flag = (k, set) => { const d = KS.Shop.data; d.guideFlags = d.guideFlags || {}; if (set && !d.guideFlags[k]) { d.guideFlags[k] = true; KS.Shop.save(); } return !!d.guideFlags[k]; };
+  Guide.reward = (g) => [g.cash ? fmt(g.cash) : '', g.coins ? g.coins + ' 🪙' : ''].filter(Boolean).join(' + ');
+  /** pays goals that were just completed (once each) */
+  Guide.check = () => {
+    const P = KS.Player;
+    if (P.x < KS.HW.pW - 20) Guide.flag('tunnel', true);
+    if (KS.Net && KS.Net.players.size) Guide.flag('friend', true);
+    for (const g of GOALS) if (!Guide.flag('g:' + g.id) && g.done()) {
+      Guide.flag('g:' + g.id, true);
+      if (g.cash) G2().pay(g.cash, 'Goal: ' + g.text.replace(/<[^>]+>/g, ''));
+      if (g.coins) G2().giveTokens(g.coins, 'Goal complete');
+      KS.audio.ding && KS.audio.ding();
+    }
+  };
+  Guide.current = () => GOALS.filter((g) => !g.done());
+  let lastHtml = '';
   Guide.render = () => {
     const el = $('guide'); if (!el) return;
-    const st = S.data(), todo = STEPS.filter((s) => !s.done());
-    el.hidden = !st.guide || !todo.length || KS.state !== 'play';
-    if (el.hidden) return;
-    el.innerHTML = `<div class="gh"><b>Getting started</b><button type="button" id="guideHide" aria-label="Hide guide">×</button></div><ol>${STEPS.map((s) => `<li class="${s.done() ? 'done' : ''}">${s.text}${s.nav && !s.done() ? ` <button type="button" class="linkbtn" data-nav="${s.id}">Show me</button>` : ''}</li>`).join('')}</ol>`;
-    $('guideHide').onclick = () => { st.guide = false; KS.Shop.save(); Guide.render(); };
-    el.querySelectorAll('[data-nav]').forEach((b) => (b.onclick = () => { STEPS.find((s) => s.id === b.dataset.nav).nav(); KS.Game.notify('📍 Waypoint set. Follow the blue GPS line.'); }));
+    if (KS.state === 'play') Guide.check();
+    const st = S.data(), todo = Guide.current(), P = KS.Player, low = P.health < 35;
+    el.hidden = !st.guide || (!todo.length && !low) || KS.state !== 'play';
+    if (el.hidden) { lastHtml = ''; return; }
+    const show = todo.slice(0, 2), n = GOALS.length - todo.length;
+    const line = (g, first) => { const p = g.prog && g.prog(); return `<li class="${first ? 'cur' : ''}">${g.text}${p ? ` <span class="gp">${p[1] > 1000 ? fmt(p[0]) : p[0]} / ${p[1] > 1000 ? fmt(p[1]) : p[1]}</span>` : ''}${first ? `<small>${g.how}</small><span class="gr">Reward ${Guide.reward(g)}</span>` : ''}${g.nav && first ? ` <button type="button" class="linkbtn" data-nav="${g.id}">Show me</button>` : ''}</li>`; };
+    const html = `<div class="gh"><b>Goals ${n} / ${GOALS.length}</b><button type="button" id="guideHide" aria-label="Hide goals">×</button></div>${low ? `<div class="glow">❤️ Health ${Math.round(P.health)}%: eat fruit at a stall <button type="button" class="linkbtn" data-nav="fruit">Show me</button></div>` : ''}<ol>${show.map((g, i) => line(g, !i)).join('')}</ol>`;
+    if (html === lastHtml) return; lastHtml = html;
+    el.innerHTML = html;
+    $('guideHide').onclick = () => { st.guide = false; KS.Shop.save(); Guide.render(); KS.Game.notify('Goals hidden. Turn them back on in Settings.'); };
+    el.querySelectorAll('[data-nav]').forEach((b) => (b.onclick = () => { GOALS.find((s2) => s2.id === b.dataset.nav).nav(); KS.Game.notify('📍 Follow the blue GPS line.'); }));
   };
+  /** the full list for the pause menu */
+  Guide.list = () => `<ol class="goallist">${GOALS.map((g) => { const d = g.done(), p = g.prog && g.prog(); return `<li class="${d ? 'done' : ''}"><span>${d ? '✔' : '○'}</span><div>${g.text}${p && !d ? ` <span class="gp">${p[1] > 1000 ? fmt(p[0]) : p[0]} / ${p[1] > 1000 ? fmt(p[1]) : p[1]}</span>` : ''}<small>${g.how}</small></div><em>${Guide.reward(g)}</em></li>`; }).join('')}</ol>`;
 
   /* ======================= phone ======================= */
   const Ph = (KS.Phone = { open: false, app: null });

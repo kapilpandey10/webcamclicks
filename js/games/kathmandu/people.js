@@ -251,7 +251,10 @@
     }
     placeAmbient(ped, px, pz, 215, 262);
   }
-  const add = (scene, ped) => { ped.home = ped.mode; scene.add(ped.p.root); Peds.list.push(ped); return ped; };
+  const add = (scene, ped) => {
+    // about one in four people carries a torch after dark
+    if ((ped.ambient || ped.mode === 'plaza') && KS.chance(0.28) && KS.addBeam) { const t = new T.Mesh(new T.CylinderGeometry(0.03, 0.04, 0.18, 6).rotateX(Math.PI / 2), new T.MeshBasicMaterial({ color: 0xfff6d0 })); t.position.set(0.24, 0.95, 0.22); ped.p.root.add(t); KS.addBeam(ped.p.root, 0.24, 0.95, 0.32, true); }
+    ped.home = ped.mode; scene.add(ped.p.root); Peds.list.push(ped); return ped; };
   Peds.init = (scene, count, px, pz) => {
     Peds.scene = scene;
     for (let i = 0; i < count; i++) {

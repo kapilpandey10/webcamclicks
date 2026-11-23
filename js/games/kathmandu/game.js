@@ -7,7 +7,7 @@
   const coarse = matchMedia('(pointer: coarse)').matches;
   const D = KS.Shop.data, A = KS.audio;
   const hi = D.quality ? D.quality === 'high' : !coarse;
-  KS.quality = { level: hi ? 'high' : 'low', shadows: hi, shadowSize: hi ? 2048 : 1024, pixelRatio: Math.min(devicePixelRatio || 1, hi ? 2 : 1.25), peds: hi ? 130 : 55, cars: hi ? 150 : 70 };
+  KS.quality = { level: hi ? 'high' : 'low', shadows: hi, shadowSize: hi ? 2048 : 1024, pixelRatio: Math.min(devicePixelRatio || 1, hi ? 2 : 1.25), peds: hi ? 120 : 55, cars: hi ? 110 : 50 };
   KS.clock = 0; KS.state = 'title';
   A.on = D.sound !== false;
 
@@ -42,7 +42,7 @@
     Game.karma(-4, 'Started a fight');
     if (KS.Law.policeNear(ped.x, ped.z, 45)) KS.Law.raise(1, 'Fighting in public');
   };
-  Game.onCrash = (speed) => { if (speed > 6) KS.Uthao.event('crash'); const v = KS.Player.vehicle; if (v && KS.isBike(v.kind) && speed > 9) Game.hurt(Math.min(25, speed * 0.8)); };
+  Game.onCrash = (speed) => { if (speed > 6) KS.Uthao.event('crash'); const v = KS.Player.vehicle; if (v && KS.isBike(v.kind) && speed > 10) Game.hurt(Math.min(18, speed * 0.6)); };
   Game.onHardBrake = () => KS.Uthao.event('brake');
   Game.splash = (v) => {
     A.splash(); Game.notify(`Splash! The Bagmati swallowed your ${v.type.name.toLowerCase()}.`, 'bad');
@@ -80,7 +80,7 @@
       const F = [['🍌 Banana', 'केरा', 20, 12], ['🍊 Orange', 'सुन्तला', 30, 15], ['🍎 Apple', 'स्याउ', 40, 18], ['🥭 Mango', 'आँप', 60, 26], ['🍉 Watermelon slice', 'खरबुजा', 50, 22]];
       KS.modal('🍎 Fruit stall', `<p>"Taja phalphul, dai! Fresh fruit!" Your health: <b>${Math.round(PL.health)}%</b>.</p>`, F.map(([n, np, price, hp]) => [`${n} (${np}) · रु ${price} · +${hp} health`, () => {
         if (D.cash < price) { Game.notify('Not enough cash.', 'bad'); return; }
-        D.cash -= price; PL.health = Math.min(100, PL.health + hp); Game.save(); A.coin(); KS.modalClose();
+        D.cash -= price; PL.health = Math.min(100, PL.health + hp); KS.Guide.flag('fruit', true); Game.save(); A.coin(); KS.modalClose();
         PL.eatT = 1.6; KS.say(PL.person.root, 'Mmm… ' + n.split(' ').slice(1).join(' ') + '!', 1.8, 'calm'); Game.notify(`${n} · −रु ${price} · health ${Math.round(PL.health)}%`, 'good');
       }]).concat([['Maybe later', () => KS.modalClose()]]));
       return;
@@ -146,6 +146,11 @@
     for (const s2 of KS.signals) if (s2.camFlash) s2.camFlash.material.opacity = Math.max(0, s2.camFlash.material.opacity - dt * 3);
     if (v && KS.noDriveAt && KS.noDriveAt(PL.x, PL.z) && v.kind !== 'bicycle') Game.prompt('🚫 Pedestrian area: no vehicles beyond the bollards');
     if (v && Game.limit !== (Game.limit = KS.speedLimit(PL.x, PL.z)) && Game.limit) Game.notify('🏫 School zone: 25 km/h until 16:00');
+    if (v && v.kind !== 'bicycle') for (const c of KS.speedCams) { // heads-up before a camera
+      const d = Math.hypot(PL.x - c.x, PL.z - c.z);
+      if (d < 150 && d > 40 && !c.warned) { c.warned = true; Game.notify(KS.speedLimit(c.x, c.z) ? '📷 Speed camera ahead · school zone 25 km/h' : '📷 Speed camera ahead (active 9:00–16:00 on school days)'); }
+      if (d > 220) c.warned = false;
+    }
     if (!v || Law.trial || v.kind === 'bicycle') { lastSig = null; return; }
     const kmh = Math.abs(v.speed) * 3.6, lim = KS.speedLimit(PL.x, PL.z);
     Game.kmh = kmh;
@@ -268,6 +273,13 @@
     return c;
   }
   let mapC, mini, miniG, big, bigG;
+  /** a traffic police officer on the map: blue shield with a white star */
+  function policeDot(g, x, y, k, alert) {
+    g.save(); g.translate(x, y); g.scale(k, k);
+    g.fillStyle = alert && Math.sin(KS.clock * 12) > 0 ? '#c8102e' : '#1d3a8a'; g.strokeStyle = '#fff'; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(0, -6); g.lineTo(5, -4); g.lineTo(4, 3); g.lineTo(0, 6); g.lineTo(-4, 3); g.lineTo(-5, -4); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(0, -0.3, 1.6, 0, 7); g.fill(); g.restore();
+  }
   function drawRoute(g, sx, sz, scale, w) {
     const r = Game.route; if (!r || r.length < 2) return;
     g.strokeStyle = 'rgba(29,110,255,0.92)'; g.lineWidth = w; g.lineJoin = 'round'; g.lineCap = 'round'; g.beginPath();
@@ -285,7 +297,8 @@
     drawRoute(g, lx, lz, 1, 4 / zoom);
     const dot = (x, z, r, c, stroke) => { g.beginPath(); g.arc(lx(x), lz(z), r / zoom, 0, 7); g.fillStyle = c; g.fill(); if (stroke) { g.lineWidth = 2 / zoom; g.strokeStyle = stroke; g.stroke(); } };
     for (const l of KS.landmarks) dot(l.x, l.z, 4, Game.found.has(l.id) ? '#c8102e' : '#ffffff', '#7a1414');
-    for (const v of KS.Traffic.list) if ((v.kind === 'police' || v.kind === 'ambulance') && Math.hypot(v.x - PL.x, v.z - PL.z) < 260) dot(v.x, v.z, 2.6, v.kind === 'police' ? '#1d4fb8' : '#ffffff', '#c8102e');
+    for (const v of KS.Traffic.list) if ((v.kind === 'police' || v.kind === 'policebike' || v.kind === 'ambulance') && !v.dormant && v.root.visible !== false && Math.hypot(v.x - PL.x, v.z - PL.z) < 300) dot(v.x, v.z, v.chase ? 4 : 3, v.kind === 'ambulance' ? '#ffffff' : '#1d4fb8', v.chase && Math.sin(KS.clock * 12) > 0 ? '#ffffff' : '#c8102e');
+    for (const o of KS.Peds.police || []) if (Math.hypot(o.x - PL.x, o.z - PL.z) < 300) policeDot(g, lx(o.x), lz(o.z), 1 / zoom, o.chasing);
     if (KS.Shop.delivered && KS.Shop.delivered !== PL.vehicle) dot(KS.Shop.delivered.x, KS.Shop.delivered.z, 4, '#0f8a7a', '#fff');
     if (momoShop.visible) dot(MOMO.x, MOMO.z, 5, '#f2a516', '#5a3a00');
     if (target.visible) dot(target.position.x, target.position.z, 5.5, '#ffd21f', '#111');
@@ -319,6 +332,14 @@
       g.fillStyle = 'rgba(20,14,10,0.75)'; const tw = g.measureText(l.name).width + 10; g.fillRect(wx(l.x) - tw / 2, wz(l.z) - 27 * k, tw, 17 * k);
       g.fillStyle = '#fff'; g.fillText(l.name, wx(l.x), wz(l.z) - 15 * k);
     }
+    for (const o of KS.Peds.police || []) policeDot(g, wx(o.x), wz(o.z), 1.3 * k, o.chasing);
+    for (const v of KS.Traffic.list) if ((v.kind === 'police' || v.kind === 'policebike') && !v.dormant) { g.beginPath(); g.arc(wx(v.x), wz(v.z), (v.chase ? 6 : 4) * k, 0, 7); g.fillStyle = '#1d4fb8'; g.fill(); g.strokeStyle = '#c8102e'; g.lineWidth = 2; g.stroke(); }
+    // legend
+    g.font = `600 ${Math.round(12 * k)}px "Barlow Condensed", sans-serif`; g.textAlign = 'left';
+    const lg = [['#ffd21f', 'You'], ['#1d3a8a', 'Traffic police'], ['#1d4fb8', 'Police car / bike'], ['#c8102e', 'Signal / red-light camera'], ['#1d4fb8', '▪ Speed camera'], ['#e23a8a', 'Your waypoint']];
+    g.fillStyle = 'rgba(20,14,10,0.72)'; g.fillRect(8 * k, H - (lg.length * 17 + 12) * k, 168 * k, (lg.length * 17 + 6) * k);
+    lg.forEach(([c, t], i) => { const y = H - (lg.length * 17 + 2 - i * 17) * k; g.fillStyle = c; g.beginPath(); g.arc(20 * k, y, 5 * k, 0, 7); g.fill(); g.fillStyle = '#fff'; g.fillText(t, 32 * k, y + 4 * k); });
+    g.textAlign = 'center';
     const PL = KS.Player; g.beginPath(); g.arc(wx(PL.x), wz(PL.z), 7 * k, 0, 7); g.fillStyle = '#ffd21f'; g.fill(); g.strokeStyle = '#111'; g.lineWidth = 3; g.stroke();
     for (const [m, c] of [[target, '#ffd21f'], [waypoint, '#e23a8a']]) if (m.visible) { g.beginPath(); g.arc(wx(m.position.x), wz(m.position.z), 7 * k, 0, 7); g.fillStyle = c; g.fill(); }
   }
@@ -443,7 +464,8 @@
     const L = KS.Law.data(), P = KS.Player, lic = ['A', 'B'].map((c) => `<span class="pill ${L.lic[c] && L.suspend <= 0 ? 'ok' : 'no'}">${c} ${L.lic[c] ? (L.suspend > 0 ? 'suspended' : '✔ valid') : '✖ none'}</span>`).join('');
     $('homeBox').innerHTML = `<div class="homegrid">
       <div class="hcard"><h4>Licence</h4><div>${lic}</div><small>${L.lic.A || L.lic.B ? `Demerit points ${L.points}/12` : 'No licence: bicycle only (or risk a police fine)'}</small>${L.lic.A ? '' : '<button type="button" class="btn small-btn" id="homeLic">Show the way to the licence office</button>'}</div>
-      <div class="hcard"><h4>You</h4><div>Health <b>${Math.round(P.health)}%</b> · Karma <b>${Math.round(D.karma)}</b></div><div>Cash <b>रु ${Math.round(D.cash).toLocaleString('en-IN')}</b> · Coins <b>${D.tokens} 🪙</b></div><small>Eat fruit from street stalls to restore health.</small></div>
+      <div class="hcard"><h4>You</h4><div>Health <b>${Math.round(P.health)}%</b> · Karma <b>${Math.round(D.karma)}</b></div><div>Cash <b>रु ${Math.round(D.cash).toLocaleString('en-IN')}</b> · Coins <b>${D.tokens} 🪙</b></div><small>${P.health < 50 ? '❤️ Low! ' : ''}Eat fruit at street stalls (Phone → Food finds the nearest) or rest to heal. Crashes, falls and fights hurt.</small></div>
+      <div class="hcard" style="grid-column:1/-1"><h4>Goals · ${KS.GOALS.filter((g) => g.done()).length} / ${KS.GOALS.length}</h4>${KS.Guide.list()}</div>
       <div class="hcard"><h4>Quick</h4><div class="chips"><button type="button" class="chip" data-q="phone">📱 Phone</button><button type="button" class="chip" data-q="map">🗺️ Map</button><button type="button" class="chip" data-q="friends">💬 Play with friends</button><button type="button" class="chip" data-q="bike">🚲 Bring my bicycle</button></div></div>
     </div>`;
     const hl = $('homeLic'); if (hl) hl.onclick = () => { Game.setWaypoint(KS.trialGround.counter.x, KS.trialGround.counter.z); pause(false); Game.notify('📍 Follow the blue line to the Trial ground.'); };

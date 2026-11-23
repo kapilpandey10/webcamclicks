@@ -76,7 +76,7 @@
 
   const C = (h) => new T.Color(h);
   const SKY = {
-    day: [C(0x3f82d8), C(0xbfd8ee)], gold: [C(0x4d70b0), C(0xf4b27c)], dusk: [C(0x232f5c), C(0xd8785e)], night: [C(0x040812), C(0x131c34)],
+    day: [C(0x3f82d8), C(0xbfd8ee)], gold: [C(0x4d70b0), C(0xf4b27c)], dusk: [C(0x232f5c), C(0xd8785e)], night: [C(0x0c1736), C(0x2a3d6e)], // moonlit blue, not black
   };
   const tTop = new T.Color(), tHor = new T.Color(), tmp = new T.Color(), grey = new T.Color(0x8c939a), greyH = new T.Color(0xaeb3b7);
   function skyAt(sunY, top, hor) {
@@ -93,7 +93,9 @@
     for (const key of ['cloud', 'dark', 'rain', 'near', 'far', 'mtn', 'wind', 'temp', 'aqi']) cur[key] += (tgt[key] - cur[key]) * k;
     cur.fogMix += ((Wx.type === 'fog' ? 1 : 0) - cur.fogMix) * k; cur.hazeMix = (cur.hazeMix || 0) + ((Wx.type === 'haze' ? 1 : 0) - (cur.hazeMix || 0)) * k;
     // time
-    KS.time = (KS.time + dt * KS.timeSpeed * 1) % 24;
+    const tm = KS.Settings && KS.Settings.data().timeMode;
+    if (tm === 'real') { const n = new Date(Date.now() + (5 * 60 + 45) * 60000); KS.time = n.getUTCHours() + n.getUTCMinutes() / 60 + n.getUTCSeconds() / 3600; } // Nepal time, UTC+5:45
+    else KS.time = (KS.time + dt * KS.timeSpeed * (tm === 'slow' ? 0.25 : 1)) % 24;
     const th = ((KS.time - 6) / 12) * Math.PI;
     sunDir.set(Math.cos(th), Math.sin(th), 0.42).normalize();
     const sunY = sunDir.y;
@@ -123,12 +125,12 @@
       sun.color.setHex(sunY < 0.18 ? 0xffb27a : 0xfff1d8); sun.intensity = KS.smooth(-0.05, 0.2, sunY) * (1 - cur.dark * 0.8) * 1.05;
       sun.position.copy(ctx.focus).addScaledVector(sunDir, 400);
     } else {
-      sun.color.setHex(0x9fb6ee); sun.intensity = 0.34 * (1 - cur.cloud * 0.75); // moonlight
+      sun.color.setHex(0xb4c8ff); sun.intensity = 0.62 * (1 - cur.cloud * 0.6); // moonlight
       sun.position.copy(ctx.focus).add(tmpV.set(-sunDir.x, -sunDir.y, 0.3).normalize().multiplyScalar(400));
     }
     sun.target.position.copy(ctx.focus);
-    Wx.hemi.intensity = (0.3 + day * 0.34) * (1 - cur.dark * 0.35) + flash * 1.2;
-    Wx.hemi.color.copy(tTop).lerp(C(0xffffff), 0.45); Wx.hemi.groundColor.setHex(0x7a6a50).multiplyScalar(0.4 + day * 0.6);
+    Wx.hemi.intensity = (0.3 + day * 0.34 + night * 0.28) * (1 - cur.dark * 0.3) + flash * 1.2;
+    Wx.hemi.color.copy(tTop).lerp(C(0xffffff), 0.45).lerp(C(0x8ea4e0), night * 0.6); Wx.hemi.groundColor.setHex(0x7a6a50).multiplyScalar(0.45 + day * 0.55);
     // Himalaya: visible on clear days, alpenglow at dawn & dusk, hidden by monsoon cloud and smog
     if (KS.mountainMat) {
       KS.mountainMat.opacity = cur.mtn * (0.35 + 0.65 * day);
@@ -177,7 +179,11 @@
     const nightGlow = Math.max(night, cur.dark * 0.45 + cur.fogMix * 0.2);
     for (const m of KS.nightMats) m.emissiveIntensity = nightGlow * 0.85 * (m.userData.nightScale || 1);
     for (const m of KS.lampMats) m.color.setRGB(0.33, 0.33, 0.3).lerp(C(0xffe0a0), nightGlow);
-    if (KS.poolMat) KS.poolMat.opacity = nightGlow * 0.5;
+    if (KS.poolMat) KS.poolMat.opacity = nightGlow * 0.85;
+    if (KS.beamMat) {
+      KS.beamMat.opacity = nightGlow * 0.16; KS.beamPoolMat.opacity = nightGlow * 0.55;
+      const on = nightGlow > 0.3; if (on !== Wx.beamsOn) { Wx.beamsOn = on; for (const m of KS.beams) m.visible = on; }
+    }
     // wet streets
     const wet = cur.rain;
     if (KS.roadMats) for (const m of KS.roadMats) m.color.setScalar(1 - wet * 0.32);

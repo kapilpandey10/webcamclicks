@@ -221,6 +221,23 @@
     };
     // speed cameras
     const flashMat = new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
+    // "speed camera ahead" warning boards about 90 m before every camera, facing traffic from both directions
+    const warnMat = new T.MeshLambertMaterial({ map: KS.tex(256, 192, (g, w, h) => {
+      g.fillStyle = '#1d4fb8'; g.fillRect(0, 0, w, h); g.strokeStyle = '#fff'; g.lineWidth = 8; g.strokeRect(8, 8, w - 16, h - 16);
+      g.fillStyle = '#fff'; g.fillRect(78, 34, 84, 50); g.fillRect(150, 26, 26, 14); g.fillStyle = '#1d4fb8'; g.beginPath(); g.arc(112, 59, 17, 0, 7); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(112, 59, 9, 0, 7); g.fill();
+      g.textAlign = 'center'; g.font = '800 30px "Barlow Condensed", Arial, sans-serif'; g.fillText('SPEED CAMERA AHEAD', w / 2, 118, w - 28);
+      g.font = '700 28px Mukta, sans-serif'; g.fillText('अगाडि स्पीड क्यामेरा', w / 2, 156, w - 28);
+    }) });
+    const warnGeo = new T.PlaneGeometry(2.3, 1.72), backMat = new T.MeshLambertMaterial({ color: 0x8a8a8a });
+    for (const c of KS.SPEEDCAMS) for (const d of [-1, 1]) {
+      // stand it at the kerb so drivers see it
+      const lat = c.ax === 'z' ? c.x : c.z, li = Math.round((lat - G.O) / G.B), L = G.line(li), kerb = L + Math.sign(lat - L) * (G.roadHalf(li) + 0.8);
+      const wx = c.ax === 'z' ? kerb : c.x + d * 90, wz = c.ax === 'z' ? c.z + d * 90 : kerb, y = c.hw ? KS.roadH(wx) : 0;
+      b.cyl(wx, y, wz, 0.07, 2.4, 0x8a8a8a, 5);
+      const m = new T.Mesh(warnGeo, warnMat); m.position.set(wx, y + 3.2, wz); m.rotation.y = c.ax === 'z' ? (d > 0 ? 0 : Math.PI) : d * Math.PI / 2; scene.add(m);
+      const back = new T.Mesh(warnGeo, backMat); back.position.copy(m.position); back.rotation.y = m.rotation.y + Math.PI; scene.add(back);
+      KS.addCircle(wx, wz, 0.12, y + 3.5);
+    }
     for (const c of KS.SPEEDCAMS) {
       const y = c.hw ? KS.roadH(c.x) : 0;
       b.cyl(c.x, y, c.z, 0.14, 5.4, 0x9a9a9a, 6); b.box(c.x, y + 5.2, c.z, 0.7, 0.55, 0.9, 0xe8e8e0); b.box(c.x, y + 5.3, c.z + (c.ax === 'z' ? 0.5 : 0), 0.3, 0.3, 0.1, 0x111111);

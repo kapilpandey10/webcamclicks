@@ -144,7 +144,10 @@
       N.mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       N.micOn = true; setTalking(!N.ptt); sys(N.ptt ? 'Microphone on. Hold G to talk.' : 'Microphone on: open mic.');
       callAll(); N.render2();
-    } catch (e) { KS.Game.notify('Microphone not available: ' + (e.message || e.name), 'bad'); }
+    } catch (e) {
+      const why = !window.isSecureContext ? 'The mic only works on https pages.' : e.name === 'NotAllowedError' ? 'Your browser blocked it: click the 🔒 / ⓘ icon next to the address, allow Microphone, then tap Turn mic on again.' : e.name === 'NotFoundError' ? 'No microphone was found on this device.' : (e.message || e.name);
+      KS.Game.notify('🎙 Microphone not available. ' + why, 'bad'); sys('Mic: ' + why); N.render2();
+    }
   };
   function setTalking(on) { N.talking = on; if (N.mic) N.mic.getAudioTracks().forEach((t) => (t.enabled = on)); }
   N.setPtt = (on) => { N.ptt = on; setTalking(!on); N.render2(); };
@@ -212,6 +215,15 @@
     }
   };
 
+  /* ---------- invite links: ?room=CODE opens the Friends app ready to join ---------- */
+  try { const r = new URLSearchParams(location.search).get('room'); if (r && /^[a-z0-9]{4,6}$/i.test(r)) N.invite = r.toUpperCase(); } catch (e) { /* ignore */ }
+  if (N.invite) {
+    const wait = setInterval(() => {
+      if (KS.state !== 'play' || !KS.Phone) return; clearInterval(wait);
+      KS.Phone.toggle(true); KS.Phone.openApp('friends'); KS.Game.notify(`💬 You were invited to room <b>${N.invite}</b>: tap Join.`);
+    }, 1000);
+  }
+
   /* ---------- UI (phone "Friends" app) ---------- */
   N.render = (el) => { N.el = el; N.unread = 0; N.render2(); };
   N.render2 = () => {
@@ -219,7 +231,8 @@
     const on = N.state === 'host' || N.state === 'guest';
     const players = [{ name: N.name() + ' (you)' }].concat([...N.players.values()]);
     el.innerHTML = on ? `
-      <div class="roomcode"><span>Room</span><b>${N.room}</b><button type="button" class="chip" id="netCopy">Copy</button></div>
+      <div class="roomcode"><span>Room</span><b>${N.room}</b><button type="button" class="chip" id="netCopy">Copy invite link</button></div>
+      ${players.length < 2 ? '<p class="ph-muted small">Waiting for friends… send them the invite link or the code. Keep this tab open.</p>' : ''}
       <p class="ph-muted">${players.length} / ${MAX} players: ${players.map((p) => esc(p.name)).join(', ')}</p>
       <div class="req-btns"><button type="button" class="btn small-btn ${N.micOn ? '' : 'ghost'}" id="netMic">${N.micOn ? '🎙 Mic on' : '🎙 Turn mic on'}</button>
       <label class="set tog"><input type="checkbox" id="netPtt" ${N.ptt ? 'checked' : ''}><span>Push to talk (hold G)</span></label></div>
@@ -227,16 +240,20 @@
       <div class="chatlog" id="netLog"></div>
       <form id="netForm" class="chatform"><input id="netText" maxlength="200" placeholder="Message… (Enter)" autocomplete="off" aria-label="Chat message"><button type="submit" class="btn small-btn">Send</button></form>
       <button type="button" class="btn ghost small-btn" id="netLeave">Leave room</button>`
-      : `<p>Play with friends: one person creates a room and shares the 5-letter code.</p>
+      : `<ol class="howto"><li><b>One player</b> taps <b>Create room</b>.</li><li>They tap <b>Copy invite link</b> and send it (WhatsApp, Viber, Messenger…).</li><li><b>Friends</b> open the link, or type the 5-letter code below and tap <b>Join</b>.</li><li>Everyone appears in the same Kathmandu. Chat with <kbd>Enter</kbd>; tap <b>Turn mic on</b> and allow the microphone to talk.</li></ol>
       <label class="set"><span>Your name</span><input id="netName" maxlength="16" value="${esc(N.name())}" aria-label="Your name"></label>
       <div class="req-btns"><button type="button" class="btn small-btn" id="netCreate" ${N.state === 'connecting' ? 'disabled' : ''}>${N.state === 'connecting' ? 'Connecting…' : 'Create room'}</button></div>
-      <form id="netJoinForm" class="chatform"><input id="netCode" maxlength="6" placeholder="Room code" autocomplete="off" aria-label="Room code" style="text-transform:uppercase"><button type="submit" class="btn small-btn">Join</button></form>
+      <form id="netJoinForm" class="chatform"><input id="netCode" maxlength="6" placeholder="Room code" autocomplete="off" aria-label="Room code" style="text-transform:uppercase" value="${esc(N.invite || '')}"><button type="submit" class="btn small-btn">Join</button></form>
       <p class="ph-muted small">Rooms are private: only people with the code can join. Only share it with people you know. Connections are set up through the free PeerJS server; positions, chat and voice then go directly between players. The microphone is used only after you turn it on.</p>`;
     const b = (id, fn) => { const x = $(id); if (x) x.onclick = fn; };
     b('netCreate', () => { const n = $('netName'); if (n && n.value.trim()) { KS.Shop.data.netName = clean(n.value.trim(), 16); KS.Shop.save(); } N.create(); });
     const jf = $('netJoinForm'); if (jf) jf.onsubmit = (e) => { e.preventDefault(); const n = $('netName'); if (n && n.value.trim()) { KS.Shop.data.netName = clean(n.value.trim(), 16); KS.Shop.save(); } N.join($('netCode').value); };
     b('netLeave', () => N.leave()); b('netMic', () => N.toggleMic());
-    b('netCopy', () => { const t = N.room; if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => KS.Game.notify('Room code copied.'), () => KS.Game.notify('Room code: ' + t)); else KS.Game.notify('Room code: ' + t); });
+    b('netCopy', () => {
+      const t = location.origin + location.pathname + '?room=' + N.room, msg = `Join me in Kathmandu Streets! ${t} (room ${N.room})`;
+      if (navigator.share && matchMedia('(pointer: coarse)').matches) { navigator.share({ title: 'Kathmandu Streets', text: msg, url: t }).catch(() => {}); return; }
+      if (navigator.clipboard) navigator.clipboard.writeText(msg).then(() => KS.Game.notify('🔗 Invite link copied. Paste it to your friends.'), () => KS.Game.notify('Room code: ' + N.room)); else KS.Game.notify('Room code: ' + N.room);
+    });
     const pt = $('netPtt'); if (pt) pt.onchange = (e) => N.setPtt(e.target.checked);
     const px = $('netProx'); if (px) px.onchange = (e) => (N.proximity = e.target.checked);
     const f = $('netForm'); if (f) f.onsubmit = (e) => { e.preventDefault(); const i = $('netText'); N.send(i.value); i.value = ''; };

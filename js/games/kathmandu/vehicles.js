@@ -317,7 +317,24 @@
     }
     return { root, body, rider: riderMesh, color, siren, sirens };
   }
-  KS.buildVehicle = build;
+  /* headlight beams: a soft additive light cone and a pool of light on the road, shown at night */
+  KS.beamMat = new T.MeshBasicMaterial({ color: 0xfff1c8, transparent: true, opacity: 0, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, fog: false });
+  KS.beamPoolMat = new T.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, blending: T.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -6,
+    map: KS.tex(128, 128, (g) => { const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,240,200,0.95)'); gr.addColorStop(1, 'rgba(255,240,200,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); }) });
+  const beamGeo = new T.ConeGeometry(2.4, 13, 14, 1, true).rotateX(-Math.PI / 2).translate(0, 0, 6.5).rotateX(0.07);
+  const smallBeam = new T.ConeGeometry(1.1, 7, 10, 1, true).rotateX(-Math.PI / 2).translate(0, 0, 3.5).rotateX(0.35);
+  const poolGeo = new T.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+  KS.beams = [];
+  KS.addBeam = (root, x, y, z, small) => {
+    const m = new T.Mesh(small ? smallBeam : beamGeo, KS.beamMat); m.position.set(x, y, z); m.visible = false; m.renderOrder = 3; root.add(m); KS.beams.push(m);
+    if (!small) { const p = new T.Mesh(poolGeo, KS.beamPoolMat); p.scale.set(5, 1, 9); p.position.set(x, 0.08 - root.position.y, z + 8); p.visible = false; root.add(p); KS.beams.push(p); }
+    return m;
+  };
+  KS.buildVehicle = (type, opt) => {
+    const r = build(type, opt), L = KS.VTYPES[type].len;
+    KS.addBeam(r.root, 0, KS.isBike(type) ? 0.95 : 0.75, L / 2 + 0.05, type === 'bicycle');
+    return r;
+  };
   /** switch a police vehicle's light bar on or off */
   KS.setSiren = (v, on) => { if (!v.sirens) return; for (const m of v.sirens) if (m.userData.on) { if (on && !m.userData.offMat) m.userData.offMat = m.material; m.material = on ? m.userData.on : m.userData.offMat || m.material; } v.sirenOn = on; };
 })();

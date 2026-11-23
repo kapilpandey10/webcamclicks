@@ -273,6 +273,11 @@ ul.challan li b { color: #ffe27a; white-space: nowrap; font-family: var(--hud); 
 #guide .gh { display: flex; justify-content: space-between; align-items: center; font-family: var(--hud); letter-spacing: .1em; text-transform: uppercase; color: var(--marigold); }
 #guide .gh button { border: 0; background: none; font-size: 18px; color: var(--muted); }
 #guide ol { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 3px; } #guide li.done { opacity: .5; text-decoration: line-through; } #guide kbd { font-size: 11px; padding: 0 4px; }
+#guide li small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; } #guide li:not(.cur) { opacity: .65; } #guide .gr { display: block; color: #9fe0a0; font-size: 12px; } #guide .gp, .goallist .gp { color: var(--marigold); font-weight: 700; }
+#guide .glow { margin-top: 4px; padding: 4px 8px; border-radius: 8px; background: rgba(200,16,46,.35); }
+.goallist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; } .goallist li { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: start; } .goallist li small { display: block; color: var(--muted); } .goallist li em { font-style: normal; color: #9fe0a0; white-space: nowrap; font-size: 13px; } .goallist li.done { opacity: .55; }
+.howgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; } .howgrid div { display: grid; gap: 4px; background: rgba(255,255,255,.05); border-radius: 10px; padding: 10px; } .howgrid span { font-size: 14px; color: #ddd; }
+.howto { margin: 0 0 8px; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
 #lowHealth { position: fixed; inset: 0; pointer-events: none; z-index: 8; opacity: 0; background: radial-gradient(circle, rgba(0,0,0,0) 55%, rgba(160,0,20,.55) 100%); transition: opacity .4s; }
 #cine { position: fixed; inset: 0; z-index: 19; pointer-events: none; }
 #cine::before, #cine::after { content: ""; position: absolute; left: 0; right: 0; height: 11vh; background: #000; }
@@ -436,7 +441,7 @@ body.is-touch #chatFeed { bottom: 190px; }
       <button type="button" role="tab" data-tab-btn="wardrobe" aria-selected="false">Wardrobe</button>
       <button type="button" role="tab" data-tab-btn="radio" aria-selected="false">Radio</button>
       <button type="button" role="tab" data-tab-btn="settings" aria-selected="false">Settings</button>
-      <button type="button" role="tab" data-tab-btn="help" aria-selected="false">Controls</button>
+      <button type="button" role="tab" data-tab-btn="help" aria-selected="false">How to play</button>
     </div>
     <div data-tab-panel="home"><div class="panel" id="homeBox"></div></div>
     <div data-tab-panel="settings" hidden><div class="panel" id="settingsBox"></div></div>
@@ -466,6 +471,16 @@ body.is-touch #chatFeed { bottom: 190px; }
     <div data-tab-panel="radio" hidden><div class="panel"><p style="margin:0" id="radioStatus" class="small"></p><div class="row" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost small-btn" type="button" id="radioOff">Radio off</button><button class="btn ghost small-btn" type="button" id="radioRetry">Reload stations</button></div><div id="radioList"></div><p class="small" style="margin:0">Live streams come from the community-run Radio Browser directory (radio-browser.info). The radio plays while you are in a vehicle. R next station, Shift+R previous.</p></div></div>
     <div data-tab-panel="help" hidden>
       <div class="mgrid">
+        <div class="msec" style="grid-column: 1 / -1"><h3>How to play</h3><div class="howgrid">
+          <div><b>🎯 What to do</b><span>Follow the <b>Goals</b> box (top left). Each goal teaches one part of the game and pays cash and coins. The full list is on the Home tab.</span></div>
+          <div><b>💰 Money &amp; coins</b><span>Earn rupees (रु) from jobs and Uthao rides, spend them on vehicles, upgrades, fruit and fines. Coins 🪙 come from 4★+ rides, new places and goals, and buy clothes.</span></div>
+          <div><b>❤️ Health</b><span>Crashes, falls, fights and being hit by traffic hurt. Buy fruit at a street stall (Phone → Food shows the nearest) or rest. At 0% you wake up at the hospital and pay the bill.</span></div>
+          <div><b>🛵 Making a living</b><span>Phone → Jobs for momo deliveries; press <kbd>U</kbd> to go online on Uthao, <kbd>Y</kbd> accepts a request. Pick up at the yellow beam, follow the blue line, drive smoothly.</span></div>
+          <div><b>🪪 Licences &amp; police</b><span>Start with the bicycle. Pass the written test and trial at the Trial ground for a bike (A) or car (B) licence. Blue shields on the map are traffic police: slow down near them and near 📷 camera signs.</span></div>
+          <div><b>🌙 Night</b><span>Vehicles switch on headlights and walkers carry torches. Press <kbd>L</kbd> for your own torch on foot. Traffic is busiest at 8–10 and 16–19, quiet after 22:00.</span></div>
+          <div><b>💬 Multiplayer</b><span>Phone → Friends → <b>Create room</b> → <b>Copy invite link</b> and send it. Friends open the link and tap Join (up to 8 players). Tap <b>Turn mic on</b> and allow the microphone in your browser to talk; hold <kbd>G</kbd> for push to talk.</span></div>
+          <div><b>🗺️ Getting around</b><span><kbd>M</kbd> opens the map: tap anywhere for turn-by-turn directions. <kbd>C</kbd> calls your vehicle to you. Overhead signs say "… जाने बाटो" (the way to …).</span></div>
+        </div></div>
         <div class="msec"><h3>On foot</h3><div class="ctl">
           <kbd>WASD</kbd><span>Walk · <kbd>Shift</kbd>run · <kbd>Space</kbd>jump</span>
           <kbd>E</kbd><span>Ride any vehicle, spin prayer wheels, ring bells, greet people</span>

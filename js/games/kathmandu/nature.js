@@ -85,7 +85,7 @@
       m.count = n; m.position.set(cx, 0, cz); m.receiveShadow = true; scene.add(m); total += n;
     }
     KS.grassCount = total;
-    fireflies(scene);
+    fireflies(scene); Skid.init(scene);
   };
 
   /* ---------- junkiri: fireflies ---------- */
@@ -111,6 +111,20 @@
     });
     const pts = new T.Points(g, m); pts.frustumCulled = false; scene.add(pts); N.fireflies = pts;
   }
+  /* skid marks: a ring buffer of dark streaks on the road */
+  const Skid = (KS.Skid = { n: 400, i: 0, last: {} });
+  Skid.init = (scene) => {
+    const g = new T.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+    Skid.mesh = new T.InstancedMesh(g, new T.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -7 }), Skid.n);
+    const m = new T.Matrix4().makeScale(0, 0, 0); for (let k = 0; k < Skid.n; k++) Skid.mesh.setMatrixAt(k, m);
+    Skid.mesh.frustumCulled = false; scene.add(Skid.mesh); Skid.d = new T.Object3D();
+  };
+  Skid.add = (x, z, h, w) => {
+    if (!Skid.mesh) return;
+    const d = Skid.d, y = KS.heightAt(x, z) + 0.07, ox = Math.cos(h) * w * 0.42, oz = -Math.sin(h) * w * 0.42;
+    for (const s2 of [-1, 1]) { d.position.set(x + ox * s2, y, z + oz * s2); d.rotation.set(0, h, 0); d.scale.set(0.22, 1, 0.9); d.updateMatrix(); Skid.mesh.setMatrixAt(Skid.i, d.matrix); Skid.i = (Skid.i + 1) % Skid.n; }
+    Skid.mesh.instanceMatrix.needsUpdate = true;
+  };
   N.update = () => {
     if (!N.ffU) return;
     const nightOK = KS.night > 0.55 && KS.Weather.cur.rain < 0.3 && KS.Weather.cur.fogMix < 0.5;

@@ -160,7 +160,7 @@
   const QUESTIONS = [
     ['In Nepal you drive on which side of the road?', ['Left', 'Right', 'Either'], 0],
     ['The traffic light turns amber as you approach. You should:', ['Speed up to cross', 'Prepare to stop', 'Honk and go'], 1],
-    ['Speed limit in the city unless signs say otherwise:', ['40 km/h', '60 km/h', '80 km/h'], 0],
+    ['Speed limit in a school zone during school hours:', ['25 km/h', '40 km/h', '60 km/h'], 0],
     ['Who must wear a helmet on a motorcycle?', ['Only the rider', 'Rider and pillion', 'Nobody in the city'], 1],
     ['In a left-hand traffic country you overtake on the:', ['Left', 'Right', 'Pavement'], 1],
     ['A traffic police officer raises an open palm towards you. You:', ['Stop', 'Slow down and pass', 'Flash your lights'], 0],

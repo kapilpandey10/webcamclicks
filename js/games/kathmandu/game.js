@@ -303,7 +303,14 @@
     if (momoShop.visible) dot(MOMO.x, MOMO.z, 5, '#f2a516', '#5a3a00');
     if (target.visible) dot(target.position.x, target.position.z, 5.5, '#ffd21f', '#111');
     if (waypoint.visible) dot(waypoint.position.x, waypoint.position.z, 5, '#e23a8a', '#fff');
+    const friends = KS.Net ? KS.Net.visible() : [];
+    for (const f of friends) dot(f.x, f.z, 5.5, f.color, '#fff');
     g.restore();
+    for (const f of friends) { // friends outside the minimap: coloured arrow on the rim
+      const dx = (f.x - PL.x) * MAP.px * zoom, dz = (f.z - PL.z) * MAP.px * zoom, rx = dx * Math.cos(th) - dz * Math.sin(th), rz = dx * Math.sin(th) + dz * Math.cos(th);
+      if (Math.hypot(rx, rz) < R - 8) continue;
+      const a2 = Math.atan2(rz, rx); g.save(); g.translate(R + Math.cos(a2) * (R - 10), R + Math.sin(a2) * (R - 10)); g.rotate(a2); g.fillStyle = f.color; g.strokeStyle = '#111'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(8, 0); g.lineTo(-6, -6); g.lineTo(-6, 6); g.closePath(); g.fill(); g.stroke(); g.restore();
+    }
     const tgt = target.visible ? target.position : waypoint.visible ? waypoint.position : null;
     if (tgt) {
       const dx = (tgt.x - PL.x) * MAP.px * zoom, dz = (tgt.z - PL.z) * MAP.px * zoom;
@@ -336,10 +343,15 @@
     for (const v of KS.Traffic.list) if ((v.kind === 'police' || v.kind === 'policebike') && !v.dormant) { g.beginPath(); g.arc(wx(v.x), wz(v.z), (v.chase ? 6 : 4) * k, 0, 7); g.fillStyle = '#1d4fb8'; g.fill(); g.strokeStyle = '#c8102e'; g.lineWidth = 2; g.stroke(); }
     // legend
     g.font = `600 ${Math.round(12 * k)}px "Barlow Condensed", sans-serif`; g.textAlign = 'left';
-    const lg = [['#ffd21f', 'You'], ['#1d3a8a', 'Traffic police'], ['#1d4fb8', 'Police car / bike'], ['#c8102e', 'Signal / red-light camera'], ['#1d4fb8', '▪ Speed camera'], ['#e23a8a', 'Your waypoint']];
+    const lg = [['#ffd21f', 'You'], ['#1d3a8a', 'Traffic police'], ['#1d4fb8', 'Police car / bike'], ['#c8102e', 'Signal / red-light camera'], ['#1d4fb8', '▪ Speed camera'], ['#e23a8a', 'Your waypoint']].concat(KS.Net && KS.Net.visible().length ? [['#ff4fa3', 'Friends (name below)']] : []);
     g.fillStyle = 'rgba(20,14,10,0.72)'; g.fillRect(8 * k, H - (lg.length * 17 + 12) * k, 168 * k, (lg.length * 17 + 6) * k);
     lg.forEach(([c, t], i) => { const y = H - (lg.length * 17 + 2 - i * 17) * k; g.fillStyle = c; g.beginPath(); g.arc(20 * k, y, 5 * k, 0, 7); g.fill(); g.fillStyle = '#fff'; g.fillText(t, 32 * k, y + 4 * k); });
     g.textAlign = 'center';
+    if (KS.Net) for (const f of KS.Net.visible()) {
+      g.beginPath(); g.arc(wx(f.x), wz(f.z), 7 * k, 0, 7); g.fillStyle = f.color; g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke();
+      g.font = `700 ${Math.round(13 * k)}px "Barlow Condensed", sans-serif`; const tw = g.measureText(f.name).width + 10;
+      g.fillStyle = 'rgba(20,14,10,0.85)'; g.fillRect(wx(f.x) - tw / 2, wz(f.z) + 10 * k, tw, 17 * k); g.fillStyle = f.color; g.fillText(f.name, wx(f.x), wz(f.z) + 23 * k);
+    }
     const PL = KS.Player; g.beginPath(); g.arc(wx(PL.x), wz(PL.z), 7 * k, 0, 7); g.fillStyle = '#ffd21f'; g.fill(); g.strokeStyle = '#111'; g.lineWidth = 3; g.stroke();
     for (const [m, c] of [[target, '#ffd21f'], [waypoint, '#e23a8a']]) if (m.visible) { g.beginPath(); g.arc(wx(m.position.x), wz(m.position.z), 7 * k, 0, 7); g.fillStyle = c; g.fill(); }
   }

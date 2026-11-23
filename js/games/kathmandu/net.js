@@ -88,9 +88,23 @@
   function look() { const o = KS.Player.person && KS.Player.person.cfg; return o ? { top: o.topStyle === 'jacket' ? o.jacket : o.top, bottom: o.bottom, skin: o.skin, hat: o.hat, hatColor: o.hatColor, topStyle: o.topStyle } : null; }
 
   /* ---------- remote players ---------- */
+  const COLORS = ['#ff4fa3', '#3fd4ff', '#a6ff3f', '#ff9a2e', '#b77bff', '#ffe23f', '#3fffb0'];
+  /** friends that have sent a position, for the maps */
+  N.visible = () => [...N.players.values()].filter((p) => p.placed);
+  /** jump to a friend (on foot, next to them) */
+  N.goTo = (id) => {
+    const p = N.players.get(id), P = KS.Player; if (!p || !p.placed) { KS.Game.notify('Waiting for their position…'); return; }
+    if (P.vehicle) P.exit();
+    for (const [ox, oz] of [[2, 0], [-2, 0], [0, 2], [0, -2], [3, 3], [0, 0]]) {
+      const c = KS.collide(p.x + ox, p.z + oz, 0.4, p.y, 1.6); if (c.hit && (ox || oz)) continue;
+      P.x = p.x + ox; P.z = p.z + oz; P.y = p.y + 0.3; P.vy = 0; break;
+    }
+    KS.Phone && KS.Phone.toggle(false); KS.Game.notify(`👋 You are next to ${esc(p.name)}.`);
+  };
+  N.find = (id) => { const p = N.players.get(id); if (!p || !p.placed) return; KS.Game.setWaypoint(p.x, p.z); KS.Game.notify(`📍 Route to ${esc(p.name)}: follow the blue line (the pink dot moves with them).`); N.follow = id; };
   function upsert(id, m) {
     let p = N.players.get(id);
-    if (!p) { p = { id, name: m.name || 'Player', x: 0, y: 0, z: 0, h: 0, tx: 0, ty: 0, tz: 0, th: 0, v: '', root: new T.Group(), seen: KS.clock }; KS.scene.add(p.root); N.players.set(id, p); makeTag(p); }
+    if (!p) { p = { id, name: m.name || 'Player', x: 0, y: 0, z: 0, h: 0, tx: 0, ty: 0, tz: 0, th: 0, v: '', root: new T.Group(), seen: KS.clock, color: COLORS[N.players.size % COLORS.length] }; KS.scene.add(p.root); N.players.set(id, p); makeTag(p); }
     if (m.name) p.name = clean(m.name, 16);
     if (m.look && !p.person) p.look = m.look;
     if (m.x != null) { p.tx = m.x; p.ty = m.y; p.tz = m.z; p.th = m.h; p.seen = KS.clock; if (!p.placed) { p.x = m.x; p.y = m.y; p.z = m.z; p.h = m.h; p.placed = true; } }
@@ -179,7 +193,7 @@
     for (const id of [...N.players.keys()]) dropPlayer(id);
     if (N.peer) try { N.peer.destroy(); } catch (e) { /* ignore */ }
     if (N.mic) N.mic.getTracks().forEach((t) => t.stop());
-    N.peer = null; N.mic = null; N.micOn = false; N.state = 'off'; N.room = ''; N.roster = null;
+    N.peer = null; N.mic = null; N.micOn = false; N.arrived = false; N.follow = null; N.state = 'off'; N.room = ''; N.roster = null;
     if (!silent) sys('You left the room.');
     N.render2();
   };
@@ -190,6 +204,9 @@
     if (N.state === 'off' || N.state === 'connecting') return;
     const P = KS.Player, I = KS.Input;
     if (N.micOn && N.ptt) setTalking(!!I.down('KeyG'));
+    if (N.el && N.el.isConnected && KS.clock % 1 < dt) N.el.querySelectorAll('[data-dist]').forEach((e) => { const f = N.players.get(e.dataset.dist); if (f && f.placed) e.textContent = Math.round(Math.hypot(f.x - P.x, f.z - P.z)) + ' m'; });
+    if (!N.host && !N.arrived) { const h = N.players.get(N.hostId); if (h && h.placed) { N.arrived = true; N.goTo(h.id); sys(`You joined ${h.name}. Everyone is on the map as a coloured dot.`); } }
+    if (N.follow) { const f = N.players.get(N.follow); if (!f) N.follow = null; else if (KS.clock % 2 < dt) { if (Math.hypot(f.x - P.x, f.z - P.z) < 12) { N.follow = null; KS.Game.notify(`You found ${esc(f.name)}!`); } else KS.Game.setWaypoint(f.x, f.z, true); } }
     N.sendT -= dt;
     if (N.sendT <= 0) {
       N.sendT = 0.1;
@@ -233,7 +250,8 @@
     el.innerHTML = on ? `
       <div class="roomcode"><span>Room</span><b>${N.room}</b><button type="button" class="chip" id="netCopy">Copy invite link</button></div>
       ${players.length < 2 ? '<p class="ph-muted small">Waiting for friends… send them the invite link or the code. Keep this tab open.</p>' : ''}
-      <p class="ph-muted">${players.length} / ${MAX} players: ${players.map((p) => esc(p.name)).join(', ')}</p>
+      <p class="ph-muted">${players.length} / ${MAX} players in the room. Each friend is a coloured dot on your map.</p>
+      <ul class="netlist">${[...N.players.values()].map((p) => `<li><i style="background:${p.color}"></i><b>${esc(p.name)}</b><small data-dist="${esc(p.id)}">${p.placed ? Math.round(Math.hypot(p.x - KS.Player.x, p.z - KS.Player.z)) + ' m' : 'connecting…'}</small><button type="button" class="chip" data-find="${esc(p.id)}">📍 Find</button><button type="button" class="chip" data-goto="${esc(p.id)}">🚀 Go to</button></li>`).join('')}</ul>
       <div class="req-btns"><button type="button" class="btn small-btn ${N.micOn ? '' : 'ghost'}" id="netMic">${N.micOn ? '🎙 Mic on' : '🎙 Turn mic on'}</button>
       <label class="set tog"><input type="checkbox" id="netPtt" ${N.ptt ? 'checked' : ''}><span>Push to talk (hold G)</span></label></div>
       <label class="set tog"><input type="checkbox" id="netProx" ${N.proximity ? 'checked' : ''}><span>Voices get quieter with distance</span></label>
@@ -249,6 +267,8 @@
     b('netCreate', () => { const n = $('netName'); if (n && n.value.trim()) { KS.Shop.data.netName = clean(n.value.trim(), 16); KS.Shop.save(); } N.create(); });
     const jf = $('netJoinForm'); if (jf) jf.onsubmit = (e) => { e.preventDefault(); const n = $('netName'); if (n && n.value.trim()) { KS.Shop.data.netName = clean(n.value.trim(), 16); KS.Shop.save(); } N.join($('netCode').value); };
     b('netLeave', () => N.leave()); b('netMic', () => N.toggleMic());
+    el.querySelectorAll('[data-find]').forEach((x) => (x.onclick = () => N.find(x.dataset.find)));
+    el.querySelectorAll('[data-goto]').forEach((x) => (x.onclick = () => N.goTo(x.dataset.goto)));
     b('netCopy', () => {
       const t = location.origin + location.pathname + '?room=' + N.room, msg = `Join me in Kathmandu Streets! ${t} (room ${N.room})`;
       if (navigator.share && matchMedia('(pointer: coarse)').matches) { navigator.share({ title: 'Kathmandu Streets', text: msg, url: t }).catch(() => {}); return; }

@@ -273,6 +273,17 @@
     return c;
   }
   let mapC, mini, miniG, big, bigG;
+  const BZ = { z: 1, cx: null, cz: null }; // big map zoom and centre (map pixels)
+  Game.miniZoom = 1;
+  function bigZoom(f, sx, sy) { // zoom about a screen point (canvas pixels)
+    const m = big._map; if (!m) return;
+    const px = sx == null ? BZ.cx : (sx - m.ox) / m.scale, pz = sy == null ? BZ.cz : (sy - m.oz) / m.scale;
+    const z2 = KS.clamp(BZ.z * f, 1, 10), k2 = z2 / BZ.z; BZ.z = z2;
+    BZ.cx = px + (BZ.cx - px) / k2; BZ.cz = pz + (BZ.cz - pz) / k2; clampBZ(); drawBig();
+  }
+  function clampBZ() { BZ.cx = KS.clamp(BZ.cx, 0, MAP.W); BZ.cz = KS.clamp(BZ.cz, 0, MAP.H); if (BZ.z <= 1.01) { BZ.cx = MAP.W / 2; BZ.cz = MAP.H / 2; } }
+  Game.openMap = () => { $('bigwrap').hidden = false; if (!BZ.used) { BZ.used = true; BZ.z = 2.5; BZ.cx = mx(KS.Player.x); BZ.cz = mz(KS.Player.z); } drawBig(); };
+  Game.mapCenterOnMe = (z) => { BZ.z = z || Math.max(BZ.z, 3); BZ.cx = mx(KS.Player.x); BZ.cz = mz(KS.Player.z); drawBig(); };
   /** a traffic police officer on the map: blue shield with a white star */
   function policeDot(g, x, y, k, alert) {
     g.save(); g.translate(x, y); g.scale(k, k);
@@ -286,7 +297,7 @@
     r.forEach(([x, z], i) => { const X = sx(x), Z = sz(z); if (i) g.lineTo(X, Z); else g.moveTo(X, Z); }); g.stroke();
   }
   function drawMini() {
-    const PL = KS.Player, S = mini.width, R = S / 2, zoom = PL.vehicle ? 0.8 : 1.25;
+    const PL = KS.Player, S = mini.width, R = S / 2, zoom = (PL.vehicle ? 0.8 : 1.25) * Game.miniZoom;
     const g = miniG; g.clearRect(0, 0, S, S);
     g.save(); g.beginPath(); g.arc(R, R, R - 2, 0, 7); g.clip();
     g.fillStyle = '#5f7a4a'; g.fillRect(0, 0, S, S);
@@ -327,7 +338,10 @@
   Game.drawBig = () => drawBig();
   function drawBig() {
     const k = devicePixelRatio || 1, W = (big.width = big.clientWidth * k), H = (big.height = big.clientHeight * k), g = bigG;
-    const scale = Math.min(W / MAP.W, H / MAP.H) * 0.98, ox = (W - MAP.W * scale) / 2, oz = (H - MAP.H * scale) / 2;
+    const fit = Math.min(W / MAP.W, H / MAP.H) * 0.98, scale = fit * BZ.z;
+    if (BZ.cx == null) { BZ.cx = MAP.W / 2; BZ.cz = MAP.H / 2; }
+    const ox = W / 2 - BZ.cx * scale, oz = H / 2 - BZ.cz * scale;
+    g.imageSmoothingEnabled = BZ.z < 3;
     const wx = (x) => ox + mx(x) * scale, wz = (z) => oz + mz(z) * scale;
     big._map = { scale, ox, oz };
     g.fillStyle = '#2c3a28'; g.fillRect(0, 0, W, H); g.drawImage(mapC, ox, oz, MAP.W * scale, MAP.H * scale);
@@ -341,6 +355,20 @@
     }
     for (const o of KS.Peds.police || []) policeDot(g, wx(o.x), wz(o.z), 1.3 * k, o.chasing);
     for (const v of KS.Traffic.list) if ((v.kind === 'police' || v.kind === 'policebike') && !v.dormant) { g.beginPath(); g.arc(wx(v.x), wz(v.z), (v.chase ? 6 : 4) * k, 0, 7); g.fillStyle = '#1d4fb8'; g.fill(); g.strokeStyle = '#c8102e'; g.lineWidth = 2; g.stroke(); }
+    if (BZ.z >= 3 && KS.roadNameAt) { // street names when zoomed in
+      g.font = `600 ${Math.round(11 * k)}px "Barlow Condensed", sans-serif`; g.fillStyle = 'rgba(40,30,20,0.85)';
+      const every = BZ.z >= 6 ? 2 : 3;
+      for (let i = 1; i < G.N; i++) for (let j = i % every; j < G.N; j += every) {
+        const x = G.line(i), z = G.line(j) + 45, n = KS.roadNameAt(x, z); if (!n) continue; const t = n[1].replace(/ · .*/, '');
+        const X = wx(x), Z = wz(z); if (X < 0 || X > W || Z < 0 || Z > H) continue;
+        g.save(); g.translate(X, Z); g.rotate(Math.PI / 2); g.fillText(t, 0, -4 * k); g.restore();
+      }
+      for (let j = 1; j < G.N; j++) for (let i = (j + 1) % every; i < G.N; i += every) {
+        const x = G.line(i) + 45, z = G.line(j), n = KS.roadNameAt(x, z); if (!n) continue; const t = n[1].replace(/ · .*/, '');
+        const X = wx(x), Z = wz(z); if (X < 0 || X > W || Z < 0 || Z > H) continue;
+        g.fillText(t, X, Z - 4 * k);
+      }
+    }
     // legend
     g.font = `600 ${Math.round(12 * k)}px "Barlow Condensed", sans-serif`; g.textAlign = 'left';
     const lg = [['#ffd21f', 'You'], ['#1d3a8a', 'Traffic police'], ['#1d4fb8', 'Police car / bike'], ['#c8102e', 'Signal / red-light camera'], ['#1d4fb8', '▪ Speed camera'], ['#e23a8a', 'Your waypoint']].concat(KS.Net && KS.Net.visible().length ? [['#ff4fa3', 'Friends (name below)']] : []);
@@ -394,7 +422,7 @@
     waypoint = makeMarker(0xe23a8a); scene.add(waypoint);
     mapC = buildMapCanvas(); mini = $('minimap'); miniG = mini.getContext('2d'); big = $('bigmap'); bigG = big.getContext('2d');
     mini.style.pointerEvents = 'auto'; mini.style.cursor = 'pointer';
-    mini.addEventListener('click', () => { $('bigwrap').hidden = false; drawBig(); });
+    mini.addEventListener('click', () => Game.openMap());
     const dests = $('bigDest');
     for (const l of KS.landmarks.filter((x) => !x.minor || x.id === 'trial' || x.id.startsWith('lot'))) {
       const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'chip'; bt.textContent = l.name;
@@ -402,17 +430,39 @@
       dests.appendChild(bt);
     }
     $('bigClear').onclick = () => { waypoint.visible = false; Game.route = null; drawBig(); };
-    big.addEventListener('click', (e) => {
-      const r = big.getBoundingClientRect(), k = devicePixelRatio || 1, m = big._map;
-      const x = ((e.clientX - r.left) * k - m.ox) / m.scale / MAP.px + B.x0, z = ((e.clientY - r.top) * k - m.oz) / m.scale / MAP.px + B.z0;
-      waypoint.position.set(x, KS.heightAt(x, z) + 0.05, z); waypoint.visible = true; if (!target.visible) Game.routeT = 0; Game.notify('📍 Waypoint set. Follow the blue GPS line.'); drawBig();
+    // big map: drag to pan, wheel or pinch to zoom, tap to set a route
+    const ptrs = new Map(); let drag = null;
+    const toCanvas = (e) => { const r = big.getBoundingClientRect(), k = devicePixelRatio || 1; return [(e.clientX - r.left) * k, (e.clientY - r.top) * k]; };
+    big.addEventListener('wheel', (e) => { e.preventDefault(); const [x, y] = toCanvas(e); bigZoom(e.deltaY < 0 ? 1.25 : 0.8, x, y); }, { passive: false });
+    big.addEventListener('pointerdown', (e) => { big.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, toCanvas(e)); drag = { moved: 0, pinch: ptrs.size === 2 ? null : undefined }; });
+    big.addEventListener('pointermove', (e) => {
+      if (!ptrs.has(e.pointerId) || !drag) return;
+      const prev = ptrs.get(e.pointerId), cur = toCanvas(e), m = big._map;
+      if (ptrs.size === 1) { BZ.cx -= (cur[0] - prev[0]) / m.scale; BZ.cz -= (cur[1] - prev[1]) / m.scale; drag.moved += Math.hypot(cur[0] - prev[0], cur[1] - prev[1]); ptrs.set(e.pointerId, cur); clampBZ(); drawBig(); return; }
+      const [a2, b2] = [...ptrs.values()], d0 = Math.hypot(a2[0] - b2[0], a2[1] - b2[1]);
+      ptrs.set(e.pointerId, cur); const [c2, d2] = [...ptrs.values()], d1 = Math.hypot(c2[0] - d2[0], c2[1] - d2[1]);
+      drag.moved += 99; if (d0 > 10) bigZoom(d1 / d0, (c2[0] + d2[0]) / 2, (c2[1] + d2[1]) / 2);
     });
+    const up = (e) => {
+      const was = ptrs.has(e.pointerId); ptrs.delete(e.pointerId);
+      if (!was || !drag || ptrs.size) return;
+      const k = devicePixelRatio || 1;
+      if (drag.moved < 8 * k) { // a tap: route there
+        const [cx, cy] = toCanvas(e), m = big._map, x = (cx - m.ox) / m.scale / MAP.px + B.x0, z = (cy - m.oz) / m.scale / MAP.px + B.z0;
+        waypoint.position.set(x, KS.heightAt(x, z) + 0.05, z); waypoint.visible = true; if (!target.visible) Game.routeT = 0; Game.notify('📍 Waypoint set. Follow the blue GPS line.'); drawBig();
+      }
+      drag = null;
+    };
+    big.addEventListener('pointerup', up); big.addEventListener('pointercancel', (e) => { ptrs.delete(e.pointerId); drag = null; });
+    $('mapIn').onclick = () => bigZoom(1.5); $('mapOut').onclick = () => bigZoom(1 / 1.5); $('mapMe').onclick = () => Game.mapCenterOnMe();
+    const mz2 = (f) => { Game.miniZoom = KS.clamp(Game.miniZoom * f, 0.4, 3); };
+    $('miniIn').onclick = () => mz2(1.4); $('miniOut').onclick = () => mz2(1 / 1.4);
     addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
     document.addEventListener('visibilitychange', () => { if (document.hidden && KS.state === 'play') pause(true); });
     KS.Radio.onchange = () => { if (KS.state === 'pause') renderRadio(); };
     $('loading').hidden = true; $('title').hidden = false;
     buildMenu(); KS.Phone.init(); KS.Uthao.render();
-    if (!KS.Settings.data().minimap) $('minimap').hidden = true;
+    if (!KS.Settings.data().minimap) $('minimap').parentElement.hidden = true;
     requestAnimationFrame(frame);
     window.__ks = { ready: true, buildings: KS.buildingCount, trees: KS.treeCount, vehicles: KS.Traffic.list.length, peds: KS.Peds.list.length };
   };
@@ -481,7 +531,7 @@
       <div class="hcard"><h4>Quick</h4><div class="chips"><button type="button" class="chip" data-q="phone">📱 Phone</button><button type="button" class="chip" data-q="map">🗺️ Map</button><button type="button" class="chip" data-q="friends">💬 Play with friends</button><button type="button" class="chip" data-q="bike">🚲 Bring my bicycle</button></div></div>
     </div>`;
     const hl = $('homeLic'); if (hl) hl.onclick = () => { Game.setWaypoint(KS.trialGround.counter.x, KS.trialGround.counter.z); pause(false); Game.notify('📍 Follow the blue line to the Trial ground.'); };
-    $('homeBox').querySelectorAll('[data-q]').forEach((b) => (b.onclick = () => { const q = b.dataset.q; pause(false); if (q === 'phone') KS.Phone.toggle(true); if (q === 'map') { $('bigwrap').hidden = false; drawBig(); } if (q === 'friends') { KS.Phone.toggle(true); KS.Phone.openApp('friends'); } if (q === 'bike') KS.Shop.deliver('cycle'); }));
+    $('homeBox').querySelectorAll('[data-q]').forEach((b) => (b.onclick = () => { const q = b.dataset.q; pause(false); if (q === 'phone') KS.Phone.toggle(true); if (q === 'map') Game.openMap(); if (q === 'friends') { KS.Phone.toggle(true); KS.Phone.openApp('friends'); } if (q === 'bike') KS.Shop.deliver('cycle'); }));
     const s = D.uthao; $('uthaoStats').textContent = `Rating ★ ${KS.Uthao.rating().toFixed(2)} · ${s.trips} trips · रु ${s.earned.toLocaleString('en-IN')} earned`;
     $('btnUthao').textContent = KS.Uthao.online ? 'Go offline' : 'Go online';
   };
@@ -508,7 +558,7 @@
     KS.clock += dt;
     if (play) {
       if (I.hit('Escape') || I.hit('KeyP')) pause(true);
-      if (I.hit('KeyM') || I.hit('KeyMap')) { const b = $('bigwrap'); b.hidden = !b.hidden; if (!b.hidden) drawBig(); }
+      if (I.hit('KeyM') || I.hit('KeyMap')) { const b = $('bigwrap'); if (b.hidden) Game.openMap(); else b.hidden = true; }
       if (I.hit('KeyT')) { if (I.down('ShiftLeft') || I.down('ShiftRight')) { KS.time = (KS.time + 3) % 24; Game.notify('Skipped 3 hours → ' + fmtTime(KS.time)); } else { KS.Weather.auto = false; KS.Weather.next(); Game.notify(`Weather: <b>${KS.Weather.TYPES[KS.Weather.type].name}</b>`); } }
       if (I.hit('KeyR') || I.hit('KeyRadio')) { A.init(); const st = KS.Radio.next(I.down('ShiftLeft') ? -1 : 1); Game.notify(st ? `📻 <b>${st.name}</b>${PL.vehicle || KS.Radio.onFoot ? '' : ' <span>(plays in vehicles, or turn on earphones in Phone → Radio)</span>'}` : '📻 Radio off'); if (KS.Phone.app === 'radio') KS.Phone.refresh(); }
       if (I.hit('KeyU')) KS.Uthao.toggle();
@@ -531,7 +581,11 @@
     KS.Peds.update(dt, ctx);
     KS.Animals.update(dt, { px: PL.x, pz: PL.z, playerSpeed: Math.abs(PL.speed), honk: Game.honk > 0.35, inVehicle: !!PL.vehicle, vehicleKind: PL.vehicle && (KS.isBike(PL.vehicle.kind) ? 'bike' : 'car'), night: KS.night });
     for (const u of KS.timeUniforms) u.value = KS.clock;
-    if (KS.waterTex) KS.waterTex.offset.x = (KS.clock * 0.004) % 1;
+    if (KS.waterU) {
+      const U = KS.waterU, Wx = KS.Weather; U.uTime.value = KS.clock;
+      if (Wx.skyU) { U.uSky.value.copy(Wx.skyU.horizon.value); U.uSunDir.value.copy(Wx.skyU.sunDir.value); U.uSun.value = Wx.skyU.sunAmt.value * (1 - Wx.cur.cloud * 0.7); }
+      U.uLight.value = 0.3 + 0.7 * KS.day + 0.15 * KS.night;
+    }
     for (const h of KS.clockHands) h.hand.rotation.z = h.k === 'h' ? -((KS.time % 12) / 12) * Math.PI * 2 : -(KS.time % 1) * Math.PI * 2;
     const fp = KS.flyingPlane; if (fp) {
       const cyc = KS.clock % 150, rx = KS.runwayX;

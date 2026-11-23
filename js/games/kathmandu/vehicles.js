@@ -58,6 +58,9 @@
     }
     return KS.pick(routeMats);
   }
+  const signMats = {};
+  /** the destination board for a bus on a fixed route */
+  KS.routeSignMat = (txt) => signMats[txt] || (signMats[txt] = new T.MeshBasicMaterial({ map: KS.tex(256, 48, (g, w, h) => { g.fillStyle = '#111'; g.fillRect(0, 0, w, h); g.fillStyle = '#ffb02e'; g.font = `700 26px ${KS.FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, w / 2, h / 2 + 2, w - 10); }) }));
   let truckMat, ambMat;
   function truckBack() {
     return truckMat || (truckMat = new T.MeshLambertMaterial({ map: KS.tex(256, 160, (g, w, h) => {
@@ -302,7 +305,7 @@
     let riderMesh = null;
     if (!riderB.empty) { riderMesh = new T.Mesh(riderB.build(), KS.M.vc); riderMesh.castShadow = true; root.add(riderMesh); }
     if (plate) { const pl = new T.Mesh(new T.PlaneGeometry(0.6, 0.23), plateMat(plate)); pl.position.set(0, 0.5, -L / 2 - 0.03); pl.rotation.y = Math.PI; root.add(pl); }
-    if (route) { const rb = new T.Mesh(new T.PlaneGeometry(W * 0.75, 0.3), routeMat()); rb.position.set(0, type === 'micro' ? 1.95 : (type === 'bus' ? 2.85 : 2.5), L / 2 + 0.03); root.add(rb); }
+    if (route) { const rb = new T.Mesh(new T.PlaneGeometry(W * 0.75, 0.3), routeMat()); rb.position.set(0, type === 'micro' ? 1.95 : (type === 'bus' ? 2.85 : 2.5), L / 2 + 0.03); root.add(rb); root.userData.routeBoard = rb; }
     for (const [k] of extra) {
       if (k === 'truck') { const tb = new T.Mesh(new T.PlaneGeometry(W, 1.7), truckBack()); tb.position.set(0, 1.75, -L / 2 + 0.08); tb.rotation.y = Math.PI; root.add(tb); }
       if (k === 'amb') for (const s of [-1, 1]) { const ab = new T.Mesh(new T.PlaneGeometry(L * 0.55, 0.32), ambBoard()); ab.position.set(s * (W / 2 + 0.02), 1.6, -0.3); ab.rotation.y = s * Math.PI / 2; root.add(ab); }
@@ -317,22 +320,54 @@
     }
     return { root, body, rider: riderMesh, color, siren, sirens };
   }
-  /* headlight beams: a soft additive light cone and a pool of light on the road, shown at night */
-  KS.beamMat = new T.MeshBasicMaterial({ color: 0xfff1c8, transparent: true, opacity: 0, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, fog: false });
-  KS.beamPoolMat = new T.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, blending: T.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -6,
-    map: KS.tex(128, 128, (g) => { const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,240,200,0.95)'); gr.addColorStop(1, 'rgba(255,240,200,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); }) });
-  const beamGeo = new T.ConeGeometry(2.4, 13, 14, 1, true).rotateX(-Math.PI / 2).translate(0, 0, 6.5).rotateX(0.07);
-  const smallBeam = new T.ConeGeometry(1.1, 7, 10, 1, true).rotateX(-Math.PI / 2).translate(0, 0, 3.5).rotateX(0.35);
+  /* night lights: a soft pool of light on the road ahead (no fake light cones), glowing lamps and red tail lights.
+     Lamp glows of every vehicle are drawn as one point cloud, updated each night frame. */
+  const poolTex = (() => {
+    const c = document.createElement('canvas'); c.width = 64; c.height = 128; const g = c.getContext('2d'), im = g.createImageData(64, 128);
+    for (let r = 0; r < 128; r++) for (let q = 0; q < 64; q++) {
+      const t = r / 127, u = q / 63 - 0.5, w = 0.16 + 0.3 * t;
+      const a = KS.smooth(0, 0.1, t) * Math.pow(1 - t, 1.7) * Math.exp(-(u * u) / (w * w) * 2.2);
+      const k = (r * 64 + q) * 4; im.data[k] = 255; im.data[k + 1] = 236; im.data[k + 2] = 196; im.data[k + 3] = Math.round(255 * Math.min(1, a * 1.25));
+    }
+    g.putImageData(im, 0, 0); const t2 = new T.CanvasTexture(c); return t2;
+  })();
+  KS.beamPoolMat = new T.MeshBasicMaterial({ map: poolTex, transparent: true, opacity: 0, depthWrite: false, blending: T.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -6 });
+  KS.beamMat = KS.beamPoolMat; // kept for older callers
   const poolGeo = new T.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
-  KS.beams = [];
-  KS.addBeam = (root, x, y, z, small) => {
-    const m = new T.Mesh(small ? smallBeam : beamGeo, KS.beamMat); m.position.set(x, y, z); m.visible = false; m.renderOrder = 3; root.add(m); KS.beams.push(m);
-    if (!small) { const p = new T.Mesh(poolGeo, KS.beamPoolMat); p.scale.set(5, 1, 9); p.position.set(x, 0.08 - root.position.y, z + 8); p.visible = false; root.add(p); KS.beams.push(p); }
-    return m;
+  const glowTex = KS.tex(64, 64, (g) => { const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.18, 'rgba(255,250,235,0.9)'); gr.addColorStop(0.45, 'rgba(255,230,180,0.25)'); gr.addColorStop(1, 'rgba(255,220,160,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); });
+  KS.beams = []; KS.glows = [];
+  const MAXG = 900, gPos = new Float32Array(MAXG * 3), gCol = new Float32Array(MAXG * 3), gGeo = new T.BufferGeometry();
+  gGeo.setAttribute('position', new T.BufferAttribute(gPos, 3)); gGeo.setAttribute('color', new T.BufferAttribute(gCol, 3)); gGeo.setDrawRange(0, 0);
+  KS.glowPoints = new T.Points(gGeo, new T.PointsMaterial({ map: glowTex, size: 0.9, sizeAttenuation: true, vertexColors: true, transparent: true, depthWrite: false, blending: T.AdditiveBlending, opacity: 0 }));
+  KS.glowPoints.frustumCulled = false;
+  /** root: the vehicle or person; x,y,z: the lamp; small: a hand torch. opt.wid / opt.len: vehicle size for twin lamps and tail lights */
+  KS.addBeam = (root, x, y, z, small, opt = {}) => {
+    const p = new T.Mesh(poolGeo, KS.beamPoolMat);
+    if (small) { p.scale.set(1.8, 1, 4.2); p.position.set(x * 0.5, 0.06 - root.position.y, z + 2.1); }
+    else { const big = opt.wid > 1.2; p.scale.set(big ? 5.2 : 3.6, 1, big ? 13 : 10); p.position.set(x, 0.08 - root.position.y, z + (big ? 6.3 : 4.9)); }
+    p.visible = false; p.renderOrder = 2; root.add(p); KS.beams.push(p);
+    const add = (lx, ly, lz, s, r, g, b) => KS.glows.push({ root, v: new T.Vector3(lx, ly, lz), s, c: [r, g, b] });
+    if (small) add(x, y, z, 0.5, 1, 0.95, 0.8);
+    else if (opt.wid > 1.2) { const w = opt.wid * 0.36; add(x - w, y, z, 1, 1, 0.97, 0.88); add(x + w, y, z, 1, 1, 0.97, 0.88); if (opt.len) { add(-w, y + 0.05, -opt.len / 2 - 0.03, 0.6, 0.9, 0.05, 0.04); add(w, y + 0.05, -opt.len / 2 - 0.03, 0.6, 0.9, 0.05, 0.04); } }
+    else { add(x, y, z, 0.85, 1, 0.97, 0.88); if (opt.len) add(0, y - 0.1, -opt.len / 2, 0.45, 0.9, 0.05, 0.04); }
+    return p;
+  };
+  const wv = new T.Vector3();
+  const shown = (o) => { if (!o.parent) return false; for (let k = 0; o && k < 4; k++, o = o.parent) if (!o.visible) return false; return true; };
+  /** move the lamp glows to where their vehicles and walkers are (night only) */
+  KS.updateGlows = (camPos) => {
+    let n = 0;
+    for (const L of KS.glows) {
+      if (n >= MAXG) break; const r = L.root;
+      if (Math.abs(r.position.x - camPos.x) > 260 || Math.abs(r.position.z - camPos.z) > 260 || !shown(r)) continue;
+      wv.copy(L.v).applyMatrix4(r.matrixWorld); gPos[n * 3] = wv.x; gPos[n * 3 + 1] = wv.y; gPos[n * 3 + 2] = wv.z;
+      gCol[n * 3] = L.c[0] * L.s; gCol[n * 3 + 1] = L.c[1] * L.s; gCol[n * 3 + 2] = L.c[2] * L.s; n++;
+    }
+    gGeo.setDrawRange(0, n); gGeo.attributes.position.needsUpdate = true; gGeo.attributes.color.needsUpdate = true;
   };
   KS.buildVehicle = (type, opt) => {
-    const r = build(type, opt), L = KS.VTYPES[type].len;
-    KS.addBeam(r.root, 0, KS.isBike(type) ? 0.95 : 0.75, L / 2 + 0.05, type === 'bicycle');
+    const r = build(type, opt), VT = KS.VTYPES[type], L = VT.len;
+    KS.addBeam(r.root, 0, KS.isBike(type) ? 0.95 : 0.75, L / 2 + 0.05, false, { wid: KS.isBike(type) ? 0.5 : VT.wid, len: L });
     return r;
   };
   /** switch a police vehicle's light bar on or off */

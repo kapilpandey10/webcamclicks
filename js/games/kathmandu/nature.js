@@ -63,6 +63,8 @@
     const sw = KS.SWAYAMBHU; N.region(sw.x - 140, sw.x + 140, sw.z - 140, sw.z + 140, 0.03, null, (x, z) => Math.hypot(x - sw.x, z - sw.z) < 32 || Math.abs(z - sw.z) < 9);
     // riverbanks and outskirts meadows
     N.region(-900, 900, KS.RIVER.z1 + 26, KS.RIVER.z1 + 60, 0.03, null);
+    // reeds and grass along both banks, down to the waterline
+    for (let x = -1400; x < 1400; x += 200) { N.region(x, x + 200, KS.RIVER.z0 - 6, KS.RIVER.z0 + 14, 0.09, null); N.region(x, x + 200, KS.RIVER.z1 - 14, KS.RIVER.z1 + 6, 0.09, null); }
     for (let i = 0; i < 40; i++) { const a = KS.r(0, Math.PI * 2), d = KS.r(620, 820), x = Math.cos(a) * d, z = Math.sin(a) * d; if (x > 560 && x < 840 && Math.abs(z) < 420) continue; if (z > KS.RIVER.z0 - 20 && z < KS.RIVER.z1 + 20) continue; N.region(x - 20, x + 20, z - 20, z + 20, 0.12, null); }
     let total = 0;
     for (const R of regions) {

@@ -168,7 +168,13 @@
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), z = pos.getZ(i), h = KS.heightAt(x, z, true); pos.setY(i, h);
       const m = Math.max(Math.abs(x), Math.abs(z)), n = KS.fbm(x * 0.02, z * 0.02);
-      if (h < -0.5) c.setHex(0x6b5a40);
+      if (z > KS.RIVER.z0 - 14 && z < KS.RIVER.z1 + 14 && h < 0.6) { // riverbanks: wet mud at the waterline, then grey gravel and sand
+        const n2 = KS.fbm(x * 0.08, z * 0.08);
+        if (h < KS.RIVER.water + 0.25) c.setHex(0x4a3f30).lerp(new T.Color(0x5a4c38), n2);
+        else c.setHex(0x9a9282).lerp(new T.Color(0xb0a588), n2).offsetHSL(0, 0, (n - 0.5) * 0.1);
+        if (h > -0.2 && n2 > 0.55) c.lerp(new T.Color(0x7a8a4a), 0.6);
+      }
+      else if (h < -0.5) c.setHex(0x6b5a40);
       else if (m < 560) c.setHex(0x9f9177).offsetHSL(0, 0, (n - 0.5) * 0.08);
       else if (h > 60) c.setHex(0x3f5f2e).lerp(new T.Color(0x56703c), n);
       else c.setHex(0x7c8e4c).lerp(new T.Color(0x9a9a5c), n).offsetHSL(0, 0, (n - 0.5) * 0.1);
@@ -177,17 +183,61 @@
     geo.setAttribute('color', new T.BufferAttribute(cols, 3)); geo.computeVertexNormals();
     const m = new T.Mesh(geo, KS.M.vc); m.receiveShadow = true; scene.add(m);
 
-    // Bagmati: murky green-brown water with flowing ripples
-    const wt = KS.tex(256, 256, (g, w, h) => {
-      noiseFill(g, w, h, '#5d6b4c', 20, 2000);
-      g.strokeStyle = 'rgba(220,230,200,0.18)'; g.lineWidth = 2;
-      for (let i = 0; i < 26; i++) { const y = KS.r(0, h), x = KS.r(0, w); g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + 20, y - 4, x + 44, y); g.stroke(); }
-    }, true);
-    wt.repeat.set(40, 1.2);
-    KS.waterTex = wt;
-    KS.waterMat = new T.MeshLambertMaterial({ map: wt, transparent: true, opacity: 0.92 });
-    const wg = new T.PlaneGeometry(KS.BOUNDS.x1 - KS.BOUNDS.x0, KS.RIVER.z1 - KS.RIVER.z0 + 14); wg.rotateX(-Math.PI / 2);
-    const water = new T.Mesh(wg, KS.waterMat); water.position.set((KS.BOUNDS.x0 + KS.BOUNDS.x1) / 2, KS.RIVER.water, (KS.RIVER.z0 + KS.RIVER.z1) / 2); scene.add(water);
+    // Bagmati: murky water that flows, reflects the sky, glints in the sun and foams at the banks
+    const R = KS.RIVER;
+    KS.waterU = T.UniformsUtils.merge([T.UniformsLib.fog, { uTime: { value: 0 }, uSky: { value: new T.Color(0xbcd6ee) }, uSunDir: { value: new T.Vector3(0.3, 0.8, 0.4) }, uSun: { value: 1 }, uLight: { value: 1 }, uC: { value: new T.Vector2((R.z0 + R.z1) / 2, (R.z1 - R.z0) / 2) } }]);
+    KS.waterMat = new T.ShaderMaterial({
+      uniforms: KS.waterU, fog: true, transparent: true,
+      vertexShader: `varying vec3 vW;
+        #include <fog_pars_vertex>
+        void main(){
+          vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; vec4 mvPosition = viewMatrix * w; gl_Position = projectionMatrix * mvPosition;
+          #include <fog_vertex>
+        }`,
+      fragmentShader: `uniform float uTime, uSun, uLight; uniform vec3 uSky, uSunDir; uniform vec2 uC; varying vec3 vW;
+        #include <fog_pars_fragment>
+        float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
+        float fbm(vec2 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 4; i++) { s += a * noise(p); p *= 2.03; a *= 0.5; } return s; }
+        void main(){
+          float t = uTime;
+          vec2 p = vW.xz;
+          // ripples carried by the current (the river flows east, faster in the middle)
+          float mid = 1.0 - clamp(abs(vW.z - uC.x) / uC.y, 0.0, 1.0);
+          vec2 q = vec2(p.x * 0.12 - t * (0.5 + 0.9 * mid), p.y * 0.35);
+          float h = fbm(q) * 0.6 + fbm(q * 2.7 + vec2(-t * 0.4, t * 0.1)) * 0.4;
+          float hx = fbm(q + vec2(0.05, 0.0)) - fbm(q - vec2(0.05, 0.0)), hz = fbm(q + vec2(0.0, 0.05)) - fbm(q - vec2(0.0, 0.05));
+          vec3 n = normalize(vec3(-hx * 2.2, 1.0, -hz * 2.2));
+          vec3 V = normalize(cameraPosition - vW);
+          float fres = 0.08 + 0.6 * pow(1.0 - max(dot(n, V), 0.0), 4.0);
+          vec3 deep = vec3(0.20, 0.25, 0.17), shallow = vec3(0.42, 0.40, 0.28);
+          vec3 col = mix(shallow, deep, smoothstep(0.0, 0.7, mid)) * (0.85 + 0.3 * h);
+          col = mix(col, uSky * 0.9, fres);
+          vec3 Rr = reflect(-normalize(uSunDir), n);
+          col += vec3(1.0, 0.95, 0.85) * pow(max(dot(Rr, V), 0.0), 60.0) * 0.8 * uSun;
+          // foam: streaks along the banks and around the current
+          float edge = smoothstep(0.55, 0.95, 1.0 - mid);
+          float foam = smoothstep(0.62, 0.8, fbm(vec2(p.x * 0.35 - t * 1.2, p.y * 0.9))) * (0.25 + 0.75 * edge);
+          col = mix(col, vec3(0.86, 0.85, 0.78), foam * 0.55);
+          gl_FragColor = vec4(col * uLight, 0.93);
+          #include <fog_fragment>
+        }`,
+    });
+    const wg = new T.PlaneGeometry(KS.BOUNDS.x1 - KS.BOUNDS.x0, R.z1 - R.z0 + 14, 1, 1); wg.rotateX(-Math.PI / 2);
+    const water = new T.Mesh(wg, KS.waterMat); water.position.set((KS.BOUNDS.x0 + KS.BOUNDS.x1) / 2, R.water, (R.z0 + R.z1) / 2); water.renderOrder = 1; scene.add(water);
+    // boulders along the banks and in the shallows
+    const rg = new T.DodecahedronGeometry(1, 0), rocks = new T.InstancedMesh(rg, new T.MeshLambertMaterial({ vertexColors: false }), 520), d = new T.Object3D(), rc = new T.Color();
+    let n = 0;
+    for (let k = 0; k < 3000 && n < 520; k++) {
+      const x = KS.r(-1500, 1400), z = KS.r(R.z0 - 2, R.z1 + 2), h = KS.heightAt(x, z);
+      if (h > 0.2 || h < R.water - 0.6) continue; // only near the waterline
+      if (Math.abs(((x - G.O) % G.B + G.B) % G.B) < 14 || Math.abs(((x - G.O) % G.B + G.B) % G.B - G.B) < 14) continue; // keep clear of bridges
+      const s2 = KS.r(0.25, 1.1);
+      d.position.set(x, h - s2 * 0.35, z); d.rotation.set(KS.r(0, 3), KS.r(0, 3), KS.r(0, 3)); d.scale.set(s2 * KS.r(0.8, 1.5), s2 * KS.r(0.5, 0.9), s2); d.updateMatrix();
+      rocks.setMatrixAt(n, d.matrix); rocks.setColorAt(n, rc.setHSL(KS.r(0.07, 0.12), KS.r(0.05, 0.15), KS.r(0.35, 0.55))); n++;
+    }
+    rocks.count = n; rocks.receiveShadow = true; rocks.castShadow = KS.quality.shadows; scene.add(rocks);
   }
 
   /* ================= roads, sidewalks, bridges ================= */

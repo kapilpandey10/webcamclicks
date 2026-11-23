@@ -540,7 +540,7 @@
       if (Math.abs(((along - G.O) % G.B) - 45) > 30) { i--; continue; }
       const { c, r } = G.blockOf(x, z); if (KS.blockType(c, r) === 'river') { i--; continue; }
       const cow = quad({ color: KS.pick([0xf2ede4, 0xe8e0d0, 0x8a6a4a, 0x3a3028, 0xd8c8b0]), len: 1.9, wid: 0.75, h: 0.95, leg: 0.06, hump: true, horns: true, garland: KS.chance(0.5), bell: KS.chance(0.6) });
-      Object.assign(cow, { x, z, h: vertical ? (KS.chance(0.5) ? 0 : Math.PI) : (KS.chance(0.5) ? Math.PI / 2 : -Math.PI / 2), vertical, line: G.line(li), t: KS.r(0, 10), mode: KS.pick(['lie', 'lie', 'stand', 'walk', 'walk']), ph: 0, dirSign: KS.chance(0.5) ? 1 : -1 });
+      Object.assign(cow, { x, z, h: vertical ? (KS.chance(0.5) ? 0 : Math.PI) : (KS.chance(0.5) ? Math.PI / 2 : -Math.PI / 2), vertical, line: G.line(li), t: KS.r(0, 10), mode: KS.pick(['lie', 'stand', 'walk', 'walk', 'walk']), modeT: KS.r(10, 50), ph: 0, dirSign: KS.chance(0.5) ? 1 : -1, sp: KS.r(0.6, 0.95) });
       if (cow.mode === 'lie') { cow.legs.forEach((l) => (l.visible = false)); cow.body.position.y = -0.62; }
       cow.g.position.set(x, 0.05, z); cow.g.rotation.y = cow.h; scene.add(cow.g); Animals.cows.push(cow);
     }
@@ -583,12 +583,40 @@
         if (cow.vertical) cow.x += side * dt * 0.9; else cow.z += side * dt * 0.9;
         const lim = cow.line + side * 6.2; if (cow.vertical) cow.x = side > 0 ? Math.min(cow.x, lim) : Math.max(cow.x, lim); else cow.z = side > 0 ? Math.min(cow.z, lim) : Math.max(cow.z, lim);
         cow.ph += dt * 5; walkLegs(cow, cow.ph, 0.35);
-      } else if (cow.mode === 'walk') { // slow amble along the road, turning at the next junction
-        const sp = 0.7, dirx = cow.vertical ? 0 : cow.dirSign, dirz = cow.vertical ? cow.dirSign : 0;
-        cow.x += dirx * sp * dt; cow.z += dirz * sp * dt; cow.h = Math.atan2(dirx, dirz); cow.ph += dt * 4.5; walkLegs(cow, cow.ph, 0.3);
-        const along = cow.vertical ? cow.z : cow.x, m = ((along - G.O) % G.B + G.B) % G.B;
-        if (m < 16 || m > G.B - 16) { cow.dirSign = -cow.dirSign; cow.x -= dirx * 1; cow.z -= dirz * 1; }
-        if (d < 24 && Math.floor(cow.ph / Math.PI) !== Math.floor((cow.ph - dt * 4.5) / Math.PI)) A && A.hoof(1 - d / 24);
+      } else {
+        // a cow's day: amble along the road, stop to graze or chew, lie down for a while, get up again
+        cow.modeT -= dt;
+        if (cow.modeT <= 0) {
+          const next = cow.mode === 'walk' ? KS.pick(['stand', 'stand', 'lie', 'walk']) : cow.mode === 'lie' ? 'stand' : KS.pick(['walk', 'walk', 'lie']);
+          if (next === 'lie') { cow.legs.forEach((l) => (l.visible = false)); cow.body.position.y = -0.62; } else if (cow.mode === 'lie') { cow.legs.forEach((l) => (l.visible = true)); cow.body.position.y = 0; }
+          cow.mode = next; cow.modeT = next === 'walk' ? KS.r(25, 70) : next === 'lie' ? KS.r(20, 45) : KS.r(6, 16);
+          if (next === 'walk' && KS.chance(0.3)) cow.dirSign = -cow.dirSign;
+        }
+        if (cow.mode === 'walk') {
+          // blocked by a vehicle or person right in front? wait patiently
+          const dirx = cow.vertical ? 0 : cow.dirSign, dirz = cow.vertical ? cow.dirSign : 0;
+          let blocked = Math.hypot(cow.x + dirx * 2.4 - px, cow.z + dirz * 2.4 - pz) < 2;
+          if (!blocked && KS.Traffic) for (const v of KS.Traffic.list) if (Math.abs(v.x - cow.x - dirx * 3) < 2.4 && Math.abs(v.z - cow.z - dirz * 3) < 2.4) { blocked = true; break; }
+          const sp = blocked ? 0 : cow.sp;
+          cow.x += dirx * sp * dt; cow.z += dirz * sp * dt; cow.h = KS.angLerp(cow.h, Math.atan2(dirx, dirz), Math.min(1, dt * 2));
+          if (sp) { cow.ph += dt * 4.5 * sp / 0.7; walkLegs(cow, cow.ph, 0.3); if (d < 24 && Math.floor(cow.ph / Math.PI) !== Math.floor((cow.ph - dt * 4.5) / Math.PI)) A && A.hoof(1 - d / 24); }
+          cow.body.rotation.x = Math.sin(cow.ph * 0.5) * 0.03;
+          const al = cow.vertical ? cow.z : cow.x, m = ((al - G.O) % G.B + G.B) % G.B, jl = G.line(Math.round((al - G.O) / G.B));
+          if (cow.turnAt != null) { // crossing into the junction, then turning onto the other road
+            if ((al - cow.turnAt) * cow.dirSign >= 0) {
+              cow.vertical = !cow.vertical; cow.line = jl; cow.dirSign = KS.chance(0.5) ? 1 : -1; cow.turnAt = null; cow.skip = 26;
+              const na = cow.vertical ? cow.z : cow.x; if (Math.abs(na + cow.dirSign * 40) > 520) cow.dirSign = -cow.dirSign;
+            }
+          } else if (cow.skip > 0) cow.skip -= sp * dt;
+          else if (m < 18 || m > G.B - 18) {
+            const ahead = (jl - al) * cow.dirSign > 0, inRange = Math.abs(jl) < 500;
+            if (ahead && inRange && KS.chance(0.6)) cow.turnAt = jl + KS.r(-4, 4);
+            else { cow.dirSign = -cow.dirSign; cow.skip = 6; }
+          }
+        } else if (cow.mode === 'stand') { // grazing: head bobs down to the verge
+          cow.body.rotation.x = Math.max(0, Math.sin(cow.t * 0.9)) * 0.12;
+          if (KS.chance(dt * 0.15)) cow.h += KS.r(-0.4, 0.4);
+        } else cow.body.rotation.x = 0;
       }
       if (cow.bell && d < 18 && cow.mode !== 'lie' && KS.chance(dt * 0.8)) A && A.cowbell(1 - d / 18);
       if (d < 14 && KS.chance(dt * 0.03)) { A && A.moo(1 - d / 18); }

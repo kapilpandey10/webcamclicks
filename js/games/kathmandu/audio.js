@@ -72,7 +72,8 @@
   };
   A.horn = (kind, vol = 1) => {
     if (!ctx) return; if (now() - lastHorn < 0.09) return; lastHorn = now();
-    if (KS.isBike(kind)) { tone(760, 0.11, 'square', 0.06 * vol); tone(760, 0.11, 'square', 0.06 * vol, 0.16); }
+    if (kind === 'bicycle') { for (const w of [0, 0.13]) { tone(2350, 0.5, 'sine', 0.05 * vol, w, null, 0.002); tone(3180, 0.35, 'sine', 0.025 * vol, w, null, 0.002); } }
+    else if (KS.isBike(kind)) { tone(760, 0.11, 'square', 0.06 * vol); tone(760, 0.11, 'square', 0.06 * vol, 0.16); }
     else if (kind === 'tempo') tone(610, 0.28, 'square', 0.07 * vol);
     else if (kind === 'bus' || kind === 'truck' || kind === 'minibus' || kind === 'musical') [523, 659, 784, 880, 784, 659].forEach((f, i) => tone(f, 0.14, 'sawtooth', 0.045 * vol, i * 0.12));
     else if (kind === 'pressure') { tone(330, 0.6, 'sawtooth', 0.07 * vol); tone(392, 0.6, 'sawtooth', 0.05 * vol); }
@@ -108,7 +109,14 @@
     city.g.gain.value = 0.03 + s.density * 0.05; crowd.g.gain.value = Math.min(0.06, s.crowd * 0.012);
     rainN.g.gain.value = s.rain * 0.18; windN.g.gain.value = Math.min(0.12, s.wind * 0.01 + s.speed * 0.002);
     siren.gain.value = s.siren * 0.06;
-    if (s.vehicle) {
+    if (s.vehicle && s.vehicle.kind === 'bicycle') { // no engine: chain whirr while pedalling, freewheel ticks while coasting
+      eng.g.gain.value = 0;
+      const sp = Math.abs(s.vehicle.speed);
+      if (sp > 0.8) {
+        A.cyT = (A.cyT || 0) - dt * (s.throttle > 0.1 ? 2.2 + sp * 0.35 : 6 + sp * 1.6);
+        if (A.cyT <= 0) { A.cyT = 1; if (s.throttle > 0.1) noise(0.09, 0.018, 1800 + sp * 60, 'bandpass', 0, 3); else noise(0.012, 0.03, 5200, 'highpass'); }
+      }
+    } else if (s.vehicle) {
       const bike = KS.isBike(s.vehicle.kind), sp = Math.abs(s.vehicle.speed), ev = s.vehicle.kind === 'ev';
       const base = ev ? 180 : bike ? 70 : s.vehicle.type.len > 6 ? 38 : 52, gear = sp % 7;
       eng.o.frequency.value = ev ? base + sp * 30 : base + gear * (bike ? 14 : 8) + sp * (bike ? 3 : 1.6); eng.o2.frequency.value = eng.o.frequency.value * 0.5;

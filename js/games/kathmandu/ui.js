@@ -35,7 +35,7 @@
         if (k === 'high') { KS.quality.level = v ? 'high' : 'low'; KS.Shop.data.quality = KS.quality.level; KS.Shop.save(); return; }
         st[k] = v; KS.Shop.save();
         if (k === 'sens') { const o = inp.parentElement.querySelector('output'); if (o) o.textContent = Math.round((v / 2) * 100) + '%'; }
-        if (k === 'minimap') $('minimap').hidden = !v;
+        if (k === 'minimap') $('minimap').parentElement.hidden = !v;
         if (k === 'guide') Guide.render();
       });
     });
@@ -123,7 +123,7 @@
   };
   Ph.home = () => { Ph.app = null; $('phHome').hidden = false; $('phApp').hidden = true; document.querySelectorAll('[data-app-panel]').forEach((p) => (p.hidden = true)); };
   Ph.openApp = (id) => {
-    if (id === 'map') { const b = $('bigwrap'); b.hidden = false; KS.Game.drawBig(); return; }
+    if (id === 'map') { KS.Game.openMap(); return; }
     Ph.app = id; $('phHome').hidden = true; $('phApp').hidden = false;
     $('phAppTitle').textContent = APPS.find((a) => a.id === id).name;
     document.querySelectorAll('[data-app-panel]').forEach((p) => (p.hidden = p.dataset.appPanel !== id));

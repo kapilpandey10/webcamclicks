@@ -149,8 +149,13 @@
     // Bagmati river channel
     const R = KS.RIVER;
     if (z > R.z0 - 2 && z < R.z1 + 2) {
-      const bank = Math.min(KS.smooth(R.z0 - 2, R.z0 + 9, z), 1 - KS.smooth(R.z1 - 9, R.z1 + 2, z));
-      h = h * (1 - bank) + R.bed * bank;
+      // the banks wander a little (inside the channel), with gravel bars here and there
+      const e0 = R.z0 + 2 + 4 * (0.5 + 0.5 * Math.sin(x * 0.013 + 1.3)) + 3 * KS.fbm(x * 0.02, 3.1), e1 = R.z1 - 2 - 4 * (0.5 + 0.5 * Math.sin(x * 0.011 + 4.2)) - 3 * KS.fbm(x * 0.02, 7.7);
+      const bank = Math.min(KS.smooth(e0 - 4, e0 + 6, z), 1 - KS.smooth(e1 - 6, e1 + 4, z));
+      let bed = R.bed;
+      const bar = KS.smooth(0.6, 0.7, KS.fbm(x * 0.006, z * 0.03 + 11)) * Math.min(KS.smooth(e0 + 6, e0 + 14, z), 1 - KS.smooth(e1 - 14, e1 - 6, z));
+      bed = KS.lerp(bed, -0.75, bar);
+      h = h * (1 - bank) + bed * bank;
     }
     return h;
   }

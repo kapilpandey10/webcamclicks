@@ -71,10 +71,41 @@
     TR.list.push(v); TR.scene.add(v.root);
     return v;
   };
+  /* ---------- city bus routes: fixed loops through the bus stops ---------- */
+  const ROUTE_DEFS = [
+    { np: 'रत्नपार्क - कोटेश्वर', call: ['Ratnapark, Koteshwor!', 'Koteshwor! Koteshwor!'], corners: [[3, 3], [9, 3], [9, 7], [3, 7]] },
+    { np: 'कलंकी - चाबहिल', call: ['Kalanki! Chabahil!', 'Chabahil, Chabahil!'], corners: [[6, 2], [10, 2], [10, 9], [6, 9]] },
+    { np: 'लगनखेल - बालाजु', call: ['Lagankhel! Balaju!', 'Balaju, Balaju!'], corners: [[2, 3], [6, 3], [6, 9], [2, 9]] },
+    { np: 'गोंगबु - सातदोबाटो', call: ['Gongabu! Satdobato!', 'Satdobato, aaunus!'], corners: [[3, 1], [9, 1], [9, 4], [3, 4]] },
+  ];
+  TR.routes = [];
+  function buildRoutes() {
+    for (const R of ROUTE_DEFS) {
+      const seq = [];
+      for (let k = 0; k < R.corners.length; k++) {
+        let [i, j] = R.corners[k]; const [i2, j2] = R.corners[(k + 1) % R.corners.length];
+        while (i !== i2 || j !== j2) { seq.push(idx(i, j)); i += Math.sign(i2 - i); j += Math.sign(j2 - j); }
+      }
+      const out = [];
+      for (let k = 0; k < seq.length; k++) { // bridge any closed road with the shortest detour
+        const a2 = seq[k], b2 = seq[(k + 1) % seq.length]; out.push(a2);
+        if (!nodes[a2].nb.includes(b2)) { const p = TR.pathNodes(a2, b2); if (!p) { out.length = 0; break; } out.push(...p.slice(1, -1)); }
+      }
+      if (out.length > 3 && new Set(out).size === out.length) TR.routes.push({ ...R, nodes: out, buses: 0 });
+    }
+  }
+  function assignRoute(v) {
+    if (!TR.routes.length) return;
+    const R = TR.routes.reduce((a2, b2) => (b2.buses < a2.buses ? b2 : a2)); R.buses++;
+    v.route = R; v.load = KS.ri(3, 18); v.cap = v.kind === 'bus' ? 42 : 24;
+    const rb = v.root.userData.routeBoard; if (rb) rb.material = KS.routeSignMat(R.np);
+  }
   TR.init = (scene, count, px, pz) => {
-    TR.scene = scene; TR.initGraph();
+    TR.scene = scene; TR.initGraph(); buildRoutes();
     // a fixed fleet that lives all over the valley; it is simulated everywhere and only drawn near you
     for (let i = 0; i < count; i++) TR.spawn(MIX[i % MIX.length], 0, 0, 0, 1100);
+    for (const v of TR.list) if (v.kind === 'bus' || v.kind === 'minibus') assignRoute(v);
+    for (const v of TR.list) if (v.kind === 'micro' || v.kind === 'tempo') { v.load = KS.ri(2, 8); v.cap = v.kind === 'micro' ? 14 : 10; }
     // some start the day parked in their lots
     for (const v of TR.list) if (v.home && KS.chance(0.25)) enterLot(v, true);
   };
@@ -99,9 +130,14 @@
     // cars, buses and trucks mostly stay out of the narrow lanes of Thamel and the old town
     if (!KS.isBike(v.kind) && opts.length > 1) { const wide = opts.filter((n) => !narrow(v.b, n)); if (wide.length && KS.chance(0.85)) opts = wide; }
     // arriving home: pull into the lot
-    if (v.path && v.b === v.home.node) { v.path = null; if (enterLot(v)) return; }
+    if (v.path && !v.route && v.b === v.home.node) { v.path = null; if (enterLot(v)) return; }
     const straight = opts.find((n) => { const N = nodes[n]; return Math.abs((N.x - B.x) * v.lane.dz - (N.z - B.z) * v.lane.dx) < 1; });
     let c = straight != null && KS.chance(B.hw ? 1 : 0.45) ? straight : KS.pick(opts);
+    if (v.route) { // buses keep to their route; from anywhere else they drive to the nearest point of it
+      const rn = v.route.nodes, k = rn.indexOf(v.b);
+      if (k >= 0) { v.path = null; const n2 = rn[(k + 1) % rn.length]; if (B.nb.includes(n2)) c = n2; }
+      else if (!v.path) { let best = rn[0], bd = 1e9; for (const n of rn) { const d = Math.hypot(nodes[n].x - B.x, nodes[n].z - B.z); if (d < bd) { bd = d; best = n; } } v.path = TR.pathNodes(v.b, best); }
+    }
     if (v.path) { const i = v.path.indexOf(v.b); const n2 = i >= 0 ? v.path[i + 1] : null; if (n2 != null && B.nb.includes(n2)) c = n2; else v.path = TR.pathNodes(v.b, v.home.node); }
     const cur = v.lane, nxt = laneOf(v, v.b, c, {});
     const p0x = cur.ex, p0z = cur.ez, p2x = nxt.sx, p2z = nxt.sz;
@@ -229,6 +265,52 @@
   }
   TR.lotNode = (i, j) => idx(i, j);
 
+  /* ---------- bus stops: people wait, board and get off ---------- */
+  const pool = [], walkers = [], ROLES = ['man', 'woman', 'student', 'elder', 'office', 'woman', 'man'];
+  const getPerson = () => { let p = pool.pop(); if (!p) { p = KS.makePerson(KS.pick(ROLES)); TR.scene.add(p.root); } p.root.visible = true; return p; };
+  const putPerson = (p) => { p.root.visible = false; pool.push(p); };
+  const along = (st) => [Math.abs(st.kz), Math.abs(st.kx)];
+  function standAt(st, i) { const [ax, az] = along(st), o = (i % 5) * 0.9 - 1.8; return [st.sx - st.kx * 0.6 + ax * o, st.sz - st.kz * 0.6 + az * o]; }
+  function walk(p, x, z, tx, tz, then) { walkers.push({ p, x, z, tx, tz, then }); }
+  /** the bus stands at the stop: first people get off, then the queue gets on */
+  function busStopUpdate(v, dt, dCam) {
+    const S = v.atStop, st = S.st; S.t += dt; S.next -= dt;
+    if (S.next > 0) return; S.next = 0.9;
+    const fx = Math.sin(v.h), fz = Math.cos(v.h), door = [v.x + st.kx * (v.type.wid / 2 + 0.3) + fx * v.type.len * 0.25, v.z + st.kz * (v.type.wid / 2 + 0.3) + fz * v.type.len * 0.25];
+    if (v.alightN > 0) {
+      v.alightN--; v.load = Math.max(0, v.load - 1);
+      if (dCam < 140) { const p = getPerson(), [sx, sz] = standAt(st, KS.ri(0, 4)), [ax, az] = along(st), d = KS.chance(0.5) ? 1 : -1; walk(p, door[0], door[1], sx, sz, (w) => walk(w.p, sx, sz, sx + ax * d * 14, sz + az * d * 14, (w2) => putPerson(w2.p))); }
+      return;
+    }
+    if (st.count > 0 && v.load < v.cap) {
+      st.count--; v.load++;
+      const p = st.models.pop(); if (p) walk(p, p.root.position.x, p.root.position.z, door[0], door[1], (w) => putPerson(w.p));
+      return;
+    }
+    if (S.t > 2.5) { v.lastStop = st; v.atStop = null; v.plan = null; }
+  }
+  let stopT = 0;
+  function stopsUpdate(dt, ctx) {
+    for (let k = walkers.length - 1; k >= 0; k--) {
+      const w = walkers[k], dx = w.tx - w.x, dz = w.tz - w.z, d = Math.hypot(dx, dz), sp = 1.4;
+      if (d < 0.15) { walkers.splice(k, 1); w.then && w.then(w); continue; }
+      const m = Math.min(d, sp * dt); w.x += (dx / d) * m; w.z += (dz / d) * m;
+      w.p.root.position.set(w.x, KS.heightAt(w.x, w.z) + 0.02, w.z); w.p.root.rotation.y = Math.atan2(dx, dz); KS.animWalk(w.p, dt, sp);
+    }
+    stopT -= dt; if (stopT > 0) return; stopT = 0.5;
+    const cam = KS.camera.position, dens = TR.density();
+    for (const st of KS.busStops || []) {
+      st.spawnT -= 0.5 * (0.3 + dens);
+      if (st.spawnT <= 0) { st.spawnT = KS.r(12, 35); if (st.count < 7) st.count++; }
+      const near = Math.abs(st.sx - cam.x) < 150 && Math.abs(st.sz - cam.z) < 150, want = near ? Math.min(st.count, 5) : 0;
+      while (st.models.length > want) putPerson(st.models.pop());
+      while (st.models.length < want) {
+        const p = getPerson(), [x, z] = standAt(st, st.models.length);
+        p.root.position.set(x, KS.heightAt(x, z) + 0.02, z); p.root.rotation.y = Math.atan2(-st.kx, -st.kz); KS.animWalk(p, 0, 0); st.models.push(p);
+      }
+    }
+  }
+
   /* ---------- how many vehicles are out depends on the time of day ---------- */
   TR.density = () => { const H = KS.time; return H < 5 ? 0.12 : H < 6.5 ? 0.3 : H < 7.5 ? 0.6 : H < 10 ? 0.95 : H < 16 ? 0.6 : H < 19.5 ? 0.9 : H < 22 ? 0.42 : 0.18; };
   let balT = 0;
@@ -254,7 +336,7 @@
     const blink = Math.floor(KS.clock * 4) % 2;
     KS.sirenMats[0].color.setHex(blink ? 0xff2020 : 0x400000); KS.sirenMats[1].color.setHex(blink ? 0x001040 : 0x2050ff);
     const ambs = TR.list.filter((v) => v.kind === 'ambulance' && v.ai);
-    balance(dt, ctx);
+    balance(dt, ctx); stopsUpdate(dt, ctx);
     for (const v of TR.list) {
       const dCam = Math.hypot(v.x - cx, v.z - cz);
       v.root.visible = dCam < 300 || v === ctx.playerVehicle || v.chase;
@@ -286,16 +368,21 @@
           if (st === 'r' || (st === 'y' && rem > 6)) if (rem < 32 && rem > -1) target = Math.min(target, Math.max(0, (rem - 1.2) * 1.1));
         }
       }
-      // buses and micros stop anywhere to pick people up
+      // buses, micros and tempos stop at bus stops, but only when someone is waiting or wants to get off
       if (v.type.seats === 'bus' || v.kind === 'micro' || v.kind === 'tempo') {
-        if (v.stopT > 0) { v.stopT -= dt; target = 0; }
+        if (v.atStop) { target = 0; busStopUpdate(v, dt, dCam); }
         else if (v.mode === 'lane' && v.kind !== 'truck') for (const st of KS.busStops || []) {
           if (st === v.lastStop) continue;
           const rx = st.x - v.x, rz = st.z - v.z, ahead = rx * v.lane.dx + rz * v.lane.dz, lat = Math.abs(rx * v.lane.dz - rz * v.lane.dx);
-          if (lat < 2.6 && ahead > -0.5 && ahead < 14) { target = Math.min(target, Math.max(0, ahead * 0.9)); if (ahead < 1) { v.stopT = KS.r(5, 9); v.lastStop = st; } break; }
+          if (lat > 2.6 || ahead < -0.5 || ahead > 40) continue;
+          if (v.plan !== st) { v.plan = st; v.alightN = v.load > 0 && KS.chance(0.6) ? KS.ri(1, Math.min(3, v.load)) : 0; }
+          if (!st.count && !v.alightN) { v.lastStop = st; break; } // nobody waiting, nobody getting off: drive past
+          target = Math.min(target, Math.max(0, (ahead - 0.5) * 0.7));
+          if (ahead < 1.2 && v.speed < 1.5) { v.atStop = { st, t: 0, next: 0.8 }; v.speed = 0; }
+          break;
         }
         v.callT -= dt;
-        if (v.callT <= 0 && dCam < 30 && v.speed < 3 && v.kind !== 'truck') { v.callT = KS.r(4, 9); KS.say(v.root, KS.pick(KS.ROUTES_EN), 2.2); KS.audio && KS.audio.voice(Math.max(0.1, 1 - dCam / 30), 'shout'); }
+        if (v.callT <= 0 && dCam < 30 && v.speed < 3 && v.kind !== 'truck') { v.callT = KS.r(4, 9); KS.say(v.root, KS.pick(v.route ? v.route.call : KS.ROUTES_EN), 2.2); KS.audio && KS.audio.voice(Math.max(0.1, 1 - dCam / 30), 'shout'); }
       }
       // give way to ambulances coming from behind
       let yieldTo = false;
@@ -322,7 +409,7 @@
       } else v.stuck = 0;
       // going home: head for the home lot now and then
       v.roamT -= dt;
-      if (v.roamT <= 0 && v.home && !v.path && v.mode === 'lane' && !v.uthao) { v.roamT = KS.r(80, 260); v.path = TR.pathNodes(v.b, v.home.node); v.pi = 0; }
+      if (v.roamT <= 0 && v.home && !v.path && !v.route && v.mode === 'lane' && !v.uthao) { v.roamT = KS.r(80, 260); v.path = TR.pathNodes(v.b, v.home.node); v.pi = 0; }
       v.honkT -= dt;
       if (v.honkT < -8 && KS.chance(dt * 0.15)) { v.honkT = KS.r(4, 16); if (dCam < 70) KS.audio && KS.audio.horn(v.kind, Math.max(0.05, 0.6 - dCam / 120)); }
       const acc = target > v.speed ? v.type.accel : 14;

@@ -103,7 +103,7 @@
     const put = (mat, g2, x, z, ry) => { poles.cyl(x, 0, z, 0.05, 2.5, 0x777777, 5); const m = new T.Mesh(g2, mat); m.position.set(x, 2.55, z); m.rotation.y = ry; scene.add(m); };
     for (const sg of KS.signals) put(walk, sq, sg.x + G.roadHalf(sg.i) + 1.4, sg.z - sg.hw - 5, 0);
     for (let k = 0; k < 18; k++) { const i = KS.ri(1, G.N - 1), j = KS.ri(1, G.N - 1); put(noHorn, geo, G.line(i) + G.roadHalf(i) + 1.3, G.line(j) + G.roadHalf(j) + 18, 0); }
-    if (KS.hospital) for (const s of [-1, 1]) put(noHorn, geo, KS.hospital.x + s * 20, KS.hospital.z + 4, 0);
+    if (KS.hospital) { const j = Math.round((KS.hospital.z - G.O) / G.B), L = G.line(j), z = L + Math.sign(KS.hospital.z - L || 1) * (G.roadHalf(j) + 1.3); for (const s of [-1, 1]) put(noHorn, geo, KS.hospital.x + s * 20, z, 0); }
     scene.add(KS.mesh(poles, KS.M.vc, false));
   }
 
@@ -185,8 +185,8 @@
     const t = tex(256, 128, (g, w, h) => { g.fillStyle = '#c81e1e'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.textAlign = 'center'; g.font = `700 46px ${KS.FONT}`; g.fillText('बस स्टप', w / 2, 56); g.font = '700 30px "Barlow Condensed", Arial, sans-serif'; g.fillText('BUS STOP', w / 2, 102); });
     const mat = new T.MeshLambertMaterial({ map: t, side: T.DoubleSide }), geo = new T.PlaneGeometry(1.4, 0.7);
     const stop = (x, z, kx, kz, ry) => { // x,z on the lane; kx,kz the kerb direction
-      KS.busStops.push({ x, z });
       const sx = x + kx * 6.2, sz = z + kz * 6.2;
+      KS.busStops.push({ x, z, kx, kz, sx, sz, count: KS.ri(0, 3), spawnT: KS.r(5, 30), models: [] });
       b.box(sx, 0.2, sz, kx ? 1.6 : 6, 0.1, kz ? 1.6 : 6, 0x888888); b.box(sx + kx * 0.8, 0.2, sz + kz * 0.8, kx ? 0.1 : 6, 2.4, kz ? 0.1 : 6, 0x5a8aa8);
       b.box(sx, 2.6, sz, kx ? 2.2 : 6.4, 0.12, kz ? 2.2 : 6.4, 0xc81e1e);
       const m = new T.Mesh(geo, mat); m.position.set(sx - kz * 3.4, 3.2, sz - kx * 3.4); m.rotation.y = ry; scene.add(m);

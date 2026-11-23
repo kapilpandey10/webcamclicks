@@ -351,7 +351,9 @@
       b.box(cx, 0, R.z1 - 4.4, 50, 1.6, 0.4, 0xd8d0c0); KS.addBox(cx - 15, R.z1 - 4.4, 20, 0.4, 1.6); KS.addBox(cx + 15, R.z1 - 4.4, 20, 0.4, 1.6);
       board(scene, sc.np, sc.name.toUpperCase(), cx, 6.2, R.z0 + 18.7, 0, 13, 1.7, '#1d3a8a');
       KS.plazas.push({ x0: cx - 18, x1: cx + 18, z0: cz - 6, z1: cz + 22, n: 14, kinds: ['kid', 'kid', 'kid', 'student', 'student', 'office'], school: true });
-      sign(R.x0 - 6, R.z0 - 26, 0); sign(R.x1 + 6, R.z1 + 26, Math.PI); sign(R.x0 - 26, R.z1 + 6, Math.PI / 2); sign(R.x1 + 26, R.z0 - 6, -Math.PI / 2);
+      // warning signs on the pavement at the kerb of each road leading to the school
+      const kerb = (i, side) => G.line(i) + side * (G.roadHalf(i) + 1.2);
+      sign(kerb(sc.c, 1), R.z0 - 26, 0); sign(kerb(sc.c + 1, -1), R.z1 + 26, Math.PI); sign(R.x0 - 26, kerb(sc.r + 1, -1), Math.PI / 2); sign(R.x1 + 26, kerb(sc.r, 1), -Math.PI / 2);
       KS.landmarks.push({ id: 'school' + sc.c + sc.r, minor: true, name: sc.name, np: sc.np, x: cx, z: cz, r: 30, fact: 'School zone: 25 km/h between 9:00 and 16:00, watched by a speed camera.' });
     }
     scene.add(KS.mesh(b));

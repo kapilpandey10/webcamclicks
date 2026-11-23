@@ -180,9 +180,10 @@
     for (const m of KS.nightMats) m.emissiveIntensity = nightGlow * 0.85 * (m.userData.nightScale || 1);
     for (const m of KS.lampMats) m.color.setRGB(0.33, 0.33, 0.3).lerp(C(0xffe0a0), nightGlow);
     if (KS.poolMat) KS.poolMat.opacity = nightGlow * 0.85;
-    if (KS.beamMat) {
-      KS.beamMat.opacity = nightGlow * 0.16; KS.beamPoolMat.opacity = nightGlow * 0.55;
+    if (KS.beamPoolMat) {
+      KS.beamPoolMat.opacity = nightGlow * 0.42 * (1 - cur.fogMix * 0.3);
       const on = nightGlow > 0.3; if (on !== Wx.beamsOn) { Wx.beamsOn = on; for (const m of KS.beams) m.visible = on; }
+      if (KS.glowPoints) { if (!KS.glowPoints.parent) Wx.scene.add(KS.glowPoints); KS.glowPoints.visible = on; KS.glowPoints.material.opacity = nightGlow; if (on) KS.updateGlows(camera.position); }
     }
     // wet streets
     const wet = cur.rain;

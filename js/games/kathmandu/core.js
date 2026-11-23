@@ -56,6 +56,7 @@
   set(8, 1, 'shankha');
   set(7, 5, 'hospital');
   set(9, 8, 'trial');
+  set(7, 6, 'parking'); set(8, 6, 'buspark'); set(2, 7, 'parking');
   KS.blockType = (c, r) => {
     if (c < 0 || r < 0 || c >= G.N || r >= G.N) return 'outside';
     return layout[c + ',' + r] || 'city';
@@ -84,6 +85,10 @@
     { name: 'Shankha Park', np: 'शंख पार्क', x0: 180, x1: 270, z0: -450, z1: -360 },
     { name: 'Bir Hospital area', np: 'अस्पताल', x0: 90, x1: 180, z0: -90, z1: 0 },
     { name: 'Transport Office · Trial ground', np: 'यातायात कार्यालय · ट्रायल स्थल', x0: 270, x1: 360, z0: 180, z1: 270 },
+    { name: 'VIP Mansion · Budhanilkantha road', np: 'भीआईपी निवास', x0: 110, x1: 250, z0: -740, z1: -560 },
+    { name: 'Bhrikutimandap Car Park', np: 'भृकुटीमण्डप पार्किङ', x0: 90, x1: 180, z0: 0, z1: 90 },
+    { name: 'Ratna Park Bus Station', np: 'रत्नपार्क बसपार्क', x0: 180, x1: 270, z0: 0, z1: 90 },
+    { name: 'Kalimati Market', np: 'कालीमाटी तरकारी बजार', x0: -360, x1: -270, z0: 90, z1: 180 },
     { name: 'Kalanki', np: 'कलंकी', x0: -570, x1: -510, z0: 40, z1: 140 },
     { name: 'Bagmati River', np: 'बागमती नदी', x0: -2700, x1: 1400, z0: 452, z1: 532 },
     { name: 'Swayambhu', np: 'स्वयम्भू', x0: -860, x1: -560, z0: -260, z1: 80 },
@@ -116,6 +121,7 @@
   KS.SWAYAMBHU = { x: -700, z: -90, top: 46, flat: 30, foot: 150 };
   /* Nagdhunga highway: west from Kalanki on the Ring Road, through the tunnel, down to Dhunibesi village */
   const HW = (KS.HW = { z: 90, x0: -548, x1: -2350, pE: -900, pW: -1500, village: { x: -2050, z: 90 } });
+  KS.MANSION = { x0: 120, x1: 240, z0: -735, z1: -605, gx: 180, gz: -605 };
   KS.BOUNDS = { x0: -2700, x1: 1400, z0: -1400, z1: 1400 };
   KS.roadH = (x) => {
     if (x > -560) return 0;
@@ -162,17 +168,21 @@
 
   /* junctions with traffic lights (the rest are run by traffic police or nobody) */
   KS.SIGNALS = [[6, 4], [7, 7], [8, 8], [9, 6], [4, 9], [2, 6], [7, 3], [9, 9], [0, 7], [12, 6], [6, 12], [6, 0], [3, 2], [8, 10]];
-  KS.SPEEDCAMS = [{ x: G.line(0) - 4, z: -200, ax: 'z' }, { x: G.line(12) + 4, z: 230, ax: 'z' }, { x: 300, z: G.line(12) + 4, ax: 'x' }, { x: -280, z: G.line(0) - 4, ax: 'x' },
-    { x: G.line(6) - 4, z: 230, ax: 'z' }, { x: 140, z: G.line(6) - 4, ax: 'x' }, { x: -700, z: HW.z - 9, ax: 'x', hw: true }, { x: -1720, z: HW.z - 9, ax: 'x', hw: true }, { x: G.line(9) + 4, z: -120, ax: 'z' }];
+  KS.SPEEDCAMS = [{ x: G.line(2) + 12, z: G.line(4) + 45, ax: 'z' }, { x: G.line(7) + 45, z: G.line(1) + 12, ax: 'x' }, { x: G.line(10) - 12, z: G.line(10) + 45, ax: 'z' }, { x: G.line(3) + 45, z: G.line(10) - 12, ax: 'x' }];
 
   /* speed limits in km/h (Nepal: 40 in the city, less in the old core, more on the Ring Road & highway) */
-  KS.speedLimit = (x, z) => {
-    if (x < HW.x0 && Math.abs(z - HW.z) < 10) return KS.inTunnel(x, z) ? 50 : 60;
-    if (Math.abs(Math.abs(x) - G.HALF) < 12 || Math.abs(Math.abs(z) - G.HALF) < 12) return 60;
-    const { c, r } = G.blockOf(x, z), t = KS.blockType(c, r);
-    if (t === 'thamel' || t === 'old' || t === 'ason' || t === 'durbar' || t === 'durbar2' || t === 'boudha' || t === 'pashupati') return 20;
-    return 40;
-  };
+  /* Speed limits apply only in school zones during school hours (9:00-16:00): 25 km/h. Elsewhere: drive to conditions. */
+  KS.SCHOOLS = [
+    { c: 2, r: 4, name: 'Saraswati Secondary School', np: 'सरस्वती माध्यमिक विद्यालय' },
+    { c: 7, r: 1, name: 'Gyanodaya School', np: 'ज्ञानोदय विद्यालय' },
+    { c: 9, r: 10, name: 'Shanti Shiksha Sadan', np: 'शान्ति शिक्षा सदन' },
+    { c: 3, r: 9, name: 'Janata Secondary School', np: 'जनता माध्यमिक विद्यालय' },
+  ];
+  KS.SCHOOLS.forEach((sc) => { set(sc.c, sc.r, 'school'); sc.x0 = G.line(sc.c) - 30; sc.x1 = G.line(sc.c + 1) + 30; sc.z0 = G.line(sc.r) - 30; sc.z1 = G.line(sc.r + 1) + 30; });
+  KS.SCHOOLS.push({ village: true, name: 'Dhunibesi School', np: 'धुनिबेसी विद्यालय', x0: HW.village.x + 60, x1: HW.village.x + 165, z0: HW.z - 14, z1: HW.z + 90 });
+  KS.schoolHours = () => KS.time >= 9 && KS.time < 16;
+  KS.schoolZoneAt = (x, z) => { for (const s of KS.SCHOOLS) if (x > s.x0 && x < s.x1 && z > s.z0 && z < s.z1) return s; return null; };
+  KS.speedLimit = (x, z) => (KS.schoolHours() && KS.schoolZoneAt(x, z) ? 25 : null);
 
   /* ---------- solids: boxes / circles with a top height, on a spatial hash ---------- */
   const CELL = 32;

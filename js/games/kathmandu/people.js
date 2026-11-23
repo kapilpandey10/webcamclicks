@@ -229,6 +229,28 @@
     }
     return false;
   }
+  // front doors (shop/house fronts) for people coming and going
+  function nearDoor(x, z, r) { let best = null, bd = r; for (const l of KS.World.lots) { const d = Math.abs(l.x - x) + Math.abs(l.z - z); if (d < bd) { bd = d; best = l; } } return best; }
+  function sFrom(R, x, z) {
+    const w = R.x1 - R.x0, d = R.z1 - R.z0, cx = KS.clamp(x, R.x0, R.x1), cz = KS.clamp(z, R.z0, R.z1);
+    const dl = [Math.abs(cz - R.z0), Math.abs(cx - R.x1), Math.abs(cz - R.z1), Math.abs(cx - R.x0)], k = dl.indexOf(Math.min(...dl));
+    return [cx - R.x0, w + (cz - R.z0), w + d + (R.x1 - cx), 2 * w + d + (R.z1 - cz)][k];
+  }
+  /** bring an ambient walker back: out of sight, or stepping out of a front door nearby */
+  function respawn(ped, px, pz, fromDoor) {
+    ped.going = false; ped.p.root.visible = true;
+    if (fromDoor || KS.chance(0.35)) {
+      for (let t = 0; t < 20; t++) {
+        const l = KS.pick(KS.World.lots), d = Math.hypot(l.x - px, l.z - pz);
+        if (d < 40 || d > 200) continue;
+        const { c, r } = G.blockOf(l.x, l.z); if (!walkable(c, r)) continue;
+        ped.c = c; ped.r = r; ped.rect = rectOf(c, r); ped.mode = 'door';
+        ped.x = l.x - l.fx * 2.6; ped.z = l.z - l.fz * 2.6; ped.tx = l.x + l.fx * 0.6; ped.tz = l.z + l.fz * 0.6; ped.dir = KS.chance(0.5) ? 1 : -1;
+        return;
+      }
+    }
+    placeAmbient(ped, px, pz, 215, 262);
+  }
   const add = (scene, ped) => { ped.home = ped.mode; scene.add(ped.p.root); Peds.list.push(ped); return ped; };
   Peds.init = (scene, count, px, pz) => {
     Peds.scene = scene;
@@ -256,11 +278,17 @@
       add(scene, { p, kind: p.kind, mode: 'sit', x: bx, z: bz, y: 0.05, h: ry, t: 0 });
     }
     Peds.police = [];
-    for (const [i, j] of [[6, 5], [5, 3], [6, 8], [4, 5], [8, 6], [10, 4], [3, 7]]) {
-      const x = G.line(i), z = G.line(j), p = KS.makePerson('police');
+    for (const [i, j] of [[6, 5], [5, 3], [6, 8]]) { // posts on the corner kerb, out of the traffic
+      const x = G.line(i) + G.roadHalf(i) + 2.2, z = G.line(j) + G.roadHalf(j) + 2.2, p = KS.makePerson('police');
       const b = new KS.Builder(); b.cyl(x, 0, z, 1.1, 0.5, 0xe8e2d4, 12); b.cyl(x, 0.5, z, 0.06, 2.6, 0x777777, 4); b.cyl(x, 3.1, z, 1.5, 0.5, 0xd12b2b, 10, 0.05);
       scene.add(KS.mesh(b)); KS.addCircle(x, z, 1.1, 0.5);
       Peds.police.push(add(scene, { p, kind: 'police', mode: 'police', x: x + 0.3, z, y: 0.5, h: 0, t: KS.r(0, 6) }));
+    }
+    // two officers on foot patrol, walking the pavements near the player and checking traffic
+    for (let i = 0; i < 2; i++) {
+      const p = KS.makePerson('police');
+      const ped = add(scene, { p, kind: 'police', mode: 'walk', patrol: true, dir: i ? 1 : -1, lat: 0.6, speed: 1.05, ambient: true, x: 0, z: 0, h: 0, y: 0, t: 0 });
+      placeAmbient(ped, px, pz, 30, 160); Peds.police.push(ped);
     }
     if (KS.football) {
       const ball = new T.Mesh(new T.SphereGeometry(0.22, 10, 8), new T.MeshLambertMaterial({ color: 0xffffff }));
@@ -287,7 +315,7 @@
     let chaser = null, best = 1e9;
     for (const ped of Peds.list) {
       const dxp = ped.x - cx, dzp = ped.z - cz, d2 = dxp * dxp + dzp * dzp;
-      if (ped.ambient && !ped.fight && (ped.x - px) ** 2 + (ped.z - pz) ** 2 > 270 * 270) { placeAmbient(ped, px, pz, 140, 240); ped.down = 0; ped.flee = 0; ped.p.inner.rotation.x = 0; }
+      if (ped.ambient && !ped.fight && (ped.x - px) ** 2 + (ped.z - pz) ** 2 > 270 * 270) { respawn(ped, px, pz); ped.down = 0; ped.flee = 0; ped.p.inner.rotation.x = 0; }
       const vis = d2 < 210 * 210;
       ped.p.root.visible = vis;
       if (!vis && !ped.ambient) continue;
@@ -319,9 +347,21 @@
         ped.h = Math.atan2(ped.fvx, ped.fvz);
         const c = KS.collide(ped.x, ped.z, 0.35, ped.y || 0, 1.3); ped.x = c.x; ped.z = c.z;
         if (ped.flee <= 0 && ped.mode === 'walk') { const o = perimPos(ped, tmp); ped.x = o.x; ped.z = o.z; }
-      } else switch (ped.mode) {
+      } else if (ped.patrol && (moving = policeChase(ped, dt, px, pz, pr)) >= 0) {
+        // patrol officer chasing
+      } else switch ((moving = 0, ped.patrolWas && (placeAmbient(ped, px, pz, 20, 60), ped.patrolWas = false), ped.mode)) {
+        case 'door': { // walking between a front door and the pavement
+          const dx = ped.tx - ped.x, dz = ped.tz - ped.z, d = Math.hypot(dx, dz); moving = 1.1;
+          if (d < 0.35) { if (ped.going) { ped.p.root.visible = false; respawn(ped, px, pz, true); } else { ped.mode = 'walk'; ped.s = sFrom(ped.rect, ped.x, ped.z); } break; }
+          ped.x += (dx / d) * 1.1 * dt; ped.z += (dz / d) * 1.1 * dt; ped.h = Math.atan2(dx, dz); ped.y = 0.22;
+          break;
+        }
         case 'walk': {
           if (ped.wait > 0) { ped.wait -= dt; break; }
+          if (ped.kind !== 'police' && KS.chance(dt * 0.006)) { // go home through the nearest front door
+            const door = nearDoor(ped.x, ped.z, 14);
+            if (door) { ped.mode = 'door'; ped.going = true; ped.tx = door.x - door.fx * 2.6; ped.tz = door.z - door.fz * 2.6; break; }
+          }
           const R = ped.rect, w = R.x1 - R.x0, d = R.z1 - R.z0, L = 2 * (w + d);
           const s0 = ped.s; ped.s += ped.dir * ped.speed * dt; moving = ped.speed;
           for (let k = 0; k < 4; k++) {
@@ -365,7 +405,12 @@
         }
         case 'plaza': {
           const z = ped.zone;
-          if (ped.wait > 0) { ped.wait -= dt; break; }
+          if (ped.wait > 0) { // standing and chatting: talk with the hands
+            ped.wait -= dt; ped.gT = (ped.gT || KS.r(0, 9)) + dt;
+            if (ped.kind !== 'monk' && ped.kind !== 'kid') { ped.p.busyArm = true; ped.p.armR.rotation.x = -0.45 - Math.max(0, Math.sin(ped.gT * 2.6)) * 0.7; ped.p.armR.rotation.z = 0.15; ped.p.armL.rotation.x = -0.2 - Math.max(0, Math.sin(ped.gT * 1.9 + 1)) * 0.4; }
+            if (ped.wait <= 0) ped.p.busyArm = false;
+            break;
+          }
           const dx = ped.tx - ped.x, dz = ped.tz - ped.z, d = Math.hypot(dx, dz);
           if (d < 0.5) { ped.tx = KS.r(z.x0, z.x1); ped.tz = KS.r(z.z0, z.z1); ped.wait = ped.kind === 'jogger' ? 0 : KS.r(0.5, 6); break; }
           const sp = ped.speed; ped.x += (dx / d) * sp * dt; ped.z += (dz / d) * sp * dt; moving = sp;
@@ -385,14 +430,8 @@
         }
         case 'police': {
           if (ped.postX == null) { ped.postX = ped.x; ped.postZ = ped.z; ped.postY = ped.y; }
-          const heat = KS.Law ? KS.Law.heat : 0, pdx = px - ped.x, pdz = pz - ped.z, pd = Math.hypot(pdx, pdz);
-          if (heat > 0 && pd < 75) { // leave the post and run after the player
-            ped.chasing = true; ped.y = 0.06;
-            if (pd > 1.0) { const sp = KS.Player.vehicle ? 6.5 : 5.2; ped.x += (pdx / pd) * sp * dt; ped.z += (pdz / pd) * sp * dt; moving = sp; }
-            ped.h = Math.atan2(pdx, pdz); const c = KS.collide(ped.x, ped.z, 0.35, 0, 1.0); ped.x = c.x; ped.z = c.z;
-            ped.p.busyArm = false; ped.whT = (ped.whT || 0) - dt; if (ped.whT <= 0) { ped.whT = 2.5; KS.audio && KS.audio.whistle(Math.max(0.15, 1 - pd / 60)); KS.say(pr, KS.pick(['Rok! Police!', 'Oi! Rok!', 'Bhaagna sakdainas!']), 1.4, 'angry'); }
-            ped.dist = pd; break;
-          }
+          const pd = Math.hypot(px - ped.x, pz - ped.z);
+          const m2 = policeChase(ped, dt, px, pz, pr); if (m2 >= 0) { moving = m2; break; }
           if (ped.chasing) { // walk back to the post
             const bx = ped.postX - ped.x, bz = ped.postZ - ped.z, bd = Math.hypot(bx, bz);
             if (bd > 0.5) { ped.x += (bx / bd) * 1.6 * dt; ped.z += (bz / bd) * 1.6 * dt; ped.h = Math.atan2(bx, bz); moving = 1.6; ped.p.busyArm = false; break; }
@@ -415,6 +454,17 @@
     }
     if (chaser) Peds.lastChaser = chaser;
   };
+  /** police officer leaves their post or patrol to run after the player during a police alert. returns speed, or -1 if not chasing */
+  function policeChase(ped, dt, px, pz, pr) {
+    const heat = KS.Law ? KS.Law.heat : 0, pdx = px - ped.x, pdz = pz - ped.z, pd = Math.hypot(pdx, pdz);
+    ped.dist = pd;
+    if (!(heat > 0 && pd < 75)) { if (ped.patrol && ped.chasing) { ped.chasing = false; ped.patrolWas = true; } return -1; }
+    ped.chasing = true; ped.y = 0.06; let moving = 0;
+    if (pd > 1.0) { const sp = KS.Player.vehicle ? 6.5 : 5.2; ped.x += (pdx / pd) * sp * dt; ped.z += (pdz / pd) * sp * dt; moving = sp; }
+    ped.h = Math.atan2(pdx, pdz); const c = KS.collide(ped.x, ped.z, 0.35, 0, 1.0); ped.x = c.x; ped.z = c.z;
+    ped.p.busyArm = false; ped.whT = (ped.whT || 0) - dt; if (ped.whT <= 0) { ped.whT = 2.5; KS.audio && KS.audio.whistle(Math.max(0.15, 1 - pd / 60)); KS.say(pr, KS.pick(['Rok! Police!', 'Oi! Rok!', 'Bhaagna sakdainas!']), 1.4, 'angry'); }
+    return moving;
+  }
   /** knock a pedestrian down (from a punch or a vehicle) */
   Peds.knock = (ped, fromX, fromZ, hard) => {
     ped.down = hard ? 28 : 2.2; ped.flee = 0; ped.fight = 0; ped.injured = !!hard;

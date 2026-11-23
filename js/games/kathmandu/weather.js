@@ -34,7 +34,7 @@
           float s = max(dot(d, normalize(sunDir)), 0.0);
           c += sunCol * (pow(s, 1400.0) * 3.0 + pow(s, 14.0) * 0.32 + pow(s, 3.0) * 0.08) * sunAmt;
           float m = max(dot(d, normalize(moonDir)), 0.0);
-          c += vec3(0.85,0.9,1.0) * (smoothstep(0.9993, 0.9996, m) * 0.9 + pow(m, 60.0) * 0.08) * moonAmt;
+          c += vec3(0.92,0.95,1.0) * (smoothstep(0.99935, 0.9997, m) * 1.25 + pow(m, 400.0) * 0.25 + pow(m, 40.0) * 0.07) * moonAmt;
           gl_FragColor = vec4(c, 1.0); }`,
     }));
     sky.renderOrder = -2; sky.frustumCulled = false; scene.add(sky); Wx.sky = sky;
@@ -112,7 +112,7 @@
     U.top.value.copy(tTop); U.horizon.value.copy(tHor); U.ground.value.copy(tHor).multiplyScalar(0.7);
     U.sunDir.value.copy(sunDir); U.sunAmt.value = KS.smooth(-0.1, 0.05, sunY) * (1 - cur.cloud * 0.85);
     U.sunCol.value.setHex(sunY < 0.2 ? 0xffa860 : 0xfff0d0);
-    U.moonDir.value.set(-sunDir.x, -sunDir.y, 0.3); U.moonAmt.value = night * (1 - cur.cloud);
+    U.moonDir.value.set(-sunDir.x, Math.max(0.25, -sunDir.y), 0.3); U.moonAmt.value = night * (1 - cur.cloud * 0.9);
     Wx.sky.position.copy(camera.position); Wx.stars.position.copy(camera.position);
     Wx.starMat.opacity = night * (1 - cur.cloud) * (1 - cur.hazeMix * 0.6);
     // fog
@@ -123,7 +123,7 @@
       sun.color.setHex(sunY < 0.18 ? 0xffb27a : 0xfff1d8); sun.intensity = KS.smooth(-0.05, 0.2, sunY) * (1 - cur.dark * 0.8) * 1.05;
       sun.position.copy(ctx.focus).addScaledVector(sunDir, 400);
     } else {
-      sun.color.setHex(0x8aa2d8); sun.intensity = 0.16 * (1 - cur.cloud * 0.7);
+      sun.color.setHex(0x9fb6ee); sun.intensity = 0.34 * (1 - cur.cloud * 0.75); // moonlight
       sun.position.copy(ctx.focus).add(tmpV.set(-sunDir.x, -sunDir.y, 0.3).normalize().multiplyScalar(400));
     }
     sun.target.position.copy(ctx.focus);

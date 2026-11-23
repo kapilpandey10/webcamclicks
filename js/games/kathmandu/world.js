@@ -262,6 +262,7 @@
     dummy.position.set(cx, 0, cz); dummy.rotation.set(0, ry, 0); dummy.scale.set(w, H, d); dummy.updateMatrix();
     const k = style + ':' + floors; (inst[k] = inst[k] || []).push({ m: dummy.matrix.clone(), color, off: [KS.ri(0, 3) * 0.25, KS.ri(0, 15) / 16] });
     KS.addBox(cx, cz, w, d, H, -50, ry);
+    if (floors >= 6) (W.tall = W.tall || []).push({ cx, cz, w, d, H, ry });
     const fx = Math.sin(ry), fz = Math.cos(ry), rx = Math.cos(ry), rz = -Math.sin(ry);
     const front = (o, y, along = 0) => [cx + fx * (d / 2 + o) + rx * along, y, cz + fz * (d / 2 + o) + rz * along];
     // ground floor shop
@@ -530,7 +531,9 @@
     b.box(x, 0.32, z, 0.32, 0.4, 1.4, col, ry); b.box(x, 0.72, z, 0.3, 0.12, 0.8, 0x111111, ry);
     p = o(0.6); b.box(p[0], 0.75, p[1], 0.75, 0.06, 0.06, 0x333333, ry);
   };
+  KS.fruitStalls = [];
   W.stall = (b, x, z, ry) => { // fruit / vegetable cart with umbrella
+    KS.fruitStalls.push([x, z]);
     b.box(x, 0.6, z, 2.4, 0.2, 1.3, 0x7a5232, ry);
     for (let i = 0; i < 10; i++) b.sphere(x + KS.r(-1, 1) * Math.cos(ry), 0.85, z + KS.r(-1, 1) * Math.sin(ry) + KS.r(-0.4, 0.4), 0.18, KS.pick([0xff8c1a, 0xe8d23a, 0xd12b2b, 0x5cae3a, 0xa83e8c]), 1, 6);
     b.box(x, 0, z, 0.1, 0.6, 0.1, 0x444444); b.cyl(x, 0, z, 0.04, 2.6, 0x555555, 4);
@@ -662,6 +665,7 @@
     for (let i = 0; i < 2600; i++) {
       const x = KS.r(KS.BOUNDS.x0 + 20, 1380), z = KS.r(-1380, 1380), m = Math.max(Math.abs(x), Math.abs(z));
       if (m < 600 || hwy(x, z, 30)) continue;
+      const MS = KS.MANSION; if (x > MS.x0 - 30 && x < MS.x1 + 30 && z > MS.z0 - 30 && z < -548) continue;
       if (Math.hypot(x - KS.HW.village.x, z - KS.HW.village.z) < 300) continue;
       if (z > KS.RIVER.z0 - 12 && z < KS.RIVER.z1 + 12) continue;
       if (x > 560 && x < 840 && Math.abs(z) < 420) continue; // airport
@@ -681,6 +685,7 @@
     for (let i = 0; i < 160; i++) {
       const x = KS.r(-1000, 1000), z = KS.r(-1000, 1000), m = Math.max(Math.abs(x), Math.abs(z));
       if (m < 600 || m > 980 || hwy(x, z, 30)) continue;
+      if (x > KS.MANSION.x0 - 40 && x < KS.MANSION.x1 + 40 && z > KS.MANSION.z0 - 40 && z < -548) continue;
       if (z > KS.RIVER.z0 - 20 && z < KS.RIVER.z1 + 20) continue;
       if (x > 540 && x < 860 && Math.abs(z) < 440) continue;
       if (Math.hypot(x - sw.x, z - sw.z) < 160) continue;
@@ -701,6 +706,7 @@
     streetFurniture(scene);
     if (KS.Landmarks) KS.Landmarks.build(scene, W);
     if (KS.Extras) KS.Extras.build(scene, W);
+    if (KS.Signs) KS.Signs.build(scene, W);
     // Thamel: prayer flags & festival lights criss-crossing the streets
     for (const [c, r] of [[4, 2], [4, 3], [5, 3], [3, 3]]) {
       const R = W.blockRect(c, r);

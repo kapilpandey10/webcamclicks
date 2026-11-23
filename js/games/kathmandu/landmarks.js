@@ -309,7 +309,10 @@
     b.cyl(cx, y, cz, r + 1.8, 0.8, 0xd9d3c6, 8); b.cyl(cx, y + 0.8, cz, r + 0.6, 4, 0xeeeeee, 8); // observation deck
     b.roof(cx, y + 4.8, cz, (r + 2.6) * 1.4, 3, P.gold, 0.3);
     b.cyl(cx, y + 7.4, cz, 0.7, 6, P.gold, 8, 0.12);
-    KS.addCircle(cx, cz, 6.5, y + 10);
+    // walkable: plinth, tower body up to the deck, the deck ring, the glass room on top
+    KS.addCircle(cx, cz, 9, 1.35); KS.addCircle(cx, cz, 6.5, 2.35); KS.addCircle(cx, cz, 4.7, y + 0.8);
+    KS.addCircle(cx, cz, r + 1.8, y + 0.8, y - 1); KS.addCircle(cx, cz, r + 0.6, y + 12, y + 0.8);
+    KS.dharahara = { x: cx, z: cz, deck: y + 0.8, deckR: r + 1.7, room: r + 0.6 };
     // stump of the old tower
     b.cyl(cx + 22, 0.15, cz + 18, 3.2, 6, 0xe4dccc, 8, 0.95); KS.addCircle(cx + 22, cz + 18, 3.2, 6.2);
     // Sundhara stone water spout: sunken pit with a golden spout

@@ -25,12 +25,14 @@
     for (const x of [-650, -880, -1200, -1520, -1720, -1980, -2260]) {
       const n = nodes.push({ x, z: KS.HW.z, nb: [], hw: true, hill: true, spur: x === -2260 }) - 1; link(prev, n); prev = n;
     }
+    if (KS.MANSION) { const m = nodes.push({ x: KS.MANSION.gx, z: KS.MANSION.gz - 6, nb: [], spur: true }) - 1; link(m, idx(8, 0)); }
     for (const s of KS.signals) { const n = nodes[idx(s.i, s.j)]; n.sig = s; }
     TR.nodes = nodes;
   };
   const margin = (n) => (n.spur || n.hw ? 0 : n.ring ? 12.5 : 9.5);
   function laneOf(v, a, b, out) {
-    const A = nodes[a], B = nodes[b];
+    const A = nodes[a], B = nodes[b], long = v.type && v.type.len > 6 ? 3.5 : 0; // buses & trucks swing wide
+    const margin = (n) => (n.spur || n.hw ? 0 : (n.ring ? 12.5 : 9.5) + long);
     let dx = B.x - A.x, dz = B.z - A.z; const L = Math.hypot(dx, dz); dx /= L; dz /= L;
     const ring = A.ring && B.ring && (A.i === B.i || A.j === B.j) && !A.spur && !B.spur && !A.hw && !B.hw;
     const off = (ring ? (v.outer ? 7.2 : 3.4) : 3.5) + v.lat;
@@ -44,10 +46,13 @@
   TR.laneOf = laneOf;
 
   /* ---------- vehicles ---------- */
-  function placeOnRandomEdge(v, px, pz, minD, maxD) {
-    for (let tries = 0; tries < 60; tries++) {
+  /** put a vehicle on a road. With hidden=true it is placed out of the camera's sight so it never pops in */
+  function placeOnRandomEdge(v, px, pz, minD, maxD, hidden) {
+    const cam = KS.camera;
+    for (let tries = 0; tries < 120; tries++) {
       const a = Math.floor(KS.rng() * nodes.length), n = nodes[a];
       const d = Math.hypot(n.x - px, n.z - pz); if (d < minD || d > maxD) continue;
+      if (hidden && cam && Math.hypot(n.x - cam.position.x, n.z - cam.position.z) < 330) continue;
       const b = KS.pick(n.nb); if (b == null) continue;
       v.a = a; v.b = b; v.mode = 'lane'; laneOf(v, a, b, v.lane); v.t = KS.r(0, v.lane.len); v.speed = v.maxSpeed * 0.6; v.side = 0;
       return true;
@@ -61,13 +66,17 @@
     const v = { kind, type: vt, ...vis, uthao, lane: {}, ai: true, speed: 0, t: 0, x: 0, z: 0, y: 0.06, h: 0, stuck: 0, ignore: 0, honkT: KS.r(2, 12), lat: 0, side: 0, outer: KS.chance(0.4), maxSpeed: vt.speed * KS.r(0.8, 1.1), stopT: 0, callT: KS.r(3, 9) };
     if (KS.isBike(kind)) v.lat = KS.r(-0.6, 1.4);
     if (kind === 'ambulance') v.maxSpeed = vt.speed * 1.15;
-    placeOnRandomEdge(v, px, pz, minD, maxD);
+    placeOnRandomEdge(v, px, pz, minD, maxD, minD >= 300);
+    v.home = homeLot(v); v.roamT = KS.r(40, 200);
     TR.list.push(v); TR.scene.add(v.root);
     return v;
   };
   TR.init = (scene, count, px, pz) => {
     TR.scene = scene; TR.initGraph();
-    for (let i = 0; i < count; i++) TR.spawn(MIX[i % MIX.length], px, pz, 10, 300);
+    // a fixed fleet that lives all over the valley; it is simulated everywhere and only drawn near you
+    for (let i = 0; i < count; i++) TR.spawn(MIX[i % MIX.length], 0, 0, 0, 1100);
+    // some start the day parked in their lots
+    for (const v of TR.list) if (v.home && KS.chance(0.25)) enterLot(v, true);
   };
   /** a parked vehicle the player can take */
   TR.park = (type, x, z, h, opt = {}) => {
@@ -81,8 +90,11 @@
     const B = nodes[v.b], from = v.a;
     let opts = B.nb.filter((n) => n !== from);
     if (!opts.length) opts = [from];
+    // arriving home: pull into the lot
+    if (v.path && v.b === v.home.node) { v.path = null; if (enterLot(v)) return; }
     const straight = opts.find((n) => { const N = nodes[n]; return Math.abs((N.x - B.x) * v.lane.dz - (N.z - B.z) * v.lane.dx) < 1; });
-    const c = straight != null && KS.chance(B.hw ? 1 : 0.45) ? straight : KS.pick(opts);
+    let c = straight != null && KS.chance(B.hw ? 1 : 0.45) ? straight : KS.pick(opts);
+    if (v.path) { const i = v.path.indexOf(v.b); const n2 = i >= 0 ? v.path[i + 1] : null; if (n2 != null && B.nb.includes(n2)) c = n2; else v.path = TR.pathNodes(v.b, v.home.node); }
     const cur = v.lane, nxt = laneOf(v, v.b, c, {});
     const p0x = cur.ex, p0z = cur.ez, p2x = nxt.sx, p2z = nxt.sz;
     let p1x, p1z;
@@ -97,16 +109,18 @@
   function obstacleAhead(v, others, ctx) {
     const fx = Math.sin(v.h), fz = Math.cos(v.h), look = 6 + v.speed * 1.6, halfW = v.type.wid / 2;
     let best = 1e9, who = null;
-    const test = (x, z, len, wid, o) => {
-      const rx = x - v.x, rz = z - v.z; if (Math.abs(rx) > look + 12 || Math.abs(rz) > look + 12) return;
-      const ahead = rx * fx + rz * fz; if (ahead <= 0) return;
+    const test = (x, z, len, wid, o, oh) => {
+      const rx = x - v.x, rz = z - v.z; if (Math.abs(rx) > look + 14 || Math.abs(rz) > look + 14) return;
+      const dh = oh == null ? 0 : oh - v.h, c = Math.abs(Math.cos(dh)), sn = Math.abs(Math.sin(dh));
+      const extA = (len / 2) * c + (wid / 2) * sn, extL = (len / 2) * sn + (wid / 2) * c; // the other's footprint, turned to our heading
+      const ahead = rx * fx + rz * fz; if (ahead + extA <= 0.3) return;
       const lat = Math.abs(rx * fz - rz * fx);
-      if (lat > halfW + wid / 2 + 0.25) return;
-      const d = ahead - v.type.len / 2 - len / 2;
+      if (lat > halfW + extL + 0.2) return;
+      const d = ahead - v.type.len / 2 - extA;
       if (d < look && d < best) { best = d; who = o; }
     };
-    for (const o of others) if (o !== v) test(o.x, o.z, o.type.len, o.type.wid, o);
-    if (ctx.player) test(ctx.player.x, ctx.player.z, ctx.player.len, ctx.player.wid, 'player');
+    for (const o of others) if (o !== v && !o.lot) test(o.x, o.z, o.type.len, o.type.wid, o, o.h);
+    if (ctx.player) test(ctx.player.x, ctx.player.z, ctx.player.len, ctx.player.wid, 'player', KS.Player.vehicle ? KS.Player.vehicle.h : null);
     KS.Peds.forEachNear(v.x, v.z, look + 4, (p) => { if (!p.down) test(p.x, p.z, 0.5, 0.6, 'ped'); });
     KS.Animals.obstacles((x, z) => test(x, z, 1.8, 1.2, 'cow'));
     return { d: best, who };
@@ -126,7 +140,7 @@
   /* ---------- police pursuit ---------- */
   TR.startChase = (v) => { v.chase = true; v.ai = true; v.parked = false; v.idlePolice = false; v.stuck = 0; v.rev = 0; KS.setSiren(v, true); if (v.rider) v.rider.visible = true; };
   TR.endChase = (v) => { v.chase = false; KS.setSiren(v, false); v.ai = false; v.parked = true; v.idlePolice = true; v.speed = 0; };
-  TR.spawnPolice = (px, pz) => { const v = TR.spawn(KS.chance(0.45) ? 'policebike' : 'police', px, pz, 110, 200); TR.startChase(v); return v; };
+  TR.spawnPolice = (px, pz) => { const v = TR.spawn(KS.chance(0.45) ? 'policebike' : 'police', px, pz, 330, 520); TR.startChase(v); return v; };
   TR.chasers = () => TR.list.filter((v) => v.chase);
   function chaseUpdate(v, dt, ctx) {
     const P = KS.Player, pv = P.vehicle, heat = KS.Law ? KS.Law.heat : 1;
@@ -151,6 +165,61 @@
     v.root.position.set(v.x, v.y, v.z); v.root.rotation.set(0, v.h, KS.isBike(v.kind) ? -KS.clamp(diff, -1, 1) * 0.25 : 0);
   }
 
+  /* ---------- parking lots & bus park: every vehicle has a home it returns to ---------- */
+  function homeLot(v) {
+    const L = KS.LOTS || []; if (!L.length || v.kind === 'police' || v.kind === 'policebike' || v.kind === 'ambulance') return null;
+    const bus = v.type.seats === 'bus' || v.kind === 'micro' || v.kind === 'tempo';
+    const ok = L.filter((l) => (bus ? l.bus : !l.bus) && (v.kind !== 'truck' || l.trucks));
+    return ok.length ? KS.pick(ok) : null;
+  }
+  TR.pathNodes = (from, to) => {
+    const N = nodes.length, dist = new Float64Array(N).fill(Infinity), prev = new Int32Array(N).fill(-1), done = new Uint8Array(N);
+    dist[from] = 0;
+    for (let k = 0; k < N; k++) {
+      let u = -1, bd = Infinity; for (let i = 0; i < N; i++) if (!done[i] && dist[i] < bd) { bd = dist[i]; u = i; }
+      if (u < 0 || u === to) break; done[u] = 1;
+      for (const w of nodes[u].nb) { const d = bd + Math.hypot(nodes[w].x - nodes[u].x, nodes[w].z - nodes[u].z); if (d < dist[w]) { dist[w] = d; prev[w] = u; } }
+    }
+    const p = []; let c = to; while (c >= 0) { p.unshift(c); c = prev[c]; }
+    return p[0] === from ? p : null;
+  };
+  function bez(p0, p1, p2, u) { const iu = 1 - u; return [iu * iu * p0[0] + 2 * iu * u * p1[0] + u * u * p2[0], iu * iu * p0[1] + 2 * iu * u * p1[1] + u * u * p2[1]]; }
+  /** drive from the junction into a free bay; quick=true parks instantly (start of day) */
+  function enterLot(v, quick) {
+    const L = v.home; if (!L) return false;
+    const bay = L.bays.find((b) => !b.v && (b.bus === !!(v.type.seats === 'bus' || v.kind === 'micro' || v.kind === 'tempo') || !L.bus)); if (!bay) return false;
+    bay.v = v; v.bay = bay; v.speed = 0;
+    if (quick) { v.lot = { stage: 'park', t: KS.r(5, 120) }; v.x = bay.x; v.z = bay.z; v.h = bay.h; place(v); return true; }
+    const n = nodes[L.node], from = [v.x, v.z];
+    v.lot = { stage: 'in', u: 0, p0: from, p1: [n.x + (bay.x - n.x) * 0.15, n.z + (bay.z - n.z) * 0.15], p2: [bay.x, bay.z], len: Math.hypot(bay.x - v.x, bay.z - v.z) + 4 };
+    return true;
+  }
+  function place(v) { v.y = KS.heightAt(v.x, v.z) + 0.06; v.root.position.set(v.x, v.y, v.z); v.root.rotation.set(0, v.h, 0); }
+  function lotUpdate(v, dt, dCam) {
+    const lt = v.lot;
+    if (lt.stage === 'park') {
+      lt.t -= dt; if (v.rider) v.rider.visible = false;
+      if (lt.t <= 0) { // leave: back out of the bay to a road leaving the lot junction
+        const L = v.home, n = nodes[L.node], b = KS.pick(n.nb), lane = laneOf(v, L.node, b, {});
+        if (TR.nearCount(lane.sx, lane.sz, 8) > 0) { lt.t = 2; return; }
+        v.lot = { stage: 'out', u: 0, p0: [v.x, v.z], p1: [n.x + (v.x - n.x) * 0.2, n.z + (v.z - n.z) * 0.2], p2: [lane.sx, lane.sz], len: Math.hypot(lane.sx - v.x, lane.sz - v.z) + 4, a: L.node, b };
+        if (v.rider) v.rider.visible = true;
+      }
+      if (v.root.visible) place(v);
+      return;
+    }
+    const sp = lt.stage === 'in' ? 3.2 : 3.8;
+    lt.u = Math.min(1, lt.u + (sp * dt) / lt.len);
+    const [x, z] = bez(lt.p0, lt.p1, lt.p2, lt.u), [x2, z2] = bez(lt.p0, lt.p1, lt.p2, Math.min(1, lt.u + 0.02));
+    v.x = x; v.z = z; if (Math.hypot(x2 - x, z2 - z) > 1e-4) v.h = Math.atan2(x2 - x, z2 - z);
+    if (v.root.visible) place(v);
+    if (lt.u >= 1) {
+      if (lt.stage === 'in') { v.h = v.bay.h; v.lot = { stage: 'park', t: v.type.seats === 'bus' ? KS.r(12, 30) : KS.r(25, 120) }; }
+      else { v.bay.v = null; v.bay = null; v.lot = null; v.a = lt.a; v.b = lt.b; v.lane = laneOf(v, lt.a, lt.b, {}); v.t = 0; v.mode = 'lane'; v.speed = 2; }
+    }
+  }
+  TR.lotNode = (i, j) => idx(i, j);
+
   TR.update = (dt, ctx) => {
     const { px, pz, cx, cz, night } = ctx;
     updateSignals();
@@ -160,10 +229,15 @@
     for (const v of TR.list) {
       const dCam = Math.hypot(v.x - cx, v.z - cz);
       v.root.visible = dCam < 300 || v === ctx.playerVehicle || v.chase;
-      if (v.idlePolice && !v.ai && Math.hypot(v.x - px, v.z - pz) > 260) { v.idlePolice = false; TR.recycle(v, px, pz); continue; }
+      if (v.idlePolice && !v.ai && dCam > 330) { v.idlePolice = false; TR.recycle(v, px, pz); continue; }
+      if (v.lot) { lotUpdate(v, dt, dCam); continue; }
       if (v.chase) { chaseUpdate(v, dt, ctx); continue; }
       if (!v.ai) continue;
-      if (Math.hypot(v.x - px, v.z - pz) > 340 && !v.root.visible) { placeOnRandomEdge(v, px, pz, 130, 300); }
+      v.safeT = (v.safeT || KS.r(0, 0.5)) - dt;
+      if (v.safeT <= 0) { // if a vehicle ever ends up inside a building or wall, put it back on a road elsewhere
+        v.safeT = 0.5; const c = KS.collide(v.x, v.z, Math.min(1.2, v.type.wid * 0.45), v.y, 2.5);
+        if (c.hit && c.solid && !c.solid.bollard && c.solid.top > v.y + 2.5 && v.mode === 'lane') { placeOnRandomEdge(v, px, pz, 0, 1100, true); continue; }
+      }
       let target = v.maxSpeed * (v.mode === 'turn' ? (v.type.len < 2.3 ? 0.8 : 0.5) : 1) * (v.lane.hill && !v.lane.hw ? 0.6 : 1);
       if (ctx.rain) target *= 0.8;
       // red lights
@@ -177,7 +251,11 @@
       // buses and micros stop anywhere to pick people up
       if (v.type.seats === 'bus' || v.kind === 'micro' || v.kind === 'tempo') {
         if (v.stopT > 0) { v.stopT -= dt; target = 0; }
-        else if (v.mode === 'lane' && KS.chance(dt * 0.025)) v.stopT = KS.r(3, 7);
+        else if (v.mode === 'lane' && v.kind !== 'truck') for (const st of KS.busStops || []) {
+          if (st === v.lastStop) continue;
+          const rx = st.x - v.x, rz = st.z - v.z, ahead = rx * v.lane.dx + rz * v.lane.dz, lat = Math.abs(rx * v.lane.dz - rz * v.lane.dx);
+          if (lat < 2.6 && ahead > -0.5 && ahead < 14) { target = Math.min(target, Math.max(0, ahead * 0.9)); if (ahead < 1) { v.stopT = KS.r(5, 9); v.lastStop = st; } break; }
+        }
         v.callT -= dt;
         if (v.callT <= 0 && dCam < 30 && v.speed < 3 && v.kind !== 'truck') { v.callT = KS.r(4, 9); KS.say(v.root, KS.pick(KS.ROUTES_EN), 2.2); KS.audio && KS.audio.voice(Math.max(0.1, 1 - dCam / 30), 'shout'); }
       }
@@ -188,19 +266,25 @@
         const rx = a.x - v.x, rz = a.z - v.z, d = Math.hypot(rx, rz);
         if (d < 28 && rx * Math.sin(v.h) + rz * Math.cos(v.h) < 0 && Math.cos(a.h - v.h) > 0.7) { yieldTo = true; break; }
       }
-      v.side += ((yieldTo ? 1.6 : 0) - v.side) * Math.min(1, dt * 2);
-      if (yieldTo) target *= 0.35;
       const ob = obstacleAhead(v, TR.list, ctx);
-      if (ob.who && v.ignore <= 0) {
+      // overtaking: when stuck behind something that is not moving, pull out to the right and go around it
+      if (v.over > 0) { v.over -= dt; if (!ob.who) v.clearT = (v.clearT || 0) + dt; else v.clearT = 0; if (v.clearT > 1.2 || v.mode !== 'lane') v.over = 0; }
+      const sideWant = yieldTo ? 1.6 : v.over > 0 ? -3.3 : 0;
+      v.side += (sideWant - v.side) * Math.min(1, dt * 1.6);
+      if (yieldTo) target *= 0.35;
+      if (ob.who) {
         const lim = Math.max(0, (ob.d - 1.5) * 1.3);
         if (lim < target) target = lim;
         if (v.speed < 0.6) {
           v.stuck += dt;
           if (v.stuck > 0.8 && v.honkT <= 0) { v.honkT = KS.r(1.5, 4); if (dCam < 90) KS.audio && KS.audio.horn(v.kind, Math.max(0.08, 1 - dCam / 90)); }
-          if (v.stuck > (ob.who === 'player' || ob.who === 'ped' ? 9 : v.kind === 'ambulance' ? 2 : 4) && ob.who !== 'cow') { v.ignore = 1.6; v.stuck = 0; }
+          const still = ob.who === 'cow' || ob.who === 'player' ? !(KS.Player.vehicle && Math.abs(KS.Player.vehicle.speed) > 0.5) || ob.who === 'cow' : ob.who !== 'ped' && (ob.who.parked || !ob.who.ai || ob.who.speed < 0.3);
+          if (still && v.stuck > 2.5 && v.mode === 'lane' && !(v.over > 0) && v.lane.len - v.t > 12) { v.over = 9; v.clearT = 0; v.stuck = 0; }
         }
       } else v.stuck = 0;
-      if (v.ignore > 0) v.ignore -= dt;
+      // going home: head for the home lot now and then
+      v.roamT -= dt;
+      if (v.roamT <= 0 && v.home && !v.path && v.mode === 'lane' && !v.uthao) { v.roamT = KS.r(80, 260); v.path = TR.pathNodes(v.b, v.home.node); v.pi = 0; }
       v.honkT -= dt;
       if (v.honkT < -8 && KS.chance(dt * 0.15)) { v.honkT = KS.r(4, 16); if (dCam < 70) KS.audio && KS.audio.horn(v.kind, Math.max(0.05, 0.6 - dCam / 120)); }
       const acc = target > v.speed ? v.type.accel : 14;
@@ -228,8 +312,8 @@
     KS.headMat.color.setHex(night > 0.3 ? 0xfff8d8 : 0xd8d6cc); KS.tailMat.color.setHex(night > 0.3 ? 0xff2a2a : 0x8a1010);
   };
   TR.recycle = (v, px, pz) => {
-    v.ai = true; v.parked = false; v.vy = 0; v.owned = false; if (v.rider) v.rider.visible = true;
-    v.root.rotation.set(0, 0, 0, 'XYZ'); placeOnRandomEdge(v, px, pz, 150, 300);
+    v.ai = true; v.parked = false; v.vy = 0; v.owned = false; v.lot = null; v.path = null; if (v.rider) v.rider.visible = true;
+    v.root.rotation.set(0, 0, 0, 'XYZ'); placeOnRandomEdge(v, px, pz, 0, 1100, true);
   };
   TR.nearCount = (x, z, r) => { let n = 0; for (const v of TR.list) if (v.ai && v.speed > 1 && Math.abs(v.x - x) < r && Math.abs(v.z - z) < r) n++; return n; };
   TR.nearest = (x, z, r) => { let best = null, bd = r; for (const v of TR.list) { const d = Math.hypot(v.x - x, v.z - z) - v.type.len * 0.35; if (d < bd) { bd = d; best = v; } } return best; };

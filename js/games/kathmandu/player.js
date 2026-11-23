@@ -154,6 +154,16 @@
     }
     if (PL.punchA != null) { PL.punchA += dt * 3.2; p.busyArm = true; KS.animPunch(p, PL.punchA); if (PL.punchA >= 1) { PL.punchA = null; p.busyArm = false; } }
     if (PL.speed > 3) KS.Peds.bump(PL.x, PL.z, 0.9, dirx * PL.speed, dirz * PL.speed, PL.speed * 0.5);
+    // idle animations: check the phone, look around, stretch; eating fruit
+    const still = PL.speed < 0.1 && PL.grounded && !PL.swim && Math.abs(a.x) + Math.abs(a.y) < 0.05;
+    PL.idleT = still ? (PL.idleT || 0) + dt : 0;
+    if (PL.eatT > 0) { PL.eatT -= dt; p.busyArm = true; p.armR.rotation.x = -2.2 + Math.sin(KS.clock * 9) * 0.15; p.armR.rotation.z = 0.35; if (PL.eatT <= 0) p.busyArm = false; }
+    else if (PL.idleT > 6 && PL.punchA == null) {
+      const k = Math.floor((PL.idleT - 6) / 5) % 3, t = (PL.idleT - 6) % 5; p.busyArm = true;
+      if (k === 0) { p.armR.rotation.x = -1.5; p.armR.rotation.z = 0.45; p.torso.rotation.x = 0.12; } // looks at phone
+      else if (k === 1) { p.armR.rotation.x = 0; p.armR.rotation.z = 0; p.torso.rotation.y = Math.sin(t * 1.3) * 0.5; p.torso.rotation.x = 0; } // looks around
+      else { const u = Math.sin(Math.min(1, t / 1.5) * Math.PI); p.armL.rotation.x = p.armR.rotation.x = -2.8 * u; p.armL.rotation.z = p.armR.rotation.z = 0; } // stretches
+    } else if (p.busyArm && PL.punchA == null && !(PL.eatT > 0)) { p.busyArm = false; p.torso.rotation.x = 0; }
   }
   function onSidewalk(x, z) {
     const G = KS.G; const bx = ((x - G.O) % G.B + G.B) % G.B, bz = ((z - G.O) % G.B + G.B) % G.B;
@@ -251,7 +261,10 @@
   PL.updateCamera = (camera, dt) => {
     if (I.hit('KeyV') || I.hit('KeyCam')) PL.setCam(cam.mode + 1);
     if (I.zoom) cam.want = KS.clamp(cam.want + I.zoom * 1.2, 3, 30);
-    cam.yaw -= I.look.dx * 0.0042; cam.pitch = KS.clamp(cam.pitch + I.look.dy * 0.0035, -0.35, 1.35);
+    const st = KS.Settings ? KS.Settings.data() : { sens: 1 }, sens = st.sens || 1;
+    cam.yaw -= I.look.dx * 0.0042 * sens; cam.pitch = KS.clamp(cam.pitch + I.look.dy * 0.0035 * sens * (st.invertY ? -1 : 1), -0.35, 1.35);
+    // idle: after a while standing still the camera drifts slowly around you, like a cutscene
+    if (!PL.vehicle && PL.idleT > 12 && KS.clock - I.lastLook > 12 && cam.mode < 2) cam.yaw += dt * 0.07;
     const v = PL.vehicle, bike = v && KS.isBike(v.kind);
     if (v && KS.clock - I.lastLook > 1.4 && Math.abs(v.speed) > 1 && cam.mode !== 5) cam.yaw = KS.angLerp(cam.yaw, v.speed >= 0 ? v.h : v.h + Math.PI, Math.min(1, dt * 2.4));
     const h = v ? (v.type.len > 6 ? 3.2 : bike ? 1.7 : 1.9) : 1.55;

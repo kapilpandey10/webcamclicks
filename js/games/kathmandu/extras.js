@@ -219,13 +219,6 @@
       b.cyl(x, y, z, 0.05, 2.6, 0x777777, 5);
       const m = new T.Mesh(signGeo, signMat(lim)); m.position.set(x, y + 2.6, z); m.rotation.y = ry; scene.add(m);
     };
-    for (let i = 0; i <= G.N; i++) for (let j = 0; j < G.N; j += 2) {
-      const lim = KS.speedLimit(G.line(i) + 1, G.line(j) + 45), x = G.line(i) - G.roadHalf(i) - 1.2, z = G.line(j) + G.roadHalf(j) + 14;
-      if (KS.blockType(Math.max(0, i - 1), j) !== 'river') place(x, z, 0, lim);
-      const lim2 = KS.speedLimit(G.line(j) + 45, G.line(i) + 1), x2 = G.line(j) + G.roadHalf(j) + 14, z2 = G.line(i) + G.roadHalf(i) + 1.2;
-      if (KS.blockType(j, Math.min(G.N - 1, i)) !== 'river') place(x2, z2, Math.PI / 2, lim2);
-    }
-    place(-600, HW.z - 8.6, Math.PI / 2, 60, KS.roadH(-600)); place(HW.pE + 20, HW.z - 8.6, Math.PI / 2, 50, KS.roadH(HW.pE + 20)); place(-1690, HW.z + 8.6, -Math.PI / 2, 60, KS.roadH(-1690));
     // speed cameras
     const flashMat = new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
     for (const c of KS.SPEEDCAMS) {
@@ -308,7 +301,90 @@
     KS.landmarks.push({ id: 'trial', name: 'Licence Trial Ground', np: 'ट्रायल स्थल', x: 315, z: 225, r: 34, stop: { x: 305, z: R.z1 + 3 }, fact: 'Pass the written test and the famous "8" trial to get your bike licence; the car trial has a hill start and reverse parking.' });
   }
 
+  /* ---------- schools and school zones (25 km/h, 9:00-16:00) ---------- */
+  function schools(scene, W) {
+    const lampMat = new T.MeshBasicMaterial({ color: 0x553300 }); KS.schoolLamps = lampMat;
+    const signTex = KS.tex(256, 256, (g) => {
+      g.fillStyle = '#ffd21f'; g.fillRect(0, 0, 256, 256); g.strokeStyle = '#111'; g.lineWidth = 10; g.strokeRect(8, 8, 240, 240);
+      g.fillStyle = '#111'; g.textAlign = 'center'; g.font = `700 34px ${KS.FONT}`; g.fillText('विद्यालय क्षेत्र', 128, 58);
+      g.font = '800 30px "Barlow Condensed", Arial, sans-serif'; g.fillText('SCHOOL ZONE', 128, 96);
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(128, 160, 46, 0, 7); g.fill(); g.strokeStyle = '#c8102e'; g.lineWidth = 12; g.stroke();
+      g.fillStyle = '#111'; g.font = '800 44px "Barlow Condensed", Arial, sans-serif'; g.fillText('25', 128, 176);
+      g.font = '700 22px "Barlow Condensed", Arial, sans-serif'; g.fillText('9:00 – 16:00', 128, 234);
+    });
+    const signMat = new T.MeshLambertMaterial({ map: signTex, side: T.DoubleSide });
+    const b = new KS.Builder();
+    const sign = (x, z, ry) => {
+      const y = KS.heightAt(x, z);
+      b.cyl(x, y, z, 0.06, 3.4, 0x777777, 6);
+      const m = new T.Mesh(new T.PlaneGeometry(1.3, 1.3), signMat); m.position.set(x, y + 2.7, z); m.rotation.y = ry; scene.add(m);
+      const l = new T.Mesh(new T.SphereGeometry(0.13, 8, 6), lampMat); l.position.set(x, y + 3.5, z); scene.add(l);
+    };
+    for (const sc of KS.SCHOOLS) {
+      if (sc.village) { sign(sc.x1 - 4, KS.HW.z - 9, -Math.PI / 2); sign(sc.x0 + 4, KS.HW.z + 9, Math.PI / 2); continue; }
+      const R = W.blockRect(sc.c, sc.r), cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2;
+      // U-shaped school building, playground, flag
+      b.box(cx, 0, R.z0 + 14, 50, 8, 9, 0xf2e6b8); b.box(cx, 3.6, R.z0 + 14, 50.2, 0.5, 9.2, 0x1d4fb8); b.box(cx, 8, R.z0 + 14, 50.8, 0.4, 9.6, 0x9a958a);
+      b.box(R.x0 + 12, 0, cz + 4, 9, 8, 30, 0xf2e6b8); b.box(R.x1 - 12, 0, cz + 4, 9, 8, 30, 0xf2e6b8);
+      for (let f = 0; f < 2; f++) for (let k = 0; k < 9; k++) b.box(cx - 20 + k * 5, 1.2 + f * 4, R.z0 + 18.55, 2.4, 1.5, 0.1, 0x3b6a9a);
+      KS.addBox(cx, R.z0 + 14, 50, 9, 8.4); KS.addBox(R.x0 + 12, cz + 4, 9, 30, 8.4); KS.addBox(R.x1 - 12, cz + 4, 9, 30, 8.4);
+      b.box(cx, 0.1, cz + 8, 40, 0.06, 34, 0xa8946c);
+      for (const s2 of [-1, 1]) { b.box(cx + s2 * 15, 0.1, cz + 8, 0.12, 2.4, 0.12, 0xf4f4f4); b.box(cx + s2 * 15, 0.1, cz + 11, 0.12, 2.4, 0.12, 0xf4f4f4); b.box(cx + s2 * 15, 2.4, cz + 9.5, 0.12, 0.12, 3.1, 0xf4f4f4); }
+      b.cyl(cx - 12, 0.1, cz + 22, 0.1, 9, 0xdddddd, 6); b.box(cx - 11.2, 7, cz + 22, 1.6, 1.1, 0.05, 0xdc143c);
+      b.box(cx, 0, R.z1 - 4.4, 50, 1.6, 0.4, 0xd8d0c0); KS.addBox(cx - 15, R.z1 - 4.4, 20, 0.4, 1.6); KS.addBox(cx + 15, R.z1 - 4.4, 20, 0.4, 1.6);
+      board(scene, sc.np, sc.name.toUpperCase(), cx, 6.2, R.z0 + 18.7, 0, 13, 1.7, '#1d3a8a');
+      KS.plazas.push({ x0: cx - 18, x1: cx + 18, z0: cz - 6, z1: cz + 22, n: 14, kinds: ['kid', 'kid', 'kid', 'student', 'student', 'office'], school: true });
+      sign(R.x0 - 6, R.z0 - 26, 0); sign(R.x1 + 6, R.z1 + 26, Math.PI); sign(R.x0 - 26, R.z1 + 6, Math.PI / 2); sign(R.x1 + 26, R.z0 - 6, -Math.PI / 2);
+      KS.landmarks.push({ id: 'school' + sc.c + sc.r, minor: true, name: sc.name, np: sc.np, x: cx, z: cz, r: 30, fact: 'School zone: 25 km/h between 9:00 and 16:00, watched by a speed camera.' });
+    }
+    scene.add(KS.mesh(b));
+  }
+
+  /* ---------- pedestrian-only areas: bollards keep vehicles out, people walk through ---------- */
+  KS.noDrive = [];
+  function pedZones(scene, W) {
+    const b = new KS.Builder();
+    const row = (x0, z0, x1, z1) => {
+      const L = Math.hypot(x1 - x0, z1 - z0), n = Math.floor(L / 1.55);
+      for (let k = 0; k <= n; k++) { const t = k / n, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t, y = KS.heightAt(x, z); b.cyl(x, y, z, 0.13, 0.95, 0x3a3a3a, 8); b.cyl(x, y + 0.75, z, 0.135, 0.12, 0xf2c418, 8); KS.addCircle(x, z, 0.15, y + 0.95).bollard = true; }
+    };
+    const ring = (x0, z0, x1, z1, name) => { row(x0, z0, x1, z0); row(x1, z0, x1, z1); row(x1, z1, x0, z1); row(x0, z1, x0, z0); KS.noDrive.push({ x0, z0, x1, z1, name }); };
+    ring(G.line(4) + 8.6, G.line(6) + 8.6, G.line(5) - 8.6, G.line(8) - 8.6, 'Durbar Square');
+    let R = W.blockRect(10, 3); ring(R.x0 + 0.6, R.z0 + 0.6, R.x1 - 0.6, R.z1 - 0.6, 'Boudhanath');
+    R = W.blockRect(10, 10); ring(R.x0 + 0.6, R.z0 + 0.6, R.x1 - 0.6, KS.RIVER.z0 - 5, 'Pashupatinath');
+    for (const [c, r] of [[6, 5], [6, 6], [8, 3], [2, 9], [1, 1], [8, 1]]) { R = W.blockRect(c, r); ring(R.x0 + 4.4, R.z0 + 4.4, R.x1 - 4.4, R.z1 - 4.4, KS.blockType(c, r) === 'park' ? 'Park' : 'Tundikhel'); }
+    R = W.blockRect(6, 7); ring(R.x0 + 4.4, R.z0 + 4.4, R.x1 - 4.4, R.z1 - 4.4, 'Dharahara plaza');
+    scene.add(KS.mesh(b, KS.M.vc, false));
+    KS.noDriveAt = (x, z) => { for (const n of KS.noDrive) if (x > n.x0 && x < n.x1 && z > n.z0 && z < n.z1) return n; return null; };
+  }
+
+  /* ---------- climbable Dharahara (lift to the viewing deck) and stairs up the Boudha platforms ---------- */
+  function climbs(scene) {
+    const d = KS.dharahara; if (!d) return;
+    const b = new KS.Builder();
+    // steps up the plinth
+    for (let k = 0; k < 4; k++) for (const [sx, sz] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) { const r = 9.6 - k * 0.6, x = d.x + sx * r, z = d.z + sz * r; b.box(x, 0.15, z, sx ? 0.62 : 3.2, 0.3 + k * 0.3, sz ? 0.62 : 3.2, 0xd8d2c4); KS.addBox(x, z, sx ? 0.62 : 3.2, sz ? 0.62 : 3.2, 0.45 + k * 0.3); }
+    b.box(d.x, 2.35, d.z + 4.4, 1.8, 2.6, 0.3, 0x3a2a1a); // door
+    // viewing deck railing
+    const y = d.deck, R = d.deckR;
+    for (let k = 0; k < 32; k++) { const a = (k / 32) * Math.PI * 2, x = d.x + Math.sin(a) * R, z = d.z + Math.cos(a) * R; b.box(x, y, z, 0.08, 1.1, 0.08, 0x9a9a9a); KS.addCircle(x, z, 0.5, y + 1.1, y - 0.2); }
+    const rail = new T.Mesh(new T.TorusGeometry(R, 0.05, 6, 48), new T.MeshLambertMaterial({ color: 0xb0b0b0 })); rail.rotation.x = Math.PI / 2; rail.position.set(d.x, y + 1.1, d.z); scene.add(rail);
+    scene.add(KS.mesh(b));
+    KS.lifts = [{ x: d.x, z: d.z + 5.2, y: 0.15, to: { x: d.x, z: d.z + (d.room + R) / 2, y: y }, label: 'Take the lift up Dharahara' }, { x: d.x, z: d.z + (d.room + R) / 2, y, to: { x: d.x, z: d.z + 6.4, y: 0.6 }, label: 'Take the lift down' }];
+    // Boudha: stairs on the four sides of the mandala platform
+    const bo = KS.landmarks.find((l) => l.id === 'boudha');
+    if (bo) {
+      const s2 = new KS.Builder();
+      for (const [sx, sz] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) for (let k = 0; k < 9; k++) {
+        const dist = 37.6 - k * 0.9, x = bo.x + sx * dist, z = bo.z + sz * dist, h = 0.15 + (k + 1) * 0.47;
+        s2.box(x, 0.15, z, sx ? 0.92 : 4, h - 0.15, sz ? 0.92 : 4, 0xeae6dc); KS.addBox(x, z, sx ? 0.92 : 4, sz ? 0.92 : 4, h);
+      }
+      scene.add(KS.mesh(s2));
+    }
+  }
+
   X.build = (scene, W) => {
+    schools(scene, W); pedZones(scene, W); climbs(scene);
     highway(scene); village(scene, W); parks(scene, W); trafficControl(scene); trialGround(scene, W);
     // police office at Hanuman Dhoka, where arrested drivers end up
     board(scene, 'महानगरीय प्रहरी कार्यालय', 'METROPOLITAN POLICE OFFICE', -106.45, 5.4, 82, -Math.PI / 2, 7, 1.4, '#1d3a8a');

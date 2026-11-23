@@ -244,6 +244,67 @@ ul.challan li b { color: #ffe27a; white-space: nowrap; font-family: var(--hud); 
 .lcard b { font-family: var(--hud); letter-spacing: .08em; }
 .lcard.big { font-size: 15px; }
 
+
+/* v4: phone, guide, cinematic, multiplayer, settings, home */
+#phone { position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); width: min(300px, calc(100vw - 32px)); background: none; box-shadow: none; overflow: visible; pointer-events: auto; border-radius: 0; }
+#phoneTab { display: flex; align-items: center; gap: 8px; margin-left: auto; border: 0; background: #101418; color: var(--snow); border-radius: 99px; padding: 8px 14px; font-family: var(--hud); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; box-shadow: 0 0 0 2px #2a2f36, 0 6px 20px rgba(0,0,0,.4); position: relative; }
+#phBadge { position: absolute; top: -6px; right: -6px; background: var(--sindoor); border-radius: 99px; min-width: 20px; height: 20px; font-size: 12px; display: grid; place-items: center; }
+#phoneScreen { margin-top: 8px; background: #0d1014; border-radius: 26px; box-shadow: 0 0 0 4px #23272e, 0 0 0 6px #3a3f48, 0 18px 50px rgba(0,0,0,.6); overflow: hidden; display: flex; flex-direction: column; max-height: min(560px, calc(100vh - 140px)); transition: transform .25s ease, opacity .25s; transform-origin: bottom right; }
+#phone.closed #phoneScreen { transform: translateY(20px) scale(.92); opacity: 0; pointer-events: none; height: 0; margin: 0; }
+.ph-status { display: flex; justify-content: space-between; padding: 8px 16px 4px; font-size: 12px; font-family: var(--hud); letter-spacing: .06em; color: #cfd6df; }
+.ph-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 6px; padding: 14px 12px 18px; }
+.ph-grid .app { border: 0; background: none; display: grid; justify-items: center; gap: 4px; font-size: 11px; color: #e6e9ee; }
+.ph-grid .app span { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-size: 24px; box-shadow: inset 0 -3px 0 rgba(0,0,0,.25); }
+.ph-apphead { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.ph-apphead button { border: 0; background: rgba(255,255,255,.08); border-radius: 99px; width: 30px; height: 30px; font-size: 18px; }
+#phApp { display: flex; flex-direction: column; min-height: 0; }
+.ph-panel { padding: 10px 12px 14px; overflow-y: auto; display: grid; gap: 10px; font-size: 14px; align-content: start; max-height: min(470px, calc(100vh - 230px)); }
+.uth-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: #0f8a7a; border-radius: 10px; padding: 6px 10px; font-family: var(--hud); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.uth-head button { border: 0; border-radius: 99px; padding: 3px 10px; font-family: var(--hud); font-weight: 700; font-size: 12px; background: rgba(0,0,0,.25); }
+#phone.on .uth-head button { background: #fff; color: #0f8a7a; }
+.joblist { display: grid; gap: 8px; } .job { background: rgba(255,255,255,.06); border-radius: 10px; padding: 8px 10px; display: grid; gap: 4px; } .job small { color: var(--muted); } .job em { color: var(--marigold); font-style: normal; }
+.stnlist { display: grid; gap: 6px; }
+.set { display: grid; grid-template-columns: 1fr; gap: 4px; font-size: 13px; color: #e6dccb; } .set output { font-family: var(--hud); color: var(--muted); font-size: 12px; }
+.set.tog { grid-template-columns: auto 1fr; align-items: center; gap: 8px; }
+.set input[type=text], .set input:not([type]), .chatform input { background: rgba(255,255,255,.08); border: 1px solid var(--line); border-radius: 8px; color: var(--snow); padding: 7px 10px; font: inherit; min-width: 0; }
+.setgrid { display: grid; gap: 10px; } .setgrid h4 { margin: 6px 0 0; font-family: var(--hud); letter-spacing: .14em; text-transform: uppercase; font-size: 13px; color: var(--marigold); }
+.linkbtn { border: 0; background: none; color: #7fb4ff; text-decoration: underline; padding: 0; font-size: 12px; }
+#guide { background: var(--panel); border-radius: 10px; padding: 8px 12px; font-size: 13px; max-width: 300px; pointer-events: auto; backdrop-filter: blur(6px); }
+#guide .gh { display: flex; justify-content: space-between; align-items: center; font-family: var(--hud); letter-spacing: .1em; text-transform: uppercase; color: var(--marigold); }
+#guide .gh button { border: 0; background: none; font-size: 18px; color: var(--muted); }
+#guide ol { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 3px; } #guide li.done { opacity: .5; text-decoration: line-through; } #guide kbd { font-size: 11px; padding: 0 4px; }
+#lowHealth { position: fixed; inset: 0; pointer-events: none; z-index: 8; opacity: 0; background: radial-gradient(circle, rgba(0,0,0,0) 55%, rgba(160,0,20,.55) 100%); transition: opacity .4s; }
+#cine { position: fixed; inset: 0; z-index: 19; pointer-events: none; }
+#cine::before, #cine::after { content: ""; position: absolute; left: 0; right: 0; height: 11vh; background: #000; }
+#cine::before { top: 0; } #cine::after { bottom: 0; }
+#cineCap { position: absolute; left: max(24px, env(safe-area-inset-left)); bottom: calc(11vh + 28px); opacity: 0; } #cineCap.in { animation: capIn 4s ease forwards; }
+@keyframes capIn { 0% { opacity: 0; transform: translateY(10px); } 15%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+#cineNp { font-family: var(--display); font-size: clamp(40px, 8vw, 72px); color: var(--marigold); line-height: 1; text-shadow: 0 4px 20px rgba(0,0,0,.7); }
+#cineEn { font-family: var(--hud); font-weight: 800; letter-spacing: .25em; text-transform: uppercase; font-size: clamp(16px, 3vw, 24px); text-shadow: 0 2px 10px rgba(0,0,0,.8); }
+#cineSkip { position: absolute; right: 24px; bottom: calc(11vh + 24px); font-family: var(--hud); letter-spacing: .12em; text-transform: uppercase; font-size: 13px; color: #ddd; }
+#nameTags { position: fixed; inset: 0; pointer-events: none; z-index: 9; overflow: hidden; }
+.nametag { position: absolute; left: 0; top: 0; background: rgba(109,26,138,.85); color: #fff; padding: 2px 8px; border-radius: 99px; font-family: var(--hud); font-weight: 700; font-size: 13px; white-space: nowrap; }
+#chatFeed { position: absolute; left: max(16px, env(safe-area-inset-left)); bottom: 220px; display: grid; gap: 4px; max-width: min(360px, calc(100vw - 32px)); }
+.cm { background: rgba(20,14,30,.75); border-radius: 8px; padding: 4px 9px; font-size: 14px; transition: opacity .6s; word-break: break-word; } .cm b { color: #d8a8ff; margin-right: 4px; } .cm.sys { color: var(--muted); font-style: italic; } .cm.out { opacity: 0; }
+#quickChat { position: absolute; left: 50%; bottom: 90px; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: auto; width: min(420px, calc(100vw - 32px)); }
+#quickChat input { flex: 1; min-width: 0; background: rgba(20,14,30,.9); border: 1px solid #8a5ab0; border-radius: 10px; color: #fff; padding: 9px 12px; font: inherit; }
+.chatlog { max-height: 180px; overflow-y: auto; display: grid; gap: 4px; background: rgba(0,0,0,.25); border-radius: 10px; padding: 6px; }
+.chatform { display: flex; gap: 6px; } .chatform input { flex: 1; }
+.roomcode { display: flex; align-items: center; gap: 10px; font-family: var(--hud); } .roomcode b { font-size: 28px; letter-spacing: .2em; color: #ffe27a; }
+.homegrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.hcard { background: rgba(255,255,255,.05); border-radius: 12px; padding: 12px; display: grid; gap: 8px; align-content: start; } .hcard h4 { margin: 0; font-family: var(--hud); letter-spacing: .14em; text-transform: uppercase; font-size: 13px; color: var(--marigold); } .hcard small { color: var(--muted); }
+.pill { display: inline-block; border-radius: 99px; padding: 2px 10px; margin-right: 6px; font-family: var(--hud); font-weight: 700; font-size: 14px; } .pill.ok { background: #2f7d32; } .pill.no { background: rgba(255,255,255,.12); color: var(--muted); }
+body.is-touch #phone { bottom: auto; top: 330px; width: 250px; }
+body.is-touch #chatFeed { bottom: 190px; }
+
+
+/* v5: navigation, road name, map shortcuts */
+#navBox { position: absolute; top: max(130px, calc(env(safe-area-inset-top) + 116px)); left: 50%; transform: translateX(-50%); background: rgba(16,70,170,.9); border-radius: 12px; padding: 7px 14px; font-size: 16px; display: grid; justify-items: center; gap: 1px; max-width: calc(100vw - 32px); text-align: center; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+#navBox b { font-family: var(--hud); font-size: 20px; letter-spacing: .04em; } #navBox span { font-size: 14px; } #navBox small { color: #cfe0ff; font-size: 12px; }
+#road { font-family: var(--hud); font-size: 13px; letter-spacing: .08em; color: #e6e9ee; text-shadow: 0 2px 6px rgba(0,0,0,.9); }
+#bigDest { display: flex; flex-wrap: wrap; gap: 6px; max-height: 76px; overflow-y: auto; }
+#bigwrap { grid-template-rows: auto auto 1fr; }
+
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 </head>
@@ -267,7 +328,7 @@ ul.challan li b { color: #ffe27a; white-space: nowrap; font-family: var(--hud); 
       <div><kbd>WASD</kbd> walk / drive</div><div><kbd>Mouse</kbd> look around</div>
       <div><kbd>E</kbd> ride / get out / spin</div><div><kbd>Shift</kbd> run</div>
       <div><kbd>Space</kbd> jump / handbrake</div><div><kbd>H</kbd> horn (use it a lot)</div>
-      <div><kbd>U</kbd> Uthao app</div><div><kbd>R</kbd> live radio</div>
+      <div><kbd>Q</kbd> phone</div><div><kbd>R</kbd> live radio</div>
       <div><kbd>M</kbd> map · <kbd>V</kbd> camera</div><div><kbd>K</kbd> record · <kbd>J</kbd> photo</div>
       <div><kbd>F</kbd> punch</div><div><kbd>Esc</kbd> menu, licence, garage</div>
     </div>
@@ -281,10 +342,12 @@ ul.challan li b { color: #ffe27a; white-space: nowrap; font-family: var(--hud); 
 
 <div id="hud" hidden>
   <div class="tl">
-    <div id="loc"><div id="locNp" lang="ne">ठमेल</div><div id="locEn">Thamel</div></div>
+    <div id="loc"><div id="locNp" lang="ne">ठमेल</div><div id="locEn">Thamel</div><div id="road"></div></div>
+    <div id="guide" hidden></div>
     <div id="mission" hidden><div id="mTitle"></div><div id="mObj"></div><div id="mMeta"></div></div>
   </div>
   <div id="wanted" hidden></div>
+  <div id="navBox" hidden></div>
   <div id="stopBanner" hidden></div>
   <div id="trialBanner" hidden></div>
   <div id="himal" hidden>Himalaya in view · Langtang · Ganesh Himal · Dorje Lakpa</div>
@@ -306,10 +369,33 @@ ul.challan li b { color: #ffe27a; white-space: nowrap; font-family: var(--hud); 
   </div>
   <div id="notes" aria-live="polite"></div>
   <div id="prompt" hidden></div>
-  <div id="phone"><header><span>Uthao Driver</span><button type="button" id="btnPhone">Go online (U)</button></header><div id="phBody"></div><div id="phStats"></div></div>
+  <div id="phone" class="closed">
+    <button type="button" id="phoneTab">📱 Phone <kbd>Q</kbd><span id="phBadge" hidden></span></button>
+    <div id="phoneScreen" role="dialog" aria-label="Phone">
+      <div class="ph-status"><span id="phTime">08:30</span><span>4G ▮▮▮ · 82%</span></div>
+      <div id="phHome" class="ph-grid"></div>
+      <div id="phApp" hidden>
+        <div class="ph-apphead"><button type="button" id="phBack" aria-label="Back to home screen">‹</button><b id="phAppTitle"></b></div>
+        <div class="ph-panel" data-app-panel="uthao" hidden><div class="uth-head"><span>Uthao Driver</span><button type="button" id="btnPhone">Go online (U)</button></div><div id="phBody"></div><div id="phStats" class="small"></div></div>
+        <div class="ph-panel" data-app-panel="jobs" hidden></div>
+        <div class="ph-panel" data-app-panel="radio" hidden></div>
+        <div class="ph-panel" data-app-panel="licence" hidden></div>
+        <div class="ph-panel" data-app-panel="garage" hidden></div>
+        <div class="ph-panel" data-app-panel="food" hidden></div>
+        <div class="ph-panel" data-app-panel="camera" hidden></div>
+        <div class="ph-panel" data-app-panel="friends" hidden></div>
+        <div class="ph-panel" data-app-panel="settings" hidden></div>
+      </div>
+    </div>
+  </div>
+  <div id="chatFeed" aria-live="polite"></div>
+  <form id="quickChat" hidden><input id="quickChatText" maxlength="200" placeholder="Say something… (Enter to send, Esc to close)" aria-label="Chat message" autocomplete="off"><button type="submit" class="btn small-btn">Send</button></form></div>
   <div id="card" hidden><div class="flags"></div><div class="in"><div class="eyebrow">New place discovered</div><div id="cardNp" lang="ne"></div><div id="cardEn"></div><div id="cardFact"></div></div></div>
 </div>
 <div id="bubbles"></div>
+<div id="nameTags"></div>
+<div id="lowHealth"></div>
+<div id="cine" hidden><div id="cineCap"><div id="cineNp" lang="ne"></div><div id="cineEn"></div></div><div id="cineSkip">Space to skip</div></div>
 <div id="flash" class="flash"></div>
 <div id="lawModal" hidden><div class="lawcard" role="dialog" aria-labelledby="lawTitle"><h3 id="lawTitle"></h3><div id="lawBody"></div><div id="lawBtns"></div></div></div>
 <div id="mediaBox" hidden><div class="mcard"><div class="row" style="justify-content:space-between"><b id="mediaTitle">Your recording</b><button class="btn ghost small-btn" type="button" id="mediaClose">Close</button></div><div id="mediaView"></div><div class="row"><a class="btn small-btn" id="mediaSave" href="#" download>Save to device</a><span class="small">Files stay on your device. Nothing is uploaded.</span></div></div></div>
@@ -325,13 +411,15 @@ ul.challan li b { color: #ffe27a; white-space: nowrap; font-family: var(--hud); 
     <button type="button" data-key="KeyRun">Run</button>
     <button type="button" data-key="KeyJump">Jump</button>
     <button type="button" class="big" data-key="KeyEnter">Ride</button>
+    <button type="button" data-key="KeyPhone">Phone</button>
     <button type="button" data-key="KeyAccept">Accept</button>
     <button type="button" data-key="KeyNitro">Nitro</button>
   </div>
 </div>
 
 <div id="bigwrap" hidden>
-  <header><span>Kathmandu Valley · tap the map to set a waypoint</span><button class="btn ghost" type="button" onclick="document.getElementById('bigwrap').hidden = true">Close</button></header>
+  <header><span>Tap anywhere on the map to set a route, or pick a place</span><span style="display:flex;gap:8px"><button class="btn ghost small-btn" type="button" id="bigClear">Clear route</button><button class="btn ghost" type="button" onclick="document.getElementById('bigwrap').hidden = true">Close</button></span></header>
+  <div id="bigDest"></div>
   <canvas id="bigmap" aria-label="Map of Kathmandu"></canvas>
 </div>
 
@@ -340,15 +428,19 @@ ul.challan li b { color: #ffe27a; white-space: nowrap; font-family: var(--hud); 
     <div class="flags"></div>
     <div class="mhead"><h2><span lang="ne">विश्राम</span>Paused</h2><div class="wallet"><span id="walletCash">रु 0</span><span id="walletTok">0 🪙</span></div><button class="btn" id="btnResume" type="button">Resume</button></div>
     <div class="tabs" role="tablist">
-      <button type="button" role="tab" data-tab-btn="play" aria-selected="true">World</button>
+      <button type="button" role="tab" data-tab-btn="home" aria-selected="true">Home</button>
+      <button type="button" role="tab" data-tab-btn="play" aria-selected="false">World</button>
       <button type="button" role="tab" data-tab-btn="uthao" aria-selected="false">Uthao</button>
       <button type="button" role="tab" data-tab-btn="licence" aria-selected="false">Licence</button>
       <button type="button" role="tab" data-tab-btn="garage" aria-selected="false">Garage</button>
       <button type="button" role="tab" data-tab-btn="wardrobe" aria-selected="false">Wardrobe</button>
       <button type="button" role="tab" data-tab-btn="radio" aria-selected="false">Radio</button>
+      <button type="button" role="tab" data-tab-btn="settings" aria-selected="false">Settings</button>
       <button type="button" role="tab" data-tab-btn="help" aria-selected="false">Controls</button>
     </div>
-    <div data-tab-panel="play">
+    <div data-tab-panel="home"><div class="panel" id="homeBox"></div></div>
+    <div data-tab-panel="settings" hidden><div class="panel" id="settingsBox"></div></div>
+    <div data-tab-panel="play" hidden>
       <div class="mgrid">
         <div class="msec"><h3>Weather</h3><div class="chips" id="wxbtns"></div></div>
         <div class="msec"><h3>Time of day <span id="timeVal">08:30</span></h3><input type="range" id="timeRange" min="0" max="23.9" step="0.1" value="8.5" aria-label="Time of day"><span class="small">Dawn turns the Himalaya pink; at night shop signs and windows light up.</span></div>
@@ -383,13 +475,16 @@ ul.challan li b { color: #ffe27a; white-space: nowrap; font-family: var(--hud); 
           <kbd>H</kbd><span>Horn (honk at cows to move them)</span><kbd>B</kbd><span>Nitro, if installed</span>
           <kbd>R</kbd><span>Next radio station</span></div></div>
         <div class="msec"><h3>Everything else</h3><div class="ctl">
+          <kbd>Q</kbd><span>Phone: Uthao, Jobs, Radio, Map, Licence, Garage, Food, Camera, Friends, Settings</span>
           <kbd>U</kbd><span>Uthao app online/offline · <kbd>Y</kbd>accept · <kbd>N</kbd>skip · <kbd>X</kbd>cancel</span>
-          <kbd>V</kbd><span>Camera angle · <kbd>M</kbd>map and waypoints</span>
+          <kbd>Enter</kbd><span>Chat in a multiplayer room · <kbd>G</kbd>push to talk</span>
+          <kbd>V</kbd><span>Camera angle · <kbd>M</kbd>map: tap a place for turn-by-turn directions</span>
+          <kbd>C</kbd><span>Call your vehicle to wherever you are</span>
           <kbd>K</kbd><span>Record video · <kbd>J</kbd>photo</span>
           <kbd>T</kbd><span>Weather · <kbd>Shift+T</kbd>skip 3 hours</span></div></div>
         <div class="msec"><h3>Rules of the road</h3><div class="ctl" style="grid-template-columns:1fr">
-          <span>Drive on the left. Limits: 20 km/h in the old city, 40 in town, 50 in the tunnel, 60 on the Ring Road and highway.</span>
-          <span>Speed cameras (blue squares on the map) and red-light cameras send e-challans. Traffic police whistle you over: stop, then pay, say sorry or argue. Polite drivers with clean records often get a warning.</span>
+          <span>Drive on the left. The only speed limit is 25 km/h in school zones from 9:00 to 16:00 (yellow signs with flashing lamps).</span>
+          <span>School speed cameras and red-light cameras send e-challans. Traffic police whistle you over: stop, then pay, say sorry or argue. Polite drivers with clean records often get a warning.</span>
           <span>12 demerit points suspend your licence for a day. No licence? Ride the bicycle, or pass the written test and trial at the Trial ground.</span>
           <span>Run from the police, hit someone and drive off, or fight in front of them and a police alert starts: lose them, or get arrested.</span></div></div>
       </div>
@@ -408,6 +503,8 @@ ul.challan li b { color: #ffe27a; white-space: nowrap; font-family: var(--hud); 
 <script src="js/games/kathmandu/world.js"></script>
 <script src="js/games/kathmandu/landmarks.js"></script>
 <script src="js/games/kathmandu/extras.js"></script>
+<script src="js/games/kathmandu/nature.js"></script>
+<script src="js/games/kathmandu/signs.js"></script>
 <script src="js/games/kathmandu/people.js"></script>
 <script src="js/games/kathmandu/vehicles.js"></script>
 <script src="js/games/kathmandu/traffic.js"></script>
@@ -417,6 +514,8 @@ ul.challan li b { color: #ffe27a; white-space: nowrap; font-family: var(--hud); 
 <script src="js/games/kathmandu/player.js"></script>
 <script src="js/games/kathmandu/uthao.js"></script>
 <script src="js/games/kathmandu/law.js"></script>
+<script src="js/games/kathmandu/ui.js"></script>
+<script src="js/games/kathmandu/net.js"></script>
 <script src="js/games/kathmandu/game.js"></script>
 <script>if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('is-touch');</script>
 </body>

@@ -279,6 +279,7 @@
   function close() { $('lawModal').hidden = true; L.modal = null; if (KS.state === 'modal') KS.state = 'play'; }
   L.modalKey = (n) => { if (L.buttons && L.buttons[n]) L.buttons[n][1](); };
   L.close = close;
+  KS.modal = modal; KS.modalClose = close;
 
   /* ---------- per-frame ---------- */
   L.update = (dt) => {

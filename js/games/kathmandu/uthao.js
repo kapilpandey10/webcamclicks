@@ -31,7 +31,7 @@
   };
   const clsOf = (v) => { if (!v) return null; if (v.kind === 'bicycle') return 'cycle'; if (v.kind === 'policebike' || v.trialVehicle) return null; if (KS.isBike(v.kind)) return 'moto'; if (['pickup', 'tempo', 'truck', 'micro'].includes(v.kind)) return 'cargo'; if (['bus', 'minibus', 'ambulance', 'police'].includes(v.kind)) return null; return 'car'; };
   U.clsOf = clsOf;
-  const KALIMATI = { x: -430, z: 225, name: 'Kalimati Market' };
+  const KALIMATI = { x: -312, z: 95, name: 'Kalimati Market' };
 
   function randomLot(px, pz, a, b) { const L = KS.World.lots; for (let i = 0; i < 300; i++) { const l = KS.pick(L), d = Math.hypot(l.x - px, l.z - pz); if (d > a && d < b) return l; } return KS.pick(L); }
   function landmarkStop(l) { return l.stop || KS.Game.stopFor(l); }
@@ -55,6 +55,7 @@
     let from;
     if (t.fromVillage || (t.village && KS.chance(0.4))) { const s = KS.pick(KS.villageSpots); from = { x: s.x, z: s.z }; }
     else if (t.night) { const l = randomLot(-135, -270, 0, 90); from = { x: l.x, z: l.z }; }
+    else if (key === 'vip' && KS.MANSION && KS.chance(0.5)) from = { x: KS.MANSION.gx + 4, z: KS.MANSION.gz + 8 };
     else { const l = randomLot(PL.x, PL.z, 60, 330); from = { x: l.x, z: l.z }; }
     let to = destFor(t, from);
     if (t.village && Math.hypot(from.x - KS.HW.village.x, from.z - KS.HW.village.z) < 400) { const l = randomLot(-100, 0, 0, 400); to = { x: l.x, z: l.z, name: KS.districtAt(l.x, l.z).name }; }
@@ -128,7 +129,7 @@
     if (!U.online) return;
     if (!U.trip) {
       if (U.request) { U.request.expires -= dt; if (U.request.expires <= 0) U.decline(); }
-      else if (cls) { U.nextReq -= dt; if (U.nextReq <= 0) { U.request = makeRequest(); U.nextReq = KS.r(6, 12); if (U.request) { KS.audio.ding(); U.render(); } } }
+      else if (cls) { U.nextReq -= dt; if (U.nextReq <= 0) { U.request = makeRequest(); U.nextReq = KS.r(6, 12); if (U.request) { KS.audio.ding(); U.render(); if (!(KS.Phone && KS.Phone.open)) KS.Game.notify(`📱 Uthao: ${U.request.t.icon} ${U.request.t.name} · रु ${U.request.fare} · <b>Y</b> accept, <b>Q</b> view`); } } }
       if (KS.Input.hit('KeyY') || KS.Input.hit('KeyAccept')) U.accept();
       if (KS.Input.hit('KeyN') && U.request) U.decline();
       return;

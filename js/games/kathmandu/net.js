@@ -8,7 +8,7 @@
   const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const PEERJS = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
   const PREFIX = 'kstreets-room-', MAX = 8;
-  const N = (KS.Net = { state: 'off', room: '', players: new Map(), conns: new Map(), calls: new Map(), chat: [], unread: 0, mic: null, micOn: false, ptt: false, proximity: true, sendT: 0, lastMsg: 0 });
+  const N = (KS.Net = { state: 'off', room: '', players: new Map(), conns: new Map(), calls: new Map(), inCalls: new Map(), chat: [], unread: 0, mic: null, micOn: false, ptt: false, proximity: true, sendT: 0, lastMsg: 0 });
 
   function options() {
     const q = new URLSearchParams(location.search), o = {};
@@ -48,11 +48,13 @@
       const t = e && e.type;
       N.fail(t === 'unavailable-id' ? 'That room code is taken. Try again.' : t === 'peer-unavailable' ? 'Room not found. Check the code.' : t === 'network' || t === 'server-error' || t === 'socket-error' ? 'Could not reach the multiplayer server.' : 'Multiplayer error: ' + (t || e));
     });
+    // voice: each player sends their own voice on their own outgoing calls; incoming calls are listen-only
     peer.on('call', (call) => {
-      const mine = N.calls.get(call.peer);
-      if (mine && N.me < call.peer) { call.close(); return; }
-      if (mine) mine.close();
-      call.answer(N.mic || undefined); hookCall(call);
+      const old = N.inCalls.get(call.peer); if (old) try { old.close(); } catch (e) { /* ignore */ }
+      N.inCalls.set(call.peer, call); call.answer();
+      call.on('stream', (stream) => attachVoice(call.peer, stream));
+      call.on('close', () => { if (N.inCalls.get(call.peer) === call) N.inCalls.delete(call.peer); });
+      call.on('error', () => {});
     });
     peer.on('disconnected', () => { if (N.state !== 'off') sys('Connection to the server dropped. Players already here stay connected.'); });
   }
@@ -112,7 +114,7 @@
     if (bike) { p.person.root.position.set(0, 0.18, -0.32); KS.animSit(p.person); p.person.armL.rotation.x = p.person.armR.rotation.x = -1.2; }
     else { p.person.root.position.set(0, 0, 0); p.person.legL.rotation.x = p.person.legR.rotation.x = 0; }
   }
-  function dropPlayer(id) { const p = N.players.get(id); if (!p) return; KS.scene.remove(p.root); p.tag && p.tag.remove(); const c = N.calls.get(id); if (c) c.close(); N.players.delete(id); }
+  function dropPlayer(id) { const p = N.players.get(id); if (!p) return; KS.scene.remove(p.root); p.tag && p.tag.remove(); for (const m of [N.calls, N.inCalls]) { const c = m.get(id); if (c) try { c.close(); } catch (e) { /* ignore */ } m.delete(id); } N.players.delete(id); }
   function makeTag(p) { const el = document.createElement('div'); el.className = 'nametag'; ($('nameTags') || document.body).appendChild(el); p.tag = el; }
 
   /* ---------- chat ---------- */
@@ -141,9 +143,7 @@
     try {
       N.mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       N.micOn = true; setTalking(!N.ptt); sys(N.ptt ? 'Microphone on. Hold G to talk.' : 'Microphone on: open mic.');
-      // calls answered before the mic was on carry no audio from us: hang up and call everyone again with the mic
-      for (const c of N.calls.values()) try { c.close(); } catch (e) { /* ignore */ }
-      N.calls.clear(); callAll(); N.render2();
+      callAll(); N.render2();
     } catch (e) { KS.Game.notify('Microphone not available: ' + (e.message || e.name), 'bad'); }
   };
   function setTalking(on) { N.talking = on; if (N.mic) N.mic.getAudioTracks().forEach((t) => (t.enabled = on)); }
@@ -151,28 +151,28 @@
   function callAll() {
     if (!N.peer || !N.mic) return;
     const ids = (N.roster || []).map((r) => r.id).concat([...N.players.keys()]);
-    for (const id of new Set(ids)) if (id && id !== N.me && !N.calls.has(id)) hookCall(N.peer.call(id, N.mic));
+    for (const id of new Set(ids)) if (id && id !== N.me && !N.calls.has(id)) {
+      const c = N.peer.call(id, N.mic); if (!c) continue;
+      N.calls.set(id, c);
+      c.on('close', () => { if (N.calls.get(id) === c) N.calls.delete(id); });
+      c.on('error', () => {});
+    }
   }
-  function hookCall(call) {
-    if (!call) return;
-    N.calls.set(call.peer, call);
-    call.on('stream', (stream) => {
-      const p = N.players.get(call.peer); if (!p) return;
-      KS.audio.init(); const ctx = KS.audio.ctx; if (!ctx) return;
-      const el = new Audio(); el.srcObject = stream; el.muted = true; const pr = el.play(); if (pr && pr.catch) pr.catch(() => {});
-      const src = ctx.createMediaStreamSource(stream), g = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256;
-      src.connect(an); src.connect(g).connect(KS.audio.bus.voice);
-      if (p.voice) { try { p.voice.src.disconnect(); } catch (e) { /* ignore */ } }
-      p.voice = { el, src, g, an, buf: new Uint8Array(an.frequencyBinCount) };
-    });
-    call.on('close', () => { if (N.calls.get(call.peer) === call) N.calls.delete(call.peer); });
-    call.on('error', () => {});
+  function attachVoice(id, stream) {
+    if (!N.players.has(id)) upsert(id, {}); // their call can arrive before their first position update
+    const p = N.players.get(id);
+    KS.audio.init(); const ctx = KS.audio.ctx; if (!ctx) return;
+    const el = new Audio(); el.srcObject = stream; el.muted = true; const pr = el.play(); if (pr && pr.catch) pr.catch(() => {});
+    const src = ctx.createMediaStreamSource(stream), g = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256;
+    src.connect(an); src.connect(g).connect(KS.audio.bus.voice);
+    if (p.voice) { try { p.voice.src.disconnect(); } catch (e) { /* ignore */ } }
+    p.voice = { el, src, g, an, buf: new Uint8Array(an.frequencyBinCount) };
   }
 
   N.leave = (silent) => {
-    for (const c of N.calls.values()) try { c.close(); } catch (e) { /* ignore */ }
+    for (const c of [...N.calls.values(), ...N.inCalls.values()]) try { c.close(); } catch (e) { /* ignore */ }
     for (const c of N.conns.values()) try { c.close(); } catch (e) { /* ignore */ }
-    N.calls.clear(); N.conns.clear();
+    N.calls.clear(); N.inCalls.clear(); N.conns.clear();
     for (const id of [...N.players.keys()]) dropPlayer(id);
     if (N.peer) try { N.peer.destroy(); } catch (e) { /* ignore */ }
     if (N.mic) N.mic.getTracks().forEach((t) => t.stop());

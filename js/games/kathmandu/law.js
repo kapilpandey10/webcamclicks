@@ -65,8 +65,8 @@
   /** a police officer or patrol saw something: whistle and ask you to pull over */
   L.offense = (code, opts = {}) => {
     if (L.trial || L.heat > 0) return;
-    const o = OFF[code](opts);
-    if (L.stop) { if (!L.stop.offs.some((x) => x.name === o.name)) L.stop.offs.push(o); return; }
+    const o = OFF[code](opts); o.code = code;
+    if (L.stop) { if (!L.stop.offs.some((x) => x.code === code)) L.stop.offs.push(o); return; }
     const P = KS.Player, off = nearestOfficer(P.x, P.z, 60);
     if (!off) return;
     L.stop = { offs: [o], officer: off, t: 15, still: 0 };
@@ -114,7 +114,9 @@
     L.heat = level; L.lose = 0; L.caught = 0; L.why = why;
     KS.Game.notify(`🚨 Police alert: ${why}`, 'bad'); KS.audio.whistle(1);
     const P = KS.Player;
-    for (const v of KS.Traffic.list) if ((v.kind === 'police' || v.kind === 'policebike') && !v.chase && v !== P.vehicle && Math.hypot(v.x - P.x, v.z - P.z) < 260) KS.Traffic.startChase(v);
+    const have = KS.Traffic.chasers().length;
+    KS.Traffic.list.filter((v) => (v.kind === 'police' || v.kind === 'policebike') && !v.chase && v !== P.vehicle && Math.hypot(v.x - P.x, v.z - P.z) < 260)
+      .sort((a, b) => Math.hypot(a.x - P.x, a.z - P.z) - Math.hypot(b.x - P.x, b.z - P.z)).slice(0, Math.max(0, level * 2 - have)).forEach((v) => KS.Traffic.startChase(v));
   };
   function arrest() {
     const P = KS.Player, d = D(), h = L.heat, fine = [0, 2000, 4500, 8000][h], pts = [0, 3, 6, 9][h];

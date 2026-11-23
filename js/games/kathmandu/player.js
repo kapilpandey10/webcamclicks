@@ -362,7 +362,8 @@
       else if (PL.mode === 'drive') PL.exit();
       else if (!(KS.Net && KS.Net.tryBoard && KS.Net.tryBoard())) { const v = KS.Traffic.nearest(PL.x, PL.z, 3.6); if (v) PL.enter(v); else KS.Game && KS.Game.interact(); }
     }
-    if (PL.mode === 'foot') footUpdate(dt); else if (PL.mode === 'boat') boatUpdate(dt); else driveUpdate(dt);
+    if (PL.mode === 'ride') return; // just got into a friend's vehicle (net.js moves you from the next frame)
+    if (PL.mode === 'foot') footUpdate(dt); else if (PL.mode === 'boat') boatUpdate(dt); else if (PL.vehicle) driveUpdate(dt);
     PL.health = Math.min(100, PL.health + dt * (KS.Battle && KS.Battle.on ? 0.3 : 2.5)); // in Battle mode medkits heal, not time
     for (const d of exDrivers) {
       if (d.t <= 0) continue; d.t -= dt;

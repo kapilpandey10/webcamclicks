@@ -80,8 +80,70 @@
     else { tone(415, 0.38, 'square', 0.05 * vol); tone(523, 0.38, 'square', 0.04 * vol); }
   };
   A.moo = (vol = 1) => { if (!ctx || !A.on) return; const t = now(), o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(155, t); o.frequency.linearRampToValueAtTime(128, t + 1.1); f.type = 'bandpass'; f.frequency.setValueAtTime(380, t); f.frequency.linearRampToValueAtTime(620, t + 0.6); f.Q.value = 3; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.28 * vol, t + 0.25); g.gain.linearRampToValueAtTime(0.0001, t + 1.2); o.connect(f).connect(g).connect(bus.sfx); o.start(t); o.stop(t + 1.3); };
-  A.bark = (vol = 1, big) => { if (!ctx || !A.on) return; const p = big ? 0.6 : 1; for (let k = 0; k < (KS.chance(0.5) ? 2 : 1); k++) { const w = k * 0.22; tone(520 * p, 0.12, 'sawtooth', 0.12 * vol, w, 230 * p, 0.005); noise(0.09, 0.14 * vol, 1100 * p, 'bandpass', w, 2); } };
-  A.growl = (vol = 1) => { if (!ctx || !A.on) return; const t = now(), o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain(), l = ctx.createOscillator(), lg = ctx.createGain(); o.type = 'sawtooth'; o.frequency.value = 85; l.frequency.value = 28; lg.gain.value = 0.12 * vol; l.connect(lg).connect(g.gain); f.type = 'lowpass'; f.frequency.value = 500; g.gain.setValueAtTime(0.12 * vol, t); g.gain.linearRampToValueAtTime(0.0001, t + 0.9); o.connect(f).connect(g).connect(bus.sfx); o.start(t); l.start(t); o.stop(t + 1); l.stop(t + 1); };
+  /* dogs: real recordings when the site provides them (sounds/dogs.json lists CC0 files), otherwise a
+     physically modelled bark: a pitch-swept voiced burst through two mouth formants, a breathy onset, and street echo */
+  const dogSamples = [];
+  A.loadDogSamples = async () => {
+    if (!ctx || A.dogTried) return; A.dogTried = true;
+    try {
+      const r = await fetch('sounds/dogs.json', { cache: 'force-cache' }); if (!r.ok) return;
+      const list = ((await r.json()).files || []).slice(0, 8);
+      for (const f of list) { try { const b = await (await fetch('sounds/' + String(f.file || f).replace(/[^a-z0-9._-]/gi, ''))).arrayBuffer(); dogSamples.push({ buf: await ctx.decodeAudioData(b), big: !!f.big }); } catch (e) { /* skip a bad file */ } }
+    } catch (e) { /* no recordings: use the modelled bark */ }
+  };
+  function playSample(buf, vol, rate) { const s = ctx.createBufferSource(), g = ctx.createGain(); s.buffer = buf; s.playbackRate.value = rate; g.gain.value = vol; s.connect(g).connect(bus.sfx); s.start(); }
+  function oneBark(t, f0, vol, big) {
+    const o = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain(), f1 = ctx.createBiquadFilter(), f2 = ctx.createBiquadFilter(), mix = ctx.createGain();
+    const d = big ? 0.24 : 0.13;
+    o.type = 'sawtooth'; o2.type = 'square';
+    o.frequency.setValueAtTime(f0 * 0.75, t); o.frequency.linearRampToValueAtTime(f0 * 1.18, t + d * 0.25); o.frequency.exponentialRampToValueAtTime(f0 * 0.62, t + d);
+    o2.frequency.setValueAtTime(f0 * 0.75 * 1.004, t); o2.frequency.linearRampToValueAtTime(f0 * 1.18, t + d * 0.25); o2.frequency.exponentialRampToValueAtTime(f0 * 0.6, t + d);
+    f1.type = 'bandpass'; f1.frequency.setValueAtTime(big ? 620 : 950, t); f1.frequency.linearRampToValueAtTime(big ? 820 : 1350, t + d * 0.3); f1.Q.value = 3;
+    f2.type = 'bandpass'; f2.frequency.value = big ? 1900 : 2700; f2.Q.value = 5;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.setValueAtTime(vol * 0.8, t + d * 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(mix); o2.connect(mix); mix.gain.value = 0.6; mix.connect(f1); mix.connect(f2); f1.connect(g); f2.connect(g);
+    // street echo
+    const dl = ctx.createDelay(0.5), fb = ctx.createGain(), wet = ctx.createGain(); dl.delayTime.value = 0.09 + Math.random() * 0.05; fb.gain.value = 0.28; wet.gain.value = 0.35;
+    g.connect(bus.sfx); g.connect(dl); dl.connect(fb).connect(dl); dl.connect(wet).connect(bus.sfx);
+    o.start(t); o2.start(t); o.stop(t + d + 0.05); o2.stop(t + d + 0.05);
+    noise(0.05, vol * 0.5, big ? 900 : 1500, 'bandpass', t - now(), 1.5); // breathy "h" onset
+  }
+  A.bark = (vol = 1, big) => {
+    if (!ctx || !A.on) return; A.loadDogSamples();
+    const n = KS.chance(0.35) ? 1 : KS.chance(0.6) ? 2 : 3;
+    const pool = dogSamples.filter((x) => !!x.big === !!big), smp = pool.length ? pool : dogSamples;
+    for (let k = 0; k < n; k++) {
+      const w = k * (big ? KS.r(0.28, 0.4) : KS.r(0.17, 0.28));
+      if (smp.length) { const sm = KS.pick(smp); setTimeout(() => playSample(sm.buf, vol * 0.9, KS.r(0.92, 1.08) * (big && !sm.big ? 0.85 : 1)), w * 1000); continue; }
+      oneBark(now() + w, (big ? KS.r(190, 260) : KS.r(380, 520)) * KS.r(0.95, 1.05), 0.16 * vol, big);
+    }
+  };
+  A.growl = (vol = 1) => {
+    if (!ctx || !A.on) return; const t = now(), o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain(), l = ctx.createOscillator(), lg = ctx.createGain();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(95, t); o.frequency.linearRampToValueAtTime(82, t + 1.1); l.frequency.value = 31; lg.gain.value = 0.09 * vol; l.connect(lg).connect(g.gain);
+    f.type = 'bandpass'; f.frequency.value = 520; f.Q.value = 1.4; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.1 * vol, t + 0.15); g.gain.linearRampToValueAtTime(0.0001, t + 1.2);
+    o.connect(f).connect(g).connect(bus.sfx); o.start(t); l.start(t); o.stop(t + 1.3); l.stop(t + 1.3); noise(1.1, 0.03 * vol, 400, 'bandpass', 0, 2);
+  };
+  A.howl = (vol = 1) => { if (!ctx || !A.on) return; const t = now(), o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(420, t); o.frequency.linearRampToValueAtTime(720, t + 0.6); o.frequency.linearRampToValueAtTime(640, t + 2); o.frequency.linearRampToValueAtTime(380, t + 2.6); f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 2; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.07 * vol, t + 0.4); g.gain.linearRampToValueAtTime(0.0001, t + 2.7); o.connect(f).connect(g).connect(bus.sfx); o.start(t); o.stop(t + 2.8); };
+  /* battle sounds */
+  A.gun = (kind, vol = 1) => {
+    if (!ctx || !A.on) return; vol = Math.max(0.03, vol);
+    const P = { pistol: [0.14, 1800, 0.35, 120], smg: [0.08, 2200, 0.28, 140], ak: [0.12, 1500, 0.45, 95], shotgun: [0.3, 900, 0.6, 70], sniper: [0.45, 1300, 0.7, 60] }[kind] || [0.12, 1600, 0.4, 100];
+    noise(P[0], P[2] * vol, P[1], 'bandpass', 0, 0.7); noise(P[0] * 2.5, P[2] * 0.6 * vol, 500, 'lowpass'); tone(P[3], P[0] * 1.5, 'sine', P[2] * 0.6 * vol, 0, P[3] * 0.5, 0.002);
+    if (kind === 'sniper' || kind === 'shotgun') noise(1.2, 0.08 * vol, 700, 'lowpass', 0.12); // echo off the buildings
+  };
+  A.boom = (vol = 1) => { if (!ctx || !A.on) return; noise(0.2, 0.7 * vol, 2500, 'bandpass', 0, 0.5); noise(2.2, 0.9 * vol, 220, 'lowpass'); tone(55, 0.9, 'sine', 0.6 * vol, 0, 28, 0.003); noise(2.5, 0.12 * vol, 900, 'lowpass', 0.25); };
+  A.beep = (vol = 0.6) => tone(1900, 0.07, 'square', 0.04 * vol);
+  A.click = () => noise(0.03, 0.06, 3000, 'highpass');
+  A.reload = () => { noise(0.05, 0.07, 2500, 'bandpass', 0, 2); noise(0.06, 0.08, 1800, 'bandpass', 0.35, 2); noise(0.04, 0.09, 3200, 'bandpass', 0.7, 2); };
+  A.whiz = (vol = 1) => noise(0.12, 0.05 * vol, 3500, 'bandpass', 0, 3);
+  A.chute = () => { noise(0.5, 0.25, 600, 'lowpass'); noise(0.3, 0.12, 1500, 'bandpass', 0.05, 1); };
+  /** a steady engine drone for the drop plane (0 = off) */
+  A.planeHum = (v) => {
+    if (!ctx) return;
+    if (!A.hum) { const o = ctx.createOscillator(), o2 = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain(); o.type = 'sawtooth'; o.frequency.value = 72; o2.type = 'sawtooth'; o2.frequency.value = 74.5; f.type = 'lowpass'; f.frequency.value = 380; g.gain.value = 0; o.connect(f); o2.connect(f); f.connect(g).connect(bus.sfx); o.start(); o2.start(); A.hum = g; }
+    A.hum.gain.setTargetAtTime(A.on ? v * 0.12 : 0, now(), 0.3);
+  };
   A.hoof = (vol = 1) => { noise(0.05, 0.12 * vol, 1700, 'bandpass', 0, 3); tone(110, 0.06, 'sine', 0.08 * vol); };
   A.cowbell = (vol = 1) => { tone(540, 0.35, 'square', 0.025 * vol); tone(812, 0.3, 'square', 0.018 * vol); };
   A.bleat = (vol = 1) => { if (!ctx || !A.on) return; const t = now(), o = ctx.createOscillator(), l = ctx.createOscillator(), lg = ctx.createGain(), f = ctx.createBiquadFilter(), g = ctx.createGain(); o.type = 'sawtooth'; o.frequency.value = 420; l.frequency.value = 9; lg.gain.value = 40; l.connect(lg).connect(o.frequency); f.type = 'bandpass'; f.frequency.value = 1300; f.Q.value = 2; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.16 * vol, t + 0.05); g.gain.linearRampToValueAtTime(0.0001, t + 0.6); o.connect(f).connect(g).connect(bus.sfx); o.start(t); l.start(t); o.stop(t + 0.7); l.stop(t + 0.7); };

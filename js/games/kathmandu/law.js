@@ -56,14 +56,14 @@
     record(o, how); KS.Game.save(); KS.Uthao && KS.Uthao.event('fine');
   }
   /** automatic e-challan from a speed or red-light camera */
-  L.ticket = (code, opts = {}) => {
+  L.ticket = (code, opts = {}) => { if (KS.Battle && KS.Battle.on) return;
     if (L.trial) return;
     const o = OFF[code](opts); charge(o, 'camera');
     KS.Game.notify(`📸 E-challan: ${o.name} · −${fmt(o.fine)}${o.pts ? ` · ${o.pts} point${o.pts > 1 ? 's' : ''}` : ''}`, 'bad');
     KS.audio.speedcam();
   };
   /** a police officer or patrol saw something: whistle and ask you to pull over */
-  L.offense = (code, opts = {}) => {
+  L.offense = (code, opts = {}) => { if (KS.Battle && KS.Battle.on) return;
     if (L.trial || L.heat > 0) return;
     const o = OFF[code](opts); o.code = code;
     if (L.stop) { if (!L.stop.offs.some((x) => x.code === code)) L.stop.offs.push(o); return; }
@@ -107,7 +107,7 @@
   }
 
   /* ---------- police alert, chase, arrest ---------- */
-  L.raise = (level, why) => {
+  L.raise = (level, why) => { if (KS.Battle && KS.Battle.on) return;
     if (L.trial) return;
     if (L.stop) { if (L.stop.officer.v) KS.Traffic.endChase(L.stop.officer.v); L.stop = null; close(); }
     if (level <= L.heat) { L.lose = 0; return; }
@@ -283,6 +283,7 @@
 
   /* ---------- per-frame ---------- */
   L.update = (dt) => {
+    if (KS.Battle && KS.Battle.on) return; // Battle mode: no police at all
     const d = D(), P = KS.Player, v = P.vehicle;
     if (d.suspend > 0) { d.suspend = Math.max(0, d.suspend - dt); if (d.suspend === 0) KS.Game.notify('🪪 Your licence suspension is over. Drive carefully!', 'good'); }
     for (const k in d.cool) d.cool[k] = Math.max(0, d.cool[k] - dt);

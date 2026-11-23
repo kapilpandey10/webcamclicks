@@ -20,7 +20,10 @@
     addEventListener('keyup', (e) => { I.keys[e.code] = false; });
     addEventListener('blur', () => { I.keys = {}; });
     let drag = false, lx = 0, ly = 0;
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    addEventListener('mouseup', (e) => { I.keys['Mouse' + e.button] = false; });
     canvas.addEventListener('mousedown', (e) => {
+      if (I.locked) { I.keys['Mouse' + e.button] = true; I.pressed.add('Mouse' + e.button); } // fire / aim while the mouse controls the camera
       drag = true; lx = e.clientX; ly = e.clientY;
       if (KS.state === 'play' && !I.locked && canvas.requestPointerLock) { try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (err) { /* not available */ } }
     });
@@ -166,10 +169,12 @@
     let mx = fx * a.y + rx * a.x, mz = fz * a.y + rz * a.x; const m = Math.hypot(mx, mz);
     const top = PL.swim ? 1.6 : run ? 8.2 : 4.2;
     let want = 0;
-    if (m > 0.05 && cam.mode !== 2) { mx /= Math.max(1, m); mz /= Math.max(1, m); want = top * Math.min(1, m); PL.h = KS.angLerp(PL.h, Math.atan2(mx, mz), Math.min(1, dt * 10)); }
+    const strafe = KS.Battle && KS.Battle.armed() && cam.mode !== 2;
+    if (strafe) { PL.h = KS.angLerp(PL.h, cam.yaw, Math.min(1, dt * 16)); if (m > 0.05) { mx /= Math.max(1, m); mz /= Math.max(1, m); want = top * Math.min(1, m) * (KS.Cam.aim > 0.5 ? 0.55 : 0.85); PL.moveA = Math.atan2(mx, mz) - PL.h; } }
+    else if (m > 0.05 && cam.mode !== 2) { mx /= Math.max(1, m); mz /= Math.max(1, m); want = top * Math.min(1, m); PL.h = KS.angLerp(PL.h, Math.atan2(mx, mz), Math.min(1, dt * 10)); }
     else if (cam.mode === 2 && Math.abs(a.y) + Math.abs(a.x) > 0.05) { PL.h = cam.yaw; want = top * Math.min(1, Math.hypot(a.x, a.y)); const ang = Math.atan2(-a.x, a.y); PL.moveA = ang; }
     PL.speed += KS.clamp(want - PL.speed, -30 * dt, 18 * dt);
-    const ma = cam.mode === 2 ? PL.h + (PL.moveA || 0) : PL.h;
+    const ma = cam.mode === 2 || strafe ? PL.h + (PL.moveA || 0) : PL.h;
     const dirx = Math.sin(ma), dirz = Math.cos(ma);
     let nx = PL.x + dirx * PL.speed * dt, nz = PL.z + dirz * PL.speed * dt;
     const c = KS.collide(nx, nz, 0.38, PL.y, 1.05); nx = c.x; nz = c.z;
@@ -192,7 +197,7 @@
     if (PL.grounded && PL.speed > 0.5) { const ph = Math.floor(p.phase / Math.PI); if (ph !== PL.stepPh) { PL.stepPh = ph; KS.audio && KS.audio.step(PL.speed > 6); } }
     // punch
     PL.punchT = Math.max(0, PL.punchT - dt);
-    if ((I.hit('KeyF') || I.hit('KeyHit')) && PL.punchT <= 0 && !PL.swim) {
+    if ((I.hit('KeyF') || I.hit('KeyHit')) && PL.punchT <= 0 && !PL.swim && !(KS.Battle && KS.Battle.armed())) {
       PL.punchT = 0.45; PL.punchA = 0; KS.audio && KS.audio.swing();
       setTimeout(() => { const ped = KS.Peds.punch(PL.x, PL.z, PL.h); if (ped && KS.Game) KS.Game.onPunch(ped); }, 120);
     }
@@ -317,13 +322,15 @@
   }
 
   PL.update = (dt) => {
+    if (PL.mode === 'plane' || PL.mode === 'fall' || PL.mode === 'chute') { KS.Drop.update(dt); PL.len = 0.5; PL.wid = 0.6; PL.torch.intensity = 0; PL.headlight.intensity = 0; return; }
+    if (PL.mode === 'dead') { PL.speed = 0; return; }
     if (I.hit('KeyE') || I.hit('KeyEnter')) {
       if (PL.mode === 'boat') PL.leaveBoat();
       else if (PL.mode === 'drive') PL.exit();
       else { const v = KS.Traffic.nearest(PL.x, PL.z, 3.6); if (v) PL.enter(v); else KS.Game && KS.Game.interact(); }
     }
     if (PL.mode === 'foot') footUpdate(dt); else if (PL.mode === 'boat') boatUpdate(dt); else driveUpdate(dt);
-    PL.health = Math.min(100, PL.health + dt * 2.5);
+    PL.health = Math.min(100, PL.health + dt * (KS.Battle && KS.Battle.on ? 0.3 : 2.5)); // in Battle mode medkits heal, not time
     for (const d of exDrivers) {
       if (d.t <= 0) continue; d.t -= dt;
       d.x += Math.sin(d.h) * 1.3 * dt; d.z += Math.cos(d.h) * 1.3 * dt;
@@ -361,7 +368,7 @@
     const h = v ? (v.type.len > 6 ? 3.2 : bike ? 1.7 : 1.9) : 1.6;
     tgt.set(PL.x, PL.y + h, PL.z);
     // over-the-right-shoulder framing on foot, centred in vehicles
-    cam.side += ((v || cam.mode !== 0 ? 0 : 0.6) - cam.side) * Math.min(1, dt * 6);
+    cam.side += ((v || cam.mode !== 0 ? 0 : 0.6 + (cam.aim || 0) * 0.25) - cam.side) * Math.min(1, dt * 6);
     if (cam.side > 0.01) { tgt.x += -Math.cos(cam.yaw) * cam.side; tgt.z += Math.sin(cam.yaw) * cam.side; }
     PL.person.root.visible = !(cam.mode === 2 && !v) && !(v && !bike);
     const mode = cam.mode, heading = v ? v.h : PL.h, fx = Math.sin(cam.yaw), fz = Math.cos(cam.yaw), cp = Math.cos(cam.pitch);
@@ -385,7 +392,7 @@
     } else if (mode === 6) { // side tracking shot
       dist = v ? v.type.len * 1.8 + 5 : 6; dx = Math.cos(heading); dy = 0.18; dz = -Math.sin(heading); const m = Math.hypot(dx, dy, dz); dx /= m; dy /= m; dz /= m;
     } else {
-      cam.dist += ((mode === 1 ? cam.want * 2.2 : cam.want) - cam.dist) * Math.min(1, dt * 3);
+      cam.dist += ((mode === 1 ? cam.want * 2.2 : cam.want) * (1 - (cam.aim || 0) * 0.4) - cam.dist) * Math.min(1, dt * 6);
       dist = cam.dist; dx = -fx * cp; dy = Math.sin(cam.pitch); dz = -fz * cp;
     }
     // walls between you and the camera pull it in quickly; it eases back out slowly (no jumping)

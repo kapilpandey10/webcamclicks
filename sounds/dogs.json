@@ -1,0 +1,4 @@
+{
+  "_note": "Optional real dog recordings for Kathmandu Streets. Put CC0 / public-domain audio files (mp3 or ogg) in this folder and list them here, e.g. {\"file\": \"dog-bark-1.mp3\"} or {\"file\": \"big-dog-woof.mp3\", \"big\": true}. Up to 8 files. When the list is empty the game uses its built-in modelled bark.",
+  "files": []
+}

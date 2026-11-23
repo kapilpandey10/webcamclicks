@@ -284,6 +284,20 @@ ul.challan li b { color: #ffe27a; white-space: nowrap; font-family: var(--hud); 
 .goallist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; } .goallist li { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: start; } .goallist li small { display: block; color: var(--muted); } .goallist li em { font-style: normal; color: #9fe0a0; white-space: nowrap; font-size: 13px; } .goallist li.done { opacity: .55; }
 .howgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; } .howgrid div { display: grid; gap: 4px; background: rgba(255,255,255,.05); border-radius: 10px; padding: 10px; } .howgrid span { font-size: 14px; color: #ddd; }
 .netlist { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 6px; } .netlist li { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; } .netlist i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; } .netlist small { color: var(--muted); margin-right: auto; }
+/* battle mode & sky drop */
+#zoneBar { position: absolute; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); background: rgba(20,14,10,0.78); padding: 5px 14px; border-radius: 99px; font-family: var(--hud); font-size: 15px; letter-spacing: .04em; white-space: nowrap; }
+#zoneBar .bad { color: #ff6a6a; }
+#battleHud { position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: 78px; display: grid; gap: 6px; justify-items: end; pointer-events: none; }
+#battleHud .wpn { background: rgba(20,14,10,0.8); border-radius: 10px; padding: 6px 12px; text-align: right; } #battleHud .wpn b { display: block; font-family: var(--hud); letter-spacing: .1em; text-transform: uppercase; color: var(--marigold); font-size: 13px; } #battleHud .wpn span { font-family: var(--hud); font-size: 28px; font-weight: 800; } #battleHud small { font-size: 14px; color: var(--muted); } #battleHud em { font-size: 12px; color: #ffd27a; }
+#battleHud .slots { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; max-width: 380px; } #battleHud .slots span { background: rgba(20,14,10,0.7); border-radius: 8px; padding: 3px 8px; font-size: 13px; } #battleHud .slots span.on { outline: 2px solid var(--marigold); } #battleHud .slots span.off { opacity: .45; } #battleHud kbd { font-size: 10px; margin-right: 4px; padding: 0 4px; }
+#battleHud .armor { background: rgba(29,58,138,0.8); border-radius: 8px; padding: 2px 10px; font-size: 14px; }
+#crosshair { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; transform: translate(-50%, -50%); pointer-events: none; } #crosshair i { position: absolute; background: #fff; box-shadow: 0 0 2px #000; } #crosshair i:nth-child(1) { left: 12px; top: 0; width: 2px; height: 8px; } #crosshair i:nth-child(2) { left: 12px; bottom: 0; width: 2px; height: 8px; } #crosshair i:nth-child(3) { top: 12px; left: 0; width: 8px; height: 2px; } #crosshair i:nth-child(4) { top: 12px; right: 0; width: 8px; height: 2px; }
+#crosshair.aim { width: 16px; height: 16px; } #crosshair.aim i:nth-child(1), #crosshair.aim i:nth-child(2) { left: 7px; height: 5px; } #crosshair.aim i:nth-child(3), #crosshair.aim i:nth-child(4) { top: 7px; width: 5px; }
+#hitMark { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 30px; font-weight: 800; color: #fff; text-shadow: 0 0 4px #000; pointer-events: none; } #hitMark.head { color: #ffd21f; } #hitMark.kill { color: #ff3a3a; font-size: 40px; }
+#scope { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 50%, transparent 0 32vmin, rgba(0,0,0,0.92) 32.4vmin); } #scope::before, #scope::after { content: ''; position: absolute; background: rgba(0,0,0,0.8); } #scope::before { left: 50%; top: 18vh; bottom: 18vh; width: 1px; } #scope::after { top: 50%; left: 30vw; right: 30vw; height: 1px; }
+#dropHud { position: absolute; left: 50%; bottom: 22%; transform: translateX(-50%); background: rgba(20,14,10,0.8); padding: 8px 16px; border-radius: 12px; text-align: center; font-size: 15px; line-height: 1.5; pointer-events: none; }
+#touch .bt { display: none; } body.battle #touch .bt { display: inline-block; } body.battle #touch [data-key="KeyHorn"], body.battle #touch [data-key="KeyNitro"], body.battle #touch [data-key="KeyAccept"] { display: none; }
+body.battle .tr #karma, body.battle .tr #lawHud { display: none; }
 #mouseHint { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); background: rgba(20,14,10,0.78); padding: 6px 14px; border-radius: 99px; font-size: 14px; pointer-events: none; white-space: nowrap; }
 .howto { margin: 0 0 8px; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
 #lowHealth { position: fixed; inset: 0; pointer-events: none; z-index: 8; opacity: 0; background: radial-gradient(circle, rgba(0,0,0,0) 55%, rgba(160,0,20,.55) 100%); transition: opacity .4s; }
@@ -344,10 +358,12 @@ body.is-touch #chatFeed { bottom: 190px; }
       <div><kbd>Q</kbd> phone</div><div><kbd>R</kbd> live radio</div>
       <div><kbd>M</kbd> map · <kbd>V</kbd> camera</div><div><kbd>K</kbd> record · <kbd>J</kbd> photo</div>
       <div><kbd>F</kbd> punch</div><div><kbd>Esc</kbd> menu, licence, garage</div>
+      <div><kbd>Click</kbd> shoot · <kbd>Right-click</kbd> aim</div><div><kbd>1–5</kbd> weapons · <kbd>R</kbd> reload (Battle)</div>
     </div>
     <p class="touchhint">Left stick to walk or drive, drag anywhere to look, <b>Ride</b> to take any bike, taxi, tempo or bus.</p>
     <div class="cta">
-      <button class="btn" id="btnPlay" type="button">Start in Thamel</button>
+      <button class="btn" id="btnPlay" type="button">✈️ Jump into Kathmandu</button>
+      <button class="btn ghost" id="btnBattle" type="button">⚔️ Battle mode</button>
       <span class="small">Headphones on: the city honks.</span>
     </div>
   </div>
@@ -360,6 +376,12 @@ body.is-touch #chatFeed { bottom: 190px; }
     <div id="mission" hidden><div id="mTitle"></div><div id="mObj"></div><div id="mMeta"></div></div>
   </div>
   <div id="wanted" hidden></div>
+  <div id="zoneBar" hidden></div>
+  <div id="battleHud" hidden></div>
+  <div id="crosshair" hidden><i></i><i></i><i></i><i></i></div>
+  <div id="hitMark" hidden>✕</div>
+  <div id="scope" hidden></div>
+  <div id="dropHud" hidden></div>
   <div id="navBox" hidden></div>
   <div id="stopBanner" hidden></div>
   <div id="trialBanner" hidden></div>
@@ -428,6 +450,11 @@ body.is-touch #chatFeed { bottom: 190px; }
     <button type="button" data-key="KeyPhone">Phone</button>
     <button type="button" data-key="KeyAccept">Accept</button>
     <button type="button" data-key="KeyNitro">Nitro</button>
+    <button type="button" class="bt big" data-key="KeyFire">Fire</button>
+    <button type="button" class="bt" data-key="KeyAim">Aim</button>
+    <button type="button" class="bt" data-key="KeyReload">Reload</button>
+    <button type="button" class="bt" data-key="KeyWeapon">Weapon</button>
+    <button type="button" class="bt" data-key="KeyMed">Medkit</button>
   </div>
 </div>
 
@@ -492,6 +519,8 @@ body.is-touch #chatFeed { bottom: 190px; }
           <div><b>💬 Multiplayer</b><span>Phone → Friends → <b>Create room</b> → <b>Copy invite link</b> and send it. Friends open the link and tap Join (up to 8 players). Tap <b>Turn mic on</b> and allow the microphone in your browser to talk; hold <kbd>G</kbd> for push to talk. Everyone shares the host's time and weather, and police chases are seen by all.</span></div>
           <div><b>🖱 Camera &amp; mouse</b><span>Click the game and the mouse turns the camera (over-the-shoulder view). Press <kbd>Alt</kbd> (or <kbd>Esc</kbd>) to get the cursor back without pausing; <kbd>P</kbd> or Menu pauses. <kbd>V</kbd> changes the view, the mouse wheel zooms.</span></div>
           <div><b>🚣 Things to do</b><span>Take the lift up Dharahara (door on the upper step, press <kbd>E</kbd>). Hire a rowing boat at the wooden jetty inside Rani Pokhari's south gate (रु 100) and row out round the shrine.</span></div>
+          <div><b>✈️ Sky drop</b><span>You arrive by plane. Press <kbd>Space</kbd> (Jump) to jump, steer the free fall with <kbd>W A S D</kbd>, press <kbd>Space</kbd> again (or wait) for the parachute. Tap the map first to mark where you want to land. Menu → Home → "Fly &amp; parachute somewhere" any time.</span></div>
+          <div><b>⚔️ Battle mode</b><span>No police, just survival. Pick up weapons, ammo, grenades, time bombs, medkits and armour at the glowing beams. <kbd>1</kbd> main gun · <kbd>2</kbd> pistol · <kbd>3</kbd> grenade · <kbd>4</kbd> time bomb · <kbd>5</kbd> medkit · <kbd>R</kbd> reload · click to shoot / throw · right-click to aim. Stay inside the blue zone. Alone you face 11 opponents; in a room the host taps "Start a battle match" and friends fight each other.</span></div>
           <div><b>🗺️ Getting around</b><span><kbd>M</kbd> opens the map: tap anywhere for turn-by-turn directions. <kbd>C</kbd> calls your vehicle to you. Overhead signs say "… जाने बाटो" (the way to …).</span></div>
         </div></div>
         <div class="msec"><h3>On foot</h3><div class="ctl">
@@ -544,6 +573,7 @@ body.is-touch #chatFeed { bottom: 190px; }
 <script src="js/games/kathmandu/law.js"></script>
 <script src="js/games/kathmandu/ui.js"></script>
 <script src="js/games/kathmandu/net.js"></script>
+<script src="js/games/kathmandu/battle.js"></script>
 <script src="js/games/kathmandu/game.js"></script>
 <script>if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('is-touch');</script>
 </body>

@@ -30,7 +30,8 @@
   };
   Game.policeNear = (x, z, r) => KS.Peds.police.some((p) => Math.hypot(p.x - x, p.z - z) < r) || KS.Traffic.list.some((v) => v.kind === 'police' && v.ai && Math.hypot(v.x - x, v.z - z) < r * 0.6);
   Game.hurt = (dmg) => {
-    const PL = KS.Player; PL.health -= dmg; KS.Cam.shake = 0.3; A.punch(); flash('hurt');
+    const PL = KS.Player; if (PL.mode === 'dead') return; PL.health -= dmg; KS.Cam.shake = 0.3; A.punch(); flash('hurt');
+    if (PL.health <= 0 && KS.Battle && KS.Battle.on) { PL.health = 0; if (PL.vehicle) { PL.vehicle.speed = 0; PL.exit(); } KS.Battle.died(); return; }
     if (PL.health <= 0) {
       PL.health = 100; if (PL.vehicle) PL.exit();
       PL.x = KS.hospital.x; PL.z = KS.hospital.z + 6; PL.y = 0.2;
@@ -146,6 +147,7 @@
   /* ======================= traffic violations ======================= */
   let lastSig = null, honks = [];
   function violations(dt) {
+    if (KS.Battle && KS.Battle.on) return; // no police, cameras or fines in Battle mode
     const PL = KS.Player, v = PL.vehicle, Law = KS.Law;
     for (const c of KS.speedCams) { c.cool = Math.max(0, c.cool - dt); c.flash.material.opacity = Math.max(0, c.flash.material.opacity - dt * 3); }
     for (const s2 of KS.signals) if (s2.camFlash) s2.camFlash.material.opacity = Math.max(0, s2.camFlash.material.opacity - dt * 3);
@@ -314,11 +316,12 @@
     const dot = (x, z, r, c, stroke) => { g.beginPath(); g.arc(lx(x), lz(z), r / zoom, 0, 7); g.fillStyle = c; g.fill(); if (stroke) { g.lineWidth = 2 / zoom; g.strokeStyle = stroke; g.stroke(); } };
     for (const l of KS.landmarks) dot(l.x, l.z, 4, Game.found.has(l.id) ? '#c8102e' : '#ffffff', '#7a1414');
     for (const v of KS.Traffic.list) if ((v.kind === 'police' || v.kind === 'policebike' || v.kind === 'ambulance') && !v.dormant && v.root.visible !== false && Math.hypot(v.x - PL.x, v.z - PL.z) < 300) dot(v.x, v.z, v.chase ? 4 : 3, v.kind === 'ambulance' ? '#ffffff' : '#1d4fb8', v.chase && Math.sin(KS.clock * 12) > 0 ? '#ffffff' : '#c8102e');
-    for (const o of KS.Peds.police || []) if (Math.hypot(o.x - PL.x, o.z - PL.z) < 300) policeDot(g, lx(o.x), lz(o.z), 1 / zoom, o.chasing);
+    if (!KS.Battle.on) for (const o of KS.Peds.police || []) if (Math.hypot(o.x - PL.x, o.z - PL.z) < 300) policeDot(g, lx(o.x), lz(o.z), 1 / zoom, o.chasing);
     if (KS.Shop.delivered && KS.Shop.delivered !== PL.vehicle) dot(KS.Shop.delivered.x, KS.Shop.delivered.z, 4, '#0f8a7a', '#fff');
     if (momoShop.visible) dot(MOMO.x, MOMO.z, 5, '#f2a516', '#5a3a00');
     if (target.visible) dot(target.position.x, target.position.z, 5.5, '#ffd21f', '#111');
     if (waypoint.visible) dot(waypoint.position.x, waypoint.position.z, 5, '#e23a8a', '#fff');
+    const zi = KS.Battle.mapInfo(); if (zi) { g.beginPath(); g.arc(lx(zi.x), lz(zi.z), zi.r * MAP.px, 0, 7); g.lineWidth = 3 / zoom; g.strokeStyle = '#3fa0ff'; g.stroke(); }
     const friends = KS.Net ? KS.Net.visible() : [];
     for (const f of friends) dot(f.x, f.z, 5.5, f.heat > 0 && Math.sin(KS.clock * 12) > 0 ? '#c8102e' : f.color, f.heat > 0 ? '#1d4fb8' : '#fff');
     g.restore();
@@ -358,8 +361,8 @@
       g.fillStyle = 'rgba(20,14,10,0.75)'; const tw = g.measureText(l.name).width + 10; g.fillRect(wx(l.x) - tw / 2, wz(l.z) - 27 * k, tw, 17 * k);
       g.fillStyle = '#fff'; g.fillText(l.name, wx(l.x), wz(l.z) - 15 * k);
     }
-    for (const o of KS.Peds.police || []) policeDot(g, wx(o.x), wz(o.z), 1.3 * k, o.chasing);
-    for (const v of KS.Traffic.list) if ((v.kind === 'police' || v.kind === 'policebike') && !v.dormant) { g.beginPath(); g.arc(wx(v.x), wz(v.z), (v.chase ? 6 : 4) * k, 0, 7); g.fillStyle = '#1d4fb8'; g.fill(); g.strokeStyle = '#c8102e'; g.lineWidth = 2; g.stroke(); }
+    if (!KS.Battle.on) for (const o of KS.Peds.police || []) policeDot(g, wx(o.x), wz(o.z), 1.3 * k, o.chasing);
+    for (const v of KS.Traffic.list) if ((v.kind === 'police' || v.kind === 'policebike') && !v.dormant && !KS.Battle.on) { g.beginPath(); g.arc(wx(v.x), wz(v.z), (v.chase ? 6 : 4) * k, 0, 7); g.fillStyle = '#1d4fb8'; g.fill(); g.strokeStyle = '#c8102e'; g.lineWidth = 2; g.stroke(); }
     if (BZ.z >= 3 && KS.roadNameAt) { // street names when zoomed in
       g.font = `600 ${Math.round(11 * k)}px "Barlow Condensed", sans-serif`; g.fillStyle = 'rgba(40,30,20,0.85)';
       const every = BZ.z >= 6 ? 2 : 3;
@@ -374,6 +377,8 @@
         g.fillText(t, X, Z - 4 * k);
       }
     }
+    const zi = KS.Battle.mapInfo(); if (zi) { g.beginPath(); g.arc(wx(zi.x), wz(zi.z), zi.r * MAP.px * scale, 0, 7); g.lineWidth = 3 * k; g.strokeStyle = '#3fa0ff'; g.stroke(); g.fillStyle = 'rgba(63,160,255,0.08)'; g.fill(); }
+    if (KS.Drop.phase === 'plane' && KS.Drop.path) { const P = KS.Drop.path; g.setLineDash([8 * k, 6 * k]); g.strokeStyle = '#fff'; g.lineWidth = 2 * k; g.beginPath(); g.moveTo(wx(P[0]), wz(P[1])); g.lineTo(wx(P[2]), wz(P[3])); g.stroke(); g.setLineDash([]); }
     // legend
     g.font = `600 ${Math.round(12 * k)}px "Barlow Condensed", sans-serif`; g.textAlign = 'left';
     const lg = [['#ffd21f', 'You'], ['#1d3a8a', 'Traffic police'], ['#1d4fb8', 'Police car / bike'], ['#c8102e', 'Signal / red-light camera'], ['#1d4fb8', '▪ Speed camera'], ['#e23a8a', 'Your waypoint']].concat(KS.Net && KS.Net.visible().length ? [['#ff4fa3', 'Friends (name below)']] : []);
@@ -407,7 +412,7 @@
     KS.reseed(2); KS.Nature.build(scene);
     await step('Digging the Nagdhunga tunnel, planting rice terraces…');
     KS.Weather.init(scene, renderer);
-    KS.Player.init(scene);
+    KS.Player.init(scene); KS.Battle.init(scene);
     await step('Waking up the city: pilgrims, porters, cows…');
     KS.reseed(3); KS.Animals.init(scene);
     KS.reseed(4); KS.Peds.init(scene, KS.quality.peds, KS.Player.x, KS.Player.z);
@@ -490,14 +495,18 @@
     $('btnQuality').onclick = () => { KS.quality.level = KS.quality.level === 'high' ? 'low' : 'high'; Game.save(); $('qnote').hidden = false; Game.refreshMenu(); };
     $('btnReset').onclick = () => { if ($('btnReset').dataset.armed) { try { localStorage.removeItem('ks-save2'); localStorage.removeItem('ks-save'); } catch (e) { /* ignore */ } location.reload(); } else { $('btnReset').dataset.armed = '1'; $('btnReset').textContent = 'Tap again to erase progress'; } };
     $('btnPlay').onclick = () => {
-      A.init(); KS.Radio.load(); $('title').hidden = true; $('hud').hidden = false; if (coarse) $('touch').hidden = false;
+      A.init(); A.loadDogSamples && A.loadDogSamples(); KS.Radio.load(); $('title').hidden = true; $('hud').hidden = false; if (coarse) $('touch').hidden = false;
       const start = () => {
         const lic = KS.Law.data().lic;
-        Game.notify(lic.A ? 'Namaste! Your bicycle (green marker) and scooter are parked beside you. Press <b>Q</b> for your phone.' : 'Namaste! You have <b>no licence yet</b>: ride your <b>bicycle</b> (green marker, no licence needed). Press <b>Q</b> for your phone.');
         KS.Guide.render();
+        if (battle) { KS.Battle.startMatch(); return; }
+        KS.Drop.begin({ onLand: () => Game.notify(lic.A ? '🪂 Namaste, Kathmandu! Press <b>C</b> to call your bicycle or scooter here, <b>Q</b> for your phone.' : '🪂 Namaste! You have <b>no licence yet</b>: press <b>C</b> to call your <b>bicycle</b> (no licence needed). <b>Q</b> opens your phone.') });
+        Game.notify('✈️ The plane is crossing the valley. Press <b>Space</b> (or Jump) when you want to jump. Tap <b>M</b> to mark where to land.');
       };
       if (KS.Shop.data.seenIntro) { KS.state = 'play'; start(); } else { KS.Shop.data.seenIntro = true; KS.Shop.save(); KS.Cine.play(start); }
     };
+    let battle = false;
+    $('btnBattle').onclick = () => { battle = true; $('btnPlay').onclick(); };
     $('btnMenu').onclick = () => pause(true);
     $('btnRec').onclick = () => Rec.toggle(); $('btnPhoto').onclick = () => Rec.photo();
     $('btnPhone').onclick = () => KS.Uthao.toggle(); $('btnGarage').onclick = () => Game.openTab('garage');
@@ -533,10 +542,10 @@
       <div class="hcard"><h4>Licence</h4><div>${lic}</div><small>${L.lic.A || L.lic.B ? `Demerit points ${L.points}/12` : 'No licence: bicycle only (or risk a police fine)'}</small>${L.lic.A ? '' : '<button type="button" class="btn small-btn" id="homeLic">Show the way to the licence office</button>'}</div>
       <div class="hcard"><h4>You</h4><div>Health <b>${Math.round(P.health)}%</b> · Karma <b>${Math.round(D.karma)}</b></div><div>Cash <b>रु ${Math.round(D.cash).toLocaleString('en-IN')}</b> · Coins <b>${D.tokens} 🪙</b></div><small>${P.health < 50 ? '❤️ Low! ' : ''}Eat fruit at street stalls (Phone → Food finds the nearest) or rest to heal. Crashes, falls and fights hurt.</small></div>
       <div class="hcard" style="grid-column:1/-1"><h4>Goals · ${KS.GOALS.filter((g) => g.done()).length} / ${KS.GOALS.length}</h4>${KS.Guide.list()}</div>
-      <div class="hcard"><h4>Quick</h4><div class="chips"><button type="button" class="chip" data-q="phone">📱 Phone</button><button type="button" class="chip" data-q="map">🗺️ Map</button><button type="button" class="chip" data-q="friends">💬 Play with friends</button><button type="button" class="chip" data-q="bike">🚲 Bring my bicycle</button></div></div>
+      <div class="hcard"><h4>Quick</h4><div class="chips"><button type="button" class="chip" data-q="phone">📱 Phone</button><button type="button" class="chip" data-q="map">🗺️ Map</button><button type="button" class="chip" data-q="friends">💬 Play with friends</button><button type="button" class="chip" data-q="bike">🚲 Bring my bicycle</button><button type="button" class="chip" data-q="battle">${KS.Battle.on ? '🌏 Back to the open world' : '⚔️ Battle mode'}</button><button type="button" class="chip" data-q="drop">✈️ Fly & parachute somewhere</button></div></div>
     </div>`;
     const hl = $('homeLic'); if (hl) hl.onclick = () => { Game.setWaypoint(KS.trialGround.counter.x, KS.trialGround.counter.z); pause(false); Game.notify('📍 Follow the blue line to the Trial ground.'); };
-    $('homeBox').querySelectorAll('[data-q]').forEach((b) => (b.onclick = () => { const q = b.dataset.q; pause(false); if (q === 'phone') KS.Phone.toggle(true); if (q === 'map') Game.openMap(); if (q === 'friends') { KS.Phone.toggle(true); KS.Phone.openApp('friends'); } if (q === 'bike') KS.Shop.deliver('cycle'); }));
+    $('homeBox').querySelectorAll('[data-q]').forEach((b) => (b.onclick = () => { const q = b.dataset.q; pause(false); if (q === 'phone') KS.Phone.toggle(true); if (q === 'map') Game.openMap(); if (q === 'friends') { KS.Phone.toggle(true); KS.Phone.openApp('friends'); } if (q === 'bike') KS.Shop.deliver('cycle'); if (q === 'battle') { if (KS.Battle.on) KS.Battle.setMode(false); else KS.Battle.startMatch(); } if (q === 'drop') KS.Drop.begin(); }));
     const s = D.uthao; $('uthaoStats').textContent = `Rating ★ ${KS.Uthao.rating().toFixed(2)} · ${s.trips} trips · रु ${s.earned.toLocaleString('en-IN')} earned`;
     $('btnUthao').textContent = KS.Uthao.online ? 'Go offline' : 'Go online';
   };
@@ -565,13 +574,13 @@
       if ((I.hit('Escape') && performance.now() - (I.unlockedAt || 0) > 500) || I.hit('KeyP')) pause(true); // the Esc that freed the mouse does not also pause
       if (I.hit('KeyM') || I.hit('KeyMap')) { const b = $('bigwrap'); if (b.hidden) Game.openMap(); else b.hidden = true; }
       if (I.hit('KeyT')) { if (I.down('ShiftLeft') || I.down('ShiftRight')) { KS.time = (KS.time + 3) % 24; Game.notify('Skipped 3 hours → ' + fmtTime(KS.time)); } else { KS.Weather.auto = false; KS.Weather.next(); Game.notify(`Weather: <b>${KS.Weather.TYPES[KS.Weather.type].name}</b>`); } }
-      if (I.hit('KeyR') || I.hit('KeyRadio')) { A.init(); const st = KS.Radio.next(I.down('ShiftLeft') ? -1 : 1); Game.notify(st ? `📻 <b>${st.name}</b>${PL.vehicle || KS.Radio.onFoot ? '' : ' <span>(plays in vehicles, or turn on earphones in Phone → Radio)</span>'}` : '📻 Radio off'); if (KS.Phone.app === 'radio') KS.Phone.refresh(); }
+      if ((I.hit('KeyR') && !KS.Battle.on) || I.hit('KeyRadio')) { A.init(); const st = KS.Radio.next(I.down('ShiftLeft') ? -1 : 1); Game.notify(st ? `📻 <b>${st.name}</b>${PL.vehicle || KS.Radio.onFoot ? '' : ' <span>(plays in vehicles, or turn on earphones in Phone → Radio)</span>'}` : '📻 Radio off'); if (KS.Phone.app === 'radio') KS.Phone.refresh(); }
       if (I.hit('KeyU')) KS.Uthao.toggle();
       if (I.hit('KeyQ') || I.hit('KeyPhone')) KS.Phone.toggle();
       if (I.hit('Backspace') && KS.Phone.open) KS.Phone.home();
       if (I.hit('Enter')) KS.Net.quickChat();
       if (I.hit('KeyK')) Rec.toggle();
-      if (I.hit('KeyC') && !PL.vehicle) KS.Shop.deliver(D.lastRide && D.garage.some((g) => g.id === D.lastRide) ? D.lastRide : 'cycle');
+      if (I.hit('KeyC') && !PL.vehicle && PL.mode === 'foot') KS.Shop.deliver(D.lastRide && D.garage.some((g) => g.id === D.lastRide) ? D.lastRide : 'cycle');
       if (I.hit('KeyJ')) Rec.photo();
       if (I.hit('KeyH') || I.hit('KeyHorn')) {
         if (PL.vehicle) { const h = PL.vehicle.horn; A.horn(h && h !== 'standard' ? h : PL.vehicle.kind, 1); Game.honk = 0.4; }
@@ -579,6 +588,7 @@
       }
       PL.update(dt);
     }
+    KS.Battle.update(dt);
     Game.honk = Math.max(0, (Game.honk || 0) - dt);
     KS.Weather.update(dt, camera, { focus: tmpV.set(PL.x, PL.y, PL.z) });
     const ctx = { px: PL.x, pz: PL.z, cx: camera.position.x, cz: camera.position.z, night: KS.night, rain: KS.Weather.wet > 0.3, playerVehicle: PL.vehicle, player: { x: PL.x, z: PL.z, len: PL.len, wid: PL.wid } };

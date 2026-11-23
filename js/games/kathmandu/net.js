@@ -80,6 +80,10 @@
       case 'hello': if (N.host) { upsert(c.peer, { name: clean(m.name, 16), look: m.look }); sys(`${clean(m.name, 16)} joined.`); roster(); if (c.open) c.send(worldMsg()); } break;
       case 'roster': N.roster = (m.list || []).slice(0, MAX); for (const r of N.roster) if (r.id !== N.me) upsert(r.id, { name: clean(r.name, 16) }); for (const id of [...N.players.keys()]) if (!N.roster.some((r) => r.id === id)) dropPlayer(id); N.render2(); if (N.micOn) callAll(); break;
       case 'world': if (!N.host) syncWorld(m); break;
+      case 'match': case 'shot': case 'hit': case 'kill': case 'boom': case 'pick': // battle: the host passes everything on, then everyone handles it
+        if (N.host) broadcast(m, c.peer);
+        if (m.t === 'kill' && m.victim) { const p = N.players.get(m.victim); if (p) p.al = false; }
+        KS.Battle && KS.Battle.onNet(m); break;
       case 's': if (from === N.me) break; upsert(from, m); if (N.host) broadcast({ ...m, id: c.peer }, c.peer); break;
       case 'c': { if (from === N.me) break; const p = N.players.get(from), name = p ? p.name : clean(m.name, 16); addChat(name, clean(m.text, 200), from); if (N.host) broadcast({ t: 'c', id: c.peer, name, text: clean(m.text, 200) }, c.peer); break; }
       case 'bye': dropPlayer(m.id); N.render2(); break;
@@ -90,6 +94,8 @@
 
   /* ---------- remote players ---------- */
   const COLORS = ['#ff4fa3', '#3fd4ff', '#a6ff3f', '#ff9a2e', '#b77bff', '#ffe23f', '#3fffb0'];
+  /** send to everyone in the room (guests go through the host) */
+  N.sendAll = (m) => { if (N.state === 'host') broadcast(m); else if (N.state === 'guest') { const c = N.conns.get(N.hostId); c && c.open && c.send(m); } };
   /* ---------- one shared world: the host's clock and weather ---------- */
   function worldMsg() { const W = KS.Weather; return { t: 'world', time: KS.time, wx: W.type, mode: KS.Settings.data().timeMode || 'fast' }; }
   function syncWorld(m) {
@@ -130,6 +136,7 @@
     if (!p.person) buildAvatar(p);
     if (m.v != null && m.v !== p.v) setVehicle(p, m.v);
     p.speaking = !!m.talk;
+    if ('al' in m) p.al = m.al; if (m.wp != null) p.wp = m.wp;
     if (m.w != null) { if (m.w > (p.heat || 0) && m.w) sys(`🚨 The police are after ${p.name}!`); p.heat = m.w; }
   }
   function buildAvatar(p) {
@@ -232,7 +239,7 @@
     N.sendT -= dt;
     if (N.sendT <= 0) {
       N.sendT = 0.1;
-      const m = { t: 's', id: N.me, name: N.name(), x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), h: +(P.vehicle ? P.vehicle.h : P.h).toFixed(3), v: P.vehicle ? P.vehicle.kind : '', talk: N.micOn && N.talking, w: KS.Law ? KS.Law.heat : 0, look: KS.clock % 3 < 0.1 ? look() : undefined };
+      const m = { t: 's', id: N.me, name: N.name(), x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), h: +(P.vehicle ? P.vehicle.h : P.h).toFixed(3), v: P.vehicle ? P.vehicle.kind : '', talk: N.micOn && N.talking, w: KS.Law ? KS.Law.heat : 0, wp: KS.Battle && KS.Battle.armed() ? (KS.Battle.slot === 1 ? KS.Battle.inv.primary.kind : 'pistol') : '', al: KS.Battle && KS.Battle.on && KS.Battle.match && !KS.Battle.match.over ? KS.Battle.alive : undefined, look: KS.clock % 3 < 0.1 ? look() : undefined };
       if (N.host) broadcast(m); else { const c = N.conns.get(N.hostId); c && c.open && c.send(m); }
     }
     for (const p of N.players.values()) {
@@ -240,7 +247,11 @@
       p.x += (p.tx - p.x) * k; p.y += (p.ty - p.y) * k; p.z += (p.tz - p.z) * k; p.h = KS.angLerp(p.h, p.th, k);
       const mv = Math.hypot(p.tx - p.x, p.tz - p.z);
       p.root.position.set(p.x, p.y + (p.v ? 0.02 : 0), p.z); p.root.rotation.y = p.h;
-      if (!p.v && p.person) KS.animWalk(p.person, dt, mv > 0.05 ? Math.min(8, mv * 10) : 0);
+      if (!p.v && p.person) {
+        KS.animWalk(p.person, dt, mv > 0.05 ? Math.min(8, mv * 10) : 0);
+        if (KS.Battle) { KS.Battle.holdGun(p.person, p.wp || null); if (p.wp) { p.person.busyArm = true; p.person.armR.rotation.set(-1.5, 0, 0.05); p.person.armL.rotation.set(-1.35, 0, 0.45); } else p.person.busyArm = false; }
+        p.person.inner.rotation.x = p.al === false ? -1.45 : 0; p.person.inner.position.y = p.al === false ? 0.2 : 0;
+      }
       const d = Math.hypot(p.x - P.x, p.z - P.z);
       if (p.voice) {
         p.voice.g.gain.value = N.proximity ? KS.clamp(1.2 - d / 55, 0, 1) : 1;
@@ -277,6 +288,7 @@
       <div class="req-btns"><button type="button" class="btn small-btn ${N.micOn ? '' : 'ghost'}" id="netMic">${N.micOn ? '🎙 Mic on' : '🎙 Turn mic on'}</button>
       <label class="set tog"><input type="checkbox" id="netPtt" ${N.ptt ? 'checked' : ''}><span>Push to talk (hold G)</span></label></div>
       <label class="set tog"><input type="checkbox" id="netProx" ${N.proximity ? 'checked' : ''}><span>Voices get quieter with distance</span></label>
+      ${N.host ? '<button type="button" class="btn small-btn" id="netBattle">⚔️ Start a battle match for everyone</button>' : '<p class="ph-muted small">⚔️ Battle matches are started by the room host.</p>'}
       <div class="chatlog" id="netLog"></div>
       <form id="netForm" class="chatform"><input id="netText" maxlength="200" placeholder="Message… (Enter)" autocomplete="off" aria-label="Chat message"><button type="submit" class="btn small-btn">Send</button></form>
       <button type="button" class="btn ghost small-btn" id="netLeave">Leave room</button>`
@@ -289,6 +301,7 @@
     b('netCreate', () => { const n = $('netName'); if (n && n.value.trim()) { KS.Shop.data.netName = clean(n.value.trim(), 16); KS.Shop.save(); } N.create(); });
     const jf = $('netJoinForm'); if (jf) jf.onsubmit = (e) => { e.preventDefault(); const n = $('netName'); if (n && n.value.trim()) { KS.Shop.data.netName = clean(n.value.trim(), 16); KS.Shop.save(); } N.join($('netCode').value); };
     b('netLeave', () => N.leave()); b('netMic', () => N.toggleMic());
+    b('netBattle', () => { KS.Phone.toggle(false); KS.Battle.startMatch(); });
     el.querySelectorAll('[data-find]').forEach((x) => (x.onclick = () => N.find(x.dataset.find)));
     el.querySelectorAll('[data-goto]').forEach((x) => (x.onclick = () => N.goTo(x.dataset.goto)));
     b('netCopy', () => {

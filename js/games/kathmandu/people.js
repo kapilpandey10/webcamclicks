@@ -330,6 +330,7 @@
       const vis = d2 < 210 * 210;
       ped.p.root.visible = vis;
       if (!vis && !ped.ambient) continue;
+      if (ped.hidden) { ped.p.root.visible = false; continue; } // police are off duty in Battle mode
       let moving = 0;
       const pr = ped.p.root;
       if (ped.down > 0) { // knocked over: lie, then get up
@@ -655,6 +656,7 @@
         else if (KS.chance(dt * 0.05)) { dg.sleep = true; dg.body.rotation.z = 1.3; dg.body.position.y = -0.22; dg.legs.forEach((l) => (l.visible = false)); }
       }
       if (ctx.night > 0.6 && dist < 40 && KS.chance(dt * 0.03)) A && A.bark(0.25, dg.big);
+      if (ctx.night > 0.7 && dist < 120 && KS.chance(dt * 0.004)) A && A.howl(Math.max(0.15, 0.6 - dist / 200)); // the night chorus of Kathmandu's street dogs
       dg.g.position.set(dg.x, 0.22, dg.z); dg.g.rotation.y = dg.h;
     }
     function wake(dg) { dg.sleep = false; dg.body.rotation.z = 0; dg.body.position.y = 0; dg.legs.forEach((l) => (l.visible = true)); }

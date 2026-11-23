@@ -5,7 +5,7 @@
   const T = THREE, KS = window.KS, G = KS.G;
   const TR = (KS.Traffic = { list: [] });
   const MIX = ['bike', 'scooter', 'bike', 'scooter', 'bike', 'uthao', 'scooter', 'car', 'bike', 'sport', 'car', 'taxi', 'scooter', 'micro', 'bike', 'tempo', 'bus', 'car', 'minibus',
-    'uthao', 'sedan', 'suv', 'taxi', 'scooter', 'ev', 'bike', 'truck', 'micro', 'police', 'pickup', 'cruiser', 'bus', 'scooter', 'taxi', 'bike', 'car', 'uthao', 'minibus', 'ambulance', 'scooter'];
+    'uthao', 'sedan', 'suv', 'taxi', 'scooter', 'ev', 'bike', 'truck', 'micro', 'police', 'pickup', 'cruiser', 'bus', 'scooter', 'taxi', 'bike', 'car', 'uthao', 'minibus', 'ambulance', 'scooter', 'policebike', 'bicycle', 'bike', 'bicycle', 'policebike', 'scooter'];
 
   /* ---------- road graph ---------- */
   const nodes = [], idx = (i, j) => i * (G.N + 1) + j;
@@ -123,6 +123,34 @@
   }
   TR.signalAt = (x, z) => { for (const s of KS.signals) if (Math.abs(x - s.x) < s.hw + 1 && Math.abs(z - s.z) < s.hw + 1) return s; return null; };
 
+  /* ---------- police pursuit ---------- */
+  TR.startChase = (v) => { v.chase = true; v.ai = true; v.parked = false; v.idlePolice = false; v.stuck = 0; v.rev = 0; KS.setSiren(v, true); if (v.rider) v.rider.visible = true; };
+  TR.endChase = (v) => { v.chase = false; KS.setSiren(v, false); v.ai = false; v.parked = true; v.idlePolice = true; v.speed = 0; };
+  TR.spawnPolice = (px, pz) => { const v = TR.spawn(KS.chance(0.45) ? 'policebike' : 'police', px, pz, 110, 200); TR.startChase(v); return v; };
+  TR.chasers = () => TR.list.filter((v) => v.chase);
+  function chaseUpdate(v, dt, ctx) {
+    const P = KS.Player, pv = P.vehicle, heat = KS.Law ? KS.Law.heat : 1;
+    const tx = P.x + (pv ? Math.sin(pv.h) * pv.speed * 0.6 : 0), tz = P.z + (pv ? Math.cos(pv.h) * pv.speed * 0.6 : 0);
+    const dx = tx - v.x, dz = tz - v.z, d = Math.hypot(dx, dz);
+    const want = Math.atan2(dx, dz), t = v.type;
+    let target = d > 14 ? t.speed * (1.3 + heat * 0.1) : d > 5 ? d * 1.1 : 0;
+    if (v.rev > 0) { v.rev -= dt; target = -4; }
+    const diff = KS.wrapAng(want - v.h);
+    v.h += KS.clamp(diff, -1, 1) * t.turn * 1.4 * Math.min(1, Math.abs(v.speed) / 4 + 0.3) * dt * (v.rev > 0 ? -1 : 1);
+    if (Math.abs(diff) > 1.4 && d > 8) target = Math.min(target, 6);
+    v.speed += KS.clamp(target - v.speed, -14 * dt, t.accel * 1.2 * dt);
+    let nx = v.x + Math.sin(v.h) * v.speed * dt, nz = v.z + Math.cos(v.h) * v.speed * dt;
+    const c = KS.collide(nx, nz, t.r, v.y, 0.5);
+    if (c.hit && Math.abs(v.speed) > 1) v.speed *= 0.5;
+    v.x = c.x; v.z = c.z;
+    if (Math.abs(v.speed) < 0.6 && d > 8 && v.rev <= 0) { v.stuck += dt; if (v.stuck > 1.2) { v.rev = 1.2; v.stuck = 0; } } else v.stuck = 0;
+    for (const o of TR.list) { if (o === v || !o.root.visible) continue; const ex = o.x - v.x, ez = o.z - v.z, e = Math.hypot(ex, ez), rr = t.r + o.type.r * 0.8; if (e < rr && e > 0.01) { const k = (rr - e) / e; v.x -= ex * k * 0.5; v.z -= ez * k * 0.5; if (!o.chase) { o.x += ex * k * 0.3; o.z += ez * k * 0.3; } } }
+    v.vy = (v.vy || 0) - 22 * dt; v.y += v.vy * dt; const g = KS.groundAt(v.x, v.z, v.y, 0.5); if (v.y <= g) { v.y = g; v.vy = 0; }
+    if (v.y < KS.RIVER.water - 0.9) { v.y = 0.06; v.x = P.x + 60; v.z = P.z; }
+    v.dist = d;
+    v.root.position.set(v.x, v.y, v.z); v.root.rotation.set(0, v.h, KS.isBike(v.kind) ? -KS.clamp(diff, -1, 1) * 0.25 : 0);
+  }
+
   TR.update = (dt, ctx) => {
     const { px, pz, cx, cz, night } = ctx;
     updateSignals();
@@ -131,7 +159,9 @@
     const ambs = TR.list.filter((v) => v.kind === 'ambulance' && v.ai);
     for (const v of TR.list) {
       const dCam = Math.hypot(v.x - cx, v.z - cz);
-      v.root.visible = dCam < 300 || v === ctx.playerVehicle;
+      v.root.visible = dCam < 300 || v === ctx.playerVehicle || v.chase;
+      if (v.idlePolice && !v.ai && Math.hypot(v.x - px, v.z - pz) > 260) { v.idlePolice = false; TR.recycle(v, px, pz); continue; }
+      if (v.chase) { chaseUpdate(v, dt, ctx); continue; }
       if (!v.ai) continue;
       if (Math.hypot(v.x - px, v.z - pz) > 340 && !v.root.visible) { placeOnRandomEdge(v, px, pz, 130, 300); }
       let target = v.maxSpeed * (v.mode === 'turn' ? (v.type.len < 2.3 ? 0.8 : 0.5) : 1) * (v.lane.hill && !v.lane.hw ? 0.6 : 1);

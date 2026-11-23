@@ -296,7 +296,8 @@
       if (ped.down > 0) { // knocked over: lie, then get up
         ped.down -= dt;
         ped.p.inner.rotation.x = KS.lerp(ped.p.inner.rotation.x, -1.5, Math.min(1, dt * 10)); ped.p.inner.position.y = 0.12;
-        if (ped.down <= 0) {
+        if (ped.down <= 0 && ped.injured) { ped.injured = false; ped.p.inner.rotation.x = 0; ped.p.inner.position.y = 0; KS.say(pr, 'Thank you, doctor saab…', 2); }
+        else if (ped.down <= 0) {
           ped.p.inner.rotation.x = 0; ped.p.inner.position.y = 0;
           if (ped.kind !== 'grandma' && ped.kind !== 'kid' && ped.kind !== 'elder' && ped.kind !== 'monk' && KS.chance(0.4)) { ped.fight = 9; KS.say(pr, KS.pick(LINES.fight), 2, 'angry'); }
           else { ped.flee = 4; ped.fvx = (ped.x - px); ped.fvz = (ped.z - pz); const m = Math.hypot(ped.fvx, ped.fvz) || 1; ped.fvx *= 5 / m; ped.fvz *= 5 / m; KS.say(pr, KS.pick(LINES.flee), 2, 'angry'); }
@@ -383,6 +384,21 @@
           break;
         }
         case 'police': {
+          if (ped.postX == null) { ped.postX = ped.x; ped.postZ = ped.z; ped.postY = ped.y; }
+          const heat = KS.Law ? KS.Law.heat : 0, pdx = px - ped.x, pdz = pz - ped.z, pd = Math.hypot(pdx, pdz);
+          if (heat > 0 && pd < 75) { // leave the post and run after the player
+            ped.chasing = true; ped.y = 0.06;
+            if (pd > 1.0) { const sp = KS.Player.vehicle ? 6.5 : 5.2; ped.x += (pdx / pd) * sp * dt; ped.z += (pdz / pd) * sp * dt; moving = sp; }
+            ped.h = Math.atan2(pdx, pdz); const c = KS.collide(ped.x, ped.z, 0.35, 0, 1.0); ped.x = c.x; ped.z = c.z;
+            ped.p.busyArm = false; ped.whT = (ped.whT || 0) - dt; if (ped.whT <= 0) { ped.whT = 2.5; KS.audio && KS.audio.whistle(Math.max(0.15, 1 - pd / 60)); KS.say(pr, KS.pick(['Rok! Police!', 'Oi! Rok!', 'Bhaagna sakdainas!']), 1.4, 'angry'); }
+            ped.dist = pd; break;
+          }
+          if (ped.chasing) { // walk back to the post
+            const bx = ped.postX - ped.x, bz = ped.postZ - ped.z, bd = Math.hypot(bx, bz);
+            if (bd > 0.5) { ped.x += (bx / bd) * 1.6 * dt; ped.z += (bz / bd) * 1.6 * dt; ped.h = Math.atan2(bx, bz); moving = 1.6; ped.p.busyArm = false; break; }
+            ped.chasing = false; ped.y = ped.postY;
+          }
+          ped.dist = pd;
           ped.t += dt; ped.h = Math.floor(ped.t / 6) * (Math.PI / 2);
           ped.p.busyArm = true; ped.p.armR.rotation.z = -1.4 + Math.sin(ped.t * 5) * 0.4; ped.p.armL.rotation.x = Math.sin(ped.t * 2.5) * 0.9 - 0.4;
           if (Math.floor(ped.t * 0.5) !== Math.floor((ped.t - dt) * 0.5) && d2 < 900 && KS.chance(0.35)) KS.audio && KS.audio.whistle(Math.max(0.1, 1 - Math.sqrt(d2) / 30));
@@ -391,7 +407,7 @@
       }
       const gy = ped.mode === 'walk' && !ped.flee && !ped.fight ? 0.22 : ped.mode === 'cross' ? 0.06 : ped.y || 0.06;
       pr.position.set(ped.x, gy, ped.z); pr.rotation.y = ped.h;
-      if (ped.mode !== 'sit' && (ped.mode !== 'police' || ped.fight)) KS.animWalk(ped.p, dt, moving);
+      if (ped.mode !== 'sit' && (ped.mode !== 'police' || ped.fight || ped.chasing)) KS.animWalk(ped.p, dt, moving);
       if (d2 < 100 && !ped.fight && KS.chance(dt * 0.1)) {
         const set = LINES[ped.kind] || (ped.kind === 'porter' ? LINES.vendor : ped.kind === 'grandma' || ped.kind === 'elder' ? LINES.greet : LINES.greet);
         KS.say(pr, KS.pick(set), 2.4);
@@ -401,7 +417,8 @@
   };
   /** knock a pedestrian down (from a punch or a vehicle) */
   Peds.knock = (ped, fromX, fromZ, hard) => {
-    ped.down = hard ? 3.2 : 2.2; ped.flee = 0; ped.fight = 0;
+    ped.down = hard ? 28 : 2.2; ped.flee = 0; ped.fight = 0; ped.injured = !!hard;
+    if (hard && KS.Law) KS.Law.injury(ped);
     const dx = ped.x - fromX, dz = ped.z - fromZ, d = Math.hypot(dx, dz) || 1;
     ped.x += (dx / d) * 0.8; ped.z += (dz / d) * 0.8; ped.h = Math.atan2(-dx, -dz);
     KS.say(ped.p.root, KS.pick(LINES.hurt), 1.8, 'angry');
@@ -424,7 +441,7 @@
   Peds.bump = (x, z, r, vx, vz, speed) => {
     let hits = 0;
     for (const ped of Peds.list) {
-      if (ped.mode === 'sit' || ped.mode === 'police' || !ped.p.root.visible || ped.down > 0) continue;
+      if (ped.mode === 'sit' || (ped.mode === 'police' && !ped.chasing) || !ped.p.root.visible || ped.down > 0) continue;
       const dx = ped.x - x, dz = ped.z - z, d2 = dx * dx + dz * dz;
       if (d2 > r * r) continue;
       const d = Math.sqrt(d2) || 1;

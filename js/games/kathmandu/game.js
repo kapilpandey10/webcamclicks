@@ -40,7 +40,7 @@
   };
   Game.onPunch = (ped) => {
     Game.karma(-4, 'Started a fight');
-    if (Game.policeNear(ped.x, ped.z, 45)) Game.fine(2000, 'Fighting in public', true);
+    if (KS.Law.policeNear(ped.x, ped.z, 45)) KS.Law.raise(1, 'Fighting in public');
   };
   Game.onCrash = (speed) => { if (speed > 6) KS.Uthao.event('crash'); };
   Game.onHardBrake = () => KS.Uthao.event('brake');
@@ -69,6 +69,7 @@
   let wheelT = -10;
   Game.interact = () => {
     const PL = KS.Player;
+    if (KS.trialGround && Math.hypot(PL.x - KS.trialGround.counter.x, PL.z - KS.trialGround.counter.z) < 3.5) { KS.Law.openCounter(); return; }
     for (const [x, z] of KS.prayerWheels) if (Math.hypot(x - PL.x, z - PL.z) < 2.4) {
       if (KS.clock - wheelT > 2) { wheelT = KS.clock; A.prayer(); KS.say(PL.person.root, 'Om mani padme hum 🙏', 2.2, 'calm'); Game.karma(+1, 'Spun a prayer wheel'); }
       return;
@@ -121,27 +122,43 @@
   }
 
   /* ======================= traffic violations ======================= */
-  let lastSig = null;
+  let lastSig = null, honks = [];
   function violations(dt) {
-    const PL = KS.Player, v = PL.vehicle; if (!v) { lastSig = null; return; }
+    const PL = KS.Player, v = PL.vehicle, Law = KS.Law;
+    for (const c of KS.speedCams) { c.cool = Math.max(0, c.cool - dt); c.flash.material.opacity = Math.max(0, c.flash.material.opacity - dt * 3); }
+    for (const s2 of KS.signals) if (s2.camFlash) s2.camFlash.material.opacity = Math.max(0, s2.camFlash.material.opacity - dt * 3);
+    if (!v || Law.trial || v.kind === 'bicycle') { lastSig = null; return; }
     const kmh = Math.abs(v.speed) * 3.6, lim = KS.speedLimit(PL.x, PL.z);
     Game.limit = lim; Game.kmh = kmh;
+    // speed cameras: e-challan, a little tolerance like real cameras
     for (const c of KS.speedCams) {
-      c.cool = Math.max(0, c.cool - dt); c.flash.material.opacity = Math.max(0, c.flash.material.opacity - dt * 3);
-      if (c.cool <= 0 && Math.hypot(PL.x - c.x, PL.z - c.z) < 16 && kmh > lim + 5) {
-        c.cool = 10; c.flash.material.opacity = 1; A.speedcam(); flash('cam');
-        Game.fine(Math.round((500 + (kmh - lim) * 40) / 50) * 50, `Speed camera: ${Math.round(kmh)} km/h in a ${lim} zone`, true);
+      if (c.cool <= 0 && Math.hypot(PL.x - c.x, PL.z - c.z) < 16 && kmh > lim + 6) {
+        c.cool = 12; c.flash.material.opacity = 1; flash('cam');
+        Law.ticket('speeding', { kmh, limit: lim, over: kmh - lim });
       }
     }
-    if (kmh > lim + 12 && Game.policeNear(PL.x, PL.z, 45)) Game.fine(1000, `Police clocked you at ${Math.round(kmh)} km/h (limit ${lim})`);
-    // red-light cameras at signalled junctions
+    // police see you speeding: they whistle you over (they may let you go)
+    if (kmh > lim + 10 && Law.policeNear(PL.x, PL.z, 40)) Law.offense('speeding', { kmh, limit: lim, over: kmh - lim });
+    // red-light cameras at every signal
     const s = KS.Traffic.signalAt(PL.x, PL.z);
     if (s && s !== lastSig) {
       const ax = Math.abs(Math.sin(v.h)) > Math.abs(Math.cos(v.h)) ? 'ew' : 'ns';
-      if (s.state[ax] === 'r' && kmh > 5 && v.kind !== 'ambulance') { A.speedcam(); flash('cam'); Game.fine(1500, 'Red-light camera: you jumped the signal', true); Game.karma(-2, 'Ran a red light'); }
+      if (s.state[ax] === 'r' && kmh > 5 && v.kind !== 'ambulance') { if (s.camFlash) s.camFlash.material.opacity = 1; flash('cam'); Law.ticket('redlight'); Game.karma(-2, 'Ran a red light'); }
     }
     lastSig = s;
-    if (Game.honk > 0.35 && v) KS.Uthao.event('honk');
+    // wrong side of the road (Nepal drives on the left)
+    if (kmh > 12) {
+      const O = G.O, B2 = G.B, sx = Math.sin(v.h), sz = Math.cos(v.h);
+      const jx = Math.round((PL.x - O) / B2), jz = Math.round((PL.z - O) / B2), Lx = G.line(jx), Lz = G.line(jz);
+      let wrong = false;
+      if (jz >= 0 && jz <= G.N && Math.abs(PL.z - Lz) < G.roadHalf(jz) - 0.5 && Math.abs(PL.x - Lx) > 14) wrong = (sx > 0.85 && PL.z > Lz + 0.8) || (sx < -0.85 && PL.z < Lz - 0.8);
+      if (jx >= 0 && jx <= G.N && Math.abs(PL.x - Lx) < G.roadHalf(jx) - 0.5 && Math.abs(PL.z - Lz) > 14) wrong = wrong || (sz > 0.85 && PL.x < Lx - 0.8) || (sz < -0.85 && PL.x > Lx + 0.8);
+      Game.wrongT = wrong ? (Game.wrongT || 0) + dt : 0;
+      if (Game.wrongT > 2.5 && Law.policeNear(PL.x, PL.z, 40)) Law.offense('wrongway');
+      if (Game.wrongT > 1) Game.prompt('Keep left! You are on the wrong side of the road');
+    }
+    // Kathmandu's no-horn rule: honking again and again in front of police
+    if (Game.honk > 0.39) { honks.push(KS.clock); honks = honks.filter((t) => KS.clock - t < 6); if (honks.length >= 3 && Law.policeNear(PL.x, PL.z, 35)) { honks = []; Law.offense('horn'); } KS.Uthao.event('honk'); }
   }
   function flash(kind) { const f = $('flash'); f.className = 'flash ' + kind; void f.offsetWidth; f.classList.add('go'); }
 
@@ -187,7 +204,7 @@
     g.fillStyle = '#a9b97a'; g.beginPath(); g.ellipse(mx(KS.HW.village.x), mz(KS.HW.village.z), 300 * MAP.px, 330 * MAP.px, 0, 0, 7); g.fill();
     g.fillStyle = '#7f9a5a'; g.beginPath(); g.arc(mx(KS.SWAYAMBHU.x), mz(KS.SWAYAMBHU.z), 150 * MAP.px, 0, 7); g.fill();
     g.fillStyle = '#e3dccd'; g.fillRect(mx(-560), mz(-560), 1120 * MAP.px, 1120 * MAP.px);
-    const col = { city: '#cfc5b3', thamel: '#e2b796', old: '#d6a88c', ason: '#d6a88c', newroad: '#cbbdab', park: '#9cc77a', balaju: '#9cc77a', shankha: '#9cc77a', garden: '#9cc77a', tundikhel: '#a9d17f', tundikhel2: '#a9d17f', palace: '#e9c9b4', singha: '#b9d79a', stadium: '#b3d58a', durbar: '#d98f6f', durbar2: '#d98f6f', boudha: '#efe6d6', pashupati: '#e6c66a', ranipokhari: '#9cc77a', dharahara: '#ddd5c6', hospital: '#f0d6d6' };
+    const col = { trial: '#c9b48a', city: '#cfc5b3', thamel: '#e2b796', old: '#d6a88c', ason: '#d6a88c', newroad: '#cbbdab', park: '#9cc77a', balaju: '#9cc77a', shankha: '#9cc77a', garden: '#9cc77a', tundikhel: '#a9d17f', tundikhel2: '#a9d17f', palace: '#e9c9b4', singha: '#b9d79a', stadium: '#b3d58a', durbar: '#d98f6f', durbar2: '#d98f6f', boudha: '#efe6d6', pashupati: '#e6c66a', ranipokhari: '#9cc77a', dharahara: '#ddd5c6', hospital: '#f0d6d6' };
     for (let c2 = 0; c2 < G.N; c2++) for (let r = 0; r < G.N; r++) {
       const t = KS.blockType(c2, r); if (t === 'river') continue; const R = KS.World.blockRect(c2, r);
       g.fillStyle = col[t] || '#cfc5b3'; g.fillRect(mx(R.x0), mz(R.z0), (R.x1 - R.x0) * MAP.px, (R.z1 - R.z0) * MAP.px);
@@ -207,6 +224,7 @@
     g.setLineDash([6, 5]); g.strokeStyle = '#f3d27a'; g.lineWidth = 2; g.beginPath(); g.moveTo(mx(KS.HW.pW), mz(KS.HW.z)); g.lineTo(mx(KS.HW.pE), mz(KS.HW.z)); g.stroke(); g.setLineDash([]);
     g.fillStyle = '#d98f6f'; g.fillRect(mx(-176), mz(4), 82 * MAP.px, 172 * MAP.px);
     g.fillStyle = '#e6c66a'; g.fillRect(mx(368), mz(368), 74 * MAP.px, 90 * MAP.px);
+    if (KS.policeStation) { g.fillStyle = '#1d3a8a'; g.fillRect(mx(KS.policeStation.x) - 4, mz(KS.policeStation.z) - 4, 8, 8); }
     for (const s of KS.signals) { g.fillStyle = '#c8102e'; g.beginPath(); g.arc(mx(s.x), mz(s.z), 2.5, 0, 7); g.fill(); }
     for (const c3 of KS.speedCams) { g.fillStyle = '#1d4fb8'; g.fillRect(mx(c3.x) - 2.5, mz(c3.z) - 2.5, 5, 5); }
     return c;
@@ -289,8 +307,10 @@
     KS.Animals.init(scene);
     await step('Starting the traffic lights (and the honking)…');
     KS.Traffic.init(scene, KS.quality.cars, KS.Player.x, KS.Player.z);
-    KS.Traffic.park('scooter', -124, -263.4, Math.PI / 2, { owned: true }).ownedId = 'sathi';
-    KS.Shop.delivered = KS.Traffic.list[KS.Traffic.list.length - 1]; KS.Shop.delivered.up = D.garage[0].up; KS.Shop.delivered.horn = D.garage[0].horn;
+    KS.Traffic.park('bicycle', -131, -263.2, Math.PI / 2, { owned: true }).ownedId = 'cycle';
+    const sc = KS.Traffic.park('scooter', -124, -263.4, Math.PI / 2, { owned: true }); sc.ownedId = 'sathi';
+    const sg = D.garage.find((g) => g.id === 'sathi'); KS.Shop.delivered = sc; if (sg) { sc.up = sg.up; sc.horn = sg.horn; }
+    KS.Law.data();
     KS.Traffic.park('taxi', 6.6, -36, Math.PI); KS.Traffic.park('bus', 6.9, -56, Math.PI); KS.Traffic.park('tempo', -88.6, 60, 0); KS.Traffic.park('pickup', -528, 104, 0);
     KS.Input.init(canvas);
     target = makeMarker(0xffd21f); scene.add(target);
@@ -327,7 +347,11 @@
     $('btnSound').onclick = () => { A.setOn(!A.on); Game.save(); Game.refreshMenu(); };
     $('btnQuality').onclick = () => { KS.quality.level = KS.quality.level === 'high' ? 'low' : 'high'; Game.save(); $('qnote').hidden = false; Game.refreshMenu(); };
     $('btnReset').onclick = () => { if ($('btnReset').dataset.armed) { try { localStorage.removeItem('ks-save2'); localStorage.removeItem('ks-save'); } catch (e) { /* ignore */ } location.reload(); } else { $('btnReset').dataset.armed = '1'; $('btnReset').textContent = 'Tap again to erase progress'; } };
-    $('btnPlay').onclick = () => { A.init(); KS.Radio.load(); KS.state = 'play'; $('title').hidden = true; $('hud').hidden = false; if (coarse) $('touch').hidden = false; Game.notify('Namaste! Your scooter is parked beside you (<b>E</b>). Press <b>U</b> to go online as an Uthao driver.'); };
+    $('btnPlay').onclick = () => {
+      A.init(); KS.Radio.load(); KS.state = 'play'; $('title').hidden = true; $('hud').hidden = false; if (coarse) $('touch').hidden = false;
+      const lic = KS.Law.data().lic;
+      Game.notify(lic.A ? 'Namaste! Your scooter and bicycle are parked beside you (<b>E</b>). Press <b>U</b> to drive for Uthao.' : 'Namaste! You have no licence yet: ride the <b>bicycle</b> (no licence needed) or take the bike test at the <b>Trial ground</b> (see map). Riding the scooter without a licence risks a police fine.');
+    };
     $('btnMenu').onclick = () => pause(true);
     $('btnRec').onclick = () => Rec.toggle(); $('btnPhoto').onclick = () => Rec.photo();
     $('btnPhone').onclick = () => KS.Uthao.toggle(); $('btnGarage').onclick = () => Game.openTab('garage');
@@ -356,7 +380,7 @@
     for (const l of KS.landmarks) { const li = document.createElement('li'); li.className = Game.found.has(l.id) ? 'found' : ''; li.innerHTML = `<b>${l.name}</b><span lang="ne">${l.np}</span>`; list.appendChild(li); }
     $('lmcount').textContent = `${Game.found.size} / ${KS.landmarks.length}`;
     $('walletCash').textContent = 'रु ' + Math.round(D.cash).toLocaleString('en-IN'); $('walletTok').textContent = D.tokens + ' 🪙';
-    KS.Shop.renderGarage($('garageList')); KS.Shop.renderWardrobe($('wardrobeList')); renderRadio();
+    KS.Shop.renderGarage($('garageList')); KS.Shop.renderWardrobe($('wardrobeList')); renderRadio(); KS.Law.renderCard($('licenceCard'));
     const s = D.uthao; $('uthaoStats').textContent = `Rating ★ ${KS.Uthao.rating().toFixed(2)} · ${s.trips} trips · रु ${s.earned.toLocaleString('en-IN')} earned`;
     $('btnUthao').textContent = KS.Uthao.online ? 'Go offline' : 'Go online';
   };
@@ -372,6 +396,7 @@
     const dt = Math.min(0.05, clock.getDelta());
     const I = KS.Input, PL = KS.Player, play = KS.state === 'play';
     if (KS.state === 'pause') { if (I.hit('Escape') || I.hit('KeyP')) pause(false); I.endFrame(); renderer.render(scene, camera); return; }
+    if (KS.state === 'modal') { for (let k = 1; k <= 4; k++) if (I.hit('Digit' + k)) KS.Law.modalKey(k - 1); I.endFrame(); renderer.render(scene, camera); return; }
     KS.clock += dt;
     if (play) {
       if (I.hit('Escape') || I.hit('KeyP')) pause(true);
@@ -405,7 +430,7 @@
       else { const t = cyc - 130; fp.position.set(rx, 2.6, Math.max(-380, 360 - (60 * t - 1.5 * t * t))); fp.rotation.set(0, Math.PI, 0); }
     }
     if (play) {
-      missionUpdate(dt); KS.Uthao.update(dt); violations(dt);
+      missionUpdate(dt); KS.Uthao.update(dt); violations(dt); KS.Law.update(dt);
       lmT -= dt;
       if (lmT <= 0) {
         lmT = 0.4;
@@ -477,6 +502,7 @@
       else if (KS.prayerWheels.some(([x, z]) => Math.hypot(x - PL.x, z - PL.z) < 2.4)) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Spin the prayer wheel`;
       else if (PL.swim) prompt = 'Swimming in the Bagmati… head for the bank!';
       else if (Math.hypot(PL.x - MOMO.x, PL.z - MOMO.z) < 12 && !Game.mission) prompt = 'Step into the orange beam: <b>Momo House</b> delivery job';
+      else if (KS.trialGround && Math.hypot(PL.x - KS.trialGround.counter.x, PL.z - KS.trialGround.counter.z) < 3.5) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Licence counter: written test & trial`;
     } else if (KS.Uthao.trip && Math.hypot(PL.x - (KS.Uthao.trip.stage === 'pickup' ? KS.Uthao.trip.from.x : KS.Uthao.trip.to.x), PL.z - (KS.Uthao.trip.stage === 'pickup' ? KS.Uthao.trip.from.z : KS.Uthao.trip.to.z)) < 25) prompt = KS.Uthao.trip.stage === 'pickup' ? 'Stop next to the yellow marker to pick up' : 'Stop at the yellow marker to drop off';
     $('prompt').innerHTML = prompt; $('prompt').hidden = !prompt;
     const m = Game.mission, mp = $('mission');
@@ -485,7 +511,7 @@
       $('mMeta').textContent = `${Math.round(Math.hypot(PL.x - m.x, PL.z - m.z))} m · ${Math.max(0, Math.floor(m.t / 60))}:${String(Math.max(0, Math.floor(m.t % 60))).padStart(2, '0')}`;
       mp.classList.toggle('urgent', m.t < 20);
     } else mp.hidden = true;
-    KS.Uthao.tick();
+    KS.Uthao.tick(); KS.Law.hud();
     const yaw = ((KS.Cam.yaw % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
     $('himal').hidden = !(Math.abs(yaw - Math.PI) < 0.6 && KS.Weather.cur.mtn > 0.5 && KS.day > 0.3);
     $('camName').textContent = '🎥 ' + KS.CAMS[KS.Cam.mode];

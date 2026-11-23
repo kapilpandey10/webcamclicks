@@ -199,6 +199,13 @@
           else zebra.box(x + dx * d, 0.075, z + k * 2.1, 3.2, 0.02, 1.1, 0xf4f4ee);
         }
       }
+      { // red-light camera on a pole at one corner
+        const px = x + G.roadHalf(i) + 3, pz = z + G.roadHalf(j) + 3;
+        b.cyl(px, 0, pz, 0.12, 6, 0x9a9a9a, 6); b.box(px - 0.6, 5.8, pz - 0.6, 1.4, 0.12, 0.12, 0x9a9a9a, Math.PI / 4);
+        b.box(px - 1.1, 5.4, pz - 1.1, 0.5, 0.4, 0.7, 0xe8e8e0, Math.PI / 4); b.box(px - 1.3, 5.45, pz - 1.3, 0.25, 0.25, 0.1, 0x111111, Math.PI / 4);
+        const fl = new T.Mesh(new T.SphereGeometry(0.45, 8, 6), new T.MeshBasicMaterial({ color: 0xff3020, transparent: true, opacity: 0, depthWrite: false }));
+        fl.position.set(px - 1.1, 5.6, pz - 1.1); scene.add(fl); sig.camFlash = fl; KS.addCircle(px, pz, 0.25, 6);
+      }
       KS.signals.push(sig);
     }
     // speed-limit signs a little after junctions
@@ -234,7 +241,77 @@
     zm.receiveShadow = true; scene.add(zm);
   }
 
+  /* ---------- Transport Management Office & licence trial ground (Nepali style) ---------- */
+  function trialGround(scene, W) {
+    const R = W.blockRect(9, 8), x0 = R.x0 + 4, x1 = R.x1 - 4, z0 = R.z0 + 4, z1 = R.z1 - 4, b = new KS.Builder(), paint = new KS.Builder();
+    b.box((x0 + x1) / 2, 0, (z0 + z1) / 2, x1 - x0, 0.12, z1 - z0, 0x9c8a6a); KS.addBox((x0 + x1) / 2, (z0 + z1) / 2, x1 - x0, z1 - z0, 0.12, -1);
+    for (let i = 0; i < 120; i++) b.box(KS.r(x0, x1), 0.12, KS.r(z0, z1), KS.r(0.3, 1.2), 0.01, KS.r(0.3, 1.2), KS.pick([0x8a7a5a, 0xa89878]));
+    // fence with a gate on the south side
+    const post = (x, z) => b.box(x, 0, z, 0.12, 1.8, 0.12, 0x6a6a6a);
+    for (let x = x0; x <= x1; x += 3) { post(x, z0); if (x < 298 || x > 312) post(x, z1); }
+    for (let z = z0; z <= z1; z += 3) { post(x0, z); post(x1, z); }
+    for (const h of [0.6, 1.2, 1.7]) { b.box((x0 + x1) / 2, h, z0, x1 - x0, 0.03, 0.03, 0x888888); b.box(x0, h, (z0 + z1) / 2, 0.03, 0.03, z1 - z0, 0x888888); b.box(x1, h, (z0 + z1) / 2, 0.03, 0.03, z1 - z0, 0x888888); b.box((x0 + 298) / 2, h, z1, 298 - x0, 0.03, 0.03, 0x888888); b.box((312 + x1) / 2, h, z1, x1 - 312, 0.03, 0.03, 0x888888); }
+    KS.addBox((x0 + x1) / 2, z0, x1 - x0, 0.3, 2); KS.addBox(x0, (z0 + z1) / 2, 0.3, z1 - z0, 2); KS.addBox(x1, (z0 + z1) / 2, 0.3, z1 - z0, 2);
+    KS.addBox((x0 + 298) / 2, z1, 298 - x0, 0.3, 2); KS.addBox((312 + x1) / 2, z1, x1 - 312, 0.3, 2);
+    // office building
+    const ox = 296, oz = 200;
+    b.box(ox, 0, oz, 24, 7, 9, 0xf2f0ea); b.box(ox, 2.9, oz, 24.1, 0.5, 9.1, 0x1d4fb8); b.box(ox, 7, oz, 24.6, 0.4, 9.6, 0xd8d4ca);
+    for (let i = 0; i < 7; i++) { b.box(ox - 10 + i * 3.3, 1, oz + 4.55, 1.6, 1.4, 0.1, 0x5a8aa8); b.box(ox - 10 + i * 3.3, 4.2, oz + 4.55, 1.6, 1.4, 0.1, 0x5a8aa8); }
+    b.box(ox, 0, oz + 4.6, 3, 2.4, 0.2, 0x2a2a2a); b.box(ox, 2.4, oz + 5.6, 5, 0.15, 2.4, 0x1d4fb8); // counter window & awning
+    KS.addBox(ox, oz, 24, 9, 7.5);
+    board(scene, 'यातायात व्यवस्था कार्यालय', 'TRANSPORT MANAGEMENT OFFICE · LICENCE', ox, 6.2, oz + 4.7, 0, 12, 1.6, '#1d4fb8');
+    board(scene, 'ट्रायल स्थल', 'TRIAL GROUND', 305, 2.4, z1 + 0.3, Math.PI, 5, 1.4, '#c81e1e');
+    b.box(303, 0, z1 + 0.3, 0.15, 2, 0.15, 0x666666); b.box(307, 0, z1 + 0.3, 0.15, 2, 0.15, 0x666666);
+    // waiting tent with applicants
+    const tx = 290, tz = 250;
+    b.box(tx, 2.6, tz, 9, 0.12, 6, 0x1d4fb8); for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) b.box(tx + sx * 4.3, 0, tz + sz * 2.8, 0.1, 2.6, 0.1, 0x777777);
+    for (let i = 0; i < 3; i++) { W.bench(b, tx - 2.6 + i * 2.6, tz + 0.5, Math.PI); KS.sitSpots.push([tx - 2.6 + i * 2.6, tz + 0.6, 0.12, KS.pick(['student', 'man', 'woman'])]); }
+    KS.plazas.push({ x0: ox - 6, x1: ox + 6, z0: oz + 6, z1: oz + 9, n: 8, kinds: ['student', 'man', 'woman', 'office'] });
+    const pole = (x, z, h = 1.25) => { b.cyl(x, 0.12, z, 0.05, h, 0xffffff, 6); for (let k = 0; k < 3; k++) b.cyl(x, 0.12 + k * h / 3, z, 0.055, h / 6, 0xc81e1e, 6); const s2 = KS.addCircle(x, z, 0.12, h); s2.tag = 'trial'; };
+    const cone = (x, z) => { b.cyl(x, 0.12, z, 0.25, 0.7, 0xff6a00, 8, 0.12); b.cyl(x, 0.4, z, 0.16, 0.1, 0xffffff, 8, 0.9); const s2 = KS.addCircle(x, z, 0.22, 0.8); s2.tag = 'trial'; };
+    const ring = (cx, cz, r, from = 0, to = Math.PI * 2) => { for (let a = from; a < to; a += 0.12) paint.box(cx + Math.sin(a) * r, 0.13, cz + Math.cos(a) * r, 0.12, 0.01, 0.4, 0xf4f4ee, a + Math.PI / 2); };
+    // --- bike course: figure-8, plank ramp, cone slalom
+    const B8 = { c1: [293, 223.5], c2: [293, 232.5], r: 4.5 };
+    for (const [c, sgn] of [[B8.c1, 1], [B8.c2, -1]]) {
+      ring(c[0], c[1], B8.r - 0.85); ring(c[0], c[1], B8.r + 0.85);
+      for (let k = 0; k < 10; k++) {
+        const a = (k / 10) * Math.PI * 2, nearX = Math.abs(Math.sin(a)) < 0.45 && Math.cos(a) * sgn > 0;
+        if (!nearX) pole(c[0] + Math.sin(a) * (B8.r + 0.95), c[1] + Math.cos(a) * (B8.r + 0.95));
+        if (k % 2 === 0 && !nearX) pole(c[0] + Math.sin(a) * (B8.r - 0.95), c[1] + Math.cos(a) * (B8.r - 0.95));
+      }
+    }
+    const plank = { x0: 300, x1: 310, z: 240 };
+    for (let i = 0; i < 10; i++) {
+      const x = plank.x0 + 0.5 + i, h = 0.12 + (i < 4 ? (i + 1) * 0.14 : i > 5 ? (10 - i) * 0.14 : 0.62);
+      b.box(x, 0.12, plank.z, 1.02, h - 0.12, 0.7, i % 2 ? 0x8a5a30 : 0x7a4a26); const s2 = KS.addBox(x, plank.z, 1.0, 0.7, h); s2.plank = true;
+    }
+    paint.box(305, 0.13, plank.z - 1.3, 10, 0.01, 0.12, 0xf4f4ee); paint.box(305, 0.13, plank.z + 1.3, 10, 0.01, 0.12, 0xf4f4ee);
+    for (let i = 0; i < 5; i++) cone(314 + i * 4, 240);
+    paint.box(335, 0.13, 240, 0.3, 0.01, 4, 0xf4f4ee);
+    // --- car course: slalom, hill start, reverse parking box
+    for (const z of [228, 223, 218]) cone(335, z);
+    for (let i = 0; i < 26; i++) {
+      const z = 213 - i * 0.62, h = 0.12 + (i < 8 ? (i + 1) * 0.15 : i > 17 ? (26 - i) * 0.15 : 1.2);
+      b.box(335, 0.12, z, 3.6, h - 0.12, 0.64, i % 2 ? 0x8f887a : 0x9e978a); KS.addBox(335, z, 3.6, 0.62, h);
+    }
+    for (const s2 of [-1, 1]) { b.box(335 + s2 * 1.95, 0.12, 205, 0.15, 1.5, 16, 0xd8d0c0); KS.addBox(335 + s2 * 1.95, 205, 0.15, 16, 1.6).tag = 'trial'; }
+    const PB = { x: 326, z: 205, w: 3.2, d: 6 };
+    for (const [px, pz] of [[PB.x - PB.w / 2, PB.z - PB.d / 2], [PB.x + PB.w / 2, PB.z - PB.d / 2], [PB.x - PB.w / 2, PB.z + PB.d / 2], [PB.x + PB.w / 2, PB.z + PB.d / 2], [PB.x - PB.w / 2, PB.z], [PB.x + PB.w / 2, PB.z]]) pole(px, pz, 1.4);
+    paint.box(PB.x, 0.13, PB.z - PB.d / 2, PB.w, 0.01, 0.12, 0xf2c418); paint.box(PB.x - PB.w / 2, 0.13, PB.z, 0.12, 0.01, PB.d, 0xf2c418); paint.box(PB.x + PB.w / 2, 0.13, PB.z, 0.12, 0.01, PB.d, 0xf2c418);
+    paint.box(335, 0.13, 236, 4, 0.01, 0.3, 0xf4f4ee);
+    // examiners with clipboards
+    for (const [ex, ez] of [[289, 236], [331, 230]]) { const p = KS.makePerson('office'); KS.animSit(p); p.legL.rotation.x = p.legR.rotation.x = 0; p.armR.rotation.x = -1.1; p.root.position.set(ex, 0.12, ez); p.root.rotation.y = Math.PI * 0.75; scene.add(p.root); b.box(ex + 0.4, 0, ez + 0.4, 0.6, 0.75, 0.6, 0x5a3a22); }
+    scene.add(KS.mesh(b));
+    const pm = new T.Mesh(paint.build(), new T.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -4 })); scene.add(pm);
+    KS.trialGround = { counter: { x: ox, z: oz + 7 }, area: { x0, x1, z0, z1 }, B8, plank, bikeStart: { x: 287, z: 228, h: Math.PI / 2 }, bikeFinish: { x: 335, z: 240 }, slalom: [314, 318, 322, 326, 330].map((x) => [x, 240]),
+      carStart: { x: 335, z: 233, h: Math.PI }, carCones: [228, 223, 218], hill: { x: 335, zTop0: 203.5, zTop1: 207.6 }, box: PB, carFinish: { x: 326, z: 230 }, carArea: { x0: 320, x1: 349, z0: 193, z1: 236 } };
+    KS.landmarks.push({ id: 'trial', name: 'Licence Trial Ground', np: 'ट्रायल स्थल', x: 315, z: 225, r: 34, stop: { x: 305, z: R.z1 + 3 }, fact: 'Pass the written test and the famous "8" trial to get your bike licence; the car trial has a hill start and reverse parking.' });
+  }
+
   X.build = (scene, W) => {
-    highway(scene); village(scene, W); parks(scene, W); trafficControl(scene);
+    highway(scene); village(scene, W); parks(scene, W); trafficControl(scene); trialGround(scene, W);
+    // police office at Hanuman Dhoka, where arrested drivers end up
+    board(scene, 'महानगरीय प्रहरी कार्यालय', 'METROPOLITAN POLICE OFFICE', -106.45, 5.4, 82, -Math.PI / 2, 7, 1.4, '#1d3a8a');
+    KS.policeStation = { x: -113, z: 80 };
   };
 })();

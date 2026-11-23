@@ -55,6 +55,7 @@
   set(1, 1, 'balaju');
   set(8, 1, 'shankha');
   set(7, 5, 'hospital');
+  set(9, 8, 'trial');
   KS.blockType = (c, r) => {
     if (c < 0 || r < 0 || c >= G.N || r >= G.N) return 'outside';
     return layout[c + ',' + r] || 'city';
@@ -82,6 +83,7 @@
     { name: 'Balaju Water Garden', np: 'बालाजु बाइसधारा', x0: -450, x1: -360, z0: -450, z1: -360 },
     { name: 'Shankha Park', np: 'शंख पार्क', x0: 180, x1: 270, z0: -450, z1: -360 },
     { name: 'Bir Hospital area', np: 'अस्पताल', x0: 90, x1: 180, z0: -90, z1: 0 },
+    { name: 'Transport Office · Trial ground', np: 'यातायात कार्यालय · ट्रायल स्थल', x0: 270, x1: 360, z0: 180, z1: 270 },
     { name: 'Kalanki', np: 'कलंकी', x0: -570, x1: -510, z0: 40, z1: 140 },
     { name: 'Bagmati River', np: 'बागमती नदी', x0: -2700, x1: 1400, z0: 452, z1: 532 },
     { name: 'Swayambhu', np: 'स्वयम्भू', x0: -860, x1: -560, z0: -260, z1: 80 },
@@ -179,17 +181,19 @@
   KS.solids = [];
   function insert(s) {
     KS.solids.push(s);
+    s.ref = s;
     const a = Math.floor(s.x0 / CELL), b = Math.floor(s.x1 / CELL), c = Math.floor(s.z0 / CELL), d = Math.floor(s.z1 / CELL);
     for (let i = a; i <= b; i++) for (let j = c; j <= d; j++) {
       const k = key(i, j); let arr = grid.get(k); if (!arr) grid.set(k, (arr = [])); arr.push(s);
     }
+      return s;
   }
   KS.addBox = (cx, cz, w, d, top, base = -50, rotY = 0) => {
     if (rotY) { // approximate rotated boxes by their axis-aligned bounds when rotated ~90deg
       const c = Math.abs(Math.cos(rotY)), s = Math.abs(Math.sin(rotY));
       const nw = w * c + d * s, nd = w * s + d * c; w = nw; d = nd;
     }
-    insert({ t: 0, x0: cx - w / 2, x1: cx + w / 2, z0: cz - d / 2, z1: cz + d / 2, top, base });
+    return insert({ t: 0, x0: cx - w / 2, x1: cx + w / 2, z0: cz - d / 2, z1: cz + d / 2, top, base });
   };
   KS.addCircle = (cx, cz, r, top, base = -50) => insert({ t: 1, cx, cz, r, x0: cx - r, x1: cx + r, z0: cz - r, z1: cz + r, top, base });
   const seen = new Set();
@@ -215,9 +219,9 @@
     return g;
   };
   /** move a circle to (x,z): push out of solids too tall to step on. returns {x,z,hit} */
-  const res = { x: 0, z: 0, hit: false };
+  const res = { x: 0, z: 0, hit: false, solid: null };
   KS.collide = (x, z, r, y, step) => {
-    res.hit = false;
+    res.hit = false; res.solid = null;
     KS.solidsNear(x, z, r + 1, near);
     for (let pass = 0; pass < 2; pass++) {
       for (const s of near) {
@@ -226,7 +230,7 @@
           const cx = KS.clamp(x, s.x0, s.x1), cz = KS.clamp(z, s.z0, s.z1);
           let dx = x - cx, dz = z - cz; const d2 = dx * dx + dz * dz;
           if (d2 < r * r) {
-            res.hit = true;
+            res.hit = true; res.solid = s;
             if (d2 > 1e-8) { const d = Math.sqrt(d2); x = cx + (dx / d) * r; z = cz + (dz / d) * r; }
             else { // centre inside: exit through nearest side
               const l = x - s.x0, rr = s.x1 - x, u = z - s.z0, dd = s.z1 - z, m = Math.min(l, rr, u, dd);
@@ -235,7 +239,7 @@
           }
         } else {
           const dx = x - s.cx, dz = z - s.cz, d = Math.sqrt(dx * dx + dz * dz), m = s.r + r;
-          if (d < m) { res.hit = true; const k = d > 1e-6 ? m / d : 0; x = s.cx + (d > 1e-6 ? dx * k : m); z = s.cz + dz * k; }
+          if (d < m) { res.hit = true; res.solid = s; const k = d > 1e-6 ? m / d : 0; x = s.cx + (d > 1e-6 ? dx * k : m); z = s.cz + dz * k; }
         }
       }
     }

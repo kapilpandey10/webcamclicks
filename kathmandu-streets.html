@@ -217,6 +217,33 @@ a.btn { text-decoration: none; display: inline-block; }
 .stn b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .stn small { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stn.on { background: var(--marigold); color: var(--ink); } .stn.on small { color: #3a2a10; }
 
+
+/* v3: law, licence, police */
+#lawHud { display: flex; gap: 8px; align-items: center; font-family: var(--hud); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; flex-wrap: wrap; justify-content: flex-end; }
+#lawHud .lc span { display: inline-block; min-width: 18px; text-align: center; border-radius: 4px; margin-left: 3px; padding: 0 3px; font-weight: 800; }
+#lawHud .lc .ok { background: #2f7d32; } #lawHud .lc .no { background: rgba(255,255,255,.15); color: var(--muted); text-decoration: line-through; }
+#lawHud .pts { letter-spacing: 1px; color: #ffb02e; font-size: 11px; }
+#lawHud .susp { background: var(--sindoor); border-radius: 4px; padding: 0 6px; }
+#wanted { position: absolute; top: max(48px, calc(env(safe-area-inset-top) + 34px)); left: 50%; transform: translateX(-50%); background: rgba(160,10,20,.85); border-radius: 99px; padding: 5px 14px; font-family: var(--hud); font-weight: 800; letter-spacing: .1em; font-size: 16px; white-space: nowrap; animation: blink 1s infinite; }
+#wanted small { font-weight: 600; letter-spacing: .04em; opacity: .85; }
+#stopBanner, #trialBanner { position: absolute; top: max(88px, calc(env(safe-area-inset-top) + 74px)); left: 50%; transform: translateX(-50%); border-radius: 10px; padding: 8px 14px; font-size: 15px; max-width: calc(100vw - 32px); text-align: center; }
+#stopBanner { background: rgba(29,58,138,.92); box-shadow: 0 0 0 3px rgba(255,255,255,.25); }
+#trialBanner { background: rgba(24,18,14,.85); border: 2px solid var(--marigold); }
+#lawModal { position: fixed; inset: 0; z-index: 27; display: grid; place-items: center; background: rgba(10,8,6,.55); padding: 16px; }
+.lawcard { width: min(520px, 100%); background: var(--panel-solid); border-radius: 14px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.55); }
+.lawcard h3 { margin: 0; padding: 12px 16px; font-family: var(--hud); font-weight: 800; letter-spacing: .08em; font-size: 20px; background: #1d3a8a; }
+#lawBody { padding: 12px 16px; font-size: 15px; line-height: 1.45; display: grid; gap: 8px; }
+#lawBody p { margin: 0; } #lawBody .q { font-size: 18px; font-weight: 600; }
+#lawBody .ok { color: #7ed88a; } #lawBody .bad, .bad { color: #ff7a7a; }
+#lawBtns { display: grid; gap: 8px; padding: 0 16px 16px; }
+#lawBtns .btn { text-align: left; }
+ul.challan { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+ul.challan li { display: flex; justify-content: space-between; gap: 10px; background: rgba(255,255,255,.05); border-radius: 6px; padding: 6px 10px; font-size: 14px; }
+ul.challan li b { color: #ffe27a; white-space: nowrap; font-family: var(--hud); font-size: 16px; }
+.lcard { display: grid; gap: 3px; padding: 12px 14px; border-radius: 10px; background: linear-gradient(135deg, #e8f0ff, #ffffff); color: #11203a; font-size: 14px; border-left: 6px solid #c8102e; }
+.lcard b { font-family: var(--hud); letter-spacing: .08em; }
+.lcard.big { font-size: 15px; }
+
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 </head>
@@ -242,7 +269,7 @@ a.btn { text-decoration: none; display: inline-block; }
       <div><kbd>Space</kbd> jump / handbrake</div><div><kbd>H</kbd> horn (use it a lot)</div>
       <div><kbd>U</kbd> Uthao app</div><div><kbd>R</kbd> live radio</div>
       <div><kbd>M</kbd> map · <kbd>V</kbd> camera</div><div><kbd>K</kbd> record · <kbd>J</kbd> photo</div>
-      <div><kbd>F</kbd> punch</div><div><kbd>Esc</kbd> menu, garage, wardrobe</div>
+      <div><kbd>F</kbd> punch</div><div><kbd>Esc</kbd> menu, licence, garage</div>
     </div>
     <p class="touchhint">Left stick to walk or drive, drag anywhere to look, <b>Ride</b> to take any bike, taxi, tempo or bus.</p>
     <div class="cta">
@@ -257,6 +284,9 @@ a.btn { text-decoration: none; display: inline-block; }
     <div id="loc"><div id="locNp" lang="ne">ठमेल</div><div id="locEn">Thamel</div></div>
     <div id="mission" hidden><div id="mTitle"></div><div id="mObj"></div><div id="mMeta"></div></div>
   </div>
+  <div id="wanted" hidden></div>
+  <div id="stopBanner" hidden></div>
+  <div id="trialBanner" hidden></div>
   <div id="himal" hidden>Himalaya in view · Langtang · Ganesh Himal · Dorje Lakpa</div>
   <div class="tr">
     <div id="clock">08:30</div>
@@ -265,6 +295,7 @@ a.btn { text-decoration: none; display: inline-block; }
     <div id="tokens">10 🪙</div>
     <div id="karma">Karma <span class="bar"><i></i></span><span id="karmaV">50</span></div>
     <div class="hrow">Health <span id="health"><i></i></span></div>
+    <div id="lawHud"></div>
     <div id="recDot" hidden>● REC <span id="recTime">0:00</span></div>
     <div class="hudbtns"><button id="btnPhoto" type="button" title="Photo (J)">Photo</button><button id="btnRec" type="button" title="Record video (K)">Rec</button><button id="btnGarage" type="button">Garage</button><button id="btnMenu" type="button">Menu</button></div>
     <div id="camName"></div>
@@ -280,6 +311,7 @@ a.btn { text-decoration: none; display: inline-block; }
 </div>
 <div id="bubbles"></div>
 <div id="flash" class="flash"></div>
+<div id="lawModal" hidden><div class="lawcard" role="dialog" aria-labelledby="lawTitle"><h3 id="lawTitle"></h3><div id="lawBody"></div><div id="lawBtns"></div></div></div>
 <div id="mediaBox" hidden><div class="mcard"><div class="row" style="justify-content:space-between"><b id="mediaTitle">Your recording</b><button class="btn ghost small-btn" type="button" id="mediaClose">Close</button></div><div id="mediaView"></div><div class="row"><a class="btn small-btn" id="mediaSave" href="#" download>Save to device</a><span class="small">Files stay on your device. Nothing is uploaded.</span></div></div></div>
 
 <div id="touch" hidden>
@@ -310,6 +342,7 @@ a.btn { text-decoration: none; display: inline-block; }
     <div class="tabs" role="tablist">
       <button type="button" role="tab" data-tab-btn="play" aria-selected="true">World</button>
       <button type="button" role="tab" data-tab-btn="uthao" aria-selected="false">Uthao</button>
+      <button type="button" role="tab" data-tab-btn="licence" aria-selected="false">Licence</button>
       <button type="button" role="tab" data-tab-btn="garage" aria-selected="false">Garage</button>
       <button type="button" role="tab" data-tab-btn="wardrobe" aria-selected="false">Wardrobe</button>
       <button type="button" role="tab" data-tab-btn="radio" aria-selected="false">Radio</button>
@@ -335,6 +368,7 @@ a.btn { text-decoration: none; display: inline-block; }
       </div>
       <div><button class="btn small-btn" type="button" id="btnUthao">Go online</button></div>
     </div></div>
+    <div data-tab-panel="licence" hidden><div class="panel" id="licenceCard"></div></div>
     <div data-tab-panel="garage" hidden><div class="panel"><p style="margin:0" class="small">Buy with cash (रु) from fares. Owned vehicles are brought to the kerb next to you. Upgrades make you faster; passengers still hate hard braking.</p><div class="shopgrid" id="garageList"></div></div></div>
     <div data-tab-panel="wardrobe" hidden><div class="panel"><p style="margin:0" class="small">Clothes cost coins 🪙. You earn coins for every completed delivery or ride (more stars, more coins) and for new places.</p><div id="wardrobeList" style="display:grid;gap:14px"></div></div></div>
     <div data-tab-panel="radio" hidden><div class="panel"><p style="margin:0" id="radioStatus" class="small"></p><div class="row" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost small-btn" type="button" id="radioOff">Radio off</button><button class="btn ghost small-btn" type="button" id="radioRetry">Reload stations</button></div><div id="radioList"></div><p class="small" style="margin:0">Live streams come from the community-run Radio Browser directory (radio-browser.info). The radio plays while you are in a vehicle. R next station, Shift+R previous.</p></div></div>
@@ -355,8 +389,9 @@ a.btn { text-decoration: none; display: inline-block; }
           <kbd>T</kbd><span>Weather · <kbd>Shift+T</kbd>skip 3 hours</span></div></div>
         <div class="msec"><h3>Rules of the road</h3><div class="ctl" style="grid-template-columns:1fr">
           <span>Drive on the left. Limits: 20 km/h in the old city, 40 in town, 50 in the tunnel, 60 on the Ring Road and highway.</span>
-          <span>Speed cameras (blue squares on the map), red-light cameras at every signal and traffic police all issue fines.</span>
-          <span>Give way to ambulances: the traffic does.</span></div></div>
+          <span>Speed cameras (blue squares on the map) and red-light cameras send e-challans. Traffic police whistle you over: stop, then pay, say sorry or argue. Polite drivers with clean records often get a warning.</span>
+          <span>12 demerit points suspend your licence for a day. No licence? Ride the bicycle, or pass the written test and trial at the Trial ground.</span>
+          <span>Run from the police, hit someone and drive off, or fight in front of them and a police alert starts: lose them, or get arrested.</span></div></div>
       </div>
     </div>
     <div class="mfoot">
@@ -381,6 +416,7 @@ a.btn { text-decoration: none; display: inline-block; }
 <script src="js/games/kathmandu/shop.js"></script>
 <script src="js/games/kathmandu/player.js"></script>
 <script src="js/games/kathmandu/uthao.js"></script>
+<script src="js/games/kathmandu/law.js"></script>
 <script src="js/games/kathmandu/game.js"></script>
 <script>if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('is-touch');</script>
 </body>

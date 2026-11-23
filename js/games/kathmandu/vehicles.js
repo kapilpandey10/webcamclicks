@@ -23,8 +23,12 @@
     sport: { name: 'Sport Bike', len: 2.05, wid: 0.72, speed: 21, accel: 14, turn: 2.7, r: 0.8, seats: 'bike' },
     cruiser: { name: 'Cruiser', len: 2.2, wid: 0.85, speed: 18, accel: 11, turn: 2.3, r: 0.85, seats: 'bike' },
     scooter: { name: 'Scooter', len: 1.8, wid: 0.7, speed: 13, accel: 9, turn: 2.8, r: 0.8, seats: 'bike' },
+    policebike: { name: 'Police Bike', len: 2.0, wid: 0.8, speed: 19, accel: 12, turn: 2.6, r: 0.8, seats: 'bike' },
+    bicycle: { name: 'Bicycle', len: 1.75, wid: 0.6, speed: 5.2, accel: 3.2, turn: 2.6, r: 0.7, seats: 'bike' },
   };
-  const BIKES = { bike: 1, sport: 1, cruiser: 1, scooter: 1 };
+  const BIKES = { bike: 1, sport: 1, cruiser: 1, scooter: 1, policebike: 1, bicycle: 1 };
+  /** licence category needed: A = motorcycle/scooter, B = car/jeep/van/pickup/tempo, G = bus/truck; null = none */
+  KS.licenseFor = (kind) => (kind === 'bicycle' ? null : ['bike', 'sport', 'cruiser', 'scooter', 'policebike'].includes(kind) ? 'A' : ['bus', 'minibus', 'truck'].includes(kind) ? 'G' : 'B');
   KS.isBike = (k) => !!BIKES[k];
 
   /* ---------- shared plates & boards ---------- */
@@ -141,7 +145,7 @@
   /* ---------- builders ---------- */
   function build(type, opt = {}) {
     const t = KS.VTYPES[type], L = t.len, W = t.wid;
-    const b = new KS.Builder(), riderB = new KS.Builder(), extra = [];
+    const b = new KS.Builder(), riderB = new KS.Builder(), extra = [], sirens = [];
     let lights = null, tails = null, plate = 'red', route = false, siren = false, color = opt.color;
     switch (type) {
       case 'car': case 'taxi': case 'ev': {
@@ -240,9 +244,28 @@
         lights = new KS.Builder(); lights.box(0, 1.15, L / 2 + 0.03, 0.28, 0.2, 0.05, 0xffffff); tails = lampsR(L, W, 0.7, 0.15, 0.2, 0.2);
         plate = 'green'; break;
       }
+      case 'bicycle': {
+        color = color || KS.pick([0x1d4fb8, 0xc81e1e, 0x111111, 0x2f7d32, 0xe0a400, 0x9a9a9a]);
+        for (const z of [0.55, -0.55]) { b.cyl(0.03, 0.34, z, 0.34, 0.035, 0x141414, 18, 1, 0, 0, Math.PI / 2); b.cyl(0.035, 0.34, z, 0.3, 0.02, 0xb8b8b8, 12, 1, 0, 0, Math.PI / 2); b.cyl(0.04, 0.34, z, 0.05, 0.06, 0x888888, 8, 1, 0, 0, Math.PI / 2); }
+        b.box(0, 0.62, 0.0, 0.04, 0.04, 0.72, color, 0, -0.12);   // top tube
+        b.box(0, 0.36, 0.12, 0.04, 0.04, 0.62, color, 0, 0.55);   // down tube
+        b.box(0, 0.36, -0.18, 0.04, 0.48, 0.04, color, 0, 0.2);   // seat tube
+        b.box(0, 0.34, -0.38, 0.03, 0.03, 0.4, color, 0, 0.05);   // chain stay
+        b.box(0, 0.36, -0.36, 0.03, 0.03, 0.45, color, 0, -0.65); // seat stay
+        b.box(0, 0.34, 0.5, 0.04, 0.5, 0.04, 0x9a9a9a, 0, -0.32); // fork
+        b.box(0, 0.86, -0.22, 0.12, 0.05, 0.24, 0x111111);       // saddle
+        b.box(0, 0.92, 0.36, 0.56, 0.03, 0.03, 0x333333);        // bars
+        b.cyl(0.08, 0.32, -0.08, 0.1, 0.02, 0x555555, 12, 1, 0, 0, Math.PI / 2); // chainring
+        b.box(0, 0.6, -0.62, 0.16, 0.03, 0.28, 0x333333);        // rear carrier
+        lights = new KS.Builder(); lights.sphere(0, 0.86, 0.5, 0.05, 0xffffff, 1, 6);
+        tails = new KS.Builder(); tails.box(0, 0.62, -0.78, 0.06, 0.04, 0.03, 0xffffff);
+        if (opt.rider !== false) rider(riderB, 0.82, -0.25, { helmet: KS.pick([0xf4f4f4, 0x1d4fb8, 0xc81e1e]) });
+        plate = null; break;
+      }
       default: { // two-wheelers
         color = color || KS.pick([0xc81e1e, 0x111111, 0x1d4fb8, 0xdddddd, 0x2f7d32, 0xe0a400, 0x7b1fa2, 0x6a6a6a]);
-        const scooter = type === 'scooter', sport = type === 'sport', cruiser = type === 'cruiser';
+        const scooter = type === 'scooter', sport = type === 'sport' || type === 'policebike', cruiser = type === 'cruiser';
+        if (type === 'policebike') color = color || 0xf4f4f4;
         const wr = scooter ? 0.26 : cruiser ? 0.36 : 0.33, zf = scooter ? 0.62 : 0.72, zr = scooter ? -0.6 : -0.68;
         for (const z of [zf, zr]) { b.cyl(0.07, wr, z, wr, 0.14, TYRE, 14, 1, 0, 0, Math.PI / 2); b.cyl(0.075, wr, z, wr * 0.55, 0.15, scooter ? 0x888888 : 0x444444, 8, 1, 0, 0, Math.PI / 2); }
         if (scooter) {
@@ -265,8 +288,9 @@
         lights = new KS.Builder(); lights.sphere(0, scooter ? 0.95 : sport ? 0.9 : 1.0, (scooter ? 0.56 : 0.72) + 0.02, 0.09, 0xffffff, 1, 8);
         tails = new KS.Builder(); tails.box(0, 0.9, -0.82, 0.16, 0.08, 0.04, 0xffffff);
         if (opt.rider !== false) {
-          rider(riderB, scooter ? 0.88 : sport ? 0.98 : 0.92, sport ? -0.2 : -0.3, opt.uthao ? { uthao: true, helmet: 0x0f8a7a, jacket: 0x0f8a7a, box: opt.parcel } : {});
-          if (opt.pillion || (opt.pillion !== false && KS.chance(0.28))) pillion(riderB, 1.0, -0.78);
+          rider(riderB, scooter ? 0.88 : sport ? 0.98 : 0.92, sport ? -0.2 : -0.3, opt.uthao ? { uthao: true, helmet: 0x0f8a7a, jacket: 0x0f8a7a, box: opt.parcel } : type === 'policebike' ? { helmet: 0xf4f4f4, jacket: 0x2c4d8a, pants: 0x1a2440 } : {});
+          if (type !== 'policebike' && (opt.pillion || (opt.pillion !== false && KS.chance(0.28)))) pillion(riderB, 1.0, -0.78);
+          if (type === 'policebike') { b.box(0, 0.75, -0.75, 0.5, 0.36, 0.34, 0xf4f4f4); b.box(0, 0.9, -0.75, 0.52, 0.08, 0.36, 0x1d4fb8); siren = true; }
         }
         plate = null;
       }
@@ -285,10 +309,15 @@
     }
     if (siren) {
       const y = type === 'ambulance' ? 2.2 : 2.38, z = type === 'ambulance' ? L / 2 - 0.9 : -0.25;
-      const r = new T.Mesh(new T.BoxGeometry(0.45, 0.16, 0.25), KS.sirenMats[0]); r.position.set(-0.27, y, z); root.add(r);
-      const bl = new T.Mesh(new T.BoxGeometry(0.45, 0.16, 0.25), KS.sirenMats[1]); bl.position.set(0.27, y, z); root.add(bl);
+      const pb = type === 'policebike', sy = pb ? 1.05 : y, sz = pb ? -0.72 : z, w = pb ? 0.18 : 0.45;
+      const r = new T.Mesh(new T.BoxGeometry(w, 0.16, 0.25), KS.sirenMats[0]); r.position.set(pb ? -0.12 : -0.27, sy, sz); root.add(r);
+      const bl = new T.Mesh(new T.BoxGeometry(w, 0.16, 0.25), KS.sirenMats[1]); bl.position.set(pb ? 0.12 : 0.27, sy, sz); root.add(bl);
+      sirens.push(r, bl);
+      if (type !== 'ambulance') { const off = new T.MeshBasicMaterial({ color: 0x333344 }); r.userData.on = r.material; bl.userData.on = bl.material; r.material = bl.material = off; }
     }
-    return { root, body, rider: riderMesh, color, siren };
+    return { root, body, rider: riderMesh, color, siren, sirens };
   }
   KS.buildVehicle = build;
+  /** switch a police vehicle's light bar on or off */
+  KS.setSiren = (v, on) => { if (!v.sirens) return; for (const m of v.sirens) if (m.userData.on) { if (on && !m.userData.offMat) m.userData.offMat = m.material; m.material = on ? m.userData.on : m.userData.offMat || m.material; } v.sirenOn = on; };
 })();

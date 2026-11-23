@@ -21,15 +21,15 @@
     villager: { icon: '🧺', name: 'Villager to Dhunibesi', person: 'farmer', mult: 1.0, cls: ['moto', 'car', 'cargo'], village: true, wants: 'Long trip through the Nagdhunga tunnel', lines: ['Gaun jane, Dhunibesi!', 'Gaun ma swagat cha!'] },
   };
   U.PARCELS = {
-    food: { icon: '🥟', name: 'Hot momo order', cls: ['moto', 'car'], mult: 0.9, hurry: 0.6, wants: 'Deliver while hot' },
-    docs: { icon: '📄', name: 'Documents', cls: ['moto', 'car'], mult: 1.0, wants: 'Office papers' },
+    food: { icon: '🥟', name: 'Hot momo order', cls: ['cycle', 'moto', 'car'], mult: 0.9, hurry: 0.6, wants: 'Deliver while hot' },
+    docs: { icon: '📄', name: 'Documents', cls: ['cycle', 'moto', 'car'], mult: 1.0, wants: 'Office papers' },
     fragile: { icon: '🏺', name: 'Fragile pottery', cls: ['moto', 'car', 'cargo'], mult: 1.3, fragile: 3, wants: 'Every bump costs you' },
     medicine: { icon: '💊', name: 'Medicine', cls: ['moto', 'car'], mult: 1.3, urgent: true, toHospital: true, wants: 'Urgent to the hospital' },
     cylinder: { icon: '🛢️', name: 'Gas cylinders', cls: ['cargo'], mult: 1.5, wants: 'Heavy: pickup or tempo only' },
     furniture: { icon: '🛋️', name: 'Furniture', cls: ['cargo'], mult: 1.8, fragile: 1.5, wants: 'Big load: pickup only' },
     veg: { icon: '🥬', name: 'Village vegetables', cls: ['cargo'], mult: 1.6, fromVillage: true, wants: 'From Dhunibesi farms to Kalimati market' },
   };
-  const clsOf = (v) => { if (!v) return null; if (KS.isBike(v.kind)) return 'moto'; if (['pickup', 'tempo', 'truck', 'micro'].includes(v.kind)) return 'cargo'; if (['bus', 'minibus', 'ambulance', 'police'].includes(v.kind)) return null; return 'car'; };
+  const clsOf = (v) => { if (!v) return null; if (v.kind === 'bicycle') return 'cycle'; if (v.kind === 'policebike' || v.trialVehicle) return null; if (KS.isBike(v.kind)) return 'moto'; if (['pickup', 'tempo', 'truck', 'micro'].includes(v.kind)) return 'cargo'; if (['bus', 'minibus', 'ambulance', 'police'].includes(v.kind)) return null; return 'car'; };
   U.clsOf = clsOf;
   const KALIMATI = { x: -430, z: 225, name: 'Kalimati Market' };
 
@@ -47,8 +47,8 @@
     const l = randomLot(from.x, from.z, 280, 850); return { x: l.x, z: l.z, name: KS.districtAt(l.x, l.z).name };
   }
   function makeRequest() {
-    const PL = KS.Player, v = PL.vehicle, cls = clsOf(v); if (!cls) return null;
-    const parcel = KS.chance(cls === 'cargo' ? 0.85 : 0.32);
+    const PL = KS.Player, v = PL.vehicle, cls = clsOf(v); if (!cls || !KS.Law.valid(v.kind)) return null;
+    const parcel = cls === 'cycle' || KS.chance(cls === 'cargo' ? 0.85 : 0.32);
     const pool = Object.entries(parcel ? U.PARCELS : U.TYPES).filter(([k, t]) => t.cls.includes(cls) && (!t.night || KS.night > 0.5));
     if (!pool.length) return null;
     const [key, t] = KS.pick(pool);
@@ -59,9 +59,9 @@
     let to = destFor(t, from);
     if (t.village && Math.hypot(from.x - KS.HW.village.x, from.z - KS.HW.village.z) < 400) { const l = randomLot(-100, 0, 0, 400); to = { x: l.x, z: l.z, name: KS.districtAt(l.x, l.z).name }; }
     const dist = Math.hypot(to.x - from.x, to.z - from.z), pick = Math.hypot(from.x - PL.x, from.z - PL.z);
-    const base = cls === 'moto' ? [60, 0.35] : cls === 'car' ? [100, 0.5] : [180, 0.7];
+    const base = cls === 'cycle' ? [50, 0.3] : cls === 'moto' ? [60, 0.35] : cls === 'car' ? [100, 0.5] : [180, 0.7];
     const fare = Math.round(((base[0] + dist * base[1]) * t.mult * (KS.night > 0.6 ? 1.2 : 1)) / 10) * 10;
-    const pace = cls === 'moto' ? 9.5 : cls === 'car' ? 8.5 : 7.2;
+    const pace = cls === 'cycle' ? 5 : cls === 'moto' ? 9.5 : cls === 'car' ? 8.5 : 7.2;
     return { key, t, parcel, from, to, dist, pick, fare, eta: Math.round(dist / pace / (t.hurry || 1) + 25), expires: 15 };
   }
 
@@ -187,7 +187,10 @@
       body = `<div class="req"><div class="req-h"><span class="req-ic">${t.t.icon}</span><div><b>${t.stage === 'pickup' ? 'Go to pickup' : 'Drop at ' + t.to.name}</b><small>${t.t.wants}</small></div></div>
         <div class="req-row"><span id="uMeta"></span><b>रु ${t.fare}</b></div>
         <div class="req-btns"><button type="button" class="btn ghost small-btn" id="uCancel">Cancel <kbd>X</kbd></button></div></div>`;
-    } else body = `<p class="ph-muted">${cls ? 'Waiting for requests…' : 'Get on a bike, into a car or a cargo vehicle to receive jobs.'}</p>`;
+    } else {
+      const miss = PL.vehicle && KS.Law.missingFor(PL.vehicle.kind);
+      body = `<p class="ph-muted">${miss === 'suspended' ? 'Your licence is suspended. Bicycle parcel jobs only.' : miss ? `Uthao needs a valid category ${miss} licence for this vehicle. Get one at the Transport Management Office, or use a bicycle for parcels.` : cls ? 'Waiting for requests…' : 'Get on a bicycle, bike, car or cargo vehicle to receive jobs.'}</p>`;
+    }
     $('phBody').innerHTML = body;
     $('phStats').textContent = `★ ${U.rating().toFixed(1)} · ${s.trips} trips · रु ${s.earned.toLocaleString('en-IN')}`;
     const a = $('uAccept'), d = $('uDecline'), c = $('uCancel');

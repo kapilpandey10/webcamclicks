@@ -8,6 +8,7 @@
   S.store = store;
 
   S.VEHICLES = [
+    { id: 'cycle', model: 'bicycle', name: 'City Bicycle', price: 0, cls: 'cycle', blurb: 'No licence needed. Parcel jobs, and your ride while suspended.' },
     { id: 'sathi', model: 'scooter', name: 'Sathi 110 Scooter', price: 0, cls: 'moto', blurb: 'Your first ride. Nimble in Thamel traffic.' },
     { id: 'chitwan', model: 'bike', name: 'Chitwan 150 Commuter', price: 6000, cls: 'moto', blurb: 'The bike every rider in Nepal knows: cheap, tough, quick.' },
     { id: 'rapti', model: 'sport', name: 'Rapti 220 Sport', price: 16000, cls: 'moto', blurb: 'Fairing, clip-ons and serious acceleration.' },
@@ -65,15 +66,17 @@
   S.SLOTS = [['top', 'Tops'], ['bottom', 'Trousers'], ['hat', 'Hats'], ['helmet', 'Riding helmets'], ['glasses', 'Eyewear'], ['hair', 'Hair'], ['bag', 'Bags']];
 
   const saved = store.get('ks-save2', null) || {};
+  S.hadSave = !!saved.garage || !!store.get('ks-save', null);
   const old = store.get('ks-save', {});
   const D = (S.data = Object.assign({
     cash: old.money != null ? old.money : 2500, tokens: 10, karma: old.karma != null ? old.karma : 50, found: old.found || [],
-    garage: [{ id: 'sathi', up: { engine: 0, brakes: 0, handling: 0, nitro: 0 }, horn: 'standard', paint: null }],
+    garage: [{ id: 'cycle', up: { engine: 0, brakes: 0, handling: 0, nitro: 0 }, horn: 'standard', paint: null }, { id: 'sathi', up: { engine: 0, brakes: 0, handling: 0, nitro: 0 }, horn: 'standard', paint: null }],
     items: ['top_bomber', 'top_uthao', 'bot_jeans', 'hat_none', 'hel_white', 'hel_teal', 'eye_none', 'hair_short', 'bag_pack', 'bag_none'],
     wear: { top: 'top_bomber', bottom: 'bot_jeans', hat: 'hat_none', helmet: 'hel_white', glasses: 'eye_none', hair: 'hair_short', bag: 'bag_pack' }, skin: 0xb98159,
     uthao: { trips: 0, ratingSum: 0, ratingN: 0, earned: 0 }, sound: old.sound !== false, quality: old.quality,
   }, saved));
   S.save = () => store.set('ks-save2', D);
+  if (!D.garage.some((g) => g.id === 'cycle')) D.garage.unshift({ id: 'cycle', up: { engine: 0, brakes: 0, handling: 0, nitro: 0 }, horn: 'standard', paint: null });
 
   S.playerOutfit = () => {
     const o = KS.outfitFor('man');
@@ -143,14 +146,14 @@
       const owned = D.garage.find((g) => g.id === spec.id), t = KS.VTYPES[spec.model];
       const card = document.createElement('div'); card.className = 'shopcard' + (owned ? ' owned' : '');
       const kmh = Math.round(t.speed * 1.55 * 3.6 * (owned ? 1 + owned.up.engine * 0.12 : 1));
-      card.innerHTML = `<div class="sc-top"><b>${spec.name}</b><span class="tag">${spec.cls === 'moto' ? 'Moto' : spec.cls === 'car' ? 'Car' : 'Cargo'}</span></div>
-        <p>${spec.blurb}</p><div class="stats"><span>Top ${kmh} km/h</span><span>Uthao: ${spec.cls === 'moto' ? 'rides, small parcels' : spec.cls === 'car' ? 'rides, luggage, families' : 'cargo, village produce'}</span></div>`;
+      card.innerHTML = `<div class="sc-top"><b>${spec.name}</b><span class="tag">${spec.cls === 'cycle' ? 'No licence' : spec.cls === 'moto' ? 'Licence A' : 'Licence B'}</span></div>
+        <p>${spec.blurb}</p><div class="stats"><span>Top ${kmh} km/h</span><span>Uthao: ${spec.cls === 'cycle' ? 'food & document parcels' : spec.cls === 'moto' ? 'rides, small parcels' : spec.cls === 'car' ? 'rides, luggage, families' : 'cargo, village produce'}</span></div>`;
       const row = document.createElement('div'); row.className = 'sc-actions';
       const main = document.createElement('button'); main.type = 'button'; main.className = 'btn small-btn';
       main.textContent = owned ? 'Bring it here' : spec.price ? 'Buy ' + fmt(spec.price) : 'Free';
       main.onclick = () => { buyVehicle(spec); KS.Game.refreshMenu(); }; row.appendChild(main);
       card.appendChild(row);
-      if (owned) {
+      if (owned && spec.cls !== 'cycle') {
         const ups = document.createElement('div'); ups.className = 'ups';
         for (const u of S.UPGRADES) {
           const lvl = owned.up[u.key], b = document.createElement('button'); b.type = 'button'; b.className = 'chip';

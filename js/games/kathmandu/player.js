@@ -91,7 +91,7 @@
     d.p.root.visible = true; d.p.root.position.set(d.x, v.y, d.z);
     KS.say(d.p.root, KS.pick(['Mero gaadi!! 😡', 'Oi! Chor!', 'Police! Police!', 'Hey! That\'s mine!']), 3, 'angry');
     KS.Game && KS.Game.karma(-3, 'Took a vehicle');
-    if (KS.Game && KS.Game.policeNear(v.x, v.z, 60)) KS.Game.fine(2000, 'Vehicle theft seen by police');
+    if (KS.Law && KS.Law.policeNear(v.x, v.z, 60)) KS.Law.raise(1, 'Vehicle theft');
   }
   PL.enter = (v) => {
     if (v.ai && v.speed > 9) return false;
@@ -184,6 +184,7 @@
     const fx = Math.sin(v.h), fz = Math.cos(v.h);
     let nx = v.x + fx * v.speed * dt, nz = v.z + fz * v.speed * dt;
     const c = KS.collide(nx, nz, t.r, v.y, 0.5);
+    if (c.hit && c.solid && c.solid.tag === 'trial') KS.Law.trialHit();
     if (c.hit && Math.abs(v.speed) > 2) { if (Math.abs(v.speed) > 7) { KS.audio && KS.audio.crash(Math.min(1, Math.abs(v.speed) / 20)); cam.shake = 0.5; KS.Game && KS.Game.onCrash(Math.abs(v.speed)); } v.speed *= -0.25; }
     v.x = c.x; v.z = c.z;
     for (const o of KS.Traffic.list) {
@@ -194,13 +195,13 @@
         if (Math.abs(v.speed) > 4) {
           KS.audio && KS.audio.crash(Math.min(1, Math.abs(v.speed) / 18)); cam.shake = 0.35;
           if (o.ai) { o.speed = 0; o.stuck = 0; KS.say(o.root, KS.pick(['Ke garya?!', 'Aankha chaina?!', 'Oi!!', 'Bistarai!']), 2.4, 'angry'); KS.audio && KS.audio.horn(o.kind, 0.8); }
-          if (KS.Game) { KS.Game.onCrash(Math.abs(v.speed)); if (o.kind === 'police') KS.Game.fine(1500, 'You hit a police jeep'); KS.Game.karma(-2, 'Collision'); }
+          if (KS.Game) { KS.Game.onCrash(Math.abs(v.speed)); if ((o.kind === 'police' || o.kind === 'policebike') && Math.abs(v.speed) > 7) KS.Law.raise(2, 'Rammed a police vehicle'); KS.Game.karma(-2, 'Collision'); }
         }
         v.speed *= 0.6;
       }
     }
     const hits = KS.Peds.bump(v.x, v.z, t.r + 0.9, fx * v.speed, fz * v.speed, Math.abs(v.speed));
-    if (hits && KS.Game) { KS.Game.karma(-5 * hits, 'Hit pedestrians'); KS.Game.onCrash(10); if (KS.Game.policeNear(v.x, v.z, 70)) KS.Game.fine(1000 * hits, 'Hitting pedestrians'); }
+    if (hits && KS.Game) { KS.Game.karma(-3 * hits, 'Hit pedestrians'); KS.Game.onCrash(10); if (KS.Law.policeNear(v.x, v.z, 60)) KS.Law.offense('reckless'); }
     for (const cow of KS.Animals.cows) {
       const d = Math.hypot(cow.x - v.x, cow.z - v.z);
       if (d < t.r + 1.3) { const k = (t.r + 1.3 - d) / (d || 1); v.x -= (cow.x - v.x) * k; v.z -= (cow.z - v.z) * k; if (Math.abs(v.speed) > 3) { v.speed *= 0.3; KS.say(cow.g, 'MOOO!', 1.6); KS.audio && KS.audio.moo(1); KS.Game && KS.Game.karma(-4, 'Bumped a sacred cow'); } }
@@ -211,7 +212,11 @@
     if (v.y < KS.RIVER.water - 0.9) { KS.Game && KS.Game.splash(v); return; }
     const ahead = KS.groundAt(v.x + fx * 1.5, v.z + fz * 1.5, v.y + 1, 0.6), behind = KS.groundAt(v.x - fx * 1.5, v.z - fz * 1.5, v.y + 1, 0.6);
     v.root.position.set(v.x, v.y + 0.02, v.z); v.root.rotation.set(-Math.atan2(ahead - behind, 3) * 0.8, v.h, 0, 'YXZ');
-    if (KS.isBike(v.kind)) { v.root.rotation.z = a.x * 0.32 * Math.min(1, Math.abs(v.speed) / 8); PL.person.legL.rotation.x = PL.person.legR.rotation.x = -1.3; }
+    if (KS.isBike(v.kind)) {
+      v.root.rotation.z = a.x * 0.32 * Math.min(1, Math.abs(v.speed) / 8);
+      if (v.kind === 'bicycle') { PL.pedal = (PL.pedal || 0) + v.speed * dt * 2.2; PL.person.legL.rotation.x = -1.05 + Math.sin(PL.pedal) * 0.55; PL.person.legR.rotation.x = -1.05 - Math.sin(PL.pedal) * 0.55; }
+      else PL.person.legL.rotation.x = PL.person.legR.rotation.x = -1.3;
+    }
     PL.x = v.x; PL.z = v.z; PL.y = v.y; PL.h = v.h; PL.speed = v.speed;
     PL.throttle = a.y > 0.1 ? a.y : 0;
   }

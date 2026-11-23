@@ -439,7 +439,7 @@
     B.setMode(true); B.inv = freshInv(); B.slot = 2; B.kills = 0; B.alive = true; B.armor = 0; KS.Player.health = 100;
     const PL = KS.Player, p = PL.person; p.inner.rotation.x = 0; p.inner.position.y = 0;
     for (const L of B.loot) { if (L.temp) { L.taken = true; L.g.visible = false; L.respawn = -1; } else { L.taken = false; } }
-    B.zone = { x: cfg.x, z: cfg.z, t0: KS.clock + 25 }; B.match = { solo: cfg.solo, over: false, started: KS.clock, net: !cfg.solo };
+    B.zone = { x: cfg.x, z: cfg.z, t0: KS.clock + 25 }; B.match = { solo: cfg.solo, over: false, started: performance.now() / 1000, net: !cfg.solo }; // real seconds, so slow devices still finish matches
     for (const b of B.bots) scene.remove(b.p.root); B.bots = [];
     if (cfg.solo) for (let i = 0; i < 11; i++) { const a2 = KS.r(0, 6.28), r = KS.r(40, 380), bx = cfg.x + Math.cos(a2) * r, bz = cfg.z + Math.sin(a2) * r; const c = KS.collide(bx, bz, 0.5, 0, 1); B.bots.push(makeBot(i, c.x, c.z)); }
     Drop.begin({ path: cfg.path, onLand: () => KS.Game.notify('⚔️ Find weapons (glowing beams), stay inside the blue zone, be the last one standing!') });
@@ -502,7 +502,7 @@
     else if (PL.mode !== 'dead') holdGun(person, null);
     // match end (solo: everyone else is down; room: nobody else alive)
     const M = B.match;
-    if (M && !M.over && B.alive && KS.clock - M.started > 20) {
+    if (M && !M.over && B.alive && performance.now() / 1000 - M.started > 20) {
       if (M.solo && B.bots.every((b) => !b.alive)) endMatch(true, 1);
       if (!M.solo && KS.Net && KS.Net.players.size && ![...KS.Net.players.values()].some((p) => p.al)) endMatch(true, 1);
     }

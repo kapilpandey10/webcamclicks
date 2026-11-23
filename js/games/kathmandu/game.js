@@ -49,7 +49,7 @@
     const PL = KS.Player;
     if (PL.person.root.parent !== PL.scene) PL.scene.add(PL.person.root);
     PL.person.root.visible = true; PL.vehicle = null; PL.mode = 'foot';
-    PL.x = v.x; PL.z = Math.abs(v.z - KS.RIVER.z0) < Math.abs(v.z - KS.RIVER.z1) ? KS.RIVER.z0 - 8 : KS.RIVER.z1 + 26; PL.y = 0.3; PL.vy = 0; KS.Cam.want = 7;
+    PL.x = v.x; PL.z = Math.abs(v.z - KS.RIVER.z0) < Math.abs(v.z - KS.RIVER.z1) ? KS.RIVER.z0 - 8 : KS.RIVER.z1 + 26; PL.y = 0.3; PL.vy = 0; KS.Cam.want = 4;
     if (v.owned) { KS.Traffic.remove(v); if (KS.Shop.delivered === v) KS.Shop.delivered = null; Game.notify('Your vehicle was fished out; call it again from the Garage.'); }
     else KS.Traffic.recycle(v, PL.x + 300, PL.z - 300);
     KS.Uthao.trip && KS.Uthao.cancel(); PL.rebuild();
@@ -73,8 +73,13 @@
   Game.interact = () => {
     const PL = KS.Player;
     if (KS.trialGround && Math.hypot(PL.x - KS.trialGround.counter.x, PL.z - KS.trialGround.counter.z) < 3.5) { KS.Law.openCounter(); return; }
-    const lift = (KS.lifts || []).find((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 2.6 && Math.abs(l.y - PL.y) < 1.5);
+    const lift = (KS.lifts || []).find((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5);
     if (lift) { flash('photo'); A.ding(); PL.x = lift.to.x; PL.z = lift.to.z; PL.y = lift.to.y; PL.vy = 0; if (lift.to.y > 10) { KS.Guide.flag('lift', true); Game.notify('🗼 Welcome to the Dharahara viewing deck. Look north for the Himalaya.'); KS.Cam.yaw = Math.PI; } return; }
+    if (KS.pond && !PL.boat && Math.hypot(PL.x - KS.pond.jetty.x, PL.z - KS.pond.jetty.z) < 2.8) {
+      const bt = KS.pondBoats.find((q) => !q.used); if (!bt) { Game.notify('All the boats are out. Wait a moment.'); return; }
+      if (D.cash < 100) { Game.notify('Boat hire is रु 100.', 'bad'); return; }
+      Game.pay(-100, 'Rowing boat at Rani Pokhari'); PL.boardBoat(bt); Game.notify('🚣 W / S to row, A / D to turn. Come back to the jetty and press E to get off.'); KS.Guide.flag('boat', true); return;
+    }
     let stall = null; for (const [x, z] of KS.fruitStalls) if (Math.hypot(x - PL.x, z - PL.z) < 2.6) { stall = [x, z]; break; }
     if (stall) {
       const F = [['🍌 Banana', 'केरा', 20, 12], ['🍊 Orange', 'सुन्तला', 30, 15], ['🍎 Apple', 'स्याउ', 40, 18], ['🥭 Mango', 'आँप', 60, 26], ['🍉 Watermelon slice', 'खरबुजा', 50, 22]];
@@ -282,7 +287,7 @@
     BZ.cx = px + (BZ.cx - px) / k2; BZ.cz = pz + (BZ.cz - pz) / k2; clampBZ(); drawBig();
   }
   function clampBZ() { BZ.cx = KS.clamp(BZ.cx, 0, MAP.W); BZ.cz = KS.clamp(BZ.cz, 0, MAP.H); if (BZ.z <= 1.01) { BZ.cx = MAP.W / 2; BZ.cz = MAP.H / 2; } }
-  Game.openMap = () => { $('bigwrap').hidden = false; if (!BZ.used) { BZ.used = true; BZ.z = 2.5; BZ.cx = mx(KS.Player.x); BZ.cz = mz(KS.Player.z); } drawBig(); };
+  Game.openMap = () => { if (document.exitPointerLock && KS.Input.locked) document.exitPointerLock(); $('bigwrap').hidden = false; if (!BZ.used) { BZ.used = true; BZ.z = 2.5; BZ.cx = mx(KS.Player.x); BZ.cz = mz(KS.Player.z); } drawBig(); };
   Game.mapCenterOnMe = (z) => { BZ.z = z || Math.max(BZ.z, 3); BZ.cx = mx(KS.Player.x); BZ.cz = mz(KS.Player.z); drawBig(); };
   /** a traffic police officer on the map: blue shield with a white star */
   function policeDot(g, x, y, k, alert) {
@@ -315,7 +320,7 @@
     if (target.visible) dot(target.position.x, target.position.z, 5.5, '#ffd21f', '#111');
     if (waypoint.visible) dot(waypoint.position.x, waypoint.position.z, 5, '#e23a8a', '#fff');
     const friends = KS.Net ? KS.Net.visible() : [];
-    for (const f of friends) dot(f.x, f.z, 5.5, f.color, '#fff');
+    for (const f of friends) dot(f.x, f.z, 5.5, f.heat > 0 && Math.sin(KS.clock * 12) > 0 ? '#c8102e' : f.color, f.heat > 0 ? '#1d4fb8' : '#fff');
     g.restore();
     for (const f of friends) { // friends outside the minimap: coloured arrow on the rim
       const dx = (f.x - PL.x) * MAP.px * zoom, dz = (f.z - PL.z) * MAP.px * zoom, rx = dx * Math.cos(th) - dz * Math.sin(th), rz = dx * Math.sin(th) + dz * Math.cos(th);
@@ -398,16 +403,16 @@
     KS.scene = scene; KS.camera = camera; KS.renderer = renderer;
     const step = (msg) => { $('loadmsg').textContent = msg; return new Promise((r) => setTimeout(r, 30)); };
     await step('Laying the Ring Road and the lanes of Thamel…');
-    KS.World.build(scene);
-    KS.Nature.build(scene);
+    KS.reseed(1); KS.World.build(scene);
+    KS.reseed(2); KS.Nature.build(scene);
     await step('Digging the Nagdhunga tunnel, planting rice terraces…');
     KS.Weather.init(scene, renderer);
     KS.Player.init(scene);
     await step('Waking up the city: pilgrims, porters, cows…');
-    KS.Peds.init(scene, KS.quality.peds, KS.Player.x, KS.Player.z);
-    KS.Animals.init(scene);
+    KS.reseed(3); KS.Animals.init(scene);
+    KS.reseed(4); KS.Peds.init(scene, KS.quality.peds, KS.Player.x, KS.Player.z);
     await step('Starting the traffic lights (and the honking)…');
-    KS.Traffic.init(scene, KS.quality.cars, KS.Player.x, KS.Player.z);
+    KS.reseed(5); KS.Traffic.init(scene, KS.quality.cars, KS.Player.x, KS.Player.z);
     KS.Traffic.park('bicycle', -131, -263.2, Math.PI / 2, { owned: true }).ownedId = 'cycle';
     const sc = KS.Traffic.park('scooter', -124, -263.4, Math.PI / 2, { owned: true }); sc.ownedId = 'sathi';
     const sg = D.garage.find((g) => g.id === 'sathi'); KS.Shop.delivered = sc; if (sg) { sc.up = sg.up; sc.horn = sg.horn; }
@@ -557,7 +562,7 @@
     if (KS.state === 'modal') { for (let k = 1; k <= 4; k++) if (I.hit('Digit' + k)) KS.Law.modalKey(k - 1); I.endFrame(); renderer.render(scene, camera); return; }
     KS.clock += dt;
     if (play) {
-      if (I.hit('Escape') || I.hit('KeyP')) pause(true);
+      if ((I.hit('Escape') && performance.now() - (I.unlockedAt || 0) > 500) || I.hit('KeyP')) pause(true); // the Esc that freed the mouse does not also pause
       if (I.hit('KeyM') || I.hit('KeyMap')) { const b = $('bigwrap'); if (b.hidden) Game.openMap(); else b.hidden = true; }
       if (I.hit('KeyT')) { if (I.down('ShiftLeft') || I.down('ShiftRight')) { KS.time = (KS.time + 3) % 24; Game.notify('Skipped 3 hours → ' + fmtTime(KS.time)); } else { KS.Weather.auto = false; KS.Weather.next(); Game.notify(`Weather: <b>${KS.Weather.TYPES[KS.Weather.type].name}</b>`); } }
       if (I.hit('KeyR') || I.hit('KeyRadio')) { A.init(); const st = KS.Radio.next(I.down('ShiftLeft') ? -1 : 1); Game.notify(st ? `📻 <b>${st.name}</b>${PL.vehicle || KS.Radio.onFoot ? '' : ' <span>(plays in vehicles, or turn on earphones in Phone → Radio)</span>'}` : '📻 Radio off'); if (KS.Phone.app === 'radio') KS.Phone.refresh(); }
@@ -673,7 +678,9 @@
       else if (KS.prayerWheels.some(([x, z]) => Math.hypot(x - PL.x, z - PL.z) < 2.4)) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Spin the prayer wheel`;
       else if (PL.swim) prompt = 'Swimming in the Bagmati… head for the bank!';
       else if (Game.momoPending && Math.hypot(PL.x - MOMO.x, PL.z - MOMO.z) < 12) prompt = 'Step into the beam to collect the <b>momo order</b>';
-      else if ((KS.lifts || []).some((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 2.6 && Math.abs(l.y - PL.y) < 1.5)) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ${(KS.lifts.find((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 2.6 && Math.abs(l.y - PL.y) < 1.5)).label}`;
+      else if ((KS.lifts || []).some((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5)) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ${(KS.lifts.find((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5)).label}`;
+      else if (KS.pond && !PL.boat && Math.hypot(PL.x - KS.pond.jetty.x, PL.z - KS.pond.jetty.z) < 2.8) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Hire a rowing boat (रु 100)`;
+      else if (PL.boat && PL.boat.nearJetty) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Get off at the jetty`;
       else if (KS.fruitStalls.some(([x, z]) => Math.hypot(x - PL.x, z - PL.z) < 2.6)) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Buy fruit (health ${Math.round(PL.health)}%)`;
       else if (KS.trialGround && Math.hypot(PL.x - KS.trialGround.counter.x, PL.z - KS.trialGround.counter.z) < 3.5) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Licence counter: written test & trial`;
     } else if (KS.Uthao.trip && Math.hypot(PL.x - (KS.Uthao.trip.stage === 'pickup' ? KS.Uthao.trip.from.x : KS.Uthao.trip.to.x), PL.z - (KS.Uthao.trip.stage === 'pickup' ? KS.Uthao.trip.from.z : KS.Uthao.trip.to.z)) < 25) prompt = KS.Uthao.trip.stage === 'pickup' ? 'Stop next to the yellow marker to pick up' : 'Stop at the yellow marker to drop off';

@@ -284,6 +284,7 @@ ul.challan li b { color: #ffe27a; white-space: nowrap; font-family: var(--hud); 
 .goallist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; } .goallist li { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: start; } .goallist li small { display: block; color: var(--muted); } .goallist li em { font-style: normal; color: #9fe0a0; white-space: nowrap; font-size: 13px; } .goallist li.done { opacity: .55; }
 .howgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; } .howgrid div { display: grid; gap: 4px; background: rgba(255,255,255,.05); border-radius: 10px; padding: 10px; } .howgrid span { font-size: 14px; color: #ddd; }
 .netlist { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 6px; } .netlist li { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; } .netlist i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; } .netlist small { color: var(--muted); margin-right: auto; }
+#mouseHint { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); background: rgba(20,14,10,0.78); padding: 6px 14px; border-radius: 99px; font-size: 14px; pointer-events: none; white-space: nowrap; }
 .howto { margin: 0 0 8px; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
 #lowHealth { position: fixed; inset: 0; pointer-events: none; z-index: 8; opacity: 0; background: radial-gradient(circle, rgba(0,0,0,0) 55%, rgba(160,0,20,.55) 100%); transition: opacity .4s; }
 #cine { position: fixed; inset: 0; z-index: 19; pointer-events: none; }
@@ -381,6 +382,7 @@ body.is-touch #chatFeed { bottom: 190px; }
   </div>
   <div id="notes" aria-live="polite"></div>
   <div id="prompt" hidden></div>
+  <div id="mouseHint" hidden></div>
   <div id="phone" class="closed">
     <button type="button" id="phoneTab">📱 Phone <kbd>Q</kbd><span id="phBadge" hidden></span></button>
     <div id="phoneScreen" role="dialog" aria-label="Phone">
@@ -487,7 +489,9 @@ body.is-touch #chatFeed { bottom: 190px; }
           <div><b>🛵 Making a living</b><span>Phone → Jobs for momo deliveries; press <kbd>U</kbd> to go online on Uthao, <kbd>Y</kbd> accepts a request. Pick up at the yellow beam, follow the blue line, drive smoothly.</span></div>
           <div><b>🪪 Licences &amp; police</b><span>Start with the bicycle. Pass the written test and trial at the Trial ground for a bike (A) or car (B) licence. Blue shields on the map are traffic police: slow down near them and near 📷 camera signs.</span></div>
           <div><b>🌙 Night</b><span>Vehicles switch on headlights and walkers carry torches. Press <kbd>L</kbd> for your own torch on foot. Traffic is busiest at 8–10 and 16–19, quiet after 22:00.</span></div>
-          <div><b>💬 Multiplayer</b><span>Phone → Friends → <b>Create room</b> → <b>Copy invite link</b> and send it. Friends open the link and tap Join (up to 8 players). Tap <b>Turn mic on</b> and allow the microphone in your browser to talk; hold <kbd>G</kbd> for push to talk.</span></div>
+          <div><b>💬 Multiplayer</b><span>Phone → Friends → <b>Create room</b> → <b>Copy invite link</b> and send it. Friends open the link and tap Join (up to 8 players). Tap <b>Turn mic on</b> and allow the microphone in your browser to talk; hold <kbd>G</kbd> for push to talk. Everyone shares the host's time and weather, and police chases are seen by all.</span></div>
+          <div><b>🖱 Camera &amp; mouse</b><span>Click the game and the mouse turns the camera (over-the-shoulder view). Press <kbd>Alt</kbd> (or <kbd>Esc</kbd>) to get the cursor back without pausing; <kbd>P</kbd> or Menu pauses. <kbd>V</kbd> changes the view, the mouse wheel zooms.</span></div>
+          <div><b>🚣 Things to do</b><span>Take the lift up Dharahara (door on the upper step, press <kbd>E</kbd>). Hire a rowing boat at the wooden jetty inside Rani Pokhari's south gate (रु 100) and row out round the shrine.</span></div>
           <div><b>🗺️ Getting around</b><span><kbd>M</kbd> opens the map: tap anywhere for turn-by-turn directions. <kbd>C</kbd> calls your vehicle to you. Overhead signs say "… जाने बाटो" (the way to …).</span></div>
         </div></div>
         <div class="msec"><h3>On foot</h3><div class="ctl">

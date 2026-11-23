@@ -280,41 +280,53 @@
     const pole = (x, z, h = 1.25) => { b.cyl(x, 0.12, z, 0.05, h, 0xffffff, 6); for (let k = 0; k < 3; k++) b.cyl(x, 0.12 + k * h / 3, z, 0.055, h / 6, 0xc81e1e, 6); const s2 = KS.addCircle(x, z, 0.12, h); s2.tag = 'trial'; };
     const cone = (x, z) => { b.cyl(x, 0.12, z, 0.25, 0.7, 0xff6a00, 8, 0.12); b.cyl(x, 0.4, z, 0.16, 0.1, 0xffffff, 8, 0.9); const s2 = KS.addCircle(x, z, 0.22, 0.8); s2.tag = 'trial'; };
     const ring = (cx, cz, r, from = 0, to = Math.PI * 2) => { for (let a = from; a < to; a += 0.12) paint.box(cx + Math.sin(a) * r, 0.13, cz + Math.cos(a) * r, 0.12, 0.01, 0.4, 0xf4f4ee, a + Math.PI / 2); };
-    // --- bike course: figure-8, plank ramp, cone slalom
-    const B8 = { c1: [293, 223.5], c2: [293, 232.5], r: 4.5 };
+    // painted guide lines: a dashed yellow line with arrows along the whole route
+    const guide = (pts, col = 0xf2c418) => {
+      for (let k = 0; k < pts.length - 1; k++) {
+        const [ax, az] = pts[k], [bx, bz] = pts[k + 1], L = Math.hypot(bx - ax, bz - az), h = Math.atan2(bx - ax, bz - az);
+        for (let d = 0.4; d < L; d += 1.6) paint.box(ax + ((bx - ax) * d) / L, 0.135, az + ((bz - az) * d) / L, 0.16, 0.01, 0.9, col, h);
+        if (L > 4) { const mx = (ax + bx) / 2, mz = (az + bz) / 2; for (const s3 of [-1, 1]) paint.box(mx - Math.sin(h) * 0.3 + Math.cos(h) * s3 * 0.28, 0.136, mz - Math.cos(h) * 0.3 - Math.sin(h) * s3 * 0.28, 0.14, 0.01, 0.8, col, h - s3 * 0.6); }
+      }
+    };
+    // --- bike course: a wide figure-8, plank ramp, cone slalom
+    const B8 = { c1: [296, 219], c2: [296, 231], r: 6 };
     for (const [c, sgn] of [[B8.c1, 1], [B8.c2, -1]]) {
-      ring(c[0], c[1], B8.r - 0.85); ring(c[0], c[1], B8.r + 0.85);
-      for (let k = 0; k < 10; k++) {
-        const a = (k / 10) * Math.PI * 2, nearX = Math.abs(Math.sin(a)) < 0.45 && Math.cos(a) * sgn > 0;
-        if (!nearX) pole(c[0] + Math.sin(a) * (B8.r + 0.95), c[1] + Math.cos(a) * (B8.r + 0.95));
-        if (k % 2 === 0 && !nearX) pole(c[0] + Math.sin(a) * (B8.r - 0.95), c[1] + Math.cos(a) * (B8.r - 0.95));
+      ring(c[0], c[1], B8.r - 1.6); ring(c[0], c[1], B8.r + 1.6);
+      for (let a = 0; a < Math.PI * 2; a += 0.35) paint.box(c[0] + Math.sin(a) * B8.r, 0.135, c[1] + Math.cos(a) * B8.r, 0.1, 0.01, 0.6, 0xf2c418, a + Math.PI / 2); // centre line
+      for (let k = 0; k < 12; k++) {
+        const a = (k / 12) * Math.PI * 2, nearX = Math.abs(Math.sin(a)) < 0.5 && Math.cos(a) * sgn > 0;
+        if (!nearX) pole(c[0] + Math.sin(a) * (B8.r + 2.1), c[1] + Math.cos(a) * (B8.r + 2.1));
+        if (k % 3 === 0 && !nearX) pole(c[0] + Math.sin(a) * (B8.r - 2.1), c[1] + Math.cos(a) * (B8.r - 2.1));
       }
     }
-    const plank = { x0: 300, x1: 310, z: 240 };
+    const plank = { x0: 306, x1: 316, z: 242 };
     for (let i = 0; i < 10; i++) {
-      const x = plank.x0 + 0.5 + i, h = 0.12 + (i < 4 ? (i + 1) * 0.14 : i > 5 ? (10 - i) * 0.14 : 0.62);
-      b.box(x, 0.12, plank.z, 1.02, h - 0.12, 0.7, i % 2 ? 0x8a5a30 : 0x7a4a26); const s2 = KS.addBox(x, plank.z, 1.0, 0.7, h); s2.plank = true;
+      const x = plank.x0 + 0.5 + i, h = 0.12 + (i < 4 ? (i + 1) * 0.12 : i > 5 ? (10 - i) * 0.12 : 0.5);
+      b.box(x, 0.12, plank.z, 1.02, h - 0.12, 1.2, i % 2 ? 0x8a5a30 : 0x7a4a26); const s2 = KS.addBox(x, plank.z, 1.0, 1.2, h); s2.plank = true;
     }
-    paint.box(305, 0.13, plank.z - 1.3, 10, 0.01, 0.12, 0xf4f4ee); paint.box(305, 0.13, plank.z + 1.3, 10, 0.01, 0.12, 0xf4f4ee);
-    for (let i = 0; i < 5; i++) cone(314 + i * 4, 240);
-    paint.box(335, 0.13, 240, 0.3, 0.01, 4, 0xf4f4ee);
-    // --- car course: slalom, hill start, reverse parking box
-    for (const z of [228, 223, 218]) cone(335, z);
+    paint.box(311, 0.13, plank.z - 1.6, 10, 0.01, 0.12, 0xf4f4ee); paint.box(311, 0.13, plank.z + 1.6, 10, 0.01, 0.12, 0xf4f4ee);
+    const slalom = [320, 325, 330, 335, 340].map((x) => [x, 248]);
+    for (const [x, z] of slalom) cone(x, z);
+    paint.box(345, 0.13, 248, 0.3, 0.01, 5, 0xf4f4ee);
+    guide([[284.5, 225], [289, 225]]); guide([[296, 239], [300, 242], [305.5, 242]]); guide([[316.5, 242], [318, 246], [322.5, 250], [327.5, 246], [332.5, 250], [337.5, 246], [342, 248], [345, 248]]);
+    // --- car course: two cones, a hill start, room to turn round, a big reverse-parking box
+    for (const z of [228, 221]) cone(335, z);
     for (let i = 0; i < 26; i++) {
-      const z = 213 - i * 0.62, h = 0.12 + (i < 8 ? (i + 1) * 0.15 : i > 17 ? (26 - i) * 0.15 : 1.2);
-      b.box(335, 0.12, z, 3.6, h - 0.12, 0.64, i % 2 ? 0x8f887a : 0x9e978a); KS.addBox(335, z, 3.6, 0.62, h);
+      const z = 213 - i * 0.62, h = 0.12 + (i < 8 ? (i + 1) * 0.13 : i > 17 ? (26 - i) * 0.13 : 1.04);
+      b.box(335, 0.12, z, 5, h - 0.12, 0.64, i % 2 ? 0x8f887a : 0x9e978a); KS.addBox(335, z, 5, 0.62, h);
     }
-    for (const s2 of [-1, 1]) { b.box(335 + s2 * 1.95, 0.12, 205, 0.15, 1.5, 16, 0xd8d0c0); KS.addBox(335 + s2 * 1.95, 205, 0.15, 16, 1.6).tag = 'trial'; }
-    const PB = { x: 326, z: 205, w: 3.2, d: 6 };
-    for (const [px, pz] of [[PB.x - PB.w / 2, PB.z - PB.d / 2], [PB.x + PB.w / 2, PB.z - PB.d / 2], [PB.x - PB.w / 2, PB.z + PB.d / 2], [PB.x + PB.w / 2, PB.z + PB.d / 2], [PB.x - PB.w / 2, PB.z], [PB.x + PB.w / 2, PB.z]]) pole(px, pz, 1.4);
-    paint.box(PB.x, 0.13, PB.z - PB.d / 2, PB.w, 0.01, 0.12, 0xf2c418); paint.box(PB.x - PB.w / 2, 0.13, PB.z, 0.12, 0.01, PB.d, 0xf2c418); paint.box(PB.x + PB.w / 2, 0.13, PB.z, 0.12, 0.01, PB.d, 0xf2c418);
-    paint.box(335, 0.13, 236, 4, 0.01, 0.3, 0xf4f4ee);
+    for (const s2 of [-1, 1]) { b.box(335 + s2 * 2.65, 0.12, 205, 0.15, 1.5, 16, 0xd8d0c0); KS.addBox(335 + s2 * 2.65, 205, 0.15, 16, 1.6); } // ramp sides (bumping them is not a fail)
+    const PB = { x: 322, z: 212, w: 4.4, d: 7.4 };
+    for (const [px, pz] of [[PB.x - PB.w / 2, PB.z - PB.d / 2], [PB.x + PB.w / 2, PB.z - PB.d / 2], [PB.x - PB.w / 2, PB.z + PB.d / 2], [PB.x + PB.w / 2, PB.z + PB.d / 2]]) pole(px, pz, 1.4);
+    paint.box(PB.x, 0.13, PB.z - PB.d / 2, PB.w, 0.01, 0.14, 0xf2c418); paint.box(PB.x - PB.w / 2, 0.13, PB.z, 0.14, 0.01, PB.d, 0xf2c418); paint.box(PB.x + PB.w / 2, 0.13, PB.z, 0.14, 0.01, PB.d, 0xf2c418);
+    paint.box(322, 0.13, 236, 5, 0.01, 0.3, 0xf4f4ee);
+    guide([[335, 232], [332.4, 228], [337.6, 221], [335, 216]]); guide([[335, 195], [334, 192.5], [328, 192.5], [322, 196], [322, 201], [322, 205]], 0x9fe0ff); guide([[322, 216], [322, 222], [322, 235]]);
     // examiners with clipboards
     for (const [ex, ez] of [[289, 236], [331, 230]]) { const p = KS.makePerson('office'); KS.animSit(p); p.legL.rotation.x = p.legR.rotation.x = 0; p.armR.rotation.x = -1.1; p.root.position.set(ex, 0.12, ez); p.root.rotation.y = Math.PI * 0.75; scene.add(p.root); b.box(ex + 0.4, 0, ez + 0.4, 0.6, 0.75, 0.6, 0x5a3a22); }
     scene.add(KS.mesh(b));
     const pm = new T.Mesh(paint.build(), new T.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -4 })); scene.add(pm);
-    KS.trialGround = { counter: { x: ox, z: oz + 7 }, area: { x0, x1, z0, z1 }, B8, plank, bikeStart: { x: 287, z: 228, h: Math.PI / 2 }, bikeFinish: { x: 335, z: 240 }, slalom: [314, 318, 322, 326, 330].map((x) => [x, 240]),
-      carStart: { x: 335, z: 233, h: Math.PI }, carCones: [228, 223, 218], hill: { x: 335, zTop0: 203.5, zTop1: 207.6 }, box: PB, carFinish: { x: 326, z: 230 }, carArea: { x0: 320, x1: 349, z0: 193, z1: 236 } };
+    KS.trialGround = { counter: { x: ox, z: oz + 7 }, area: { x0, x1, z0, z1 }, B8, plank, bikeStart: { x: 284.5, z: 225, h: Math.PI / 2 }, bikeFinish: { x: 345, z: 248 }, slalom,
+      carStart: { x: 335, z: 233, h: Math.PI }, carCones: [228, 221], hill: { x: 335, zTop0: 203, zTop1: 208 }, box: PB, carFinish: { x: 322, z: 235 }, carArea: { x0: 312, x1: 349, z0: 190, z1: 239 } };
     KS.landmarks.push({ id: 'trial', name: 'Licence Trial Ground', np: 'ट्रायल स्थल', x: 315, z: 225, r: 34, stop: { x: 305, z: R.z1 + 3 }, fact: 'Pass the written test and the famous "8" trial to get your bike licence; the car trial has a hill start and reverse parking.' });
   }
 
@@ -389,7 +401,10 @@
     for (let k = 0; k < 32; k++) { const a = (k / 32) * Math.PI * 2, x = d.x + Math.sin(a) * R, z = d.z + Math.cos(a) * R; b.box(x, y, z, 0.08, 1.1, 0.08, 0x9a9a9a); KS.addCircle(x, z, 0.5, y + 1.1, y - 0.2); }
     const rail = new T.Mesh(new T.TorusGeometry(R, 0.05, 6, 48), new T.MeshLambertMaterial({ color: 0xb0b0b0 })); rail.rotation.x = Math.PI / 2; rail.position.set(d.x, y + 1.1, d.z); scene.add(rail);
     scene.add(KS.mesh(b));
-    KS.lifts = [{ x: d.x, z: d.z + 5.2, y: 0.15, to: { x: d.x, z: d.z + (d.room + R) / 2, y: y }, label: 'Take the lift up Dharahara' }, { x: d.x, z: d.z + (d.room + R) / 2, y, to: { x: d.x, z: d.z + 6.4, y: 0.6 }, label: 'Take the lift down' }];
+    // a sign by the door
+    const ls = new T.Mesh(new T.PlaneGeometry(1.6, 0.5), new T.MeshBasicMaterial({ map: KS.tex(256, 80, (g, w, h) => { g.fillStyle = '#1d3a8a'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.textAlign = 'center'; g.font = '700 34px "Barlow Condensed", Arial, sans-serif'; g.fillText('▲ LIFT · लिफ्ट', w / 2, 52); }) }));
+    ls.position.set(d.x, 5.25, d.z + 4.56); scene.add(ls);
+    KS.lifts = [{ x: d.x, z: d.z + 5.2, y: 2.35, to: { x: d.x, z: d.z + (d.room + R) / 2, y: y }, label: 'Take the lift up Dharahara' }, { x: d.x, z: d.z + (d.room + R) / 2, y, to: { x: d.x, z: d.z + 6.4, y: 0.6 }, label: 'Take the lift down' }];
     // Boudha: stairs on the four sides of the mandala platform
     const bo = KS.landmarks.find((l) => l.id === 'boudha');
     if (bo) {

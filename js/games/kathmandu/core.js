@@ -14,6 +14,8 @@
     };
   }
   KS.rng = mulberry32(20261122);
+  /** restart the world generator: every device builds the same city, people and animals whatever its graphics setting */
+  KS.reseed = (n) => { KS.rng = mulberry32(20261122 + n * 7919); };
   KS.r = (a = 0, b = 1) => a + (b - a) * KS.rng();
   KS.ri = (a, b) => Math.floor(a + (b - a + 1) * KS.rng());
   KS.pick = (arr) => arr[Math.floor(KS.rng() * arr.length)];

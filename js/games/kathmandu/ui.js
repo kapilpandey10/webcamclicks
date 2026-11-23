@@ -16,6 +16,7 @@
       <h4>Sound</h4>
       ${slider('vol.master', 'Master volume', A.vol.master)}${slider('vol.music', 'Radio & music', A.vol.music)}${slider('vol.sfx', 'Sound effects', A.vol.sfx)}${slider('vol.amb', 'City ambience & weather', A.vol.amb)}${slider('vol.voice', 'Voices', A.vol.voice)}
       <label class="set tog"><input type="checkbox" data-set="mute" ${A.on ? '' : 'checked'}><span>Mute everything</span></label>
+      <label class="set tog"><input type="checkbox" data-set="tts" ${st.tts !== false ? 'checked' : ''}><span>Spoken voices for people (your browser's built-in text-to-speech; Nepali or Hindi voice if your device has one)</span></label>
       <h4>Controls & display</h4>
       ${slider('sens', 'Look sensitivity', st.sens, 0.3, 2, 0.1)}
       <label class="set tog"><input type="checkbox" data-set="invertY" ${st.invertY ? 'checked' : ''}><span>Invert vertical look</span></label>

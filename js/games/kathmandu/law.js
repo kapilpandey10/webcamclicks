@@ -185,7 +185,7 @@
     const qs = QUESTIONS.slice().sort(() => Math.random() - 0.5).slice(0, 8); let i = 0, right = 0;
     const ask = () => {
       if (i >= qs.length) {
-        if (right >= 6) modal('✅ Written test passed', `<p>You scored <b>${right}/8</b>. Now the trial: ${cat === 'A' ? 'ride the figure-8 between the poles without putting a foot down, cross the plank ramp, weave the cones, and cross the finish line.' : 'weave the cones, stop on the hill and start without rolling back, reverse into the parking box, then drive to the finish line.'}</p><p class="small">Touching a pole or cone, leaving the course or running out of time fails the trial.</p>`, [['Go to the trial', () => { close(); startTrial(cat); }]]);
+        if (right >= 6) modal('✅ Written test passed', `<p>You scored <b>${right}/8</b>. Now the trial: ${cat === 'A' ? 'ride the figure-8 between the white lines without stopping, cross the plank ramp, weave the cones and cross the finish line. Follow the yellow guide line and the markers.' : 'pass the two cones, stop on the hill and move off without rolling back, follow the blue guide line round, stop inside the big yellow box facing the finish, then drive to the finish line.'}</p><p class="small">You may touch a pole or cone twice; the third touch fails. Leaving the course for more than 5 seconds or running out of time also fails.</p>`, [['Go to the trial', () => { close(); startTrial(cat); }]]);
         else { D().cool[cat] = 90; modal('❌ Written test failed', `<p>You scored ${right}/8 (6 needed). You can retake it in 90 seconds.</p>`, [['OK', close]]); KS.audio.fail(); }
         return;
       }
@@ -202,16 +202,16 @@
     const cps = [];
     if (cat === 'A') {
       const { c1, c2, r } = g.B8;
-      for (let k = 1; k <= 8; k++) { const a = (k / 8) * Math.PI * 2; cps.push({ x: c1[0] + Math.sin(a) * r, z: c1[1] + Math.cos(a) * r, r: 1.6, lane: true }); }
-      for (let k = 1; k <= 8; k++) { const a = (k / 8) * Math.PI * 2; cps.push({ x: c2[0] + Math.sin(a) * r, z: c2[1] - Math.cos(a) * r, r: 1.6, lane: true }); }
-      cps.push({ x: g.plank.x0 - 0.4, z: g.plank.z, r: 1.0, plankStart: true }, { x: (g.plank.x0 + g.plank.x1) / 2, z: g.plank.z, r: 1.2, needY: 0.45 }, { x: g.plank.x1 + 0.6, z: g.plank.z, r: 1.2, plankEnd: true });
-      g.slalom.forEach(([x, z], k) => { if (k < 4) cps.push({ x: x + 2, z: z + (k % 2 ? 1.5 : -1.5), r: 1.3 }); });
-      cps.push({ x: g.bikeFinish.x, z: g.bikeFinish.z, r: 2.2, finish: true });
+      for (let k = 1; k <= 8; k++) { const a = (k / 8) * Math.PI * 2; cps.push({ x: c1[0] + Math.sin(a) * r, z: c1[1] + Math.cos(a) * r, r: 2.6, lane: true }); }
+      for (let k = 1; k <= 8; k++) { const a = (k / 8) * Math.PI * 2; cps.push({ x: c2[0] + Math.sin(a) * r, z: c2[1] - Math.cos(a) * r, r: 2.6, lane: true }); }
+      cps.push({ x: g.plank.x0 - 0.6, z: g.plank.z, r: 1.8, plankStart: true }, { x: (g.plank.x0 + g.plank.x1) / 2, z: g.plank.z, r: 1.8, needY: 0.35 }, { x: g.plank.x1 + 0.8, z: g.plank.z, r: 1.8, plankEnd: true });
+      g.slalom.forEach(([x, z], k) => { if (k < 4) cps.push({ x: x + 2.5, z: z + (k % 2 ? 2 : -2), r: 2 }); });
+      cps.push({ x: g.bikeFinish.x, z: g.bikeFinish.z, r: 3, finish: true });
     } else {
-      g.carCones.forEach((z, k) => cps.push({ x: g.hill.x + (k % 2 ? 2.1 : -2.1), z, r: 1.8 }));
-      cps.push({ x: g.hill.x, z: 213.6, r: 2.0 }, { stopHill: true }, { x: g.hill.x, z: 196.6, r: 2.4 }, { park: true }, { x: g.carFinish.x, z: g.carFinish.z, r: 2.6, finish: true });
+      g.carCones.forEach((z, k) => cps.push({ x: g.hill.x + (k % 2 ? 2.6 : -2.6), z, r: 2.6 }));
+      cps.push({ x: g.hill.x, z: 214, r: 2.8 }, { stopHill: true }, { x: g.hill.x, z: 196, r: 3 }, { park: true }, { x: g.carFinish.x, z: g.carFinish.z, r: 3.2, finish: true });
     }
-    L.trial = { cat, v, cps, i: 0, t: 0, started: false, still: 0, limit: cat === 'A' ? 150 : 270 };
+    L.trial = { cat, v, cps, i: 0, t: 0, started: false, still: 0, hits: 0, out: 0, limit: cat === 'A' ? 240 : 420 };
     KS.Game.setTarget(cps[0].x || g.hill.x, cps[0].z || 213, 'Trial');
     KS.Game.notify(`🏁 Trial ${cat}: get on the white ${cat === 'A' ? 'bike' : 'car'} (E). Follow the yellow markers.`);
   }
@@ -230,7 +230,7 @@
     const P = KS.Player; if (P.vehicle === t.v) P.exit(); if (P.vehicle === t.v) { P.vehicle.speed = 0; }
     setTimeout(() => { if (KS.Player.vehicle !== t.v) KS.Traffic.remove(t.v); }, 400);
   }
-  L.trialHit = () => { if (L.trial && L.trial.started) trialFail('You touched a pole or cone'); };
+  L.trialHit = () => { const t = L.trial; if (!t || !t.started || KS.clock - (t.hitT || -9) < 1.2) return; t.hitT = KS.clock; t.hits++; if (t.hits >= 3) trialFail('You touched the poles or cones three times'); else { KS.audio.fail(); KS.Game.notify(`⚠️ You touched a pole (${t.hits} of 2 allowed). Careful!`, 'bad'); } };
   function trialUpdate(dt) {
     const t = L.trial, P = KS.Player, g = KS.trialGround; if (t.over) return;
     if (P.vehicle !== t.v) { if (t.started) trialFail('You got off the vehicle'); return; }
@@ -238,12 +238,12 @@
     t.t += dt; if (t.t > t.limit) return trialFail('Time is up');
     const v = t.v, sp = Math.abs(v.speed), c = t.cps[t.i];
     if (t.cat === 'A') {
-      if (t.i > 0 && !c.finish) { if (sp < 0.35) { t.still += dt; if (t.still > 1.6) return trialFail('You put your foot down'); } else t.still = 0; }
-      if (c.lane && t.i > 0) { const { c1, c2, r } = g.B8, e = Math.min(Math.abs(Math.hypot(v.x - c1[0], v.z - c1[1]) - r), Math.abs(Math.hypot(v.x - c2[0], v.z - c2[1]) - r)); if (e > 1.05) return trialFail('You rode outside the figure-8 lane'); }
+      if (t.i > 0 && !c.finish) { if (sp < 0.3) { t.still += dt; if (t.still > 3) return trialFail('You stopped and put your foot down'); if (t.still > 1.2) KS.Game.prompt('Keep moving! Stopping means putting a foot down'); } else t.still = 0; }
+      if (c.lane && t.i > 0) { const { c1, c2, r } = g.B8, e = Math.min(Math.abs(Math.hypot(v.x - c1[0], v.z - c1[1]) - r), Math.abs(Math.hypot(v.x - c2[0], v.z - c2[1]) - r)); if (e > 2.4) return trialFail('You rode outside the figure-8 lane'); if (e > 1.6) KS.Game.prompt('Stay between the white lines!'); }
       if (t.onPlank && v.x > g.plank.x0 + 0.6 && v.x < g.plank.x1 - 0.6 && v.y < 0.2) return trialFail('You fell off the plank');
     } else {
-      const A = g.carArea; if (v.x < A.x0 || v.x > A.x1 || v.z < A.z0 || v.z > A.z1 + 1) return trialFail('You drove out of the course');
-      if (t.hillStop && !t.hillDone) { if (v.z > t.hillStop + 0.6) return trialFail('You rolled back on the hill'); }
+      const A = g.carArea; if (v.x < A.x0 || v.x > A.x1 || v.z < A.z0 || v.z > A.z1 + 1) { t.out += dt; KS.Game.prompt('Out of the course: drive back in!'); if (t.out > 5) return trialFail('You drove out of the course'); } else t.out = 0;
+      if (t.hillStop && !t.hillDone) { if (v.z > t.hillStop + 1.3) return trialFail('You rolled back on the hill'); }
     }
     if (c.stopHill) {
       const H = g.hill;
@@ -252,10 +252,10 @@
       return;
     }
     if (c.park) {
-      const B = g.box, inside = Math.abs(v.x - B.x) < 0.75 && Math.abs(v.z - B.z) < 1.3;
-      KS.Game.prompt('Reverse into the yellow box, facing out');
+      const B = g.box, inside = Math.abs(v.x - B.x) < 1.3 && Math.abs(v.z - B.z) < 2.1;
+      KS.Game.prompt('Follow the blue line round and stop inside the yellow box, facing the finish');
       if (Math.abs(v.x - B.x) < B.w / 2 && Math.abs(v.z - B.z) < B.d / 2 && v.speed < -0.2) t.revIn = true;
-      if (inside && t.revIn && Math.abs(KS.wrapAng(v.h)) < 0.3 && sp < 0.25) { t.still += dt; if (t.still > 1) { next(); KS.audio.ding(); KS.Game.notify('✔ Parked. Drive to the finish line.'); } } else if (!(sp < 0.25)) t.still = 0;
+      if (inside && Math.abs(KS.wrapAng(v.h)) < 0.5 && sp < 0.3) { t.still += dt; if (t.still > 1) { next(); KS.audio.ding(); KS.Game.notify('✔ Parked. Drive to the finish line.'); } } else if (!(sp < 0.25)) t.still = 0;
       return;
     }
     if (Math.hypot(v.x - c.x, v.z - c.z) < c.r && (!c.needY || v.y > c.needY)) {

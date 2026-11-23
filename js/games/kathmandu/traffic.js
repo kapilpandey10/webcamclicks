@@ -185,9 +185,9 @@
   TR.startChase = (v) => { v.chase = true; v.ai = true; v.parked = false; v.idlePolice = false; v.stuck = 0; v.rev = 0; KS.setSiren(v, true); if (v.rider) v.rider.visible = true; };
   TR.endChase = (v) => { v.chase = false; KS.setSiren(v, false); v.ai = false; v.parked = true; v.idlePolice = true; v.speed = 0; };
   TR.spawnPolice = (px, pz) => { const v = TR.spawn(KS.chance(0.45) ? 'policebike' : 'police', px, pz, 330, 520); TR.startChase(v); return v; };
-  TR.chasers = () => TR.list.filter((v) => v.chase);
+  TR.chasers = () => TR.list.filter((v) => v.chase && !v.netTarget);
   function chaseUpdate(v, dt, ctx) {
-    const P = KS.Player, pv = P.vehicle, heat = KS.Law ? KS.Law.heat : 1;
+    const P = v.netTarget || KS.Player, pv = v.netTarget ? null : P.vehicle, heat = v.netTarget ? v.netTarget.heat || 1 : KS.Law ? KS.Law.heat : 1; // netTarget: a friend the police are after
     const tx = P.x + (pv ? Math.sin(pv.h) * pv.speed * 0.6 : 0), tz = P.z + (pv ? Math.cos(pv.h) * pv.speed * 0.6 : 0);
     const dx = tx - v.x, dz = tz - v.z, d = Math.hypot(dx, dz);
     const want = Math.atan2(dx, dz), t = v.type;
@@ -264,6 +264,21 @@
     }
   }
   TR.lotNode = (i, j) => idx(i, j);
+  /** keep a person (circle of radius r) out of vehicle bodies: returns the pushed position */
+  const po = { x: 0, z: 0, hit: false, v: null };
+  TR.pushOut = (x, z, r, skip) => {
+    po.x = x; po.z = z; po.hit = false; po.v = null;
+    for (const v of TR.list) {
+      if (v === skip || v.dormant || v.lot && v.lot.stage === 'park' && !v.root.visible) continue;
+      const dx = po.x - v.x, dz = po.z - v.z; if (dx > 7 || dx < -7 || dz > 7 || dz < -7) continue;
+      const sh = Math.sin(v.h), ch = Math.cos(v.h), f = dx * sh + dz * ch, sd = dx * ch - dz * sh;
+      const hl = v.type.len / 2 + r, hw = v.type.wid / 2 + r; if (Math.abs(f) >= hl || Math.abs(sd) >= hw) continue;
+      const pf = hl - Math.abs(f), ps = hw - Math.abs(sd);
+      let nf = f, ns = sd; if (pf < ps) nf = Math.sign(f || 1) * hl; else ns = Math.sign(sd || 1) * hw;
+      po.x = v.x + nf * sh + ns * ch; po.z = v.z + nf * ch - ns * sh; po.hit = true; po.v = v;
+    }
+    return po;
+  };
 
   /* ---------- bus stops: people wait, board and get off ---------- */
   const pool = [], walkers = [], ROLES = ['man', 'woman', 'student', 'elder', 'office', 'woman', 'man'];

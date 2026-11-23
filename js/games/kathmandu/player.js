@@ -26,10 +26,17 @@
     });
     addEventListener('mouseup', () => (drag = false));
     addEventListener('mousemove', (e) => {
-      if (I.locked) { I.look.dx += e.movementX; I.look.dy += e.movementY; I.lastLook = KS.clock; }
+      if (I.locked) { I.look.dx += KS.clamp(e.movementX, -120, 120); I.look.dy += KS.clamp(e.movementY, -120, 120); I.lastLook = KS.clock; }
       else if (drag) { I.look.dx += e.clientX - lx; I.look.dy += e.clientY - ly; lx = e.clientX; ly = e.clientY; I.lastLook = KS.clock; }
     });
-    document.addEventListener('pointerlockchange', () => { I.locked = document.pointerLockElement === canvas; });
+    const hint = (t, ms) => { const h = document.getElementById('mouseHint'); if (!h || matchMedia('(pointer: coarse)').matches) return; h.textContent = t; h.hidden = false; clearTimeout(I.hintT); I.hintT = setTimeout(() => (h.hidden = true), ms); };
+    document.addEventListener('pointerlockchange', () => {
+      const was = I.locked; I.locked = document.pointerLockElement === canvas;
+      if (I.locked) hint('🖱 Mouse controls the camera · press Alt (or Esc) to free the cursor', 3500);
+      else if (was) { I.unlockedAt = performance.now(); I.keys = {}; if (KS.state === 'play') hint('Cursor free · click the game to control the camera again', 3500); }
+    });
+    // Alt frees the cursor without pausing (to click the phone, map or buttons)
+    addEventListener('keydown', (e) => { if ((e.code === 'AltLeft' || e.code === 'AltRight') && I.locked) { e.preventDefault(); document.exitPointerLock(); } });
     canvas.addEventListener('wheel', (e) => { I.zoom += Math.sign(e.deltaY); e.preventDefault(); }, { passive: false });
     const joy = document.getElementById('joy'), knob = document.getElementById('joyKnob');
     let joyId = null, lookId = null, jx = 0, jy = 0, tlx = 0, tly = 0;
@@ -68,8 +75,8 @@
 
   /* ================= player ================= */
   const PL = (KS.Player = { x: -135, z: -261, y: 0.22, vy: 0, h: 0, speed: 0, mode: 'foot', vehicle: null, swim: false, len: 0.5, wid: 0.6, health: 100, punchT: 0, nitro: 0, nitroCool: 0, stepPh: 0 });
-  KS.CAMS = ['Chase', 'Far chase', 'First person', 'Hood / shoulder', 'Drone', 'Cinematic', 'Side'];
-  const cam = (KS.Cam = { yaw: 0, pitch: 0.28, dist: 7, want: 7, mode: 0, shake: 0, orbit: 0 });
+  KS.CAMS = ['Shoulder', 'Far chase', 'First person', 'Hood', 'Drone', 'Cinematic', 'Side'];
+  const cam = (KS.Cam = { yaw: 0, pitch: 0.22, dist: 4, want: 4, mode: 0, shake: 0, orbit: 0, side: 0.6 });
   const exDrivers = [];
   PL.init = (scene) => {
     PL.scene = scene; PL.rebuild();
@@ -117,9 +124,41 @@
     if (PL.person.root.parent !== PL.scene) PL.scene.add(PL.person.root);
     PL.person.root.visible = true; PL.person.root.rotation.set(0, 0, 0); PL.person.legL.rotation.x = PL.person.legR.rotation.x = 0;
     PL.x = x; PL.z = z; PL.y = Math.max(v.y, KS.groundAt(x, z, v.y + 1, 1.2)); PL.h = v.h; PL.vy = 0;
-    v.parked = true; v.speed = 0; v.vx = null; PL.vehicle = null; PL.mode = 'foot'; cam.want = 7;
+    v.parked = true; v.speed = 0; v.vx = null; PL.vehicle = null; PL.mode = 'foot'; cam.want = 4;
     KS.Game && KS.Game.onExit(v);
   };
+
+  /* ---------- rowing boats on Rani Pokhari ---------- */
+  PL.boardBoat = (b) => {
+    b.used = true; PL.boat = b; PL.mode = 'boat'; b.speed = 0;
+    const p = PL.person; b.g.add(p.root); p.root.position.set(0, 0.25, -0.35); p.root.rotation.set(0, Math.PI, 0); // rowers face the stern
+    p.legL.rotation.x = p.legR.rotation.x = -1.3;
+    PL.x = b.x; PL.z = b.z; PL.y = -0.3; cam.want = 6;
+  };
+  PL.leaveBoat = () => {
+    const b = PL.boat; if (!b) return;
+    if (!b.nearJetty) { KS.Game && KS.Game.notify('Row back to the wooden jetty by the gate to get off.'); return; }
+    const p = PL.person, J = KS.pond.jetty; PL.scene.add(p.root); p.root.rotation.set(0, 0, 0); p.legL.rotation.x = p.legR.rotation.x = 0; p.armL.rotation.x = p.armR.rotation.x = 0;
+    PL.x = J.x - 1.2; PL.z = J.z; PL.y = 0.3; PL.vy = 0; PL.mode = 'foot'; PL.boat = null; cam.want = 4;
+    b.used = false; b.speed = 0; b.x = b.home.x; b.z = b.home.z; b.h = 0; b.g.position.set(b.x, -0.62, b.z); b.g.rotation.set(0, 0, 0);
+  };
+  function boatUpdate(dt) {
+    const b = PL.boat, P = KS.pond, a = axis(), p = PL.person;
+    b.speed += (a.y * 2.4 - b.speed * 0.8) * dt; b.turn += (-a.x * 1.1 - b.turn) * Math.min(1, dt * 3);
+    b.h += b.turn * dt * (0.4 + Math.min(1, Math.abs(b.speed)));
+    let nx = b.x + Math.sin(b.h) * b.speed * dt, nz = b.z + Math.cos(b.h) * b.speed * dt;
+    const lim = P.S / 2 - 1.8, isl = P.island + 0.6;
+    const blocked = (x, z) => Math.abs(x - P.cx) > lim || Math.abs(z - P.cz) > lim || (Math.abs(x - P.cx) < isl && Math.abs(z - P.cz) < isl) || (Math.abs(x - P.cx) < P.causeway + 0.9 && z > P.cz);
+    if (blocked(nx, nz)) { b.speed *= -0.3; nx = b.x; nz = b.z; KS.Cam.shake = 0.1; }
+    b.x = nx; b.z = nz; b.ph += dt * (1.5 + Math.abs(a.y) * 2.5);
+    b.g.position.set(b.x, -0.62 + Math.sin(KS.clock * 1.7) * 0.03, b.z); b.g.rotation.set(Math.sin(KS.clock * 1.3) * 0.02, b.h, Math.sin(KS.clock * 1.1) * 0.025);
+    const stroke = Math.abs(a.y) > 0.1 || Math.abs(a.x) > 0.1 ? Math.sin(b.ph * 2) : 0;
+    b.oars.forEach((o, i) => { o.rotation.y = (i ? -1 : 1) * stroke * 0.5; o.rotation.z = (i ? -1 : 1) * (0.15 + Math.max(0, stroke) * 0.12); });
+    p.armL.rotation.x = p.armR.rotation.x = -1.2 + stroke * 0.5;
+    PL.x = b.x; PL.z = b.z; PL.y = -0.3; PL.h = b.h; PL.speed = Math.abs(b.speed);
+    b.nearJetty = Math.hypot(b.x - P.jetty.x - 1.5, b.z - P.jetty.z) < 3.2;
+    const st2 = Math.floor(b.ph / Math.PI); if (stroke && st2 !== b.lastSt) { b.lastSt = st2; KS.audio && KS.audio.paddle && KS.audio.paddle(); }
+  }
 
   function footUpdate(dt) {
     const a = axis(), run = I.down('ShiftLeft') || I.down('ShiftRight') || I.down('KeyRun');
@@ -134,6 +173,7 @@
     const dirx = Math.sin(ma), dirz = Math.cos(ma);
     let nx = PL.x + dirx * PL.speed * dt, nz = PL.z + dirz * PL.speed * dt;
     const c = KS.collide(nx, nz, 0.38, PL.y, 1.05); nx = c.x; nz = c.z;
+    if (KS.Traffic.pushOut && PL.y < 2.5) { const o = KS.Traffic.pushOut(nx, nz, 0.38); if (o.hit) { const c2 = KS.collide(o.x, o.z, 0.38, PL.y, 1.05); nx = c2.x; nz = c2.z; } } // buses, cars and bikes are solid
     PL.x = nx; PL.z = nz;
     if ((I.hit('Space') || I.hit('KeyJump')) && PL.grounded && !PL.swim) { PL.vy = 6.4; PL.grounded = false; }
     PL.vy -= 20 * dt; PL.y += PL.vy * dt;
@@ -278,10 +318,11 @@
 
   PL.update = (dt) => {
     if (I.hit('KeyE') || I.hit('KeyEnter')) {
-      if (PL.mode === 'drive') PL.exit();
+      if (PL.mode === 'boat') PL.leaveBoat();
+      else if (PL.mode === 'drive') PL.exit();
       else { const v = KS.Traffic.nearest(PL.x, PL.z, 3.6); if (v) PL.enter(v); else KS.Game && KS.Game.interact(); }
     }
-    if (PL.mode === 'foot') footUpdate(dt); else driveUpdate(dt);
+    if (PL.mode === 'foot') footUpdate(dt); else if (PL.mode === 'boat') boatUpdate(dt); else driveUpdate(dt);
     PL.health = Math.min(100, PL.health + dt * 2.5);
     for (const d of exDrivers) {
       if (d.t <= 0) continue; d.t -= dt;
@@ -311,15 +352,17 @@
   PL.setCam = (m) => { cam.mode = (m + KS.CAMS.length) % KS.CAMS.length; KS.Game && KS.Game.notify('🎥 Camera: <b>' + KS.CAMS[cam.mode] + '</b>'); };
   PL.updateCamera = (camera, dt) => {
     if (I.hit('KeyV') || I.hit('KeyCam')) PL.setCam(cam.mode + 1);
-    if (I.zoom) cam.want = KS.clamp(cam.want + I.zoom * 1.2, 3, 30);
+    if (I.zoom) cam.want = KS.clamp(cam.want + I.zoom * 1.2, 2.5, 30);
     const st = KS.Settings ? KS.Settings.data() : { sens: 1 }, sens = st.sens || 1;
     cam.yaw -= I.look.dx * 0.0042 * sens; cam.pitch = KS.clamp(cam.pitch + I.look.dy * 0.0035 * sens * (st.invertY ? -1 : 1), -0.35, 1.35);
-    // idle: after a while standing still the camera drifts slowly around you, like a cutscene
-    if (!PL.vehicle && PL.idleT > 12 && KS.clock - I.lastLook > 12 && cam.mode < 2) cam.yaw += dt * 0.07;
     const v = PL.vehicle, bike = v && KS.isBike(v.kind);
-    if (v && KS.clock - I.lastLook > 1.4 && Math.abs(v.speed) > 1 && cam.mode !== 5) cam.yaw = KS.angLerp(cam.yaw, v.speed >= 0 ? v.h : v.h + Math.PI, Math.min(1, dt * 2.4));
-    const h = v ? (v.type.len > 6 ? 3.2 : bike ? 1.7 : 1.9) : 1.55;
+    // driving: the camera settles in behind the vehicle only when you have not looked around for a while
+    if (v && KS.clock - I.lastLook > 2.5 && Math.abs(v.speed) > 2 && cam.mode !== 5) cam.yaw = KS.angLerp(cam.yaw, v.speed >= 0 ? v.h : v.h + Math.PI, Math.min(1, dt * 1.3));
+    const h = v ? (v.type.len > 6 ? 3.2 : bike ? 1.7 : 1.9) : 1.6;
     tgt.set(PL.x, PL.y + h, PL.z);
+    // over-the-right-shoulder framing on foot, centred in vehicles
+    cam.side += ((v || cam.mode !== 0 ? 0 : 0.6) - cam.side) * Math.min(1, dt * 6);
+    if (cam.side > 0.01) { tgt.x += -Math.cos(cam.yaw) * cam.side; tgt.z += Math.sin(cam.yaw) * cam.side; }
     PL.person.root.visible = !(cam.mode === 2 && !v) && !(v && !bike);
     const mode = cam.mode, heading = v ? v.h : PL.h, fx = Math.sin(cam.yaw), fz = Math.cos(cam.yaw), cp = Math.cos(cam.pitch);
     if (mode === 2 || mode === 3) { // first person / hood or over-the-shoulder
@@ -345,7 +388,10 @@
       cam.dist += ((mode === 1 ? cam.want * 2.2 : cam.want) - cam.dist) * Math.min(1, dt * 3);
       dist = cam.dist; dx = -fx * cp; dy = Math.sin(cam.pitch); dz = -fz * cp;
     }
-    dist = clearPath(dx, dy, dz, dist);
+    // walls between you and the camera pull it in quickly; it eases back out slowly (no jumping)
+    const clear = clearPath(dx, dy, dz, dist);
+    cam.cur = cam.cur == null ? clear : clear < cam.cur ? KS.lerp(cam.cur, clear, Math.min(1, dt * 18)) : KS.lerp(cam.cur, clear, Math.min(1, dt * 2.5));
+    dist = Math.min(dist, cam.cur);
     want.set(tgt.x + dx * dist, tgt.y + dy * dist, tgt.z + dz * dist);
     const gy = KS.heightAt(want.x, want.z) + 0.6; if (want.y < gy) want.y = gy;
     camera.position.lerp(want, Math.min(1, dt * (mode >= 4 ? 4 : v ? 10 : 14)));

@@ -328,14 +328,41 @@
   function ranipokhari(scene, W) {
     const R = W.blockRect(6, 4), cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2 + 2, S = 46;
     const b = new KS.Builder();
-    grass(b, R.x0 + 4, R.x1 - 4, R.z0 + 4, R.z1 - 4);
-    b.box(cx, -1.6, cz, S, 1.6, S, 0x3e5a52);
+    // lawn round the pond (not over it), and a sunken basin so the water shows
+    const h2 = S / 2 + 0.5;
+    grass(b, R.x0 + 4, R.x1 - 4, R.z0 + 4, cz - h2); grass(b, R.x0 + 4, R.x1 - 4, cz + h2, R.z1 - 4);
+    grass(b, R.x0 + 4, cx - h2, cz - h2, cz + h2); grass(b, cx + h2, R.x1 - 4, cz - h2, cz + h2);
+    b.box(cx, -1.6, cz, S, 0.1, S, 0x2e4a42);
     const pond = new T.Mesh(new T.PlaneGeometry(S - 1, S - 1).rotateX(-Math.PI / 2), new T.MeshLambertMaterial({ color: 0x4f7f7a, transparent: true, opacity: 0.9 }));
     pond.position.set(cx, -0.5, cz); scene.add(pond);
-    for (const [dx, dz, w, d] of [[0, -S / 2, S + 1, 1], [0, S / 2, S + 1, 1], [-S / 2, 0, 1, S + 1], [S / 2, 0, 1, S + 1]]) {
-      b.box(cx + dx, -1.6, cz + dz, w, 2.4, d, 0xcfc8b8); KS.addBox(cx + dx, cz + dz, w, d, 1.6, -3);
+    // railing all round, with a gate on the south side onto the causeway
+    const G2 = 1.9, half = (S + 1) / 2, sw = half - G2;
+    for (const [dx, dz, w, d] of [[0, -S / 2, S + 1, 1], [-G2 - sw / 2, S / 2, sw, 1], [G2 + sw / 2, S / 2, sw, 1], [-S / 2, 0, 1, S + 1], [S / 2, 0, 1, S + 1]]) b.box(cx + dx, -1.6, cz + dz, w, 2.4, d, 0xcfc8b8);
+    b.box(cx, -1.6, cz + S / 2, G2 * 2, 1.9, 1, 0xcfc8b8); // the gate threshold sits level with the causeway
+    KS.addBox(cx, cz - S / 2, S + 1, 1, 1.6, -3); KS.addBox(cx - S / 2, cz, 1, S + 1, 1.6, -3); KS.addBox(cx + S / 2, cz, 1, S + 1, 1.6, -3);
+    KS.addBox(cx - G2 - sw / 2, cz + S / 2, sw, 1, 1.6, -3); KS.addBox(cx + G2 + sw / 2, cz + S / 2, sw, 1, 1.6, -3);
+    for (let i = 0; i < 40; i++) { const t = i / 40; for (const [px, pz, south] of [[cx - S / 2 + S * t, cz - S / 2], [cx - S / 2 + S * t, cz + S / 2, true], [cx - S / 2, cz - S / 2 + S * t], [cx + S / 2, cz - S / 2 + S * t]]) if (!(south && Math.abs(px - cx) < G2)) b.box(px, 0.8, pz, 0.1, 0.9, 0.1, 0x223322); }
+    for (const sx of [-1, 1]) { b.box(cx + sx * G2, 0.8, cz + S / 2, 0.35, 1.6, 0.35, 0xcfc8b8); b.sphere(cx + sx * G2, 2.5, cz + S / 2, 0.25, P.gold, 1, 8); } // gate posts
+    // low rails along the causeway and round the island, so you do not walk on water (gap at the boat jetty)
+    for (const sx of [-1, 1]) { b.box(cx + sx * 1.65, 0.05, cz + S / 4 + 3, 0.1, 0.8, S / 2 - 6, 0x8a7a5a); KS.addBox(cx + sx * 1.65, cz + S / 4 + 3, 0.15, S / 2 - 6, 1.3, -2); }
+    for (const [dx, dz, w, d] of [[0, -5.1, 10.2, 0.15], [-5.1, 0, 0.15, 10.2], [5.1, 0, 0.15, 10.2]]) { b.box(cx + dx, 0.05, cz + dz, w, 0.8, d, 0x8a7a5a); KS.addBox(cx + dx, cz + dz, w, d, 1.3, -2); }
+    for (const sx of [-1, 1]) { b.box(cx + sx * 3.4, 0.05, cz + 5.1, 3.4, 0.8, 0.15, 0x8a7a5a); KS.addBox(cx + sx * 3.4, cz + 5.1, 3.4, 0.15, 1.3, -2); }
+    // boat jetty: wooden landing beside the causeway, near the gate
+    const jz = cz + S / 2 - 5;
+    b.box(cx + 2.9, -0.25, jz, 2.6, 0.3, 3.2, 0x7a5a3a); KS.addBox(cx + 2.9, jz, 2.6, 3.2, 0.05, -2);
+    b.box(cx + 4.3, -0.25, jz, 0.1, 1.2, 3.2, 0x5a4026); KS.addBox(cx + 4.25, jz, 0.15, 3.2, 1.3, -2);
+    KS.pond = { cx, cz, S, y: -0.5, jetty: { x: cx + 2.6, z: jz }, island: 6.6, causeway: 2.4 };
+    KS.pondBoats = [];
+    const boatCols = [0xc81e1e, 0x1d4fb8, 0xf2c418];
+    for (let k = 0; k < 3; k++) {
+      const g = new T.Group(), hb = new KS.Builder(), col = boatCols[k];
+      hb.box(0, 0, 0, 1.3, 0.35, 2.6, col); hb.box(0, 0, 1.55, 0.8, 0.35, 0.5, col); hb.box(0, 0, -1.5, 0.9, 0.35, 0.4, col);
+      hb.box(0, 0.08, 0, 1.1, 0.28, 2.4, 0x5a4026); hb.box(0, 0.3, 0.2, 1.2, 0.06, 0.35, 0xd8c8a0); hb.box(0, 0.3, -0.9, 1.2, 0.06, 0.35, 0xd8c8a0);
+      g.add(new T.Mesh(hb.build(), KS.M.vc));
+      const oars = [-1, 1].map((sx) => { const o = new T.Group(); o.position.set(sx * 0.62, 0.42, 0.2); const ob = new KS.Builder(); ob.box(sx * 0.9, 0, 0, 1.8, 0.05, 0.06, 0xb08850); ob.box(sx * 1.75, 0, 0, 0.35, 0.03, 0.22, 0xb08850); o.add(new T.Mesh(ob.build(), KS.M.vc)); g.add(o); return o; });
+      const x = cx + 5.6 + k * 1.6, z = jz - 2 + k * 0.4; g.position.set(x, -0.62, z); scene.add(g);
+      KS.pondBoats.push({ g, oars, x, z, h: 0, home: { x, z }, speed: 0, turn: 0, ph: 0 });
     }
-    for (let i = 0; i < 40; i++) { const t = i / 40; for (const [px, pz] of [[cx - S / 2 + S * t, cz - S / 2], [cx - S / 2 + S * t, cz + S / 2], [cx - S / 2, cz - S / 2 + S * t], [cx + S / 2, cz - S / 2 + S * t]]) b.box(px, 0.8, pz, 0.1, 0.9, 0.1, 0x223322); }
     // causeway & white shrine (Balgopaleshwor)
     b.box(cx, -0.2, cz + S / 4, 3.2, 0.5, S / 2, 0xe8e2d4); KS.addBox(cx, cz + S / 4, 3.2, S / 2, 0.3, -2);
     b.box(cx, -0.4, cz, 10, 0.7, 10, 0xe8e2d4); KS.addBox(cx, cz, 10, 10, 0.3, -2);

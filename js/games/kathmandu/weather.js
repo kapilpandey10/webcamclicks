@@ -17,7 +17,7 @@
   KS.time = 8.5; KS.timeSpeed = 24 / (16 * 60); // a full day in 16 minutes
   let flash = 0, nextBolt = 6, thunderAt = -1, fogColor = new T.Color(0xd5dade), hazeColor = new T.Color(0xbba98c);
 
-  Wx.set = (type) => { Wx.type = type; Wx.timer = KS.r(150, 260); };
+  Wx.set = (type) => { Wx.type = type; Wx.timer = type === 'rain' || type === 'storm' ? KS.r(50, 100) : KS.r(180, 320); }; // showers pass quickly
   Wx.next = () => Wx.set(Wx.ORDER[(Wx.ORDER.indexOf(Wx.type) + 1) % Wx.ORDER.length]);
 
   Wx.init = (scene, renderer) => {
@@ -88,12 +88,12 @@
   const sunDir = new T.Vector3();
   Wx.update = (dt, camera, ctx) => {
     // weather state machine
-    if (Wx.auto) { Wx.timer -= dt; if (Wx.timer <= 0) { const opts = KS.time > 4 && KS.time < 9 ? ['fog', 'haze', 'clear', 'cloudy'] : ['clear', 'clear', 'cloudy', 'haze', 'rain', 'storm']; Wx.set(KS.pick(opts.filter((o) => o !== Wx.type))); } }
+    if (Wx.auto) { Wx.timer -= dt; if (Wx.timer <= 0) { const opts = KS.time > 4 && KS.time < 9 ? ['fog', 'haze', 'clear', 'cloudy'] : ['clear', 'clear', 'clear', 'cloudy', 'cloudy', 'haze', 'rain', Wx.type === 'rain' ? 'clear' : 'storm']; Wx.set(KS.pick(opts.filter((o) => o !== Wx.type))); } }
     const tgt = Wx.TYPES[Wx.type], k = Math.min(1, dt * 0.25);
     for (const key of ['cloud', 'dark', 'rain', 'near', 'far', 'mtn', 'wind', 'temp', 'aqi']) cur[key] += (tgt[key] - cur[key]) * k;
     cur.fogMix += ((Wx.type === 'fog' ? 1 : 0) - cur.fogMix) * k; cur.hazeMix = (cur.hazeMix || 0) + ((Wx.type === 'haze' ? 1 : 0) - (cur.hazeMix || 0)) * k;
     // time
-    const tm = KS.Settings && KS.Settings.data().timeMode;
+    const tm = (KS.Net && KS.Net.worldSynced && KS.Net.hostTimeMode) || (KS.Settings && KS.Settings.data().timeMode); // in a room the host's clock rules
     if (tm === 'real') { const n = new Date(Date.now() + (5 * 60 + 45) * 60000); KS.time = n.getUTCHours() + n.getUTCMinutes() / 60 + n.getUTCSeconds() / 3600; } // Nepal time, UTC+5:45
     else KS.time = (KS.time + dt * KS.timeSpeed * (tm === 'slow' ? 0.25 : 1)) % 24;
     const th = ((KS.time - 6) / 12) * Math.PI;

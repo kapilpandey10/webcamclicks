@@ -24,7 +24,7 @@
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     const loop = (type, f, q = 0.7) => { const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q; const g = ctx.createGain(); g.gain.value = 0; s.connect(fl).connect(g).connect(bus.amb); s.start(); return { g, fl }; };
-    city = loop('lowpass', 380); rainN = loop('highpass', 1600); windN = loop('bandpass', 320, 0.4);
+    city = loop('lowpass', 380); rainN = loop('bandpass', 1300, 0.5); windN = loop('bandpass', 320, 0.4);
     crowd = loop('bandpass', 700, 1.6); // murmur of a crowd, amplitude-modulated below
     const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 3.3; lg.gain.value = 0.5; lfo.connect(lg).connect(crowd.fl.frequency); lfo.start();
     const mk = () => { const o = ctx.createOscillator(), o2 = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain(); o.type = 'sawtooth'; o2.type = 'square'; f.type = 'lowpass'; f.frequency.value = 600; g.gain.value = 0; o.connect(f); o2.connect(f); f.connect(g).connect(bus.sfx); o.start(); o2.start(); return { o, o2, f, g }; };
@@ -88,9 +88,10 @@
   A.cluck = (vol = 1) => { for (let i = 0; i < 3; i++) { tone(720 + i * 30, 0.05, 'square', 0.04 * vol, i * 0.09); noise(0.04, 0.04 * vol, 1500, 'bandpass', i * 0.09); } };
   A.whistle = (vol = 1) => { if (!ctx || !A.on) return; const t = now(), o = ctx.createOscillator(), l = ctx.createOscillator(), lg = ctx.createGain(), g = ctx.createGain(); o.frequency.value = 2900; l.frequency.value = 26; lg.gain.value = 180; l.connect(lg).connect(o.frequency); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.06 * vol, t + 0.03); g.gain.setValueAtTime(0.06 * vol, t + 0.45); g.gain.linearRampToValueAtTime(0.0001, t + 0.55); o.connect(g).connect(bus.sfx); o.start(t); l.start(t); o.stop(t + 0.6); l.stop(t + 0.6); };
   A.flap = () => noise(0.5, 0.06, 2600, 'bandpass', 0, 0.5);
-  A.thunder = (vol = 1) => { noise(0.25, 0.4 * vol, 1400, 'lowpass'); noise(4, 0.8 * vol, 160, 'lowpass', 0.05); };
+  A.thunder = (vol = 1) => { noise(0.25, 0.2 * vol, 1400, 'lowpass'); noise(3.5, 0.4 * vol, 160, 'lowpass', 0.05); };
   A.bell = (vol = 0.5) => { [523, 1318, 2093, 2794].forEach((f, i) => tone(f, 3.2 - i * 0.6, 'sine', (0.08 / (i + 1)) * vol, 0, null, 0.003)); };
   A.crash = (vol = 1) => { noise(0.4, 0.5 * vol, 900); tone(80, 0.35, 'sine', 0.4 * vol, 0, 40); noise(0.6, 0.15 * vol, 4000, 'highpass', 0.05); };
+  A.paddle = () => { noise(0.35, 0.05, 700, 'bandpass', 0, 1.5); noise(0.15, 0.025, 2400, 'bandpass', 0.05, 2); };
   A.splash = () => { noise(1.4, 0.5, 700); noise(0.6, 0.3, 2400, 'bandpass', 0.1); };
   A.screech = (vol = 1) => { noise(0.28, 0.18 * vol, 2600, 'bandpass', 0, 6); tone(1250, 0.25, 'sawtooth', 0.025 * vol, 0, 1150); };
   A.coin = () => { tone(988, 0.08, 'square', 0.05); tone(1319, 0.3, 'square', 0.05, 0.08); };
@@ -107,7 +108,7 @@
   A.update = (dt, s) => {
     if (!ctx) return;
     city.g.gain.value = 0.03 + s.density * 0.05; crowd.g.gain.value = Math.min(0.06, s.crowd * 0.012);
-    rainN.g.gain.value = s.rain * 0.18; windN.g.gain.value = Math.min(0.12, s.wind * 0.01 + s.speed * 0.002);
+    rainN.g.gain.value = s.rain * 0.055; // soft patter, not a roar windN.g.gain.value = Math.min(0.12, s.wind * 0.01 + s.speed * 0.002);
     siren.gain.value = s.siren * 0.06;
     if (s.vehicle && s.vehicle.kind === 'bicycle') { // no engine: chain whirr while pedalling, freewheel ticks while coasting
       eng.g.gain.value = 0;
@@ -123,6 +124,45 @@
       eng.f.frequency.value = (ev ? 900 : 300) + s.throttle * 700 + sp * 20; eng.g.gain.value = (ev ? 0.008 : 0.025) + s.throttle * (ev ? 0.01 : 0.03);
     } else eng.g.gain.value = 0;
     Fallback.tick(s.vehicle || R.onFoot);
+  };
+
+  /* ---------- spoken voices: the browser's free built-in text-to-speech (Web Speech API) ----------
+     Nepali lines are written in Devanagari for Nepali / Hindi voices; nothing is sent anywhere by the game. */
+  const DEV = {
+    'Namaste!': 'नमस्ते!', 'Namaskar': 'नमस्कार', 'K cha dai?': 'के छ दाइ?', 'Sanchai?': 'सन्चै?', 'Khana khanu bhayo?': 'खाना खानुभयो?', 'Aaja jam cha!': 'आज जाम छ!', 'Chiya khane?': 'चिया खाने?',
+    'Oi! Bistarai!': 'ओई! बिस्तारै!', 'Aankha chaina?': 'आँखा छैन?', 'Ke garya ho?!': 'के गर्‍या हो?', 'Hare Shiva!': 'हरे शिव!', 'Dhyan dinus na!': 'ध्यान दिनुस् न!',
+    'Aiya!': 'आइया!', 'Ke gareko?!': 'के गरेको?', 'Aama!': 'आमा!', 'Police bolau?!': 'पुलिस बोलाऊँ?', 'Aija! Aija!': 'आइज! आइज!', 'Ma pani dekhauchhu!': 'म पनि देखाउँछु!', 'Ke herchas?!': 'के हेर्छस्?',
+    'Bachau!': 'बचाऊ!', 'Police! Police!': 'पुलिस! पुलिस!', 'Bhaag!': 'भाग!', 'Om mani padme hum': 'ओम मणि पद्मे हुँ', 'Tashi delek': 'टासी देलेक',
+    'Momo, momo, taja momo!': 'मम, मम, ताजा मम!', 'Taja tarkari!': 'ताजा तरकारी!', 'Pashmina, sasto!': 'पश्मिना, सस्तो!', 'Chiya, garam chiya!': 'चिया, गरम चिया!',
+    'Rok! Rok!': 'रोक! रोक!', 'Side ma lagaunus!': 'साइडमा लगाउनुस्!', 'License dekhaunus!': 'लाइसेन्स देखाउनुस्!', 'Rok! Licence check!': 'रोक! लाइसेन्स चेक!',
+    'Bam Bam Bhole!': 'बम बम भोले!', 'Har Har Mahadev': 'हर हर महादेव', 'Photo? Dakshina!': 'फोटो? दक्षिणा!', 'Goal!': 'गोल!', 'Dai, ball!': 'दाइ, बल!',
+    'Dhan ramro bhayo!': 'धान राम्रो भयो!', 'Bazaar jane ho?': 'बजार जाने हो?', 'Gaun ma swagat!': 'गाउँमा स्वागत!', 'Ke garya?!': 'के गर्‍या?', 'Oi!!': 'ओई!', 'Bistarai!': 'बिस्तारै!',
+    'Ratnapark!': 'रत्नपार्क!', 'Kalanki! Kalanki!': 'कलंकी! कलंकी!', 'Koteshwor!': 'कोटेश्वर!', 'Balaju, Balaju!': 'बालाजु, बालाजु!', 'Lagankhel!': 'लगनखेल!', 'Boudha, Chabahil!': 'बौद्ध, चाबहिल!', 'Nagdhunga! Dhunibesi!': 'नागढुंगा! धुनिबेसी!',
+    'Ratnapark, Koteshwor!': 'रत्नपार्क, कोटेश्वर!', 'Koteshwor! Koteshwor!': 'कोटेश्वर! कोटेश्वर!', 'Kalanki! Chabahil!': 'कलंकी! चाबहिल!', 'Chabahil, Chabahil!': 'चाबहिल, चाबहिल!', 'Lagankhel! Balaju!': 'लगनखेल! बालाजु!',
+    'Gongabu! Satdobato!': 'गोंगबु! सातदोबाटो!', 'Satdobato, aaunus!': 'सातदोबाटो, आउनुस्!', 'Thank you, doctor saab…': 'धन्यवाद डाक्टर साब', 'Mooo…': '',
+  };
+  const Sp = (KS.Speech = { last: 0 });
+  const synth = typeof window !== 'undefined' && window.speechSynthesis;
+  let ttsVoices = [];
+  const loadVoices = () => { try { ttsVoices = synth ? synth.getVoices() : []; } catch (e) { ttsVoices = []; } };
+  if (synth) { loadVoices(); try { synth.addEventListener('voiceschanged', loadVoices); } catch (e) { synth.onvoiceschanged = loadVoices; } }
+  const find = (lang) => ttsVoices.find((v) => v.lang && v.lang.toLowerCase().replace('_', '-').startsWith(lang));
+  Sp.voiceFor = (dev) => (dev ? find('ne') || find('hi') : null) || find('en-in') || find('en');
+  Sp.enabled = () => !!synth && KS.Settings && KS.Settings.data().tts !== false && A.on;
+  /** speak a line; returns true when a real voice was used */
+  Sp.say = (text, o = {}) => {
+    if (!Sp.enabled() || !ttsVoices.length) return false;
+    const now2 = performance.now(); if (synth.speaking && now2 - Sp.last < 2600) return false; // one voice at a time, like real conversation
+    let t = String(text).replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').trim(); if (!t) return false;
+    const dev = DEV[t] != null ? DEV[t] : DEV[t.replace(/[!?.…]+$/, '')]; if (dev === '') return false;
+    const v = Sp.voiceFor(dev && (find('ne') || find('hi')));
+    const u = new SpeechSynthesisUtterance(dev && v && /^(ne|hi)/i.test(v.lang) ? dev : t);
+    if (v) { u.voice = v; u.lang = v.lang; }
+    const w = o.who || {};
+    u.pitch = w.kid ? 1.7 : w.f ? (w.old ? 1.15 : 1.35) : w.old ? 0.75 : 0.9 + Math.random() * 0.15;
+    u.rate = (w.old ? 0.85 : w.kid ? 1.15 : 1.02) * (o.angry ? 1.12 : 1);
+    u.volume = KS.clamp((1 - (o.dist || 0) / 26) * A.vol.voice * A.vol.master, 0.05, 1);
+    try { if (synth.speaking) synth.cancel(); synth.speak(u); Sp.last = now2; return true; } catch (e) { return false; }
   };
 
   /* ---------- procedural stations (used offline or when no live stream plays) ---------- */

@@ -35,7 +35,14 @@
     let b = bubbles.find((x) => x.obj === obj);
     if (!b) { const el = document.createElement('div'); el.className = 'bubble ' + cls; layer.appendChild(el); b = { el, obj }; bubbles.push(b); }
     b.el.textContent = text; b.t = dur; b.el.className = 'bubble ' + cls;
-    if (KS.audio && KS.Player && obj.getWorldPosition) { obj.getWorldPosition(_v); const d = Math.hypot(_v.x - KS.Player.x, _v.z - KS.Player.z); if (d < 26 && obj !== (KS.Player.person && KS.Player.person.root)) KS.audio.voice(1 - d / 26, cls === 'angry' ? 'angry' : 'talk'); }
+    if (KS.audio && KS.Player && obj.getWorldPosition) {
+      obj.getWorldPosition(_v); const d = Math.hypot(_v.x - KS.Player.x, _v.z - KS.Player.z);
+      if (d < 26 && obj !== (KS.Player.person && KS.Player.person.root)) {
+        // a real (browser text-to-speech) voice when available, otherwise the synthesised murmur
+        const spoken = KS.Speech && !(obj.userData && obj.userData.net) && KS.Speech.say(text, { dist: d, who: obj.userData && obj.userData.voice, angry: cls === 'angry' });
+        if (!spoken) KS.audio.voice(1 - d / 26, cls === 'angry' ? 'angry' : 'talk');
+      }
+    }
   };
   const _v = new T.Vector3();
   KS.updateBubbles = (dt, camera, W, H) => {
@@ -187,6 +194,7 @@
     if (kind === 'kid') inner.scale.setScalar(0.66);
     if (kind === 'elder' || kind === 'grandma') torso.rotation.x = 0.1;
     if (skirt) { lL.position.z = lR.position.z = 0; }
+    root.userData.voice = { f: skirt || o.hairStyle === 'braid' || o.hairStyle === 'bun' || o.hairStyle === 'long', kid: kind === 'kid', old: kind === 'elder' || kind === 'grandma' };
     return { root, inner, torso, legL: lL, legR: lR, armL: aL, armR: aR, kind, phase: KS.r(0, 6), skirt, cfg: o };
   };
   KS.animWalk = (p, dt, speed) => {
@@ -447,6 +455,7 @@
           break;
         }
       }
+      if (moving > 0 && d2 < 25000 && ped.mode !== 'sit' && KS.Traffic && KS.Traffic.pushOut) { const o = KS.Traffic.pushOut(ped.x, ped.z, 0.32); if (o.hit) { ped.x = o.x; ped.z = o.z; } } // walk around vehicles, not through them
       const gy = ped.mode === 'walk' && !ped.flee && !ped.fight ? 0.22 : ped.mode === 'cross' ? 0.06 : ped.y || 0.06;
       pr.position.set(ped.x, gy, ped.z); pr.rotation.y = ped.h;
       if (ped.mode !== 'sit' && (ped.mode !== 'police' || ped.fight || ped.chasing)) KS.animWalk(ped.p, dt, moving);

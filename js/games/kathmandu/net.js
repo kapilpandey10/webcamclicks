@@ -79,6 +79,7 @@
       case 'full': N.fail('That room is full (8 players).'); break;
       case 'hello': if (N.host) { upsert(c.peer, { name: clean(m.name, 16), look: m.look }); sys(`${clean(m.name, 16)} joined.`); roster(); } break;
       case 'roster': N.roster = (m.list || []).slice(0, MAX); for (const r of N.roster) if (r.id !== N.me) upsert(r.id, { name: clean(r.name, 16) }); for (const id of [...N.players.keys()]) if (!N.roster.some((r) => r.id === id)) dropPlayer(id); N.render2(); if (N.micOn) callAll(); break;
+      case 'world': if (!N.host) syncWorld(m); break;
       case 's': if (from === N.me) break; upsert(from, m); if (N.host) broadcast({ ...m, id: c.peer }, c.peer); break;
       case 'c': { if (from === N.me) break; const p = N.players.get(from), name = p ? p.name : clean(m.name, 16); addChat(name, clean(m.text, 200), from); if (N.host) broadcast({ t: 'c', id: c.peer, name, text: clean(m.text, 200) }, c.peer); break; }
       case 'bye': dropPlayer(m.id); N.render2(); break;
@@ -89,6 +90,23 @@
 
   /* ---------- remote players ---------- */
   const COLORS = ['#ff4fa3', '#3fd4ff', '#a6ff3f', '#ff9a2e', '#b77bff', '#ffe23f', '#3fffb0'];
+  /* ---------- one shared world: the host's clock and weather ---------- */
+  function worldMsg() { const W = KS.Weather; return { t: 'world', time: KS.time, wx: W.type, mode: KS.Settings.data().timeMode || 'fast' }; }
+  function syncWorld(m) {
+    const W = KS.Weather; N.worldSynced = true; W.auto = false; W.timer = 1e9; N.hostTimeMode = m.mode;
+    if (typeof m.time === 'number' && Math.abs(KS.wrapAng(((m.time - KS.time) / 24) * Math.PI * 2)) > 0.02) KS.time = ((m.time % 24) + 24) % 24;
+    if (m.wx && W.TYPES[m.wx] && W.type !== m.wx) W.type = m.wx;
+  }
+  /** local police cars that chase a friend who is wanted, so everyone sees the same chase */
+  function netChases(dt, P) {
+    for (const p of N.players.values()) {
+      p.cops = (p.cops || []).filter((v) => KS.Traffic.list.includes(v));
+      const want = p.placed && p.heat > 0 && Math.hypot(p.x - P.x, p.z - P.z) < 600 ? Math.min(3, p.heat + 1) : 0;
+      p.copT = (p.copT || 0) - dt;
+      if (p.cops.length < want && p.copT <= 0) { p.copT = 1.5; const v = KS.Traffic.spawn(KS.chance(0.4) ? 'policebike' : 'police', p.x, p.z, 70, 160); v.netTarget = p; KS.Traffic.startChase(v); p.cops.push(v); }
+      while (p.cops.length > want) { const v = p.cops.pop(); v.netTarget = null; KS.Traffic.endChase(v); }
+    }
+  }
   /** friends that have sent a position, for the maps */
   N.visible = () => [...N.players.values()].filter((p) => p.placed);
   /** jump to a friend (on foot, next to them) */
@@ -112,12 +130,13 @@
     if (!p.person) buildAvatar(p);
     if (m.v != null && m.v !== p.v) setVehicle(p, m.v);
     p.speaking = !!m.talk;
+    if (m.w != null) { if (m.w > (p.heat || 0) && m.w) sys(`🚨 The police are after ${p.name}!`); p.heat = m.w; }
   }
   function buildAvatar(p) {
     const o = KS.outfitFor('man'), L = p.look || {};
     Object.assign(o, { skin: L.skin || o.skin, topStyle: L.topStyle || 'jacket', jacket: L.top || 0x6d1a8a, top: L.top || 0x6d1a8a, bottom: L.bottom || o.bottom, hat: L.hat || null, hatColor: L.hatColor || 0 });
     if (p.person) p.root.remove(p.person.root);
-    p.person = KS.makePerson('man', o); p.root.add(p.person.root);
+    p.person = KS.makePerson('man', o); p.root.add(p.person.root); p.person.root.userData.net = true; // friends' chat is never read aloud
   }
   function setVehicle(p, kind) {
     if (p.veh) { p.root.remove(p.veh.root); p.veh = null; }
@@ -128,7 +147,7 @@
     if (bike) { p.person.root.position.set(0, 0.18, -0.32); KS.animSit(p.person); p.person.armL.rotation.x = p.person.armR.rotation.x = -1.2; }
     else { p.person.root.position.set(0, 0, 0); p.person.legL.rotation.x = p.person.legR.rotation.x = 0; }
   }
-  function dropPlayer(id) { const p = N.players.get(id); if (!p) return; KS.scene.remove(p.root); p.tag && p.tag.remove(); for (const m of [N.calls, N.inCalls]) { const c = m.get(id); if (c) try { c.close(); } catch (e) { /* ignore */ } m.delete(id); } N.players.delete(id); }
+  function dropPlayer(id) { const p = N.players.get(id); if (!p) return; for (const v of p.cops || []) { v.netTarget = null; KS.Traffic.endChase(v); } KS.scene.remove(p.root); p.tag && p.tag.remove(); for (const m of [N.calls, N.inCalls]) { const c = m.get(id); if (c) try { c.close(); } catch (e) { /* ignore */ } m.delete(id); } N.players.delete(id); }
   function makeTag(p) { const el = document.createElement('div'); el.className = 'nametag'; ($('nameTags') || document.body).appendChild(el); p.tag = el; }
 
   /* ---------- chat ---------- */
@@ -193,7 +212,8 @@
     for (const id of [...N.players.keys()]) dropPlayer(id);
     if (N.peer) try { N.peer.destroy(); } catch (e) { /* ignore */ }
     if (N.mic) N.mic.getTracks().forEach((t) => t.stop());
-    N.peer = null; N.mic = null; N.micOn = false; N.arrived = false; N.follow = null; N.state = 'off'; N.room = ''; N.roster = null;
+    N.peer = null; N.mic = null; N.micOn = false; N.arrived = false; N.follow = null; N.state = 'off';
+    if (N.worldSynced) { N.worldSynced = false; KS.Weather.auto = true; KS.Weather.timer = 60; } N.room = ''; N.roster = null;
     if (!silent) sys('You left the room.');
     N.render2();
   };
@@ -205,12 +225,14 @@
     const P = KS.Player, I = KS.Input;
     if (N.micOn && N.ptt) setTalking(!!I.down('KeyG'));
     if (N.el && N.el.isConnected && KS.clock % 1 < dt) N.el.querySelectorAll('[data-dist]').forEach((e) => { const f = N.players.get(e.dataset.dist); if (f && f.placed) e.textContent = Math.round(Math.hypot(f.x - P.x, f.z - P.z)) + ' m'; });
+    netChases(dt, P);
+    if (N.host) { N.worldT = (N.worldT || 0) - dt; if (N.worldT <= 0) { N.worldT = 2; broadcast(worldMsg()); } }
     if (!N.host && !N.arrived) { const h = N.players.get(N.hostId); if (h && h.placed) { N.arrived = true; N.goTo(h.id); sys(`You joined ${h.name}. Everyone is on the map as a coloured dot.`); } }
     if (N.follow) { const f = N.players.get(N.follow); if (!f) N.follow = null; else if (KS.clock % 2 < dt) { if (Math.hypot(f.x - P.x, f.z - P.z) < 12) { N.follow = null; KS.Game.notify(`You found ${esc(f.name)}!`); } else KS.Game.setWaypoint(f.x, f.z, true); } }
     N.sendT -= dt;
     if (N.sendT <= 0) {
       N.sendT = 0.1;
-      const m = { t: 's', id: N.me, name: N.name(), x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), h: +(P.vehicle ? P.vehicle.h : P.h).toFixed(3), v: P.vehicle ? P.vehicle.kind : '', talk: N.micOn && N.talking, look: KS.clock % 3 < 0.1 ? look() : undefined };
+      const m = { t: 's', id: N.me, name: N.name(), x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), h: +(P.vehicle ? P.vehicle.h : P.h).toFixed(3), v: P.vehicle ? P.vehicle.kind : '', talk: N.micOn && N.talking, w: KS.Law ? KS.Law.heat : 0, look: KS.clock % 3 < 0.1 ? look() : undefined };
       if (N.host) broadcast(m); else { const c = N.conns.get(N.hostId); c && c.open && c.send(m); }
     }
     for (const p of N.players.values()) {
@@ -228,7 +250,7 @@
       const tag = p.tag; v.set(p.x, p.y + (p.v && !KS.isBike(p.v) ? 2.6 : 2.25), p.z).project(camera);
       const vis = v.z < 1 && Math.abs(v.x) < 1.05 && Math.abs(v.y) < 1.05 && d < 160;
       tag.style.display = vis ? 'block' : 'none';
-      if (vis) { tag.textContent = (p.loud || p.speaking ? '🔊 ' : '') + p.name + (d > 25 ? ` · ${Math.round(d)} m` : ''); tag.style.transform = `translate(${((v.x + 1) / 2) * innerWidth}px, ${((1 - v.y) / 2) * innerHeight}px) translate(-50%, -100%)`; }
+      if (vis) { tag.textContent = (p.heat > 0 ? '🚨 ' : '') + (p.loud || p.speaking ? '🔊 ' : '') + p.name + (d > 25 ? ` · ${Math.round(d)} m` : ''); tag.style.transform = `translate(${((v.x + 1) / 2) * innerWidth}px, ${((1 - v.y) / 2) * innerHeight}px) translate(-50%, -100%)`; }
     }
   };
 

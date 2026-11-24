@@ -91,7 +91,7 @@
     const peer = (N.peer = new window.Peer(undefined, options()));
     peer.on('open', () => { N.me = peer.id; const c = peer.connect(id, { reliable: true }); wire(c); N.hostId = c.peer; });
     // the server can keep a vanished host's id for a while: if nobody answers, try again (and take over once it is free)
-    clearTimeout(N.joinT); N.joinT = setTimeout(() => { if (N.peer === peer && N.state === 'connecting' && N.public) rejoinPublic(n, 1000 + Math.random() * 3000); }, 12000);
+    clearTimeout(N.joinT); N.joinT = setTimeout(() => { if (N.peer === peer && N.state === 'connecting' && N.public) rejoinPublic(n, 1000 + Math.random() * 3000); }, 25000);
     common(peer, (e) => {
       if (e.type === 'peer-unavailable') { // the host has just gone: try to become the host of this world
         N.leave(true); setTimeout(() => N.joinPublic(n), 300 + Math.random() * 1500); return true;

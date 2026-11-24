@@ -22,7 +22,7 @@
     car: 'hatchback-01.glb', sedan: 'sedan-01.glb', suv: 'suv-01.glb',
     taxi: 'taxi-01.glb', police: 'police-car-01.glb', pickup: 'pickup-truck-01.glb',
     truck: 'box-truck-01.glb', bus: 'city-bus-01.glb', micro: 'delivery-van-01.glb',
-    minibus: 'city-bus-01.glb', ambulance: 'delivery-van-01.glb', ev: 'sports-car-01.glb',
+    minibus: 'city-bus-01.glb', ambulance: 'delivery-van-01.glb', ev: 'sports-car-01.glb', sportscar: 'sportscar.glb',
     tempo: 'auto-rickshaw.glb',
     bicycle: 'bicycle.glb', helicopter: 'helicopter.glb',
   };
@@ -59,10 +59,11 @@
     let mainRotor = null, tailRotor = null, bodyColor = null;
     wrap.traverse((o) => {
       /* the wheel nodes are pivots (Groups on the vinish cars, plain Object3Ds
-         on the rickshaw / touring bike / scooter); their child meshes are
-         named after the model, so only the pivot itself spins. Names vary by
-         source: Wheel_FL, Wheel_Front, wheel-front, wheel-rear-l, wheel-f… */
-      if (/^wheel([-_](fl|fr|rl|rr|front|rear|f|r))?([-_][lr])?$/i.test(o.name) && (o.type === 'Group' || o.type === 'Object3D')) wheels.push(o.name);
+         on the rickshaw / touring bike / scooter / sports car); their child
+         meshes are named after the model, so only the pivot itself spins.
+         Names vary by source: Wheel_FL, Wheel_Front, wheel-front,
+         wheel-rear-l, wheel-f, wheel-front-right… */
+      if (/^wheel([-_](fl|fr|rl|rr|front|rear|f|r))?([-_](left|right|l|r))?$/i.test(o.name) && (o.type === 'Group' || o.type === 'Object3D')) wheels.push(o.name);
       if (o.name === 'Main_Rotor') mainRotor = o.name;
       if (o.name === 'Tail_Rotor') tailRotor = o.name;
       if (/^Oar_[LR]$/.test(o.name)) oars.push(o.name);

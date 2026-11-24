@@ -96,7 +96,40 @@
     Game.karma(-4, 'Started a fight');
     if (KS.Law.policeNear(ped.x, ped.z, 45)) KS.Law.raise(1, 'Fighting in public');
   };
-  Game.onCrash = (speed) => { if (speed > 6) KS.Uthao.event('crash'); const v = KS.Player.vehicle; if (v && KS.isBike(v.kind) && speed > 10) Game.hurt(Math.min(18, speed * 0.6)); };
+  /* a crash hurts — in a car as well as on a bike, and a pile-up hurts more
+     than one bump. A short cooldown (1 s) keeps a single multi-car shunt
+     from draining all your health at once. The vehicle itself is damaged
+     too: it gets slower and smokes, and needs a repair at a petrol station. */
+  Game.onCrash = (speed) => {
+    if (speed > 6) KS.Uthao.event('crash');
+    const v = KS.Player.vehicle, PL = KS.Player;
+    if (!v) return;
+    if (KS.clock - (PL.crashCool || 0) > 1) {
+      PL.crashCool = KS.clock;
+      const bike = KS.isBike(v.kind);
+      const hurt = bike ? Math.min(18, speed * 0.6) : Math.min(10, speed * 0.35);
+      if (speed > 10) Game.hurt(Math.round(hurt));
+    }
+    // the vehicle takes the hit: damage 0-100, slower and smoking as it grows
+    if (KS.Fuel && KS.Fuel.needsFuel(v.kind)) {
+      v.damage = Math.min(100, (v.damage || 0) + speed * 1.2);
+      if (v.damage >= 100) { KS.Game.notify('💥 Your vehicle is wrecked! It will not drive until repaired at a petrol station.', 'bad'); }
+      else if (v.damage > 50 && (!v.smokeT || KS.clock - v.smokeT > 30)) { v.smokeT = KS.clock; KS.Game.notify('💨 Your vehicle is smoking — repair it at a petrol station ⛽.', 'bad'); }
+    }
+  };
+  /* repair the player's vehicle at a petrol station (or the garage): cost
+     scales with the damage. Returns the cost, or -1 when nothing is broken. */
+  Game.repairCost = (v) => {
+    if (!v || !(v.damage > 1)) return -1;
+    return Math.round(v.damage * 8);
+  };
+  Game.repair = (v) => {
+    if (!v || !(v.damage > 1)) return -1;
+    const cost = Game.repairCost(v);
+    if (KS.Shop.data.cash < cost) return -2;
+    KS.Shop.data.cash -= cost; v.damage = 0; KS.Shop.save();
+    return cost;
+  };
   Game.onHardBrake = () => KS.Uthao.event('brake');
   Game.splash = (v) => {
     A.splash(); Game.notify(`Splash! The Bagmati swallowed your ${v.type.name.toLowerCase()}.`, 'bad');
@@ -125,6 +158,8 @@
   };
   Game.onExit = (v) => {
     $('speedo').hidden = true; KS.Radio.setInVehicle(false);
+    // remember how much fuel is left in this vehicle for next time
+    if (v.ownedId && v.fuel != null) { const g = KS.Shop.data.garage.find((x) => x.id === v.ownedId); if (g) { g.fuel = Math.round(v.fuel); KS.Shop.save(); } }
     if (KS.isBike(v.kind)) KS.Player.rebuild();
     if (KS.Uthao.trip && KS.Uthao.trip.stage === 'drop' && !KS.Uthao.trip.parcel) { KS.Uthao.cancel(); }
     KS.Uthao.render();
@@ -140,6 +175,20 @@
   };
   Game.interact = () => {
     const PL = KS.Player;
+    // at a petrol pump, in a vehicle, stopped: fill up, and repair if broken
+    if (PL.vehicle && KS.Fuel && Math.abs(PL.vehicle.speed) < 1) {
+      const st = KS.Fuel.nearest(PL.x, PL.z, 16);
+      if (st) {
+        const v = PL.vehicle, cost = KS.Fuel.refuelCost(v), rcost = KS.Game.repairCost(v);
+        const opts = [];
+        if (cost > 0) opts.push([`⛽ Fill up the tank · रु ${cost}`, () => { const paid = KS.Fuel.refuel(v); if (paid > 0) { A.coin(); Game.notify(`⛽ Filled up at ${st.name} · −रु ${paid}. Tank full.`, 'good'); } KS.modalClose(); }]);
+        else opts.push(['⛽ Tank is already full ✔', () => KS.modalClose()]);
+        if (rcost > 0) opts.push([`🔧 Repair the ${v.type.name} (${Math.round(v.damage)}% damaged) · रु ${rcost}`, () => { const paid = KS.Game.repair(v); if (paid > 0) { A.coin(); Game.notify(`🔧 Repaired at ${st.name} · −रु ${paid}. Good as new.`, 'good'); } KS.modalClose(); }]);
+        opts.push(['Maybe later', () => KS.modalClose()]);
+        KS.modal(`⛽ ${st.name}`, `<p>Your ${v.type.name}: fuel <b>${Math.round(v.fuel != null ? v.fuel : 100)}%</b>${rcost > 0 ? ` · damage <b>${Math.round(v.damage)}%</b>` : ' · no damage'}.</p>`, opts);
+        return;
+      }
+    }
     if (KS.trialGround && Math.hypot(PL.x - KS.trialGround.counter.x, PL.z - KS.trialGround.counter.z) < 3.5) { KS.Law.openCounter(); return; }
     if (KS.agent && Math.hypot(PL.x - KS.agent.x, PL.z - KS.agent.z) < 2.6) { KS.Law.agentTalk(); return; }
     if (KS.Mansion.nearBooth(PL)) {
@@ -744,6 +793,8 @@
     }
     KS.Battle.update(dt); KS.Places.update(dt); if (KS.Mountains) KS.Mountains.update(dt);
     if (KS.Damage) KS.Damage.update(dt);
+    if (KS.Fuel) KS.Fuel.update(dt); // the fuel-delivery timer
+    if (KS.Story) KS.Story.update(dt); // story-mode chapters
     faintUpdate(dt);
     // Tibetan music in the two sacred places: Boudhanath and Swayambhu
     const inSacred = Math.hypot(PL.x - 405, PL.z + 225) < 48 || Math.hypot(PL.x + 700, PL.z + 90) < 70;
@@ -859,6 +910,9 @@
       } else { $('limit').hidden = !lim; if (lim) { $('limit').textContent = lim; $('limit').classList.toggle('over', kmh > lim + 2); $('limit').classList.remove('alt'); $('limit').title = 'Speed limit'; } }
       const st = KS.Radio.current(); $('radio').textContent = st ? '📻 ' + st.name : '📻 off (R)';
       $('nitro').hidden = !(PL.vehicle.up && PL.vehicle.up.nitro); $('nitro').textContent = PL.nitro > 0 ? '🔥 NITRO' : PL.nitroCool > 0 ? `Nitro ${Math.ceil(PL.nitroCool)}s` : 'Nitro ready (B)';
+      // fuel gauge: a little bar under the speed, red when low
+      const fl = $('fuel'), fv = KS.Fuel ? KS.Fuel.of(PL.vehicle) : null;
+      if (fl) { if (fv == null) fl.hidden = true; else { fl.hidden = false; fl.innerHTML = `⛽ <i style="--f:${Math.round(fv)}%"></i> ${Math.round(fv)}%`; fl.classList.toggle('low', fv < 20); } }
     }
     $('btnRadio').classList.toggle('on', !!KS.Radio.current()); // the HUD radio button shows whether anything is playing
     if (Rec.on) $('recTime').textContent = Math.floor((KS.clock - Rec.t0) / 60) + ':' + String(Math.floor((KS.clock - Rec.t0) % 60)).padStart(2, '0');
@@ -868,6 +922,7 @@
       const v = KS.Traffic.nearest(PL.x, PL.z, 3.6);
       if (v) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ${v.owned ? 'Ride your' : v.ai ? 'Take the' : 'Ride the'} ${v.type.name.toLowerCase()}`;
       else if (KS.prayerWheels.some(([x, z]) => Math.hypot(x - PL.x, z - PL.z) < 2.4)) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Spin the prayer wheel`;
+      else if (KS.bells.some(([x, z]) => Math.hypot(x - PL.x, z - PL.z) < 9)) prompt = `<kbd>${coarse ? 'Ring' : 'E'}</kbd> Ring the temple bell 🔔`;
       else if (PL.swim) prompt = KS.waterLevel(PL.x, PL.z) != null ? '🏊 Swimming! Walk to the edge or the steps to climb out.' : 'Swimming in the Bagmati… head for the bank!';
       else if (Game.momoPending && Math.hypot(PL.x - MOMO.x, PL.z - MOMO.z) < 12) prompt = 'Step into the beam to collect the <b>momo order</b>';
       else if ((KS.lifts || []).some((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5)) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ${(KS.lifts.find((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5)).label}`;
@@ -886,12 +941,19 @@
       else if (KS.trialGround && Math.hypot(PL.x - KS.trialGround.counter.x, PL.z - KS.trialGround.counter.z) < 3.5) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Licence counter: written test & trial`;
     } else if (KS.Uthao.trip && Math.hypot(PL.x - (KS.Uthao.trip.stage === 'pickup' ? KS.Uthao.trip.from.x : KS.Uthao.trip.to.x), PL.z - (KS.Uthao.trip.stage === 'pickup' ? KS.Uthao.trip.from.z : KS.Uthao.trip.to.z)) < 25) prompt = KS.Uthao.trip.stage === 'pickup' ? 'Stop next to the yellow marker to pick up' : 'Stop at the yellow marker to drop off';
     $('prompt').innerHTML = prompt; $('prompt').hidden = !prompt;
-    const m = Game.mission, mp = $('mission');
-    if (m) {
-      mp.hidden = false; $('mTitle').textContent = m.title; $('mObj').textContent = `Deliver to ${m.area}`;
-      $('mMeta').textContent = `${Math.round(Math.hypot(PL.x - m.x, PL.z - m.z))} m · ${Math.max(0, Math.floor(m.t / 60))}:${String(Math.max(0, Math.floor(m.t % 60))).padStart(2, '0')}`;
-      mp.classList.toggle('urgent', m.t < 20);
-    } else mp.hidden = true;
+    const so = KS.Story ? KS.Story.objective() : null, mp = $('mission');
+    if (so) {
+      mp.hidden = false; $('mTitle').textContent = '📖 ' + so.title; $('mObj').textContent = so.obj;
+      $('mMeta').textContent = `${Math.round(so.dist)} m${so.t > 0 ? ` · ${Math.max(0, Math.floor(so.t / 60))}:${String(Math.max(0, Math.floor(so.t % 60))).padStart(2, '0')}` : ''}`;
+      mp.classList.toggle('urgent', so.t > 0 && so.t < 20);
+    } else {
+      const m = Game.mission;
+      if (m) {
+        mp.hidden = false; $('mTitle').textContent = m.title; $('mObj').textContent = `Deliver to ${m.area}`;
+        $('mMeta').textContent = `${Math.round(Math.hypot(PL.x - m.x, PL.z - m.z))} m · ${Math.max(0, Math.floor(m.t / 60))}:${String(Math.max(0, Math.floor(m.t % 60))).padStart(2, '0')}`;
+        mp.classList.toggle('urgent', m.t < 20);
+      } else mp.hidden = true;
+    }
     KS.Uthao.tick(); KS.Law.hud(); KS.Guide.render(); KS.Phone.tick(); navigation();
     const rn = KS.roadNameAt(PL.x, PL.z); $('road').textContent = rn ? rn[1] + ' · ' + rn[0] : '';
     $('lowHealth').style.opacity = PL.health < 35 ? String((35 - PL.health) / 35) : '0';

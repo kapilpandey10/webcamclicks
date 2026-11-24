@@ -52,7 +52,15 @@
       N.fail(t === 'unavailable-id' ? 'That room code is taken. Try again.' : t === 'peer-unavailable' ? 'Room not found. Check the code.' : t === 'network' || t === 'server-error' || t === 'socket-error' ? 'Could not reach the multiplayer server.' : 'Multiplayer error: ' + (t || e));
     });
     // voice: each player sends their own voice on their own outgoing calls; incoming calls are listen-only
+    // video: a call with metadata.video is a video call — ask before answering, so the camera only turns on with consent
     peer.on('call', (call) => {
+      if (call.metadata && call.metadata.video) {
+        const old = N.videoCall; if (old) { try { call.close(); } catch (e) { /* ignore */ } sys('Missed a video call — you are already on one.'); return; }
+        const name = (N.players.get(call.peer) || {}).name || 'A mate';
+        KS.Game.notify(`📹 <b>${name}</b> is video-calling you…`, 'good');
+        KS.modal(`📹 Video call from ${name}`, '<p>They want to video-call you on the game phone. Your camera turns on only if you answer.</p>', [['📹 Answer', () => { KS.modalClose(); N.answerVideoCall(call); }], ['📵 Decline', () => { KS.modalClose(); try { call.close(); } catch (e) { /* ignore */ } }]]);
+        return;
+      }
       const old = N.inCalls.get(call.peer); if (old) try { old.close(); } catch (e) { /* ignore */ }
       N.inCalls.set(call.peer, call); call.answer();
       call.on('stream', (stream) => attachVoice(call.peer, stream));
@@ -323,7 +331,80 @@
     p.voice = { el, src, g, an, buf: new Uint8Array(an.frequencyBinCount) };
   }
 
+  /* ---------- video calls on the game phone ---------- */
+  N.videoStream = null; N.videoCall = null; N.videoPeer = null;
+  function showVideoUI(name, state) {
+    const vc = $('vidCall'); if (!vc) return;
+    vc.hidden = false;
+    $('vidName').textContent = name || '';
+    $('vidState').textContent = state || '';
+    KS.Phone && KS.Phone.toggle(true);
+  }
+  function hideVideoUI() {
+    const vc = $('vidCall'); if (!vc) return;
+    vc.hidden = true;
+    const r = $('vidRemote'), l = $('vidLocal');
+    if (r) r.srcObject = null;
+    if (l) l.srcObject = null;
+  }
+  /* get the camera (and mic) for a video call. Returns the stream or null. */
+  async function getCamera() {
+    try {
+      return await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: { echoCancellation: true, noiseSuppression: true } });
+    } catch (e) {
+      const why = !window.isSecureContext ? 'Video calls only work on https pages.' : e.name === 'NotAllowedError' ? 'Your browser blocked the camera: click the 🔒 / ⓘ icon next to the address, allow Camera, then try again.' : e.name === 'NotFoundError' ? 'No camera was found on this device.' : (e.message || e.name);
+      KS.Game.notify('📹 Video call not available. ' + why, 'bad');
+      return null;
+    }
+  }
+  function wireVideoCall(call, peerId, name) {
+    N.videoCall = call; N.videoPeer = peerId;
+    call.on('stream', (stream) => {
+      const r = $('vidRemote'); if (r) { r.srcObject = stream; const p = r.play(); if (p && p.catch) p.catch(() => {}); }
+      $('vidState').textContent = 'Connected — ' + (name || 'your mate');
+      // their voice comes through the game audio too, like a voice call
+      attachVoice(peerId, stream);
+    });
+    call.on('close', () => { if (N.videoCall === call) N.endVideoCall(true); });
+    call.on('error', () => {});
+  }
+  /* tap 📹 next to a friend: call them with video */
+  N.startVideoCall = async (peerId) => {
+    if (!N.peer || N.state === 'off') { KS.Game.notify('📹 Join a room or the public world first, then video-call a mate.', 'bad'); return; }
+    if (N.videoCall) { KS.Game.notify('📹 You are already on a video call. End it first.', 'bad'); return; }
+    const p = N.players.get(peerId);
+    const name = p ? p.name : 'your mate';
+    showVideoUI(name, 'Calling…');
+    const stream = await getCamera();
+    if (!stream) { hideVideoUI(); return; }
+    N.videoStream = stream;
+    const l = $('vidLocal'); if (l) { l.srcObject = stream; const pr = l.play(); if (pr && pr.catch) pr.catch(() => {}); }
+    const call = N.peer.call(peerId, stream, { metadata: { video: true } });
+    if (!call) { N.endVideoCall(true); KS.Game.notify('📹 Could not reach them. Try again.', 'bad'); return; }
+    wireVideoCall(call, peerId, name);
+  };
+  /* hang up (or the other side hung up) */
+  N.endVideoCall = (silent) => {
+    if (N.videoCall) { try { N.videoCall.close(); } catch (e) { /* ignore */ } N.videoCall = null; N.videoPeer = null; }
+    if (N.videoStream) { N.videoStream.getTracks().forEach((t) => t.stop()); N.videoStream = null; }
+    hideVideoUI();
+    if (!silent) KS.Game.notify('📹 Video call ended.');
+  };
+  /* an incoming video call: ask before answering (and before turning the camera on) */
+  N.answerVideoCall = async (call) => {
+    const name = (N.players.get(call.peer) || {}).name || 'A mate';
+    const stream = await getCamera();
+    if (!stream) { try { call.close(); } catch (e) { /* ignore */ } return; }
+    N.videoStream = stream;
+    const l = $('vidLocal'); if (l) { l.srcObject = stream; const pr = l.play(); if (pr && pr.catch) pr.catch(() => {}); }
+    showVideoUI(name, 'Connected — ' + name);
+    call.answer(stream);
+    wireVideoCall(call, call.peer, name);
+  };
+  const ve = $('vidEnd'); if (ve) ve.onclick = () => N.endVideoCall();
+
   N.leave = (silent) => {
+    N.endVideoCall(true);
     for (const c of [...N.calls.values(), ...N.inCalls.values()]) try { c.close(); } catch (e) { /* ignore */ }
     for (const c of N.conns.values()) try { c.close(); } catch (e) { /* ignore */ }
     N.calls.clear(); N.inCalls.clear(); N.conns.clear();
@@ -407,7 +488,7 @@
       : `<div class="roomcode"><span>Room</span><b>${N.room}</b><button type="button" class="chip" id="netCopy">Copy invite link</button></div>
       ${players.length < 2 ? '<p class="ph-muted small">Waiting for friends… send them the invite link or the code. Keep this tab open.</p>' : ''}
       <p class="ph-muted">${players.length} / ${MAX} players in the room. Each friend is a coloured dot on your map.</p>`}
-      <ul class="netlist">${[...N.players.values()].map((p) => `<li><i style="background:${p.color}"></i><b>${esc(p.name)}</b><small data-dist="${esc(p.id)}">${p.placed ? Math.round(Math.hypot(p.x - KS.Player.x, p.z - KS.Player.z)) + ' m' : 'connecting…'}</small><button type="button" class="chip" data-find="${esc(p.id)}">📍 Find</button><button type="button" class="chip" data-goto="${esc(p.id)}">🚀 Go to</button><button type="button" class="chip" data-block="${esc(p.id)}">${N.blocked.has(p.id) ? '🔈 Unmute' : '🔇 Mute'}</button></li>`).join('')}</ul>
+      <ul class="netlist">${[...N.players.values()].map((p) => `<li><i style="background:${p.color}"></i><b>${esc(p.name)}</b><small data-dist="${esc(p.id)}">${p.placed ? Math.round(Math.hypot(p.x - KS.Player.x, p.z - KS.Player.z)) + ' m' : 'connecting…'}</small><button type="button" class="chip" data-find="${esc(p.id)}">📍 Find</button><button type="button" class="chip" data-goto="${esc(p.id)}">🚀 Go to</button><button type="button" class="chip" data-video="${esc(p.id)}">📹 Video call</button><button type="button" class="chip" data-block="${esc(p.id)}">${N.blocked.has(p.id) ? '🔈 Unmute' : '🔇 Mute'}</button></li>`).join('')}</ul>
       <div class="req-btns"><button type="button" class="btn small-btn ${N.micOn ? '' : 'ghost'}" id="netMic">${N.micOn ? '🎙 Mic on' : '🎙 Turn mic on'}</button>
       <label class="set tog"><input type="checkbox" id="netPtt" ${N.ptt ? 'checked' : ''}><span>Push to talk (hold G)</span></label></div>
       <label class="set tog"><input type="checkbox" id="netProx" ${N.proximity ? 'checked' : ''}><span>Voices get quieter with distance</span></label>
@@ -417,7 +498,7 @@
       <button type="button" class="btn ghost small-btn" id="netLeave">${N.public ? 'Leave the public world (play alone)' : 'Leave room'}</button>`
       : `<div class="req-btns"><button type="button" class="btn small-btn" id="netPublic" ${N.state === 'connecting' ? 'disabled' : ''}>🌍 ${N.state === 'connecting' && N.public ? 'Connecting…' : 'Join the public world (everyone online)'}</button></div>
       <p class="ph-muted small">Or play with just your friends in a private room:</p>
-      <ol class="howto"><li><b>One player</b> taps <b>Create room</b>.</li><li>They tap <b>Copy invite link</b> and send it (WhatsApp, Viber, Messenger…).</li><li><b>Friends</b> open the link, or type the 5-letter code below and tap <b>Join</b>.</li><li>Everyone appears in the same Kathmandu. Chat with <kbd>Enter</kbd>; tap <b>Turn mic on</b> and allow the microphone to talk.</li></ol>
+      <ol class="howto"><li><b>One player</b> taps <b>Create room</b>.</li><li>They tap <b>Copy invite link</b> and send it (WhatsApp, Viber, Messenger…).</li><li><b>Friends</b> open the link, or type the 5-letter code below and tap <b>Join</b>.</li><li>Everyone appears in the same Kathmandu. Chat with <kbd>Enter</kbd>; tap <b>Turn mic on</b> and allow the microphone to talk.</li><li>Tap <b>📹 Video call</b> next to a friend to video-call them on the game phone — they choose to answer, and the camera turns on only then.</li></ol>
       <label class="set"><span>Your name</span><input id="netName" maxlength="16" value="${esc(N.name())}" aria-label="Your name"></label>
       <div class="req-btns"><button type="button" class="btn small-btn" id="netCreate" ${N.state === 'connecting' ? 'disabled' : ''}>${N.state === 'connecting' ? 'Connecting…' : 'Create room'}</button></div>
       <form id="netJoinForm" class="chatform"><input id="netCode" maxlength="6" placeholder="Room code" autocomplete="off" aria-label="Room code" style="text-transform:uppercase" value="${esc(N.invite || '')}"><button type="submit" class="btn small-btn">Join</button></form>
@@ -432,6 +513,7 @@
     b('netBattle', () => { KS.Phone.toggle(false); KS.Battle.startMatch(); });
     el.querySelectorAll('[data-find]').forEach((x) => (x.onclick = () => N.find(x.dataset.find)));
     el.querySelectorAll('[data-goto]').forEach((x) => (x.onclick = () => N.goTo(x.dataset.goto)));
+    el.querySelectorAll('[data-video]').forEach((x) => (x.onclick = () => N.startVideoCall(x.dataset.video)));
     b('netCopy', () => {
       const t = location.origin + location.pathname + '?room=' + N.room, msg = `Join me in Kathmandu Streets! ${t} (room ${N.room})`;
       if (navigator.share && matchMedia('(pointer: coarse)').matches) { navigator.share({ title: 'Kathmandu Streets', text: msg, url: t }).catch(() => {}); return; }

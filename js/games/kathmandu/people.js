@@ -631,6 +631,7 @@
   };
   /** police officer leaves their post or patrol to run after the player during a police alert. returns speed, or -1 if not chasing */
   function policeChase(ped, dt, px, pz, pr) {
+    if (ped.trafficCop) return -1; // a traffic cop stays at their junction, directing — they do not join a chase
     const heat = KS.Law ? KS.Law.heat : 0, pdx = px - ped.x, pdz = pz - ped.z, pd = Math.hypot(pdx, pdz);
     ped.dist = pd;
     if (!(heat > 0 && pd < 75)) { if (ped.patrol && ped.chasing) { ped.chasing = false; ped.patrolWas = true; } return -1; }
@@ -640,6 +641,23 @@
     ped.p.busyArm = false; ped.whT = (ped.whT || 0) - dt; if (ped.whT <= 0) { ped.whT = 2.5; KS.audio && KS.audio.whistle(Math.max(0.15, 1 - pd / 60)); KS.say(pr, KS.pick(['Rok! Police!', 'Oi! Rok!', 'Bhaagna sakdainas!']), 1.4, 'angry'); }
     return moving;
   }
+  /** a traffic police officer for a congested junction: stands in the middle
+      of the crossing and waves traffic through (the 'police' mode already
+      waves an arm). They never leave their post to chase. Returns the ped. */
+  Peds.addTrafficCop = (x, z) => {
+    if (!Peds.scene) return null;
+    const p = KS.makePerson('police');
+    const ped = add(Peds.scene, { p, kind: 'police', mode: 'police', trafficCop: true, x, z, y: 0.06, h: 0, t: KS.r(0, 6) });
+    if (Peds.police) Peds.police.push(ped);
+    return ped;
+  };
+  /** a traffic cop's shift is over: take them off the junction */
+  Peds.removeTrafficCop = (ped) => {
+    if (!ped) return;
+    ped.hidden = true; ped.p.root.visible = false;
+    const i = Peds.list.indexOf(ped); if (i >= 0) Peds.list.splice(i, 1);
+    if (Peds.police) { const j = Peds.police.indexOf(ped); if (j >= 0) Peds.police.splice(j, 1); }
+  };
   /** knock a pedestrian down (from a punch or a vehicle) */
   Peds.knock = (ped, fromX, fromZ, hard) => {
     ped.down = hard ? 28 : 2.2; ped.flee = 0; ped.fight = 0; ped.injured = !!hard;
@@ -809,11 +827,15 @@
     }
     for (const dg of Animals.dogs) {
       dg.t += dt;
+      const wasSleep = dg.sleep; // a dog that just woke up barks first — it does not bite in the same breath
       const dist = Math.hypot(dg.x - px, dg.z - pz);
-      // bikes get chased; anyone walking close gets barked at
+      // bikes get chased; anyone walking close gets barked at — and a dog
+      // that is chased up will run at you on foot too
       // street dogs guard their own patch: a short chase, then a long rest
       dg.tired = Math.max(0, (dg.tired || 0) - dt);
+      dg.biteCool = Math.max(0, (dg.biteCool || 0) - dt);
       if (inVehicle && vehicleKind === 'bike' && playerSpeed > 6 && dist < 9 && dg.chase <= 0 && dg.tired <= 0 && KS.chance(0.5)) { dg.chase = KS.r(2.5, 4); wake(dg); }
+      if (!inVehicle && !dg.sleep && dist < 6 && dg.chase <= 0 && dg.tired <= 0 && KS.chance(0.4)) { dg.chase = KS.r(2, 3.5); wake(dg); }
       if (dg.sleep && dist < (playerSpeed > 3 ? 7 : 3.5)) { wake(dg); dg.alert = 4; }
       if (!dg.sleep && dist < 11 && dg.chase <= 0 && dg.tired <= 0 && !(dg.alert > 0)) dg.alert = KS.r(4, 7); // bark for a few seconds, not forever
       dg.bark -= dt;
@@ -835,6 +857,17 @@
       }
       if (ctx.night > 0.6 && dist < 40 && KS.chance(dt * 0.03)) A && A.bark(0.25, dg.big);
       if (ctx.night > 0.7 && dist < 120 && KS.chance(dt * 0.004)) A && A.howl(Math.max(0.15, 0.6 - dist / 200)); // the night chorus of Kathmandu's street dogs
+      // a dog that reaches you on foot bites: −8% health, then it backs off
+      // (it cannot bite through a vehicle, and a sleeping dog does not bite —
+      // one that just woke up barks first and only bites once it is awake)
+      if (!inVehicle && !dg.sleep && !wasSleep && dist < 1.2 && (dg.chase > 0 || dg.alert > 0) && dg.biteCool <= 0) {
+        dg.biteCool = 2.5;
+        KS.Game && KS.Game.hurt(8);
+        A && A.bark(1, dg.big); KS.say(dg.g, 'BHAU!', 1);
+        KS.Game && KS.Game.notify('🐕 Ouch! A street dog bit you! −8% health', 'bad');
+        dg.chase = 0; dg.alert = 0; dg.tired = Math.max(dg.tired, 6);
+        dg.x -= ((px - dg.x) / (dist || 1)) * 3; dg.z -= ((pz - dg.z) / (dist || 1)) * 3;
+      }
       dg.g.position.set(dg.x, 0.22, dg.z); dg.g.rotation.y = dg.h;
     }
     function wake(dg) { dg.sleep = false; dg.body.rotation.z = 0; dg.body.position.y = 0; dg.legs.forEach((l) => (l.visible = true)); }

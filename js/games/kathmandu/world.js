@@ -519,7 +519,11 @@
     const R = W.blockRect(c, r), x0 = R.x0 + SW + 0.3, x1 = R.x1 - SW - 0.3, z0 = R.z0 + SW + 0.3, z1 = R.z1 - SW - 0.3;
     const D = KS.r(13, 17);
     const mk = (cx, cz, w, d, ry) => {
-      if (KS.nearRingRoad(cx, cz, 16)) return; // the Ring Road cuts through the outer blocks: no building on the road
+      // the Ring Road cuts through the outer blocks: no building on the road.
+      // The margin is the road half-width (11 m) plus the building's own
+      // half-diagonal (it is rotated) plus a little air — a fixed 16 m let
+      // wide buildings hang over the carriageway.
+      if (KS.nearRingRoad(cx, cz, 11 + Math.hypot(w, d) / 2 + 2)) return;
       if (pr.area === 'outskirts' && KS.chance(0.12)) { emptyLot(cx, cz, w, d); return; }
       const style = pickStyle(pr.st);
       let fl = KS.ri(pr.fl[0], pr.fl[1]); if (style === 2) fl = Math.min(fl, 5);
@@ -542,7 +546,11 @@
     const b = W.chunk(icx, icz);
     b.box(icx, 0, icz, iw, 0.08, id, pr.area === 'old' ? 0x8e4d38 : 0x8d8676);
     const roll = KS.rng();
-    if (pr.area === 'old' || roll < 0.25) { W.smallShrine(b, icx, icz, KS.chance(0.5)); }
+    // the courtyard shrine is a solid (its tower is 3.2 m wide and 8 m tall):
+    // a block the Ring Road cuts through must not have one sitting on the road.
+    // (Round 8 caught three of these on the carriageway after the building
+    // margin change shifted the random layout.)
+    if (pr.area === 'old' || roll < 0.25) { if (!KS.nearRingRoad(icx, icz, 14)) W.smallShrine(b, icx, icz, KS.chance(0.5)); }
     else if (roll < 0.6) { W.tree(icx + KS.r(-5, 5), icz + KS.r(-5, 5), KS.r(5, 8)); W.tree(icx - 8, icz + 6, KS.r(4, 6)); }
     else { mk(icx - iw / 4, icz, iw / 2 - 2, id - 4, 0); }
   }
@@ -838,6 +846,9 @@
     KS.benches = KS.benches || [];
   };
   W.bench = (b, x, z, ry) => {
+    // never on the Ring Road: a bench on the carriageway is a hazard, and
+    // the parks near the loop kept putting them there
+    if (KS.nearRingRoad(x, z, 14)) return;
     // a real park bench when its model loaded, else the code-built one —
     // the GLB bench is placed at the end of the build, from KS.propBenches
     if (KS.Props && KS.Props.models.bench) { (KS.propBenches = KS.propBenches || []).push([x, z, ry]); }
@@ -884,7 +895,7 @@
       if (z > KS.RIVER.z0 - 20 && z < KS.RIVER.z1 + 20) continue;
       if (x > 540 && x < 860 && Math.abs(z) < 440) continue;
       if (Math.hypot(x - sw.x, z - sw.z) < 160) continue;
-      if (KS.nearRingRoad(x, z, 16)) continue; // the Ring Road cuts through the outskirts: no house on the road
+      if (KS.nearRingRoad(x, z, 22)) continue; // the Ring Road cuts through the outskirts: no house on the road (11 m road half-width + the house's own half-diagonal + air)
       const y = KS.heightAt(x, z), b = W.chunk(x, z), h = KS.ri(2, 4) * FLOOR, w = KS.r(7, 11), d = KS.r(7, 10), ry = KS.r(0, 3);
       b.box(x, y - 1, z, w, h + 1, d, KS.pick(P.walls), ry);
       b.box(x, y + h, z, w + 0.4, 0.3, d + 0.4, 0x9a958a, ry);
@@ -907,6 +918,7 @@
     if (KS.Signs) KS.Signs.build(scene, W);
     if (KS.Places) { KS.Places.buildJharna(scene); KS.Places.buildMansion(scene); }
     if (KS.Mountains) KS.Mountains.build(scene); // the snow peak, the paragliding hill, the trekking path (before the flags are built, so its prayer flags render)
+    if (KS.Fuel) KS.Fuel.build(scene); // petrol stations on street corners and the Ring Road
     // Thamel: prayer flags & festival lights criss-crossing the streets.
     // Each string must span the WHOLE road (16 m) and anchor in the building
     // faces on both sides — a string that starts mid-road reads as flags

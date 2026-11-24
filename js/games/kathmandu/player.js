@@ -498,7 +498,7 @@
   PL.onSidewalk = onSidewalk;
 
   /* ---------- vehicle physics: momentum, grip and sliding, weight, body roll & dive ---------- */
-  const MASS = { bicycle: 0.12, bike: 0.25, scooter: 0.22, sport: 0.27, cruiser: 0.3, policebike: 0.27, car: 1.1, taxi: 1.1, ev: 1.4, sedan: 1.3, suv: 1.8, police: 1.8, pickup: 1.8, micro: 1.9, ambulance: 2.1, tempo: 0.9, minibus: 3.5, bus: 6, truck: 7, helicopter: 3.5 };
+  const MASS = { bicycle: 0.12, bike: 0.25, scooter: 0.22, sport: 0.27, cruiser: 0.3, policebike: 0.27, car: 1.1, taxi: 1.1, ev: 1.4, sportscar: 1.2, sedan: 1.3, suv: 1.8, police: 1.8, pickup: 1.8, micro: 1.9, ambulance: 2.1, tempo: 0.9, minibus: 3.5, bus: 6, truck: 7, helicopter: 3.5 };
   KS.massOf = (k) => MASS[k] || 1;
   function driveUpdate(dt) {
     const v = PL.vehicle, t = v.type, a = axis(), up = v.up || { engine: 0, brakes: 0, handling: 0, nitro: 0 }, bike = KS.isBike(v.kind), m1 = KS.massOf(v.kind);
@@ -509,6 +509,8 @@
     PL.nitro = Math.max(0, PL.nitro - dt);
     const boost = PL.nitro > 0 ? 1.45 : 1, wet = KS.Weather.wet > 0.3;
     let top = t.speed * 1.55 * eng * boost * (wet ? 0.9 : 1);
+    // a damaged vehicle is slower: up to 30% off the top speed when wrecked
+    if (v.damage > 0) top *= 1 - (v.damage / 100) * 0.3;
     // slope physics for vehicles too: gravity helps you downhill and fights you uphill
     const ghx = Math.sin(v.h), ghz = Math.cos(v.h);
     const grade = (KS.heightAt(v.x + ghx * 2, v.z + ghz * 2) - KS.heightAt(v.x - ghx * 2, v.z - ghz * 2)) / 4;
@@ -520,8 +522,11 @@
     let fx = Math.sin(v.h), fz = Math.cos(v.h), rx = -fz, rz = fx;
     let vf = v.vx * fx + v.vz * fz, vl = v.vx * rx + v.vz * rz;
     const vf0 = vf;
-    // engine and brakes act along the wheels
-    if (a.y > 0.1) vf += (vf < 0 ? 16 * brk : t.accel * eng * boost * (1 - Math.max(0, vf) / top * 0.6)) * a.y * dt;
+    // engine and brakes act along the wheels — but not on an empty tank, and
+    // not in a wrecked vehicle (damage 100: it will not drive until repaired)
+    const outOfFuel = KS.Fuel && KS.Fuel.needsFuel(v.kind) && (v.fuel == null ? 100 : v.fuel) <= 0;
+    const wrecked = (v.damage || 0) >= 100;
+    if (a.y > 0.1 && !outOfFuel && !wrecked) vf += (vf < 0 ? 16 * brk : t.accel * eng * boost * (1 - Math.max(0, vf) / top * 0.6)) * a.y * dt;
     else if (a.y < -0.1) { vf += (vf > 0.4 ? -16 * brk : -t.accel * 0.6) * -a.y * dt; if (vf0 > 9 && KS.Game) KS.Game.onHardBrake(); }
     else vf -= Math.sign(vf) * Math.min(Math.abs(vf), (1.6 + Math.abs(vf) * 0.22) * dt); // rolling resistance & air drag
     if (hand) vf -= Math.sign(vf) * Math.min(Math.abs(vf), (bike ? 9 : 6) * brk * dt);
@@ -598,6 +603,22 @@
     const bump = Math.abs(vf) > 1 ? Math.sin(KS.clock * 23 + v.x) * 0.004 * Math.min(1, Math.abs(vf) / 10) : 0;
     v.root.position.set(v.x, v.y + 0.02 + bump, v.z); v.root.rotation.set(-Math.atan2(ahead - behind, 3) * 0.8 + v.pitch, v.h, v.roll, 'YXZ');
     v.speed = vf;
+    // fuel: the tank empties as you drive. At zero the engine dies — coast
+    // to a stop and either walk to a pump or call a fuel delivery.
+    if (KS.Fuel && KS.Fuel.needsFuel(v.kind)) {
+      if (v.fuel == null) v.fuel = 100;
+      if (v.fuel <= 0) { v.speed = 0; v.vx = 0; v.vz = 0; if (!v.outOfFuel) { v.outOfFuel = true; KS.Game && KS.Game.notify('⛽ Out of fuel! Press <b>E</b> at a petrol pump, or call a fuel delivery from the phone (Uthao app).', 'bad'); } }
+      else {
+        v.outOfFuel = false;
+        if (KS.Fuel.burn(v, dt, vf)) { v.speed = 0; v.vx = 0; v.vz = 0; v.outOfFuel = true; KS.Game && KS.Game.notify('⛽ Out of fuel! The engine died. Walk to a petrol pump or call a fuel delivery.', 'bad'); }
+        else if (v.fuel < 20 && (!v.lowFuelT || KS.clock - v.lowFuelT > 30)) { v.lowFuelT = KS.clock; KS.Game && KS.Game.notify(`⛽ Low fuel: ${Math.round(v.fuel)}% left. Find a petrol pump ⛽.`, 'bad'); }
+      }
+    }
+    // a damaged vehicle smokes from the engine: a grey puff every second
+    if (v.damage > 50 && KS.FX && KS.FX.burst) {
+      v.smokePuff = (v.smokePuff || 0) - dt;
+      if (v.smokePuff <= 0) { v.smokePuff = 1; KS.FX.burst(v.x + Math.sin(v.h) * 1.2, v.y + 1.1, v.z + Math.cos(v.h) * 1.2, 0x666666, 6, 0.5, 0.8); }
+    }
     if (bike) {
       if (v.kind === 'bicycle') { PL.pedal = (PL.pedal || 0) + vf * dt * 2.2; PL.person.legL.rotation.x = -1.05 + Math.sin(PL.pedal) * 0.55; PL.person.legR.rotation.x = -1.05 - Math.sin(PL.pedal) * 0.55; }
       else PL.person.legL.rotation.x = PL.person.legR.rotation.x = -1.3;

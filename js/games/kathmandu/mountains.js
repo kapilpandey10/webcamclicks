@@ -129,6 +129,13 @@
     b.box(tx, ty, tz, 6, 3, 4.5, 0x8a6a3a); b.roof(tx, ty + 3, tz, 7, 1.6, 0xc8102e, 0.3);
     b.box(tx, ty + 1.1, tz + 2.27, 1.4, 1.8, 0.05, 0x2a2a2a); KS.addBox(tx, tz, 6, 4.5, ty + 3.2);
     for (let k = 0; k < 3; k++) { const x = tx - 6 + k * 3, z = tz + 5, y = KS.heightAt(x, z); b.box(x, y, z, 2, 0.45, 0.5, 0x7a5432); KS.sitSpots.push([x, z, y + 0.45, KS.pick(['tourist', 'trekker', 'man', 'woman'])]); }
+    // a little stone shrine on the summit — the Himalaya temple — with a bell
+    // you can ring. It stands east of the ski run, clear of the slope.
+    const shx = P.x + 14, shz = P.z + 2, shy = KS.heightAt(shx, shz);
+    b.box(shx, shy, shz, 4, 0.8, 4, 0x8c8f94); b.box(shx, shy + 0.8, shz, 3, 2.2, 3, 0x9a4a34);
+    b.roof(shx, shy + 3, shz, 4.4, 1.2, 0xc9a227, 0.3); KS.addBox(shx, shz, 4, 4, shy + 3.5);
+    if (KS.bellAt) KS.bellAt(b, shx + 4, shz, shy);
+    KS.landmarks.push({ minor: true, id: 'shivashrine', name: 'Shivapuri Summit Shrine', np: 'शिवपुरी शिखर मन्दिर', x: shx, z: shz, r: 10, fact: 'A little stone shrine on the snowy summit, with a bell to ring. The Himalaya watches from here.' });
     scene.add(KS.mesh(b));
     // signs at eye level on posts in front of the huts, facing the road — so
     // you can actually read them when you walk up (the old ones sat above the

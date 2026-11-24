@@ -125,7 +125,7 @@
     b.box(v.x - 60, y0(v.x - 60, HW.z + 10) - 0.4, HW.z + 10, 6, 0.5, 2.4, 0x777777); b.box(v.x - 60, y0(v.x - 60, HW.z + 10) + 2.6, HW.z + 10, 6.4, 0.15, 3, 0x1d4fb8);
     board(scene, 'धुनिबेसी बसपार्क', 'DHUNIBESI', v.x - 60, y0(v.x - 60, HW.z + 10) + 3.4, HW.z + 8.6, 0, 4.6, 1.2, '#1d4fb8');
     // village temple & school
-    KS.World.smallShrine(b, v.x - 30, HW.z - 48, true); KS.bells.push([v.x - 30, HW.z - 48]);
+    KS.World.smallShrine(b, v.x - 30, HW.z - 48, true); if (KS.bellAt) KS.bellAt(b, v.x - 30 + 6, HW.z - 48, y0(v.x - 24, HW.z - 48)); // the village temple's bell
     const sx = v.x + 110, sz = HW.z + 60, sy = y0(sx, sz);
     b.box(sx, sy - 0.5, sz, 26, 4, 8, 0xf2e6b8); b.roof(sx, sy + 3.5, sz, 28, 1.6, 0x7f8f9a, 0.6); KS.addBox(sx, sz, 26, 8, sy + 5);
     for (let i = 0; i < 6; i++) b.box(sx - 10 + i * 4, sy + 1, sz - 4.05, 1.6, 1.4, 0.1, 0x3b6a9a);

@@ -9,14 +9,17 @@
   const T = THREE, KS = window.KS;
 
   /* top speed (m/s) — every type has its own certain maximum, no two alike:
-     a police bike (20) is always faster than any car, a tempo (8.5) always
-     the slowest thing with an engine. Traffic, chases and the player's own
-     driving all cap at this number (chases get a small pursuit allowance). */
+     the sports car (22) is the fastest thing on four wheels, so it can outrun
+     a police bike; a tempo (8.5) is always the slowest thing with an engine.
+     Traffic, chases and the player's own driving all cap at this number
+     (chases get a tiny pursuit allowance, never enough to outrun a faster
+     vehicle — speed is what decides a chase). */
   KS.VTYPES = {
     car: { name: 'Hatchback', len: 3.8, wid: 1.72, speed: 13, accel: 7, turn: 1.9, r: 1.7, seats: 'car' },
     sedan: { name: 'Sedan', len: 4.5, wid: 1.78, speed: 14.5, accel: 7.5, turn: 1.75, r: 1.9, seats: 'car' },
     suv: { name: 'SUV', len: 4.6, wid: 1.9, speed: 15, accel: 7, turn: 1.6, r: 2.0, seats: 'car' },
     ev: { name: 'Electric Car', len: 4.1, wid: 1.8, speed: 16, accel: 10, turn: 1.85, r: 1.8, seats: 'car' },
+    sportscar: { name: 'Sports Car', len: 4.4, wid: 1.85, speed: 22, accel: 12, turn: 2.0, r: 1.9, seats: 'car' },
     taxi: { name: 'Taxi', len: 3.7, wid: 1.66, speed: 13.8, accel: 7, turn: 2.0, r: 1.7, seats: 'car' },
     police: { name: 'Police Jeep', len: 4.4, wid: 1.9, speed: 16.5, accel: 8, turn: 1.8, r: 1.9, seats: 'car' },
     ambulance: { name: 'Ambulance', len: 5.2, wid: 1.95, speed: 17, accel: 7, turn: 1.6, r: 2.2, seats: 'van' },
@@ -30,7 +33,7 @@
     sport: { name: 'Sport Bike', len: 2.05, wid: 0.72, speed: 21, accel: 14, turn: 2.7, r: 0.8, seats: 'bike' },
     cruiser: { name: 'Cruiser', len: 2.2, wid: 0.85, speed: 19, accel: 11, turn: 2.3, r: 0.85, seats: 'bike' },
     scooter: { name: 'Scooter', len: 1.8, wid: 0.7, speed: 12.5, accel: 9, turn: 2.8, r: 0.8, seats: 'bike' },
-    policebike: { name: 'Police Bike', len: 2.0, wid: 0.8, speed: 20, accel: 12, turn: 2.6, r: 0.8, seats: 'bike' },
+    policebike: { name: 'Police Bike', len: 2.0, wid: 0.8, speed: 19, accel: 12, turn: 2.6, r: 0.8, seats: 'bike' },
     bicycle: { name: 'Bicycle', len: 1.75, wid: 0.6, speed: 5.2, accel: 3.2, turn: 2.6, r: 0.7, seats: 'bike' },
     helicopter: { name: 'Helicopter', len: 9, wid: 2.6, speed: 25, accel: 8, turn: 2.0, r: 3.5, seats: 'heli' },
   };

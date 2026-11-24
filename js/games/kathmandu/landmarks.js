@@ -9,6 +9,21 @@
   const add = (o) => KS.landmarks.push(o);
 
   /* ---------- helpers ---------- */
+  /** a temple bell you can see and ring: two wooden posts, a crossbeam and a
+      brass bell with a clapper, on a stone base. Press E within 9 m to ring
+      it (game.js). y is the ground height under the bell. */
+  function bellAt(b, x, z, y = 0) {
+    b.box(x, y, z, 1.6, 0.3, 1.6, 0x8f887a); // stone base
+    b.box(x - 0.55, y + 0.15, z, 0.18, 2.4, 0.18, 0x6a4a2a);
+    b.box(x + 0.55, y + 0.15, z, 0.18, 2.4, 0.18, 0x6a4a2a);
+    b.box(x, y + 2.45, z, 1.5, 0.18, 0.18, 0x6a4a2a); // crossbeam
+    b.cyl(x, y + 1.55, z, 0.42, 0.75, 0xc9a227, 12, 0.55); // the brass bell, narrow at the top
+    b.sphere(x, y + 1.1, z, 0.09, 0x8a6d1a, 1, 8); // clapper
+    KS.addBox(x, z, 1.4, 1.4, y + 2.6);
+    KS.bells.push([x, z]);
+    return [x, z];
+  }
+  KS.bellAt = bellAt;
   function plinth(b, x, z, w, steps, sh, color, shrink = 1.6, y0 = 0, d) {
     let y = y0;
     for (let i = 0; i < steps; i++) {
@@ -44,7 +59,7 @@
     b.cyl(x, cy + 0.4, z, Math.max(0.35, wall * 0.18), 2.6, P.gold, 8, 0.12);
     b.sphere(x, cy + 1.2, z, Math.max(0.4, wall * 0.2), P.gold, 1, 8);
     KS.addBox(x, z, w, w, cy + 3);
-    KS.bells.push([x, z]);
+    bellAt(b, x + w / 2 + 4, z + 2, y); // a bell you can see and ring, beside the temple
     return cy;
   }
   function eyesTexture() {
@@ -88,6 +103,7 @@
     b.cyl(x, sy, z, sw * 0.4, R * 0.3, P.gold, 8, 0.2); sy += R * 0.3;
     b.sphere(x, sy, z, sw * 0.3, P.gold, 1, 8);
     KS.addCircle(x, z, R * 1.12, y + R * 1.5);
+    bellAt(b, x + R + 6, z + 2, y); // a bell you can see and ring, beside the stupa
     return sy;
   }
   function textBoard(scene, text, x, y, z, ry, w = 8, h = 1.6, bg = '#7a1414', fg = '#ffe9a8') {
@@ -225,6 +241,7 @@
     // monastery (gompa) on a corner: white walls, maroon band, golden roof
     b.box(R.x1 - 7, 0, R.z1 - 7, 10, 9, 10, P.white); b.box(R.x1 - 7, 7.4, R.z1 - 7, 10.2, 1.6, 10.2, P.maroon);
     b.roof(R.x1 - 7, 9, R.z1 - 7, 12, 3, P.gold, 0.45); KS.addBox(R.x1 - 7, R.z1 - 7, 10, 10, 12);
+    bellAt(b, R.x1 - 7 + 8, R.z1 - 7, 0); // the gompa's bell, beside the monastery door
     // ring of houses on the other corners
     for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1]]) {
       const hx = cx + sx * 33, hz = cz + sz * 33;
@@ -284,7 +301,7 @@
     y += 5.2;
     b.roof(cx, y - 0.4, cz, 20, 4.6, P.gold, 0.32); b.box(cx, y + 3, cz, 7, 2.6, 7, 0xe9e2d0); b.roof(cx, y + 5.4, cz, 12, 3, P.gold, 0.25);
     b.cyl(cx, y + 8.2, cz, 0.6, 3.4, P.gold, 8, 0.15);
-    KS.addBox(cx, cz, 11, 11, y + 12); KS.bells.push([cx, cz]);
+    KS.addBox(cx, cz, 11, 11, y + 12); bellAt(b, cx + 15, cz, 0); // a bell you can see and ring, beside the temple (the Nandi bull stands on the other side)
     // golden Nandi bull at the west door
     b.box(cx - 15, 0.15, cz, 3, 1.2, 1.6, 0x5a5048); b.box(cx - 15, 1.35, cz, 2.6, 1.3, 1.1, P.gold); b.box(cx - 13.6, 2.2, cz, 0.9, 0.9, 0.8, P.gold);
     KS.addBox(cx - 15, cz, 3, 1.6, 3.2);
@@ -390,8 +407,8 @@
         KS.clockHands.push({ hand, k });
       }
     }
+    bellAt(b, cx + 3.5, cz + 3.5, 0.3); // a bell on the island, beside the white shrine
     scene.add(KS.mesh(b));
-    KS.bells.push([cx, cz]);
     add({ id: 'ranipokhari', name: 'Rani Pokhari', np: 'रानी पोखरी', x: cx, z: cz, r: 34, fact: 'The "Queen\'s Pond", built in 1670 by King Pratap Malla, with a white shrine on its island.' });
     add({ minor: true, id: 'ghantaghar', name: 'Ghantaghar', np: 'घण्टाघर', x: gx, z: gz, r: 10, fact: 'The clock tower of Trichandra College. Its hands follow the in-game time.' });
   }

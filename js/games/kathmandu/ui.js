@@ -100,6 +100,7 @@
   const Ph = (KS.Phone = { open: false, app: null });
   const APPS = [
     { id: 'uthao', name: 'Uthao', icon: '🛵', color: '#0f8a7a' },
+    { id: 'story', name: 'Story', icon: '📖', color: '#8a5a00' },
     { id: 'jobs', name: 'Jobs', icon: '💼', color: '#c8962a' },
     { id: 'map', name: 'Map', icon: '🗺️', color: '#2f7d32' },
     { id: 'radio', name: 'Radio', icon: '📻', color: '#c81e1e' },
@@ -133,6 +134,7 @@
   Ph.refresh = () => {
     const id = Ph.app, el = id && document.querySelector(`[data-app-panel="${id}"]`); if (!el) return;
     if (id === 'uthao') { KS.Uthao.render(); return; }
+    if (id === 'story') { KS.Story ? KS.Story.render(el) : (el.textContent = 'Story mode is loading…'); return; }
     if (id === 'licence') { KS.Law.renderCard(el); const b = document.createElement('button'); b.type = 'button'; b.className = 'btn small-btn'; b.textContent = 'Navigate to the licence office'; b.onclick = () => { KS.Game.setWaypoint(KS.trialGround.counter.x, KS.trialGround.counter.z); KS.Game.notify('📍 Follow the blue line to the Trial ground. Press E at the counter.'); }; el.appendChild(b); return; }
     if (id === 'settings') { S.render(el); return; }
     if (id === 'friends') { KS.Net ? KS.Net.render(el) : (el.textContent = 'Multiplayer is loading…'); return; }

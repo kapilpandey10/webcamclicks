@@ -192,10 +192,19 @@
       const miss = PL.vehicle && KS.Law.missingFor(PL.vehicle.kind);
       body = `<p class="ph-muted">${miss === 'suspended' ? 'Your licence is suspended. Bicycle parcel jobs only.' : miss ? `Uthao needs a valid category ${miss} licence for this vehicle. Get one at the Transport Management Office, or use a bicycle for parcels.` : cls ? 'Waiting for requests…' : 'Get on a bicycle, bike, car or cargo vehicle to receive jobs.'}</p>`;
     }
+    // out of fuel on the road: call a fuel delivery from here
+    const fv = KS.Fuel && PL.vehicle ? KS.Fuel.of(PL.vehicle) : null;
+    if (fv != null && fv <= 0) {
+      body += `<div class="req" style="margin-top:10px"><div class="req-h"><span class="req-ic">⛽</span><div><b>Out of fuel</b><small>Your ${PL.vehicle.type.name} is dry. A tempo brings petrol to you.</small></div></div>
+        <div class="req-btns"><button type="button" class="btn small-btn" id="uFuel">📞 Call fuel delivery · रु ${KS.Fuel.DELIVERY_COST} (+${KS.Fuel.DELIVERY_FUEL}% in ${KS.Fuel.DELIVERY_WAIT}s)</button></div></div>`;
+    } else if (KS.Fuel && KS.Fuel.delivery) {
+      body += `<div class="req" style="margin-top:10px"><div class="req-h"><span class="req-ic">⛽</span><div><b>Fuel delivery on its way…</b><small>${Math.ceil(KS.Fuel.delivery.t)} seconds</small></div></div></div>`;
+    }
     $('phBody').innerHTML = body;
     $('phStats').textContent = `★ ${U.rating().toFixed(1)} · ${s.trips} trips · रु ${s.earned.toLocaleString('en-IN')}`;
     const a = $('uAccept'), d = $('uDecline'), c = $('uCancel');
     if (a) a.onclick = U.accept; if (d) d.onclick = U.decline; if (c) c.onclick = () => U.cancel();
+    const uf = $('uFuel'); if (uf) uf.onclick = () => { if (KS.Fuel.callDelivery()) U.render(); };
   };
   U.tick = () => { // called from HUD refresh
     const m = $('uMeta'), tr = U.trip; if (!m || !tr) return;

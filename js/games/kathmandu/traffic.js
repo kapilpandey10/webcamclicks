@@ -272,10 +272,12 @@
     const tx = P.x + (pv ? Math.sin(pv.h) * pv.speed * 0.6 : 0), tz = P.z + (pv ? Math.cos(pv.h) * pv.speed * 0.6 : 0);
     const dx = tx - v.x, dz = tz - v.z, d = Math.hypot(dx, dz);
     const want = Math.atan2(dx, dz), t = v.type;
-    /* a chase may run at the type's pursuit ceiling (its own max × 1.3), never
-       faster — a police bike still outruns a police jeep, and neither one
-       borrows another vehicle's speed. */
-    const ceiling = t.speed * 1.3;
+    /* a chase may run at the type's own top speed plus a whisker (×1.05),
+       never faster — speed is what decides a chase. A sports car (22) or a
+       sport bike (21) outruns a police bike (19); a police jeep (16.5) still
+       catches a sedan (14.5); a police officer on foot catches nobody in a
+       vehicle. Nobody borrows another vehicle's speed. */
+    const ceiling = t.speed * 1.05;
     let target = d > 14 ? ceiling : d > 5 ? d * 1.1 : 0;
     if (v.rev > 0) { v.rev -= dt; target = -4; }
     const diff = KS.wrapAng(want - v.h);
@@ -412,6 +414,34 @@
     }
   }
 
+  /* ---------- traffic police: when a junction jams, an officer steps onto
+     the corner kerb and waves the traffic through, one direction at a time,
+     until the jam clears. The officer's word beats the light. ---------- */
+  let copT = 0;
+  function copsUpdate(dt) {
+    copT -= dt; if (copT > 0) return; copT = 0.5;
+    if (!KS.Peds || !KS.Peds.addTrafficCop) return;
+    for (const s of KS.signals) {
+      // how many vehicles are queued at this junction (stopped or crawling)?
+      let queued = 0;
+      for (const v of TR.list) {
+        if (!v.ai || v.lot || v.chase || !v.root.visible) continue;
+        if (Math.abs(v.x - s.x) < 28 && Math.abs(v.z - s.z) < 28 && Math.abs(v.speed) < 1.5) queued++;
+      }
+      const P = KS.Player;
+      if (P.vehicle && Math.abs(P.x - s.x) < 28 && Math.abs(P.z - s.z) < 28 && Math.abs(P.vehicle.speed) < 1.5) queued++;
+      if (!s.cop && queued >= 4) {
+        const ped = KS.Peds.addTrafficCop(s.x + G.roadHalf(s.i) + 2.2, s.z + G.roadHalf(s.j) + 2.2);
+        if (ped) { s.cop = { ped, dir: 'ns', t: 8 }; KS.Game && KS.Game.notify('👮 A traffic police officer is directing the jam at the junction — follow their hand.', 'good'); }
+      } else if (s.cop && queued < 2) {
+        KS.Peds.removeTrafficCop(s.cop.ped); s.cop = null;
+      } else if (s.cop) {
+        s.cop.t -= 0.5;
+        if (s.cop.t <= 0) { s.cop.t = 8; s.cop.dir = s.cop.dir === 'ns' ? 'ew' : 'ns'; }
+      }
+    }
+  }
+
   /* ---------- how many vehicles are out depends on the time of day ----------
      Never a ghost town: even at 3 am at least 45% of the fleet is out, so the streets
      always have something moving near you. */
@@ -439,7 +469,7 @@
     const blink = Math.floor(KS.clock * 4) % 2;
     KS.sirenMats[0].color.setHex(blink ? 0xff2020 : 0x400000); KS.sirenMats[1].color.setHex(blink ? 0x001040 : 0x2050ff);
     const ambs = TR.list.filter((v) => v.kind === 'ambulance' && v.ai);
-    if (!TR.remote) { balance(dt, ctx); stopsUpdate(dt, ctx); } // the host decides all of this; guests mirror it
+    if (!TR.remote) { balance(dt, ctx); stopsUpdate(dt, ctx); copsUpdate(dt); } // the host decides all of this; guests mirror it
     for (const v of TR.list) {
       const dCam = Math.hypot(v.x - cx, v.z - cz);
       v.root.visible = dCam < 300 || v === ctx.playerVehicle || v.chase;
@@ -470,12 +500,18 @@
       const onBr = KS.onBreaker && KS.onBreaker(v.x, v.z);
       const bd = KS.breakerDist ? KS.breakerDist(v.x, v.z, v.h) : Infinity;
       if (bd < 15) target = Math.min(target, Math.sqrt(3.5 * 3.5 + 13 * bd));
-      // red lights
+      // red lights — or a traffic officer's hand, which beats the light
       if (v.mode === 'lane' && v.kind !== 'ambulance') {
         const B = nodes[v.b];
         if (B.sig) {
-          const st = B.sig.state[Math.abs(v.lane.dx) > 0.5 ? 'ew' : 'ns'], rem = v.lane.len - v.t;
-          if (st === 'r' || (st === 'y' && rem > 6)) if (rem < 32 && rem > -1) target = Math.min(target, Math.max(0, (rem - 1.2) * 1.1));
+          const dir = Math.abs(v.lane.dx) > 0.5 ? 'ew' : 'ns', rem = v.lane.len - v.t;
+          if (B.sig.cop) {
+            // an officer is directing: only the direction they are waving moves
+            if (B.sig.cop.dir !== dir && rem < 32 && rem > -1) target = Math.min(target, Math.max(0, (rem - 1.2) * 1.1));
+          } else {
+            const st = B.sig.state[dir];
+            if (st === 'r' || (st === 'y' && rem > 6)) if (rem < 32 && rem > -1) target = Math.min(target, Math.max(0, (rem - 1.2) * 1.1));
+          }
         }
       }
       // buses, micros and tempos stop at bus stops, but only when someone is waiting or wants to get off

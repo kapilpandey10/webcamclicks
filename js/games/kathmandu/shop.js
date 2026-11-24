@@ -19,6 +19,7 @@
     { id: 'bhariya', model: 'pickup', name: 'Bhariya Pickup', price: 40000, cls: 'cargo', blurb: 'Gas cylinders, furniture and vegetables from the village.' },
     { id: 'annapurna', model: 'sedan', name: 'Annapurna Sedan', price: 45000, cls: 'car', blurb: 'Comfortable, so VIP passengers tip better.' },
     { id: 'everest', model: 'suv', name: 'Everest SUV', price: 65000, cls: 'car', blurb: 'High seat, big tyres, made for the Nagdhunga road.' },
+    { id: 'sagarmatha', model: 'sportscar', name: 'Sagarmatha GT', price: 120000, cls: 'car', blurb: 'The fastest car in Kathmandu. A GT coupe that outruns police bikes.' },
   ];
   S.UPGRADES = [
     { key: 'engine', name: 'Engine tune', max: 3, cost: (v) => Math.max(1500, v.price * 0.18), desc: '+12% top speed and pull per level' },
@@ -114,7 +115,7 @@
     const c = KS.collide(x, z, KS.VTYPES[spec.model].r, PL.y, 0.5); x = c.x; z = c.z;
     const v = KS.Traffic.park(spec.model, x, z, KS.Cam.yaw, { owned: true, color: g.paint || undefined });
     if (!v) { KS.Game.notify('⚠️ The realistic vehicle models did not load, so your vehicle could not be delivered. Open the game from the website and reload.', 'bad'); return; }
-    v.up = g.up; v.horn = g.horn; v.ownedId = id; v.type = Object.assign({}, v.type, { name: spec.name });
+    v.up = g.up; v.horn = g.horn; v.ownedId = id; v.fuel = g.fuel != null ? g.fuel : 100; v.type = Object.assign({}, v.type, { name: spec.name });
     S.delivered = v;
     KS.Game.notify(`🔑 Your <b>${spec.name}</b> is parked next to you.`); KS.audio.ding();
   };

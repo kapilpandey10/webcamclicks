@@ -85,7 +85,7 @@
     common(peer, (e) => {
       if (settled && e.type === 'unavailable-id') { sys('Another player is hosting this world now. Joining them…'); rejoinPublic(n, 500 + Math.random() * 1500); return true; }
       if (settled && (e.type === 'network' || e.type === 'server-error' || e.type === 'socket-error')) return true; // keep playing with whoever is connected; reconnect is attempted
-      if (settled) return false;
+      if (settled) { rejoinPublic(n, 2000 + Math.random() * 3000); return true; } // any other trouble: start again
       if (e.type === 'unavailable-id') { settled = true; try { peer.destroy(); } catch (x) { /* ignore */ } joinPublicAsGuest(id, n); return true; } // someone hosts it: join them
       N.public = false; N.fail('Could not reach the online world (offline play continues).'); return true;
     });
@@ -100,11 +100,17 @@
       if (e.type === 'peer-unavailable') { // the host has just gone: try to become the host of this world
         N.leave(true); setTimeout(() => N.joinPublic(n), 300 + Math.random() * 1500); return true;
       }
-      return false;
+      if (e.type === 'network' || e.type === 'server-error' || e.type === 'socket-error') return true;
+      rejoinPublic(n, 2000 + Math.random() * 3000); return true;
     });
   }
   /** after leaving or losing a public world, come back automatically */
   function rejoinPublic(n, wait) { N.leave(true); setTimeout(() => { if (!N.publicOff) N.joinPublic(n); }, wait); }
+  // watchdog: whenever you should be in the public world but are not connected, try again every 15 s
+  setInterval(() => {
+    if (N.state !== 'off' || N.publicOff || N.invite || KS.state !== 'play' || !KS.Settings || KS.Settings.data().online === false) { N.offSince = 0; return; }
+    N.offSince = N.offSince || Date.now(); if (Date.now() - N.offSince > 15000) { N.offSince = 0; N.joinPublic(1); }
+  }, 3000);
   function publicHello() {
     if (N.toldPublic) return; N.toldPublic = true;
     KS.Game.notify('🌍 You are in the <b>public world</b> with real players. Be kind, and never share personal details. Chat with <b>Enter</b>; mute anyone in Phone → Friends.');

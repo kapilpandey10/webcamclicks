@@ -546,6 +546,7 @@
     const sc = KS.Traffic.park('scooter', -124, -263.4, Math.PI / 2, { owned: true }); if (sc) { sc.ownedId = 'sathi'; }
     const sg = D.garage.find((g) => g.id === 'sathi'); KS.Shop.delivered = sc; if (sg && sc) { sc.up = sg.up; sc.horn = sg.horn; }
     KS.Law.data();
+    if (KS.Damage && KS.Damage.initRocks) KS.Damage.initRocks(scene); // pushable boulders up on the snow mountain
     KS.Traffic.park('taxi', 6.6, -36, Math.PI); KS.Traffic.park('tempo', -88.6, 60, 0); KS.Traffic.park('pickup', -528, 104, 0);
     if (KS.Heli && KS.Heli.pad) KS.Traffic.park('helicopter', KS.Heli.pad.x, KS.Heli.pad.z, Math.PI); // the one helicopter you can fly yourself
     for (const [k, x, z, h] of KS.mansionCars || []) KS.Traffic.park(k, x, z, h, { color: k === 'sedan' ? 0x111111 : 0x1a1a1a });
@@ -618,6 +619,24 @@
     $('btnSound').onclick = () => { A.setOn(!A.on); Game.save(); Game.refreshMenu(); };
     $('btnQuality').onclick = () => { KS.quality.level = KS.quality.level === 'high' ? 'low' : 'high'; Game.save(); $('qnote').hidden = false; Game.refreshMenu(); };
     $('btnReset').onclick = () => { if ($('btnReset').dataset.armed) { try { localStorage.removeItem('ks-save2'); localStorage.removeItem('ks-save'); } catch (e) { /* ignore */ } location.reload(); } else { $('btnReset').dataset.armed = '1'; $('btnReset').textContent = 'Tap again to erase progress'; } };
+    // Free Fire-style character picker on the front page: pick your hero (male
+    // or female), then tap a wardrobe top to wear it. The choice saves at once
+    // and the player model rebuilds, so the hero you pick is the one you play.
+    const renderCharPick = () => {
+      const D = KS.Shop.data;
+      document.querySelectorAll('.charcard').forEach((c) => c.classList.toggle('sel', c.dataset.gender === D.gender));
+      const row = $('wardrobeRow'); if (!row) return;
+      row.innerHTML = '';
+      for (const it of KS.Shop.WARDROBE.filter((w) => w.slot === 'top' && D.items.includes(it.id))) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (D.wear.top === it.id ? ' sel' : ''); b.textContent = it.name;
+        b.onclick = () => { D.wear.top = it.id; KS.Shop.save(); KS.Player && KS.Player.rebuild && KS.Player.rebuild(); renderCharPick(); };
+        row.appendChild(b);
+      }
+      const more = document.createElement('span'); more.className = 'small'; more.style.color = '#b9c2cc'; more.textContent = 'More outfits in the garage (Esc → Garage).';
+      row.appendChild(more);
+    };
+    document.querySelectorAll('.charcard').forEach((c) => { c.onclick = () => { KS.Shop.setGender(c.dataset.gender); renderCharPick(); }; });
+    renderCharPick();
     $('btnPlay').onclick = () => {
       A.init(); A.loadDogSamples && A.loadDogSamples(); KS.Radio.load(); $('title').hidden = true; $('hud').hidden = false; if (coarse) $('touch').hidden = false;
       const start = () => {
@@ -724,6 +743,7 @@
       PL.update(dt);
     }
     KS.Battle.update(dt); KS.Places.update(dt); if (KS.Mountains) KS.Mountains.update(dt);
+    if (KS.Damage) KS.Damage.update(dt);
     faintUpdate(dt);
     // Tibetan music in the two sacred places: Boudhanath and Swayambhu
     const inSacred = Math.hypot(PL.x - 405, PL.z + 225) < 48 || Math.hypot(PL.x + 700, PL.z + 90) < 70;

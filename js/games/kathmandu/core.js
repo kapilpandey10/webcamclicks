@@ -81,8 +81,12 @@
     KS.ringLoopLen = s; // total loop length in metres
     return out;
   })();
-  /** distance from a point to the Ring Road centre line (true segment distance) */
+  /** distance from a point to the Ring Road centre line (true segment distance).
+      The loop lives inside x -577..562, z -670..631, so a point well outside
+      that box is far from the road: skip the 364-segment scan. The callers
+      only ever compare the result against 16 or 22, so a large value is safe. */
   KS.ringLoopDist = (x, z) => {
+    if (x < -610 || x > 590 || z < -700 || z > 660) return 1e9;
     const P = KS.ringLoopPts; let best = Infinity;
     for (let i = 0; i < P.length; i++) {
       const a = P[i], b = P[(i + 1) % P.length], dx = b.x - a.x, dz = b.z - a.z, L2 = dx * dx + dz * dz;
@@ -252,7 +256,7 @@
     const dk = Math.hypot(x - J.park.x, z - J.park.z); if (dk < J.park.r + 6) h = KS.lerp(h, J.park.h, KS.smooth(J.park.r + 6, J.park.r, dk));
     for (const P of TPATHS) {
       if (x < P.bx0 || x > P.bx1 || z < P.bz0 || z > P.bz1) continue;
-      const n = KS.pathNear(P, x, z), edge = P.w + (P.bed ? 12 : 9); if (n.d > edge) continue;
+      const n = KS.pathNear(P, x, z), edge = P.w + 22; if (n.d > edge) continue;
       const tgt = P.bed ? n.h - 0.8 * Math.max(0, 1 - n.d / P.w) : n.h;
       h = KS.lerp(h, tgt, KS.smooth(edge, P.w, n.d));
     }
@@ -318,16 +322,31 @@
   KS.PARAGLIDE = { x: -1200, z: 300, bump: 70, sigma: 200 };
   KS.SNOWLINE = 240;
   KS.temperatureAt = (x, z) => Math.round(18 - KS.heightAt(x, z) * 0.07);
+  /** the height of the VISIBLE terrain mesh at a point. The mesh is a grid of
+      heightAt() samples every ~8 m, so between vertices it is a flat triangle
+      that can sit a metre or two above or below the analytic heightAt().
+      Roads, guardrails and anything that must sit ON the visible ground use
+      this, not heightAt(), or they sink under the hillside and disappear. */
+  KS.meshHeightAt = (x, z) => {
+    const g = KS.terrainGrid;
+    if (!g) return KS.heightAt(x, z);
+    const fx = (x - g.x0) / g.dx, fz = (z - g.z0) / g.dz;
+    const ix = Math.max(0, Math.min(g.segX - 1, Math.floor(fx))), iz = Math.max(0, Math.min(g.segZ - 1, Math.floor(fz)));
+    const tx = Math.min(1, Math.max(0, fx - ix)), tz = Math.min(1, Math.max(0, fz - iz));
+    const H = (i, j) => KS.heightAt(g.x0 + i * g.dx, g.z0 + j * g.dz, true);
+    const h00 = H(ix, iz), h10 = H(ix + 1, iz), h01 = H(ix, iz + 1), h11 = H(ix + 1, iz + 1);
+    return (h00 * (1 - tx) + h10 * tx) * (1 - tz) + (h01 * (1 - tx) + h11 * tx) * tz;
+  };
   /* mountain paths: a road up to the snow peak, a road up to the paragliding
      hill, and a trekking path to the summit. The ground is flattened near
      them, like the Jharna road, so the roads and the trail are walkable. */
   const MOUNTAIN_PATHS = (KS.MOUNTAIN_PATHS = [
-    { id: 'snowroad', w: 6, pts: [[-100, -996, 0], [-180, -1030, 0], [-260, -1080, 0], [-330, -1140, 0], [-390, -1190, 0], [-430, -1220, 0], [-450, -1235, 0]] },
-    { id: 'pararoad', w: 6, pts: [[-560, 150, 0], [-750, 180, 0], [-950, 230, 0], [-1100, 270, 0], [-1180, 295, 0], [-1200, 300, 0]] },
+    { id: 'snowroad', w: 6, pts: [[-100, -996, 0], [-200, -1015, 0], [-300, -1000, 0], [-360, -1060, 0], [-280, -1110, 0], [-200, -1140, 0], [-280, -1190, 0], [-380, -1210, 0], [-440, -1230, 0], [-450, -1235, 0]] },
+    { id: 'pararoad', w: 6, pts: [[-560, 150, 0], [-650, 130, 0], [-750, 180, 0], [-850, 160, 0], [-950, 230, 0], [-1050, 210, 0], [-1100, 270, 0], [-1180, 295, 0], [-1200, 300, 0]] },
     { id: 'trek', w: 2.2, pts: [[-400, -600, 0], [-380, -800, 0], [-360, -1000, 0], [-380, -1150, 0], [-430, -1230, 0]] },
     { id: 'snowstream', w: 3, bed: true, pts: [[-450, -1245, 0], [-400, -1150, 0], [-300, -1080, 0], [-200, -1060, 0], [-180, -1000, 0], [-220, -900, 0], [-300, -800, 0], [-400, -700, 0], [-500, -600, 0], [-560, -450, 0], [-580, -300, 0], [-600, -150, 0], [-610, 0, 0], [-620, 150, 0], [-630, 300, 0], [-640, 450, 0], [-650, 495, 0]] },
   ]);
-  for (const P of MOUNTAIN_PATHS) { const xs = P.pts.map((p) => p[0]), zs = P.pts.map((p) => p[1]), m = P.w + 8; P.bx0 = Math.min(...xs) - m; P.bx1 = Math.max(...xs) + m; P.bz0 = Math.min(...zs) - m; P.bz1 = Math.max(...zs) + m; }
+  for (const P of MOUNTAIN_PATHS) { const xs = P.pts.map((p) => p[0]), zs = P.pts.map((p) => p[1]), m = P.w + 24; P.bx0 = Math.min(...xs) - m; P.bx1 = Math.max(...xs) + m; P.bz0 = Math.min(...zs) - m; P.bz1 = Math.max(...zs) + m; }
   let mountainsShaped = false;
   function shapeMountains() {
     mountainsShaped = true;
@@ -340,7 +359,7 @@
     if (!mountainsShaped) shapeMountains();
     for (const P of MOUNTAIN_PATHS) {
       if (x < P.bx0 || x > P.bx1 || z < P.bz0 || z > P.bz1) continue;
-      const n = KS.pathNear(P, x, z), edge = P.w + (P.bed ? 12 : 9); if (n.d > edge) continue;
+      const n = KS.pathNear(P, x, z), edge = P.w + 22; if (n.d > edge) continue;
       const tgt = P.bed ? n.h - 0.8 * Math.max(0, 1 - n.d / P.w) : n.h;
       h = KS.lerp(h, tgt, KS.smooth(edge, P.w, n.d));
     }
@@ -402,7 +421,11 @@
   }
   /** ground height at a point for something standing at height y (steps up to `step`). */
   KS.groundAt = (x, z, y, step) => {
+    // the visible ground: the terrain mesh can sit a metre or two above the
+    // analytic heightAt() on the mountain, and anything standing on heightAt()
+    // alone sinks under the hillside. Take the higher of the two.
     let g = KS.heightAt(x, z);
+    if (KS.meshHeightAt) { const mh = KS.meshHeightAt(x, z); if (mh > g) g = mh; }
     KS.solidsNear(x, z, 0.5, near);
     for (const s of near) if (s.top <= y + step && inside(s, x, z, 0) && s.top > g) g = s.top;
     return g;

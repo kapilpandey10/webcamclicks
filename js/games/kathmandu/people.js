@@ -273,6 +273,7 @@
   }
   const add = (scene, ped) => {
     if (ped.id == null) ped.id = ++Peds._nextId; // mirrored walkers keep their own local id; the host's id lives in ped.netId
+    if (ped.hp == null) ped.hp = 100; // every bot has health: punches, snowballs and rolling rocks can hurt them, and at 0 they go down
     // about one in four people carries a torch after dark
     if ((ped.ambient || ped.mode === 'plaza') && KS.chance(0.28) && KS.addBeam) { const t = new T.Mesh(new T.CylinderGeometry(0.03, 0.04, 0.18, 6).rotateX(Math.PI / 2), new T.MeshBasicMaterial({ color: 0xfff6d0 })); t.position.set(0.24, 0.95, 0.22); ped.p.root.add(t); KS.addBeam(ped.p.root, 0.24, 0.95, 0.32, true); }
     ped.home = ped.mode; scene.add(ped.p.root); Peds.list.push(ped); return ped; };
@@ -444,7 +445,7 @@
     let chaser = null, best = 1e9;
     for (const ped of Peds.list) {
       const dxp = ped.x - cx, dzp = ped.z - cz, d2 = dxp * dxp + dzp * dzp;
-      if (ped.ambient && !ped.fight && (ped.x - px) ** 2 + (ped.z - pz) ** 2 > 270 * 270) { respawn(ped, px, pz); ped.down = 0; ped.flee = 0; ped.p.inner.rotation.x = 0; }
+      if (ped.ambient && !ped.fight && (ped.x - px) ** 2 + (ped.z - pz) ** 2 > 270 * 270) { respawn(ped, px, pz); ped.down = 0; ped.dead = false; ped.hp = 100; ped.flee = 0; ped.p.inner.rotation.x = 0; }
       const vis = d2 < 210 * 210;
       ped.p.root.visible = vis;
       if (!vis && !ped.ambient) continue;
@@ -452,7 +453,8 @@
       if (Peds.remote && ped.remote) { if (vis) remotePed(ped, dt); continue; } // the host's walker, gliding to its next reported spot
       let moving = 0;
       const pr = ped.p.root;
-      if (ped.down > 0) { // knocked over: lie, then get up
+      if (ped.down > 0) { // knocked over: lie, then get up — unless dead, then stay down
+        if (ped.dead) { ped.p.inner.rotation.x = -1.5; ped.p.inner.position.y = 0.12; pr.position.set(ped.x, ped.y || 0.06, ped.z); continue; }
         ped.down -= dt;
         ped.p.inner.rotation.x = KS.lerp(ped.p.inner.rotation.x, -1.5, Math.min(1, dt * 10)); ped.p.inner.position.y = 0.12;
         if (ped.down <= 0 && ped.injured) { ped.injured = false; ped.p.inner.rotation.x = 0; ped.p.inner.position.y = 0; KS.say(pr, 'Thank you, doctor saab…', 2); }
@@ -655,7 +657,9 @@
       if (d < bd && (dx * fx + dz * fz) / (d || 1) > 0.3) { bd = d; best = ped; }
     }
     if (best) {
-      Peds.knock(best, x, z, false);
+      // a punch hurts: 25 damage, and at 0 health the pedestrian stays down
+      if (KS.Damage && KS.Damage.hitPed) KS.Damage.hitPed(best, 25, x, z);
+      else Peds.knock(best, x, z, false);
       // bystanders scatter
       Peds.forEachNear(best.x, best.z, 12, (p) => { if (p !== best && !p.down && !p.fight && p.mode !== 'sit' && p.mode !== 'police' && KS.chance(0.6)) { p.flee = 3; const dx = p.x - x, dz = p.z - z, m = Math.hypot(dx, dz) || 1; p.fvx = (dx / m) * 5; p.fvz = (dz / m) * 5; if (KS.chance(0.3)) KS.say(p.p.root, KS.pick(LINES.flee), 1.6, 'angry'); } });
     }
@@ -679,6 +683,16 @@
   };
   Peds.forEachNear = (x, z, r, fn) => {
     for (const ped of Peds.list) { if (!ped.p.root.visible) continue; const dx = ped.x - x, dz = ped.z - z; if (dx * dx + dz * dz < r * r) fn(ped); }
+  };
+  /** the nearest pedestrian to a point (for snowballs and thrown things) */
+  Peds.nearest = (x, z, r) => {
+    let best = null, bd = r;
+    for (const ped of Peds.list) {
+      if (!ped.p.root.visible || ped.down > 0) continue;
+      const d = Math.hypot(ped.x - x, ped.z - z);
+      if (d < bd) { bd = d; best = ped; }
+    }
+    return best;
   };
 
   /* ---------------- animals ---------------- */

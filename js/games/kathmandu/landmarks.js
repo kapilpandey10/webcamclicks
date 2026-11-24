@@ -563,7 +563,7 @@
     // a few real potted plants around the Boudha square, just outside the kora path
     if (KS.Props) for (const [px, pz] of [[405, -267.5], [405, -182.5], [362.5, -225], [447.5, -225]]) {
       const m = KS.Props.build('plant');
-      if (m) { m.position.set(px, 0.2, pz); scene.add(m); }
+      if (m) { m.position.set(px, 0.2, pz); scene.add(m); if (KS.Damage && KS.Damage.registerProp) KS.Damage.registerProp(m, px, pz, 'plant'); }
     }
     add({ id: 'thamel', name: 'Thamel', np: 'ठमेल', x: -135, z: -270, r: 60, fact: 'The traveller\'s quarter: trekking shops, momo cafes, prayer flags over every lane.' });
     add({ id: 'ason', name: 'Asan Tole', np: 'असन टोल', x: -45, z: -135, r: 32, fact: 'The oldest bazaar in town, selling spices, rice and festival goods for centuries.' });

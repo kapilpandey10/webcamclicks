@@ -205,10 +205,18 @@
   let boardMesh = null;
   function boardMeshGet() {
     if (!boardMesh) {
+      // a big, bright board you can actually see under your feet: a wide yellow
+      // deck with a red nose and tail, and two foot bindings
       boardMesh = new THREE.Group();
-      const deck = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.05, 1.5), new THREE.MeshLambertMaterial({ color: 0x1d4fb8 }));
-      const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.02, 0.3), new THREE.MeshLambertMaterial({ color: 0xf2c418 }));
-      stripe.position.y = 0.03; boardMesh.add(deck); boardMesh.add(stripe);
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.06, 1.85), new THREE.MeshLambertMaterial({ color: 0xf2c418 }));
+      const nose = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.3), new THREE.MeshLambertMaterial({ color: 0xc8102e }));
+      nose.position.z = 0.85; const tail = nose.clone(); tail.position.z = -0.85;
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.02, 0.22), new THREE.MeshLambertMaterial({ color: 0x1d4fb8 }));
+      stripe.position.y = 0.04;
+      const bind = new THREE.MeshLambertMaterial({ color: 0x111111 });
+      const b1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.09, 0.3), bind); b1.position.set(0, 0.07, 0.35);
+      const b2 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.09, 0.3), bind); b2.position.set(0, 0.07, -0.35);
+      boardMesh.add(deck); boardMesh.add(nose); boardMesh.add(tail); boardMesh.add(stripe); boardMesh.add(b1); boardMesh.add(b2);
       boardMesh.visible = false; PL.scene.add(boardMesh);
     }
     return boardMesh;
@@ -227,14 +235,16 @@
   function boardUpdate(dt) {
     const a = axis();
     if (I.hit('KeyE') || I.hit('KeyEnter')) { PL.board = false; boardMesh.visible = false; PL.speed = 0; KS.Game && KS.Game.notify('⛷️ Board handed back. धन्यवाद!'); return; }
-    // downhill: the slope pulls the board along the steepest descent
+    // downhill: the slope pulls the board along the steepest descent — the
+    // steeper the hill, the faster you go, and tucking (W) makes you faster
     const e = 1.5, gx = (KS.heightAt(PL.x + e, PL.z) - KS.heightAt(PL.x - e, PL.z)) / (2 * e), gz = (KS.heightAt(PL.x, PL.z + e) - KS.heightAt(PL.x, PL.z - e)) / (2 * e);
     const slope = Math.hypot(gx, gz), dhx = slope > 0.01 ? -gx / slope : 0, dhz = slope > 0.01 ? -gz / slope : 0;
     const fwd = Math.sin(PL.boardH), fwdZ = Math.cos(PL.boardH);
     const along = dhx * fwd + dhz * fwdZ; // how much of the slope is ahead of the board
-    PL.boardSpeed += (along * 9 * slope - PL.boardSpeed * (I.down('KeyS') ? 1.6 : 0.35) + (I.down('KeyW') ? 1.2 : 0)) * dt;
-    PL.boardSpeed = KS.clamp(PL.boardSpeed, 0, 20);
-    PL.boardH += -a.x * 1.6 * dt;
+    PL.boardSpeed += (along * 14 * slope - PL.boardSpeed * (I.down('KeyS') ? 1.6 : 0.22) + (I.down('KeyW') ? 2 : 0)) * dt;
+    if (PL.boardSpeed < 0.5 && along > 0.3) PL.boardSpeed += 2.5 * dt; // a push to get you going downhill
+    PL.boardSpeed = KS.clamp(PL.boardSpeed, 0, 28);
+    PL.boardH += -a.x * 2.4 * dt;
     PL.x += Math.sin(PL.boardH) * PL.boardSpeed * dt; PL.z += Math.cos(PL.boardH) * PL.boardSpeed * dt;
     PL.h = PL.boardH; PL.speed = PL.boardSpeed;
     const g = KS.groundAt(PL.x, PL.z, PL.y, 1.05);
@@ -244,6 +254,60 @@
     KS.animWalk(PL.person, dt, PL.boardSpeed);
     // off the snow, the board stops and you step off
     if (KS.heightAt(PL.x, PL.z) < KS.SNOWLINE - 30 && PL.boardSpeed < 0.6) { PL.board = false; boardMesh.visible = false; PL.speed = 0; KS.Game && KS.Game.notify('⛷️ You rode down to the snow line — board handed back.'); }
+  }
+
+  /* ---------- snowball: on snow, press B to scoop up snow and make a ball,
+     then press B again to throw it wherever you are looking. It bursts on
+     impact and can knock a pedestrian down or smash a prop. */
+  let snowballMesh = null, thrown = [];
+  function snowballMeshGet() {
+    if (!snowballMesh) {
+      snowballMesh = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+      snowballMesh.visible = false; PL.scene.add(snowballMesh);
+    }
+    return snowballMesh;
+  }
+  PL.snowball = false;
+  PL.makeSnowball = () => {
+    if (PL.board || PL.paraglide || PL.vehicle || PL.swim) return;
+    if (KS.heightAt(PL.x, PL.z) < KS.SNOWLINE) { KS.Game && KS.Game.notify('❄️ You need snow under your feet to make a snowball — go up the mountain!', 'bad'); return; }
+    if (PL.snowball) { PL.throwSnowball(); return; }
+    PL.snowball = true; snowballMeshGet().visible = true;
+    KS.Game && KS.Game.notify('❄️ Snowball ready! Press <b>B</b> again to throw it.', 'good');
+    KS.audio && KS.audio.snow && KS.audio.snow();
+  };
+  PL.throwSnowball = () => {
+    if (!PL.snowball) return;
+    PL.snowball = false; snowballMesh.visible = false;
+    const fx = Math.sin(PL.h), fz = Math.cos(PL.h);
+    thrown.push({ x: PL.x + fx * 0.5, y: PL.y + 1.4, z: PL.z + fz * 0.5, vx: fx * 16, vy: 4.5, vz: fz * 16, mesh: null });
+    KS.audio && KS.audio.throw && KS.audio.throw();
+  };
+  function snowballUpdate(dt) {
+    // the ball in your hand follows your right hand
+    if (PL.snowball && snowballMesh) {
+      const p = PL.person;
+      snowballMesh.position.set(PL.x + Math.sin(PL.h) * 0.25, PL.y + 1.15, PL.z + Math.cos(PL.h) * 0.25);
+    }
+    for (let i = thrown.length - 1; i >= 0; i--) {
+      const b = thrown[i];
+      if (!b.mesh) { b.mesh = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), new THREE.MeshLambertMaterial({ color: 0xffffff })); PL.scene.add(b.mesh); }
+      b.vy -= 14 * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
+      b.mesh.position.set(b.x, b.y, b.z);
+      const g = KS.groundAt(b.x, b.z, b.y, 0.5);
+      let hit = b.y <= g;
+      if (!hit) { // hit a pedestrian or a prop?
+        const ped = KS.Peds && KS.Peds.nearest && KS.Peds.nearest(b.x, b.z, 0.9);
+        if (ped) { hit = 'ped'; KS.Damage && KS.Damage.hitPed(ped, 25, b.x, b.z); }
+        else if (KS.Damage && KS.Damage.hitPropAt && KS.Damage.hitPropAt(b.x, b.z, 25)) hit = 'prop';
+      }
+      if (hit) {
+        // burst into a puff of snow
+        if (KS.FX && KS.FX.snowBurst) KS.FX.snowBurst(b.x, Math.max(b.y, g + 0.2), b.z);
+        PL.scene.remove(b.mesh); thrown.splice(i, 1);
+        KS.audio && KS.audio.splat && KS.audio.splat();
+      } else if (b.y < -10 || Math.hypot(b.x - PL.x, b.z - PL.z) > 120) { PL.scene.remove(b.mesh); thrown.splice(i, 1); }
+    }
   }
 
   /* ---------- paraglider: buy a रु 150 ticket at the hill office, launch from
@@ -313,19 +377,31 @@
     const a = axis(), run = I.down('ShiftLeft') || I.down('ShiftRight') || I.down('KeyRun');
     const fx = Math.sin(cam.yaw), fz = Math.cos(cam.yaw), rx = -fz, rz = fx;
     let mx = fx * a.y + rx * a.x, mz = fz * a.y + rz * a.x; const m = Math.hypot(mx, mz);
-    const top = PL.swim ? 1.6 : run ? 8.2 : 4.2;
+    const top = PL.swim ? (run ? 3.4 : 2.4) : run ? 8.2 : 4.2; // swimming is faster now, and Shift sprints in the water
     let want = 0;
     const strafe = KS.Battle && KS.Battle.armed() && cam.mode !== 2;
     if (strafe) { PL.h = KS.angLerp(PL.h, cam.yaw, Math.min(1, dt * 16)); if (m > 0.05) { mx /= Math.max(1, m); mz /= Math.max(1, m); want = top * Math.min(1, m) * (KS.Cam.aim > 0.5 ? 0.55 : 0.85); PL.moveA = Math.atan2(mx, mz) - PL.h; } }
     else if (m > 0.05 && cam.mode !== 2) { mx /= Math.max(1, m); mz /= Math.max(1, m); want = top * Math.min(1, m); PL.h = KS.angLerp(PL.h, Math.atan2(mx, mz), Math.min(1, dt * 10)); }
     else if (cam.mode === 2 && Math.abs(a.y) + Math.abs(a.x) > 0.05) { PL.h = cam.yaw; want = top * Math.min(1, Math.hypot(a.x, a.y)); const ang = Math.atan2(-a.x, a.y); PL.moveA = ang; }
+    // slope physics: the ground's incline changes your speed — running downhill
+    // is faster, climbing uphill is slower, just like real life
+    if (want > 0.1 && !PL.swim) {
+      const hx = Math.sin(PL.h), hz = Math.cos(PL.h);
+      const grade = (KS.heightAt(PL.x + hx * 1.5, PL.z + hz * 1.5) - KS.heightAt(PL.x - hx * 1.5, PL.z - hz * 1.5)) / 3;
+      want *= KS.clamp(1 - grade * 1.1, 0.55, 1.45);
+    }
     PL.speed += KS.clamp(want - PL.speed, -30 * dt, 18 * dt);
     const ma = cam.mode === 2 || strafe ? PL.h + (PL.moveA || 0) : PL.h;
     const dirx = Math.sin(ma), dirz = Math.cos(ma);
     let nx = PL.x + dirx * PL.speed * dt, nz = PL.z + dirz * PL.speed * dt;
+    // the mountain is solid: a slope face steeper than a wall stops you — you
+    // walk on the mountain, not through it
+    if (KS.groundAt(nx, nz, PL.y + 1.3, 0) - PL.y > 1.3) { nx = PL.x; nz = PL.z; PL.speed *= 0.5; }
     const c = KS.collide(nx, nz, 0.38, PL.y, 1.05); nx = c.x; nz = c.z;
     if (KS.Traffic.pushOut && PL.y < 2.5) { const o = KS.Traffic.pushOut(nx, nz, 0.38); if (o.hit) { const c2 = KS.collide(o.x, o.z, 0.38, PL.y, 1.05); nx = c2.x; nz = c2.z; } } // buses, cars and bikes are solid
     PL.x = nx; PL.z = nz;
+    // pushable rocks: walking into a boulder on the mountain shoves it, and it rolls away downhill
+    if (KS.Damage && KS.Damage.pushRocks) KS.Damage.pushRocks(PL.x, PL.z, 0.38, dt);
     // jumping at a wall that is too high to step on starts a climb
     if ((I.hit('Space') || I.hit('KeyJump')) && c.hit && c.solid && c.solid.top > PL.y + 1.05 && c.solid.top < PL.y + 60 && c.solid.base <= PL.y + 0.5 && !PL.swim && !(KS.Battle && KS.Battle.armed() && KS.Cam.aim > 0.5)) {
       PL.climb = { solid: c.solid, t: 0, ph: 0 }; const sx = c.solid.t === 1 ? c.solid.cx : KS.clamp(PL.x, c.solid.x0, c.solid.x1), sz = c.solid.t === 1 ? c.solid.cz : KS.clamp(PL.z, c.solid.z0, c.solid.z1);
@@ -351,7 +427,13 @@
     let g = KS.groundAt(PL.x, PL.z, PL.y, 1.05);
     const wl = KS.waterLevel(PL.x, PL.z), lvl = wl != null ? wl : KS.RIVER.water; // pools and the waterfall pool, else the river
     PL.swim = g < lvl - 0.6;
-    if (PL.swim) g = lvl - 1.25;
+    // diving: hold C to sink to the riverbed, Space to rise back to the surface
+    if (PL.swim) {
+      if (I.down('KeyC')) PL.dive = Math.min(1, (PL.dive || 0) + dt * 0.8);
+      else if (I.down('Space') || I.down('KeyJump')) PL.dive = Math.max(0, (PL.dive || 0) - dt * 1.2);
+      else PL.dive = Math.max(0, (PL.dive || 0) - dt * 0.3); // drift back up slowly
+    } else PL.dive = 0;
+    if (PL.swim) g = KS.lerp(lvl - 1.25, KS.heightAt(PL.x, PL.z) + 0.4, PL.dive || 0);
     if (PL.y <= g) {
       // a hard landing hurts: about 6 m is a bad fall, 15 m can knock you out
       if (PL.vy < -11.5 && !PL.swim) { const dmg = Math.round((-PL.vy - 11.5) * 6.5); KS.Game && KS.Game.hurt(dmg); KS.Game && KS.Game.notify(`🤕 Hard landing! −${dmg} health`, 'bad'); }
@@ -363,8 +445,17 @@
     const pr = PL.person.root; pr.position.set(PL.x, vy, PL.z); pr.rotation.y = PL.h;
     if (PL.umbrella && umbMesh) { umbMesh.position.set(PL.x, PL.y + 2.5, PL.z); umbMesh.rotation.set(0.1, PL.h, 0); }
     const p = PL.person;
-    if (PL.swim) { p.armL.rotation.x = Math.sin(KS.clock * 5) * 2; p.armR.rotation.x = -Math.sin(KS.clock * 5) * 2; p.legL.rotation.x = p.legR.rotation.x = 0.3; }
-    else KS.animWalk(p, dt, PL.grounded ? PL.speed : 0.01);
+    if (PL.swim) {
+      // a proper freestyle: body flat and leaning forward, arms stroking in
+      // turn, legs kicking — and underwater when you dive
+      const sw = Math.sin(KS.clock * 5.5), kw = Math.sin(KS.clock * 11);
+      p.armL.rotation.x = -2.4 + sw * 1.1; p.armR.rotation.x = -2.4 - sw * 1.1;
+      p.armL.rotation.z = 0.25; p.armR.rotation.z = -0.25;
+      p.legL.rotation.x = 0.25 + kw * 0.35; p.legR.rotation.x = 0.25 - kw * 0.35;
+      p.torso.rotation.x = PL.dive > 0.3 ? 0.9 : 0.45; // flat on the water, steeper when diving
+      p.torso.position.y = 0;
+    }
+    else { p.torso.rotation.x = 0; KS.animWalk(p, dt, PL.grounded ? PL.speed : 0.01); }
     if (!PL.grounded && !PL.swim) { p.legL.rotation.x = -0.7; p.legR.rotation.x = 0.35; if (!p.busyArm) { p.armL.rotation.set(-0.9, 0, 0.5); p.armR.rotation.set(-0.6, 0, -0.5); } }
     // footsteps
     if (PL.grounded && PL.speed > 0.5) { const ph = Math.floor(p.phase / Math.PI); if (ph !== PL.stepPh) { PL.stepPh = ph; KS.audio && KS.audio.step(PL.speed > 6); } }
@@ -373,7 +464,12 @@
     if ((I.hit('KeyF') || I.hit('KeyHit')) && PL.punchT <= 0 && !PL.swim && !(KS.Battle && KS.Battle.armed())) {
       PL.punchT = 0.45; PL.punchA = 0; KS.audio && KS.audio.swing();
       setTimeout(() => { const ped = KS.Peds.punch(PL.x, PL.z, PL.h); if (ped && KS.Game) KS.Game.onPunch(ped); }, 120);
+      // a punch can also smash a prop in front of you: benches, chairs, plants, computers
+      const fx2 = Math.sin(PL.h), fz2 = Math.cos(PL.h);
+      if (KS.Damage && KS.Damage.hitPropAt) KS.Damage.hitPropAt(PL.x + fx2 * 1.4, PL.z + fz2 * 1.4, 30, 1.6);
     }
+    // snowball: B scoops snow into a ball on the mountain, B again throws it
+    if (I.hit('KeyB') && !PL.swim && !PL.vehicle) PL.makeSnowball();
     if (PL.punchA != null) { PL.punchA += dt * 3.2; p.busyArm = true; KS.animPunch(p, PL.punchA); if (PL.punchA >= 1) { PL.punchA = null; p.busyArm = false; } }
     if (PL.speed > 3) KS.Peds.bump(PL.x, PL.z, 0.9, dirx * PL.speed, dirz * PL.speed, PL.speed * 0.5);
     // idle animations: check the phone, look around, stretch; eating fruit
@@ -413,6 +509,10 @@
     PL.nitro = Math.max(0, PL.nitro - dt);
     const boost = PL.nitro > 0 ? 1.45 : 1, wet = KS.Weather.wet > 0.3;
     let top = t.speed * 1.55 * eng * boost * (wet ? 0.9 : 1);
+    // slope physics for vehicles too: gravity helps you downhill and fights you uphill
+    const ghx = Math.sin(v.h), ghz = Math.cos(v.h);
+    const grade = (KS.heightAt(v.x + ghx * 2, v.z + ghz * 2) - KS.heightAt(v.x - ghx * 2, v.z - ghz * 2)) / 4;
+    top *= KS.clamp(1 - grade * 0.9, 0.6, 1.35);
     // brake for a speed breaker ahead, on the same curve traffic uses
     const bd = KS.breakerDist ? KS.breakerDist(v.x, v.z, v.h) : Infinity;
     if (bd < 15) top = Math.min(top, Math.sqrt(3.5 * 3.5 + 13 * bd));
@@ -578,6 +678,7 @@
     }
     if (PL.mode === 'ride') return; // just got into a friend's vehicle (net.js moves you from the next frame)
     if (PL.mode === 'foot') footUpdate(dt); else if (PL.mode === 'boat') boatUpdate(dt); else if (PL.vehicle) { if (PL.vehicle.kind === 'helicopter') heliUpdate(dt); else driveUpdate(dt); }
+    snowballUpdate(dt);
     PL.health = Math.min(100, PL.health + dt * (KS.Battle && KS.Battle.on ? 0.3 : 2.5)); // in Battle mode medkits heal, not time
     for (const d of exDrivers) {
       if (d.t <= 0) continue; d.t -= dt;

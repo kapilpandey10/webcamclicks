@@ -36,10 +36,14 @@
     { id: 'top_jersey', slot: 'top', name: 'Football jersey', tokens: 8, set: { topStyle: 'tshirt', top: 0xc8102e } },
     { id: 'top_hoodie', slot: 'top', name: 'Black hoodie', tokens: 10, set: { topStyle: 'jacket', jacket: 0x1c1c1c, top: 0x333333 } },
     { id: 'top_kurta', slot: 'top', name: 'Teal kurta', tokens: 12, set: { topStyle: 'kurta', top: 0x0f6b6b } },
+    { id: 'top_kurtha', slot: 'top', name: 'Red kurtha', tokens: 12, set: { topStyle: 'kurta', top: 0xc8102e } },
+    { id: 'top_blouse', slot: 'top', name: 'Floral blouse', tokens: 8, set: { topStyle: 'blouse', top: 0xe8a0b0 } },
     { id: 'top_trek', slot: 'top', name: 'Trekking jacket', tokens: 15, set: { topStyle: 'jacket', jacket: 0xe86412, top: 0xe0e0e0 } },
     { id: 'top_daura', slot: 'top', name: 'Daura suruwal & coat', tokens: 25, set: { topStyle: 'daura', top: 0xf2ede0, coat: 0x2a2a2a, bottom: 0xf2ede0, bottomStyle: 'suruwal' } },
     { id: 'top_leather', slot: 'top', name: 'Leather jacket', tokens: 30, set: { topStyle: 'jacket', jacket: 0x3a2414, top: 0x111111 } },
     { id: 'bot_jeans', slot: 'bottom', name: 'Blue jeans', tokens: 0, set: { bottom: 0x2b4a7a, bottomStyle: 'pants' } },
+    { id: 'bot_sari', slot: 'bottom', name: 'Red sari', tokens: 15, set: { bottom: 0x7a1f1f, bottomStyle: 'sari', scarf: 0xe9dcc4 } },
+    { id: 'bot_skirt', slot: 'bottom', name: 'Pleated skirt', tokens: 8, set: { bottom: 0x2a2a4a, bottomStyle: 'skirt' } },
     { id: 'bot_black', slot: 'bottom', name: 'Black trousers', tokens: 4, set: { bottom: 0x1e1e22, bottomStyle: 'pants' } },
     { id: 'bot_cargo', slot: 'bottom', name: 'Cargo pants', tokens: 7, set: { bottom: 0x6b6b4a, bottomStyle: 'pants' } },
     { id: 'bot_shorts', slot: 'bottom', name: 'Shorts', tokens: 4, set: { bottom: 0x3a3a46, bottomStyle: 'shorts' } },
@@ -73,15 +77,25 @@
     garage: [{ id: 'cycle', up: { engine: 0, brakes: 0, handling: 0, nitro: 0 }, horn: 'standard', paint: null }, { id: 'sathi', up: { engine: 0, brakes: 0, handling: 0, nitro: 0 }, horn: 'standard', paint: null }],
     items: ['top_bomber', 'top_uthao', 'bot_jeans', 'hat_none', 'hel_white', 'hel_teal', 'eye_none', 'hair_short', 'bag_pack', 'bag_none'],
     wear: { top: 'top_bomber', bottom: 'bot_jeans', hat: 'hat_none', helmet: 'hel_white', glasses: 'eye_none', hair: 'hair_short', bag: 'bag_pack' }, skin: 0xb98159,
+    gender: 'male', // the main character: 'male' or 'female' — picked on the front page, like Free Fire
     uthao: { trips: 0, ratingSum: 0, ratingN: 0, earned: 0 }, sound: old.sound !== false, quality: old.quality,
   }, saved));
   S.save = () => store.set('ks-save2', D);
   if (!D.garage.some((g) => g.id === 'cycle')) D.garage.unshift({ id: 'cycle', up: { engine: 0, brakes: 0, handling: 0, nitro: 0 }, horn: 'standard', paint: null });
 
+  /** pick the main character's gender on the front page; the body rebuilds at once */
+  S.setGender = (g) => {
+    if (g !== 'male' && g !== 'female') return;
+    D.gender = g; S.save();
+    if (KS.Player && KS.Player.rebuild) KS.Player.rebuild();
+  };
   S.playerOutfit = () => {
-    const o = KS.outfitFor('man');
-    Object.assign(o, { skin: D.skin, hair: 0x161210, moustache: false, glasses: false, hat: null, bag: null, coat: null, height: 1.02, build: 1, shoes: 0xf4f4f4 });
+    const female = D.gender === 'female';
+    const o = KS.outfitFor(female ? 'woman' : 'man');
+    Object.assign(o, { skin: D.skin, hair: 0x161210, moustache: false, glasses: false, hat: null, bag: null, coat: null, height: female ? 0.97 : 1.02, build: 1, shoes: 0xf4f4f4 });
+    if (female) { o.hairStyle = 'long'; o.tika = true; }
     for (const slot in D.wear) { const it = S.WARDROBE.find((w) => w.id === D.wear[slot]); if (it && slot !== 'helmet') Object.assign(o, it.set); }
+    if (female && D.wear.hair === 'hair_short') o.hairStyle = 'long'; // the default short hair is a boy's cut; a female hero wears her hair long unless she picks otherwise
     const v = KS.Player && KS.Player.vehicle;
     if (v && KS.isBike(v.kind)) { const h = S.WARDROBE.find((w) => w.id === D.wear.helmet); o.hat = 'helmet'; o.hatColor = h ? h.set.helmet : 0xf4f4f4; }
     return o;

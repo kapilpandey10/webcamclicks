@@ -188,7 +188,7 @@
     const f = new KS.Builder();
     const prop = (name, x, z, ry, y) => {
       const m = KS.Props && KS.Props.build(name);
-      if (m) { m.position.set(x, (y == null ? 0.13 : y) + 0.05, z); m.rotation.y = ry || 0; scene.add(m); return true; }
+      if (m) { m.position.set(x, (y == null ? 0.13 : y) + 0.05, z); m.rotation.y = ry || 0; scene.add(m); if (KS.Damage && KS.Damage.registerProp) KS.Damage.registerProp(m, x, z, name); return true; }
       return false;
     };
     const bed = (x, z) => { if (!prop('bed', x, z, 0)) { f.box(x, 0, z, 1, 0.5, 2.1, 0xf4f4f4); f.box(x, 0.5, z - 0.8, 0.8, 0.15, 0.4, 0xffffff); f.box(x, 0.15, z, 1.05, 0.12, 2.15, 0x1d4fb8); } KS.addBox(x, z, 1.1, 2.2, 0.9); };

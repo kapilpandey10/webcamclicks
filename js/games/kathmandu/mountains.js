@@ -6,9 +6,12 @@
   const T = THREE, KS = window.KS;
   const M = (KS.Mountains = { skiPrice: 150, paraPrice: 150, chiyaPrice: 50 });
   const U = { uTime: { value: 0 } };
-  let snowPts = null, snowVel = null;
+  let snowPts = null, snowVel = null, snowSway = null;
 
-  /** a ribbon that follows a path on the ground: width w, y = path height + lift */
+  /** a ribbon that follows a path on the ground: width w, y = path height + lift.
+      The ribbon always sits ON TOP of the terrain (the higher of the path
+      height and the ground under it), so a road never sinks under a hillside
+      and disappears — that was the old bug. */
   function ribbon(P, w, lift, mat) {
     const pos = [], uv = [], idx = []; let along = 0;
     const pts = []; for (let k = 0; k < P.pts.length - 1; k++) { const [ax, az, ah] = P.pts[k], [bx, bz, bh] = P.pts[k + 1], L = Math.hypot(bx - ax, bz - az), n = Math.ceil(L / 2); for (let i = 0; i < n; i++) { const t = i / n; pts.push([ax + (bx - ax) * t, az + (bz - az) * t, ah + (bh - ah) * t]); } }
@@ -16,7 +19,7 @@
     pts.forEach((p, i) => {
       const q = pts[Math.min(pts.length - 1, i + 1)], o = pts[Math.max(0, i - 1)], dx = q[0] - o[0], dz = q[1] - o[1], L = Math.hypot(dx, dz) || 1, nx = -dz / L, nz = dx / L;
       if (i) along += Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]);
-      for (const s of [-1, 1]) { const x = p[0] + nx * s * w / 2, z = p[1] + nz * s * w / 2; pos.push(x, Math.max(p[2], KS.heightAt(x, z) - 0.5) + lift, z); uv.push(s < 0 ? 0 : 1, along / w); }
+      for (const s of [-1, 1]) { const x = p[0] + nx * s * w / 2, z = p[1] + nz * s * w / 2; pos.push(x, Math.max(p[2], KS.heightAt(x, z), KS.meshHeightAt ? KS.meshHeightAt(x, z) : -1e9) + lift, z); uv.push(s < 0 ? 0 : 1, along / w); }
       if (i) { const b = (i - 1) * 2; idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3); }
     });
     const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
@@ -41,12 +44,54 @@
     s.position.set(x, y, z); s.rotation.y = ry; scene.add(s); return s;
   }
 
+  /* a safety barrier (guardrail) along a mountain road: steel posts every
+     few metres and a red-and-white rail, on the downhill side — the side
+     where the ground falls away from the road. */
+  function guardrail(scene, P, step) {
+    const b = new KS.Builder();
+    const pts = [];
+    for (let k = 0; k < P.pts.length - 1; k++) {
+      const [ax, az, ah] = P.pts[k], [bx, bz, bh] = P.pts[k + 1], L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(L / step));
+      for (let i = 0; i <= n; i++) { const t = i / n; pts.push([ax + (bx - ax) * t, az + (bz - az) * t, ah + (bh - ah) * t]); }
+    }
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i], q = pts[Math.min(pts.length - 1, i + 1)], o = pts[Math.max(0, i - 1)];
+      const dx = q[0] - o[0], dz = q[1] - o[1], L = Math.hypot(dx, dz) || 1, nx = -dz / L, nz = dx / L;
+      // which side falls away? the downhill side gets the rail
+      const hl = KS.heightAt(p[0] + nx * 4.5, p[1] + nz * 4.5), hr = KS.heightAt(p[0] - nx * 4.5, p[1] - nz * 4.5);
+      const drop = hl - hr, s = drop < -1 ? 1 : drop > 1 ? -1 : 0;
+      const gy = Math.max(p[2], KS.heightAt(p[0], p[1]), KS.meshHeightAt ? KS.meshHeightAt(p[0], p[1]) : -1e9);
+      if (s === 0) { // flat on both sides: a rail on each side keeps the road honest
+        for (const sd of [-1, 1]) { const x = p[0] + nx * sd * 3.6, z = p[1] + nz * sd * 3.6, y = Math.max(p[2], KS.heightAt(x, z), KS.meshHeightAt ? KS.meshHeightAt(x, z) : -1e9); b.cyl(x, y, z, 0.06, 0.95, 0x888888, 6); b.box(x, y + 0.85, z, 0.1, 0.12, 0.1, 0xc8102e); }
+      } else {
+        const x = p[0] + nx * s * 3.6, z = p[1] + nz * s * 3.6, y = Math.max(p[2], KS.heightAt(x, z), KS.meshHeightAt ? KS.meshHeightAt(x, z) : -1e9);
+        b.cyl(x, y, z, 0.06, 0.95, 0x888888, 6);
+      }
+      // the rail itself: a continuous bar between this post and the next, on the drop side
+      if (i < pts.length - 1) {
+        const n2 = pts[i + 1];
+        const sides = s === 0 ? [-1, 1] : [s];
+        for (const sd of sides) {
+          const x1 = p[0] + nx * sd * 3.6, z1 = p[1] + nz * sd * 3.6, x2 = n2[0] + nx * sd * 3.6, z2 = n2[1] + nz * sd * 3.6;
+          const mx = (x1 + x2) / 2, mz = (z1 + z2) / 2, my = Math.max((p[2] + n2[2]) / 2, KS.heightAt(mx, mz), KS.meshHeightAt ? KS.meshHeightAt(mx, mz) : -1e9) + 0.85;
+          const len = Math.hypot(x2 - x1, z2 - z1), ry = Math.atan2(x2 - x1, z2 - z1);
+          b.box(mx, my, mz, 0.08, 0.14, len + 0.1, (i % 2 ? 0xf4f4f4 : 0xc8102e), ry);
+        }
+      }
+    }
+    scene.add(KS.mesh(b));
+  }
+
   /* ======================= the two mountain roads ======================= */
   function buildRoads(scene) {
     const snow = KS.MOUNTAIN_PATHS.find((p) => p.id === 'snowroad'), para = KS.MOUNTAIN_PATHS.find((p) => p.id === 'pararoad');
+    // the Shivapuri road is snow-covered: white with grey tyre tracks down the middle
+    const snowRoadMat = new T.MeshLambertMaterial({ map: KS.tex(256, 256, (g, ww, hh) => { g.fillStyle = '#e8ecf0'; g.fillRect(0, 0, ww, hh); g.fillStyle = '#d5dae0'; g.fillRect(0, 0, ww, 10); g.fillRect(0, hh - 10, ww, 10); g.fillStyle = '#b9c0c8'; for (const x of [ww * 0.3, ww * 0.7]) { g.fillRect(x - 14, 0, 28, hh); } g.fillStyle = '#f2c418'; g.fillRect(ww / 2 - 3, 0, 6, hh); }), polygonOffset: true, polygonOffsetFactor: -2 });
     const roadMat = new T.MeshLambertMaterial({ color: 0x55565a, polygonOffset: true, polygonOffsetFactor: -2 });
-    scene.add(ribbon(snow, 7, 0.06, roadMat));
-    scene.add(ribbon(para, 7, 0.06, roadMat));
+    scene.add(ribbon(snow, 7, 0.12, snowRoadMat));
+    scene.add(ribbon(para, 7, 0.12, roadMat));
+    guardrail(scene, snow, 7);
+    guardrail(scene, para, 7);
     const b = new KS.Builder();
     const s1 = snow.pts[0], s2 = para.pts[0];
     signBoard(scene, 'शिवपुरी हिमाल', 'SHIVAPURI SNOW PEAK →', s1[0] + 5, 2.6, s1[1] - 6, 0.15);
@@ -54,10 +99,13 @@
     signBoard(scene, 'प्याराग्लाइडिङ', 'PARAGLIDING HILL →', s2[0] + 2, 2.6, s2[1] + 6, -0.4);
     b.box(s2[0] + 2, 0, s2[1] + 6, 0.15, 2, 0.15, 0x666666);
     scene.add(KS.mesh(b));
-    // a small bridge where the snow stream crosses the snow road, and where the
-    // stream meets the Bagmati the water joins the river
+    // ⚠️ slippery road: the snow road ices over — a warning where the climb begins
+    const sl = snow.pts[1], sly = Math.max(sl[2], KS.heightAt(sl[0] + 4, sl[1])) ;
+    signBoard(scene, '⚠️ चिप्लो सडक', 'SLIPPERY ROAD · SNOW & ICE', sl[0] + 4, sly + 2.6, sl[1], 0.4, 4.6, 1.6, '#c8102e');
+    const pb = new KS.Builder(); pb.box(sl[0] + 4, sly, sl[1], 0.15, 2.2, 0.15, 0x666666); scene.add(KS.mesh(pb));
+    // a small bridge where the snow stream crosses near the snow road
     const st = KS.MOUNTAIN_PATHS.find((p) => p.id === 'snowstream');
-    const bx = -300, bz = -800, by = KS.heightAt(bx, bz) + 1.1;
+    const bx = -310, bz = -1082, by = KS.heightAt(bx, bz) + 1.1;
     const e = new KS.Builder();
     e.box(bx, by - 0.2, bz, 2.4, 0.2, 8, 0x7a5432); for (const sd of [-1, 1]) e.box(bx + sd * 1.15, by, bz, 0.08, 1, 8, 0x5a3a22);
     scene.add(KS.mesh(e));
@@ -82,8 +130,16 @@
     b.box(tx, ty + 1.1, tz + 2.27, 1.4, 1.8, 0.05, 0x2a2a2a); KS.addBox(tx, tz, 6, 4.5, ty + 3.2);
     for (let k = 0; k < 3; k++) { const x = tx - 6 + k * 3, z = tz + 5, y = KS.heightAt(x, z); b.box(x, y, z, 2, 0.45, 0.5, 0x7a5432); KS.sitSpots.push([x, z, y + 0.45, KS.pick(['tourist', 'trekker', 'man', 'woman'])]); }
     scene.add(KS.mesh(b));
-    signBoard(scene, '⛷️ स्की भाडा', 'SKI & SNOWBOARD HIRE · रु 150', hx, hy + 4.6, hz + 2.1, 0, 5.2, 1.8, '#1d3a8a');
-    signBoard(scene, '☕ चिया घर', 'TEA HOUSE · HOT CHIYA · रु 50', tx, ty + 4.6, tz + 2.3, 0, 5.2, 1.8, '#7a1f1f');
+    // signs at eye level on posts in front of the huts, facing the road — so
+    // you can actually read them when you walk up (the old ones sat above the
+    // roof, hidden behind it)
+    const sb = new KS.Builder();
+    const signPost = (x, y, z) => { sb.box(x, y, z, 0.16, 2.2, 0.16, 0x666666); };
+    signPost(hx, hy, hz + 3.6); signBoard(scene, '⛷️ स्की भाडा', 'SKI & SNOWBOARD HIRE · रु 150', hx, hy + 2.7, hz + 3.6, 0, 6.4, 2.2, '#1d3a8a');
+    signPost(tx, ty, tz + 3.8); signBoard(scene, '☕ चिया घर', 'TEA HOUSE · HOT CHIYA · रु 50', tx, ty + 2.7, tz + 3.8, 0, 6.4, 2.2, '#7a1f1f');
+    // how to ride the board, right where you hire it
+    signPost(hx + 8, hy, hz + 3.6); signBoard(scene, '⛷️ BOARD कसरी चलाउने?', 'A/D steer · W tuck = faster · S brake · E step off', hx + 8, hy + 2.7, hz + 3.6, 0, 6.4, 2.2, '#0a6a2a');
+    scene.add(KS.mesh(sb));
     // the ski run: a groomed slope down the south face, marked with slalom flags
     const run = [[P.x, P.z + 10], [P.x - 4, P.z + 120], [P.x + 6, P.z + 180], [P.x - 2, P.z + 240]];
     M.skiRun = run;
@@ -96,15 +152,22 @@
       }
     }
     scene.add(KS.mesh(f));
-    // snowfall over the peak: white points falling, looping back to the top
-    const N = 600, pos = new Float32Array(N * 3); snowVel = new Float32Array(N);
+    // snowfall over the peak: a thick, drifting snowstorm you can ride through
+    const N = 1400, pos = new Float32Array(N * 3); snowVel = new Float32Array(N); snowSway = new Float32Array(N);
     for (let i = 0; i < N; i++) {
-      pos[i * 3] = P.x + KS.r(-300, 300); pos[i * 3 + 1] = KS.heightAt(P.x, P.z) + KS.r(0, 140); pos[i * 3 + 2] = P.z + KS.r(-300, 300);
-      snowVel[i] = KS.r(1.5, 3.5);
+      pos[i * 3] = P.x + KS.r(-320, 320); pos[i * 3 + 1] = KS.heightAt(P.x, P.z) + KS.r(0, 150); pos[i * 3 + 2] = P.z + KS.r(-320, 320);
+      snowVel[i] = KS.r(1.2, 3.8); snowSway[i] = KS.r(0, Math.PI * 2);
     }
     const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(pos, 3));
-    snowPts = new T.Points(g, new T.PointsMaterial({ color: 0xffffff, size: 0.55, transparent: true, opacity: 0.9 }));
+    snowPts = new T.Points(g, new T.PointsMaterial({ color: 0xffffff, size: 0.7, transparent: true, opacity: 0.95 }));
     snowPts.frustumCulled = false; scene.add(snowPts);
+    // snow drifts piled against the hut, the guardrails and the roadside
+    const dr = new KS.Builder();
+    for (let k = 0; k < 26; k++) {
+      const a = KS.r(0, Math.PI * 2), r = KS.r(4, 14), x = hx + Math.cos(a) * r, z = hz + Math.sin(a) * r, y = KS.heightAt(x, z);
+      dr.sphere(x, y, z, KS.r(0.8, 2.2), 0xf4f6f8, 0.55, 8);
+    }
+    scene.add(KS.mesh(dr, KS.M.vc, false));
     // a temperature sign at the top, so you can see how cold it is up here
     const temp = KS.temperatureAt(P.x, P.z);
     signBoard(scene, `🌡️ ${temp}°C`, `SHIVAPURI ${Math.round(KS.heightAt(P.x, P.z))} m · हिमाल`, P.x + 6, KS.heightAt(P.x + 6, P.z + 6) + 2.6, P.z + 6, -0.5, 4.6, 1.6, '#1d3a8a');
@@ -126,8 +189,11 @@
     scene.add(KS.mesh(b));
     const wind = new T.Mesh(new T.ConeGeometry(0.3, 1.4, 8, 1, true).rotateZ(Math.PI / 2), new T.MeshLambertMaterial({ color: 0xff7a00, side: T.DoubleSide }));
     wind.position.set(ox + 3.5, oy + 4.4, oz - 2); scene.add(wind); M.paraSock = wind;
-    signBoard(scene, '🪂 प्याराग्लाइडिङ', 'PARAGLIDING · रु 150 · FLY TO THE VALLEY', ox, oy + 4.2, oz + 1.8, 0, 5.2, 1.8, '#0a8a9a');
-    signBoard(scene, '🛍️ पसल', 'HILL SHOP · SNACKS & CHIYA', sx, sy + 3.8, sz + 1.6, 0, 4.2, 1.4, '#7a1f1f');
+    const pb2 = new KS.Builder();
+    const signPost2 = (x, y, z) => { pb2.box(x, y, z, 0.16, 2.2, 0.16, 0x666666); };
+    signPost2(ox, oy, oz + 3.4); signBoard(scene, '🪂 प्याराग्लाइडिङ', 'PARAGLIDING · रु 150 · FLY TO THE VALLEY', ox, oy + 2.7, oz + 3.4, 0, 6.4, 2.2, '#0a8a9a');
+    signPost2(sx, sy, sz + 3.2); signBoard(scene, '🛍️ पसल', 'HILL SHOP · SNACKS & CHIYA', sx, sy + 2.7, sz + 3.2, 0, 5.4, 1.8, '#7a1f1f');
+    scene.add(KS.mesh(pb2));
     // the takeoff: a flat grassy ramp facing the valley, with a windsock
     const t = new KS.Builder();
     t.box(hx, hy - 0.1, hz + 6, 10, 0.3, 14, 0x6a8a4a);
@@ -233,10 +299,13 @@
     if (M.campFire) { const s = 1 + Math.sin(KS.clock * 7) * 0.12; M.campFire.scale.set(s, 1 + Math.sin(KS.clock * 9) * 0.15, s); }
     if (M.campLight) M.campLight.intensity = (KS.time < 6 || KS.time > 18) ? 1.4 + Math.sin(KS.clock * 7) * 0.3 : 0;
     if (snowPts) {
-      const pos = snowPts.geometry.attributes.position, P = KS.SNOWPEAK;
+      const pos = snowPts.geometry.attributes.position, P = KS.SNOWPEAK, t = KS.clock;
       for (let i = 0; i < pos.count; i++) {
         let y = pos.getY(i) - snowVel[i] * dt;
-        if (y < KS.heightAt(pos.getX(i), pos.getZ(i))) { y = KS.heightAt(P.x, P.z) + KS.r(0, 140); pos.setX(i, P.x + KS.r(-300, 300)); pos.setZ(i, P.z + KS.r(-300, 300)); }
+        // the wind pushes the flakes sideways as they fall, so the snow drifts
+        const sw = Math.sin(t * 0.7 + snowSway[i]) * 1.1 * dt;
+        pos.setX(i, pos.getX(i) + sw); pos.setZ(i, pos.getZ(i) + Math.cos(t * 0.5 + snowSway[i]) * 0.6 * dt);
+        if (y < KS.heightAt(pos.getX(i), pos.getZ(i))) { y = KS.heightAt(P.x, P.z) + KS.r(0, 150); pos.setX(i, P.x + KS.r(-320, 320)); pos.setZ(i, P.z + KS.r(-320, 320)); }
         pos.setY(i, y);
       }
       pos.needsUpdate = true;

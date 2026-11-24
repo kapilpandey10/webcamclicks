@@ -218,6 +218,9 @@
   A.step = (run) => noise(0.06, run ? 0.05 : 0.03, run ? 500 : 350, 'lowpass');
   A.punch = () => { tone(95, 0.12, 'sine', 0.35, 0, 50); noise(0.08, 0.25, 1200, 'bandpass'); };
   A.swing = () => noise(0.15, 0.06, 1800, 'bandpass', 0, 1.5);
+  A.snow = () => noise(0.25, 0.12, 3000, 'highpass'); // scooping snow into a ball: a soft crunch
+  A.throw = () => noise(0.3, 0.1, 1600, 'bandpass', 0, 2); // the whoosh of a snowball leaving your hand
+  A.splat = () => { noise(0.18, 0.3, 900, 'lowpass'); tone(180, 0.1, 'sine', 0.15, 0, 90); }; // a snowball bursting on impact
   A.nitro = () => { noise(1.2, 0.3, 900, 'bandpass', 0, 0.6); tone(120, 1.0, 'sawtooth', 0.08, 0, 260); };
   A.shutter = () => { noise(0.04, 0.3, 3000, 'highpass'); noise(0.05, 0.25, 2500, 'highpass', 0.08); };
   A.speedcam = () => { A.shutter(); tone(1760, 0.15, 'square', 0.04, 0.12); };

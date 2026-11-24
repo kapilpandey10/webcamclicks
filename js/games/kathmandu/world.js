@@ -163,7 +163,10 @@
   /* ================= terrain & water ================= */
   function terrain(scene) {
     const B = KS.BOUNDS, SX = B.x1 - B.x0, SZ = B.z1 - B.z0;
-    const geo = new T.PlaneGeometry(SX, SZ, Math.round(SX / 11), Math.round(SZ / 11)); geo.rotateX(-Math.PI / 2); geo.translate((B.x0 + B.x1) / 2, 0, (B.z0 + B.z1) / 2);
+    const segX = Math.round(SX / 8), segZ = Math.round(SZ / 8);
+    const geo = new T.PlaneGeometry(SX, SZ, segX, segZ); geo.rotateX(-Math.PI / 2); geo.translate((B.x0 + B.x1) / 2, 0, (B.z0 + B.z1) / 2);
+    // the mesh grid, so roads and rails can sit on the VISIBLE ground (see KS.meshHeightAt)
+    KS.terrainGrid = { x0: B.x0, z0: B.z0, dx: SX / segX, dz: SZ / segZ, segX, segZ };
     const pos = geo.attributes.position, cols = new Float32Array(pos.count * 3), c = new T.Color();
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), z = pos.getZ(i), h = KS.heightAt(x, z, true); pos.setY(i, h);
@@ -923,6 +926,7 @@
       for (const [x, z, ry] of (KS.propBenches || [])) {
         const m = KS.Props.build('bench'); if (!m) continue;
         m.position.set(x, KS.heightAt(x, z) + 0.05, z); m.rotation.y = ry; scene.add(m);
+        if (KS.Damage && KS.Damage.registerProp) KS.Damage.registerProp(m, x, z, 'bench');
       }
     }
     mountains(scene);

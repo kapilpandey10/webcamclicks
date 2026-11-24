@@ -676,7 +676,7 @@
       document.querySelectorAll('.charcard').forEach((c) => c.classList.toggle('sel', c.dataset.gender === D.gender));
       const row = $('wardrobeRow'); if (!row) return;
       row.innerHTML = '';
-      for (const it of KS.Shop.WARDROBE.filter((w) => w.slot === 'top' && D.items.includes(it.id))) {
+      for (const it of KS.Shop.WARDROBE.filter((w) => w.slot === 'top' && D.items.includes(w.id))) {
         const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (D.wear.top === it.id ? ' sel' : ''); b.textContent = it.name;
         b.onclick = () => { D.wear.top = it.id; KS.Shop.save(); KS.Player && KS.Player.rebuild && KS.Player.rebuild(); renderCharPick(); };
         row.appendChild(b);
@@ -962,5 +962,9 @@
     $('camName').textContent = '🎥 ' + KS.CAMS[KS.Cam.mode];
   }
 
-  addEventListener('load', () => { Game.start().catch((e) => { $('loadmsg').textContent = 'Could not start 3D: ' + e.message; console.error(e); }); });
+  // If booting fails after the title is already up, the error used to be
+  // written into the hidden loader, so the user saw a normal-looking title
+  // with dead buttons and no message at all. Show the loader again with the
+  // error, so a boot failure is never silent.
+  addEventListener('load', () => { Game.start().catch((e) => { console.error(e); $('loadmsg').textContent = 'Could not start 3D: ' + e.message + ' — reload the page and try again.'; $('loading').hidden = false; }); });
 })();

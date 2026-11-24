@@ -3,7 +3,7 @@
 (function () {
   'use strict';
   const T = THREE, KS = window.KS, G = KS.G;
-  const TR = (KS.Traffic = { list: [] });
+  const TR = (KS.Traffic = { list: [], _nextId: 0, remote: false });
   const MIX = ['bike', 'scooter', 'bike', 'scooter', 'bike', 'uthao', 'scooter', 'car', 'bike', 'sport', 'car', 'taxi', 'scooter', 'micro', 'bike', 'tempo', 'bus', 'car', 'minibus',
     'uthao', 'sedan', 'suv', 'taxi', 'scooter', 'ev', 'bike', 'truck', 'micro', 'police', 'pickup', 'cruiser', 'bus', 'scooter', 'taxi', 'bike', 'car', 'uthao', 'minibus', 'ambulance', 'scooter', 'policebike', 'bicycle', 'bike', 'bicycle', 'policebike', 'scooter'];
 
@@ -63,7 +63,7 @@
     const uthao = type === 'uthao';
     const kind = uthao ? KS.pick(['bike', 'scooter']) : type;
     const vt = KS.VTYPES[kind], vis = KS.buildVehicle(kind, { uthao, pillion: uthao ? KS.chance(0.6) : undefined, parcel: uthao && KS.chance(0.4) });
-    const v = { kind, type: vt, ...vis, uthao, lane: {}, ai: true, speed: 0, t: 0, x: 0, z: 0, y: 0.06, h: 0, stuck: 0, ignore: 0, honkT: KS.r(2, 12), lat: 0, side: 0, outer: KS.chance(0.4), maxSpeed: vt.speed * KS.r(0.8, 1.1), stopT: 0, callT: KS.r(3, 9) };
+    const v = { id: ++TR._nextId, kind, type: vt, ...vis, uthao, lane: {}, ai: true, speed: 0, t: 0, x: 0, z: 0, y: 0.06, h: 0, stuck: 0, ignore: 0, honkT: KS.r(2, 12), lat: 0, side: 0, outer: KS.chance(0.4), maxSpeed: vt.speed * KS.r(0.8, 1.1), stopT: 0, callT: KS.r(3, 9) };
     if (KS.isBike(kind)) v.lat = KS.r(-0.6, 1.4);
     if (kind === 'ambulance') v.maxSpeed = vt.speed * 1.15;
     placeOnRandomEdge(v, px, pz, minD, maxD, minD >= 300);
@@ -101,7 +101,7 @@
     const rb = v.root.userData.routeBoard; if (rb) rb.material = KS.routeSignMat(R.np);
   }
   TR.init = (scene, count, px, pz) => {
-    TR.scene = scene; TR.initGraph(); buildRoutes();
+    TR.scene = scene; TR.fleetCount = count; TR.initGraph(); buildRoutes();
     // a fixed fleet that lives all over the valley; it is simulated everywhere and only drawn near you
     for (let i = 0; i < count; i++) TR.spawn(MIX[i % MIX.length], 0, 0, 0, 1100);
     for (const v of TR.list) if (v.kind === 'bus' || v.kind === 'minibus') assignRoute(v);
@@ -112,7 +112,7 @@
   /** a parked vehicle the player can take */
   TR.park = (type, x, z, h, opt = {}) => {
     const vt = KS.VTYPES[type], vis = KS.buildVehicle(type, { rider: false, conductor: false, ...opt });
-    const v = { kind: type, type: vt, ...vis, lane: {}, ai: false, parked: true, speed: 0, x, z, y: KS.groundAt(x, z, 50, 60) + 0.06, h, lat: 0, side: 0, maxSpeed: vt.speed, owned: opt.owned };
+    const v = { id: ++TR._nextId, kind: type, type: vt, ...vis, lane: {}, ai: false, parked: true, speed: 0, x, z, y: KS.groundAt(x, z, 50, 60) + 0.06, h, lat: 0, side: 0, maxSpeed: vt.speed, owned: opt.owned };
     if (v.rider) v.rider.visible = false;
     v.root.position.set(x, v.y, z); v.root.rotation.y = h; TR.list.push(v); TR.scene.add(v.root); return v;
   };
@@ -181,11 +181,75 @@
   }
   TR.signalAt = (x, z) => { for (const s of KS.signals) if (Math.abs(x - s.x) < s.hw + 1 && Math.abs(z - s.z) < s.hw + 1) return s; return null; };
 
-  /* ---------- police pursuit ---------- */
-  TR.startChase = (v) => { v.chase = true; v.ai = true; v.parked = false; v.idlePolice = false; v.stuck = 0; v.rev = 0; KS.setSiren(v, true); if (v.rider) v.rider.visible = true; };
-  TR.endChase = (v) => { v.chase = false; KS.setSiren(v, false); v.ai = false; v.parked = true; v.idlePolice = true; v.speed = 0; };
+  /* ---------- the same city for everyone: the host simulates traffic, guests mirror it ----------
+     In multiplayer the host is the only client that runs the traffic AI. Every 0.25 s it
+     broadcasts where every vehicle near a player is; guests throw away their own fleet and
+     show the host's vehicles instead, so a police chase is the same cars in the same place
+     on every screen. Parked vehicles you can take stay local on every client. */
+  TR.setRemote = (on) => {
+    if (!!on === !!TR.remote) return;
+    TR.remote = !!on;
+    if (on) {
+      for (const v of [...TR.list]) if (v.ai) TR.remove(v); // the host's fleet replaces ours
+    } else {
+      for (const v of [...TR.list]) if (v.remote) TR.remove(v);
+      TR.refleet();
+    }
+  };
+  /** fresh local fleet after leaving multiplayer (or taking over as host) */
+  TR.refleet = () => {
+    const P = KS.Player;
+    for (let i = 0; i < (TR.fleetCount || 30); i++) TR.spawn(MIX[i % MIX.length], P.x, P.z, 0, 1100);
+    for (const v of TR.list) if (v.ai && (v.kind === 'bus' || v.kind === 'minibus')) assignRoute(v);
+  };
+  /** one entry per vehicle near any player: [id, kind, x, z, heading, speed, chase, siren, target] */
+  TR.snapshot = (points, radius) => {
+    const out = [], r2 = radius * radius;
+    for (const v of TR.list) {
+      if (!v.ai || v.dormant || v.lot) continue;
+      let near = false;
+      for (const p of points) { const dx = v.x - p.x, dz = v.z - p.z; if (dx * dx + dz * dz < r2 || (v.chase && dx * dx + dz * dz < 450 * 450)) { near = true; break; } }
+      if (!near) continue;
+      const tgt = v.netTarget ? v.netTarget.id : 'host';
+      out.push([v.id, v.kind, +v.x.toFixed(1), +v.z.toFixed(1), +v.h.toFixed(2), +v.speed.toFixed(1), v.chase ? 1 : 0, v.sirenOn ? 1 : 0, tgt]);
+    }
+    return out;
+  };
+  TR.applySnapshot = (list) => {
+    if (!list) return;
+    const now = KS.clock, seen = new Set();
+    for (const e of list) {
+      const [id, kind, x, z, h, speed, chase, siren, target] = e;
+      seen.add(id);
+      let v = TR.list.find((q) => q.remote && q.netId === id);
+      if (!v) {
+        if (!KS.VTYPES[kind]) continue;
+        const vis = KS.buildVehicle(kind, {});
+        v = { id: ++TR._nextId, netId: id, kind, type: KS.VTYPES[kind], ...vis, lane: {}, ai: true, remote: true, speed: 0, x, z, y: 0.06, h, stuck: 0, lat: 0, side: 0, maxSpeed: KS.VTYPES[kind].speed, roamT: 1e9 };
+        TR.list.push(v); TR.scene.add(v.root);
+      }
+      v.net = { x, z, h, speed, chase: !!chase, siren: !!siren, target, t: now };
+      v.chase = !!chase; v.netTargetId = target; // readable right away, not only after the next drive step
+      if (v.chase) v.dist = Math.hypot(v.x - KS.Player.x, v.z - KS.Player.z);
+      if (!!siren !== !!v.sirenOn) KS.setSiren(v, !!siren);
+    }
+    for (const v of [...TR.list]) if (v.remote && (!seen.has(v.netId) || (v.net && now - v.net.t > 3))) TR.remove(v);
+  };
+  /** a mirrored vehicle glides towards the host's last reported position */
+  function remoteDrive(v, dt) {
+    const n = v.net; if (!n) return;
+    const k = Math.min(1, dt * 7);
+    v.x += (n.x - v.x) * k; v.z += (n.z - v.z) * k; v.h = KS.angLerp(v.h, n.h, k); v.speed = n.speed;
+    v.chase = n.chase; v.netTargetId = n.target;
+    if (v.chase) v.dist = Math.hypot(v.x - KS.Player.x, v.z - KS.Player.z);
+    if (!!n.siren !== !!v.sirenOn) KS.setSiren(v, n.siren);
+    v.y = KS.heightAt(v.x, v.z) + 0.06;
+    v.root.position.set(v.x, v.y, v.z); v.root.rotation.set(0, v.h, 0);
+  }
+  TR.startChase = (v) => { if (v.remote) return; /* mirrored chases belong to the host */ v.chase = true; v.ai = true; v.parked = false; v.idlePolice = false; v.stuck = 0; v.rev = 0; KS.setSiren(v, true); if (v.rider) v.rider.visible = true; };
+  TR.endChase = (v) => { if (v.remote) return; v.chase = false; KS.setSiren(v, false); v.ai = false; v.parked = true; v.idlePolice = true; v.speed = 0; };
   TR.spawnPolice = (px, pz) => { const v = TR.spawn(KS.chance(0.45) ? 'policebike' : 'police', px, pz, 330, 520); TR.startChase(v); return v; };
-  TR.chasers = () => TR.list.filter((v) => v.chase && !v.netTarget);
+  TR.chasers = () => TR.list.filter((v) => v.chase && (v.remote ? v.netTargetId === (KS.Net && KS.Net.me) : !v.netTarget));
   function chaseUpdate(v, dt, ctx) {
     const P = v.netTarget || KS.Player, pv = v.netTarget ? null : P.vehicle, heat = v.netTarget ? v.netTarget.heat || 1 : KS.Law ? KS.Law.heat : 1; // netTarget: a friend the police are after
     const tx = P.x + (pv ? Math.sin(pv.h) * pv.speed * 0.6 : 0), tz = P.z + (pv ? Math.cos(pv.h) * pv.speed * 0.6 : 0);
@@ -233,7 +297,7 @@
     const L = v.home; if (!L) return false;
     const bay = L.bays.find((b) => !b.v && (b.bus === !!(v.type.seats === 'bus' || v.kind === 'micro' || v.kind === 'tempo') || !L.bus)); if (!bay) return false;
     bay.v = v; v.bay = bay; v.speed = 0;
-    if (quick) { v.lot = { stage: 'park', t: KS.r(5, 120) }; v.x = bay.x; v.z = bay.z; v.h = bay.h; place(v); return true; }
+    if (quick) { v.lot = { stage: 'park', t: KS.r(5, 40) }; v.x = bay.x; v.z = bay.z; v.h = bay.h; place(v); return true; }
     const n = nodes[L.node], from = [v.x, v.z];
     v.lot = { stage: 'in', u: 0, p0: from, p1: [n.x + (bay.x - n.x) * 0.15, n.z + (bay.z - n.z) * 0.15], p2: [bay.x, bay.z], len: Math.hypot(bay.x - v.x, bay.z - v.z) + 4 };
     return true;
@@ -259,7 +323,7 @@
     v.x = x; v.z = z; if (Math.hypot(x2 - x, z2 - z) > 1e-4) v.h = Math.atan2(x2 - x, z2 - z);
     if (v.root.visible) place(v);
     if (lt.u >= 1) {
-      if (lt.stage === 'in') { v.h = v.bay.h; v.lot = { stage: 'park', t: v.type.seats === 'bus' ? KS.r(12, 30) : KS.r(25, 120) }; }
+      if (lt.stage === 'in') { v.h = v.bay.h; v.lot = { stage: 'park', t: v.type.seats === 'bus' ? KS.r(8, 18) : KS.r(10, 35) }; }
       else { v.bay.v = null; v.bay = null; v.lot = null; v.a = lt.a; v.b = lt.b; v.lane = laneOf(v, lt.a, lt.b, {}); v.t = 0; v.mode = 'lane'; v.speed = 2; }
     }
   }
@@ -326,8 +390,10 @@
     }
   }
 
-  /* ---------- how many vehicles are out depends on the time of day ---------- */
-  TR.density = () => { const H = KS.time; return H < 5 ? 0.12 : H < 6.5 ? 0.3 : H < 7.5 ? 0.6 : H < 10 ? 0.95 : H < 16 ? 0.6 : H < 19.5 ? 0.9 : H < 22 ? 0.42 : 0.18; };
+  /* ---------- how many vehicles are out depends on the time of day ----------
+     Never a ghost town: even at 3 am at least 45% of the fleet is out, so the streets
+     always have something moving near you. */
+  TR.density = () => { const H = KS.time; return Math.max(0.45, H < 5 ? 0.12 : H < 6.5 ? 0.3 : H < 7.5 ? 0.6 : H < 10 ? 0.95 : H < 16 ? 0.6 : H < 19.5 ? 0.9 : H < 22 ? 0.42 : 0.18); };
   let balT = 0;
   function balance(dt, ctx) {
     balT -= dt; if (balT > 0) return; balT = 0.4;
@@ -338,10 +404,10 @@
     if (out.length > budget) { // send one home (out of sight)
       const v = out.find((q) => hidden(q.x, q.z) && q !== ctx.playerVehicle);
       if (v) { v.path = null; if (!enterLot(v, true)) { v.dormant = true; v.root.visible = false; } }
-    } else if (out.length < budget - 1) { // bring one out
+    } else if (out.length < budget - 1) { // bring one out: a sleeping car near you first, so the street fills in where you are
       const p = fleet.find((q) => q.lot && q.lot.stage === 'park' && hidden(nodes[q.home.node].x, nodes[q.home.node].z));
       if (p) p.lot.t = 0;
-      else { const d = fleet.find((q) => q.dormant); if (d) { d.dormant = false; placeOnRandomEdge(d, ctx.px, ctx.pz, 0, 1100, true); } }
+      else { const d = fleet.find((q) => q.dormant && Math.hypot(q.x - cam.x, q.z - cam.z) < 400); if (d) { d.dormant = false; placeOnRandomEdge(d, ctx.px, ctx.pz, 20, 400, false); } else { const d2 = fleet.find((q) => q.dormant); if (d2) { d2.dormant = false; placeOnRandomEdge(d2, ctx.px, ctx.pz, 0, 1100, true); } } }
     }
   }
 
@@ -351,10 +417,11 @@
     const blink = Math.floor(KS.clock * 4) % 2;
     KS.sirenMats[0].color.setHex(blink ? 0xff2020 : 0x400000); KS.sirenMats[1].color.setHex(blink ? 0x001040 : 0x2050ff);
     const ambs = TR.list.filter((v) => v.kind === 'ambulance' && v.ai);
-    balance(dt, ctx); stopsUpdate(dt, ctx);
+    if (!TR.remote) { balance(dt, ctx); stopsUpdate(dt, ctx); } // the host decides all of this; guests mirror it
     for (const v of TR.list) {
       const dCam = Math.hypot(v.x - cx, v.z - cz);
       v.root.visible = dCam < 300 || v === ctx.playerVehicle || v.chase;
+      if (TR.remote && v.remote) { remoteDrive(v, dt); continue; } // the host's vehicle, gliding to its next reported spot
       if (v.idlePolice && !v.ai && dCam > 330) { v.idlePolice = false; TR.recycle(v, px, pz); continue; }
       if (v.lot) { lotUpdate(v, dt, dCam); continue; }
       if (v.dormant) { v.root.visible = false; continue; }

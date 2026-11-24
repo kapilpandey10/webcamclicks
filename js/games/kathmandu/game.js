@@ -56,7 +56,12 @@
     KS.Uthao.trip && KS.Uthao.cancel(); PL.rebuild();
   };
   Game.onEnter = (v) => {
-    if (v.kind === 'helicopter') Game.notify(`<b>Helicopter</b> <span><kbd>W</kbd>/<kbd>S</kbd> fly · <kbd>A</kbd>/<kbd>D</kbd> turn · hold <kbd>Space</kbd> to climb · hold <kbd>C</kbd> to come down · <kbd>E</kbd> get out (land first)</span>`);
+    if (v.kind === 'helicopter') {
+      if (!D.heliSeen) {
+        D.heliSeen = true; Game.save();
+        KS.modal('🚁 Flying the helicopter', `<p>Your first flight! This helicopter is yours — no licence needed.</p><p><kbd>W</kbd> / <kbd>S</kbd> fly forward and back · <kbd>A</kbd> / <kbd>D</kbd> turn<br>Hold <kbd>Space</kbd> to climb · hold <kbd>C</kbd> to come down<br><kbd>E</kbd> to get out — land first (hold <kbd>C</kbd> until you touch down).</p><p>It climbs to 200 m, high over Dharahara and the whole valley. Enjoy the view!</p>`, [['Got it — let me fly!', () => KS.modalClose()]]);
+      } else Game.notify(`<b>Helicopter</b> <span><kbd>W</kbd>/<kbd>S</kbd> fly · <kbd>A</kbd>/<kbd>D</kbd> turn · hold <kbd>Space</kbd> to climb · hold <kbd>C</kbd> to come down · <kbd>E</kbd> get out (land first)</span>`);
+    }
     else Game.notify(`<b>${v.type.name}</b> <span>${coarse ? '' : 'E get out · H horn · R radio · U Uthao app'}</span>`);
     $('speedo').hidden = false; $('vname').textContent = v.type.name;
     if (KS.isBike(v.kind)) KS.Player.rebuild();
@@ -443,6 +448,15 @@
     KS.Weather.init(scene, renderer);
     await step('Loading realistic vehicles…');
     if (KS.VehicleModels) { try { await KS.VehicleModels.load(); } catch (e) { /* code-built vehicles stay */ } if (KS.VehicleModels.ready) KS.VehicleModels.swapBoats(); }
+    if (KS.VehicleModels) { // say plainly whether the realistic models made it in, so a silent fallback is never a mystery
+      const want = ['car', 'sedan', 'suv', 'taxi', 'police', 'pickup', 'truck', 'bus', 'micro', 'minibus', 'ambulance', 'ev', 'bicycle', 'helicopter'];
+      const n = want.filter((t) => KS.VehicleModels.models[t]).length;
+      if (n === 0) {
+        const why = location.protocol === 'file:' ? 'the game was opened as a downloaded file — open it from the website instead, so the models can download' : 'the model files could not be downloaded — check the connection and reload';
+        KS.log && KS.log('No realistic vehicle models loaded: ' + why);
+        setTimeout(() => Game.notify('⚠️ Realistic vehicles did not load (' + why + '). The game still works with the built-in vehicles.', 'bad'), 1500);
+      } else if (n < want.length) setTimeout(() => Game.notify(`🚗 Realistic vehicles: ${n}/${want.length} models loaded.`), 1500);
+    }
     KS.Player.init(scene); KS.Battle.init(scene); KS.Places.initHeli(scene);
     await step('Waking up the city: pilgrims, porters, cows…');
     KS.reseed(3); KS.Animals.init(scene);
@@ -626,6 +640,7 @@
     KS.Weather.update(dt, camera, { focus: tmpV.set(PL.x, PL.y, PL.z) });
     const ctx = { px: PL.x, pz: PL.z, cx: camera.position.x, cz: camera.position.z, night: KS.night, rain: KS.Weather.wet > 0.3, playerVehicle: PL.vehicle, player: { x: PL.x, z: PL.z, len: PL.len, wid: PL.wid } };
     KS.Traffic.update(dt, ctx);
+    if (!D.heliSeen && !D.heliHinted && KS.Heli && KS.Heli.pad2 && !PL.vehicle && PL.mode === 'foot' && Math.hypot(PL.x - KS.Heli.pad2.x, PL.z - KS.Heli.pad2.z) < 30) { D.heliHinted = true; Game.save(); Game.notify('🚁 A helicopter you can fly is parked on this pad — walk up and press <b>E</b> to get in.'); }
     if (KS.VehicleModels) KS.VehicleModels.tick(dt);
     KS.Peds.update(dt, ctx);
     KS.Animals.update(dt, { px: PL.x, pz: PL.z, playerSpeed: Math.abs(PL.speed), honk: Game.honk > 0.35, inVehicle: !!PL.vehicle, vehicleKind: PL.vehicle && (KS.isBike(PL.vehicle.kind) ? 'bike' : 'car'), night: KS.night });

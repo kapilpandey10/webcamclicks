@@ -109,6 +109,7 @@
   PL.enter = (v) => {
     if (v.ai && v.speed > 9) return false;
     if (v.ai) ejectDriver(v);
+    if (PL.umbrella) closeUmbrella();
     v.ai = false; v.parked = false; PL.vehicle = v; PL.mode = 'drive'; v.speed = Math.min(v.speed, 3); v.vx = null; v.lot = null; if (v.bay) { v.bay.v = null; v.bay = null; }
     if (v.rider) v.rider.visible = false;
     if (KS.isBike(v.kind)) { v.root.add(PL.person.root); seatOnBike(); }
@@ -180,6 +181,23 @@
     p.root.position.set(PL.x, PL.y, PL.z); p.root.rotation.y = PL.h; PL.speed = 0;
     return true;
   }
+  /* ---------- umbrella: float down from roofs and jumps ----------
+     X opens it while you are falling; it also opens by itself when you fall off
+     something high, so a jump off a roof never ends in a hard landing. */
+  let umbMesh = null;
+  function openUmbrella() {
+    if (PL.umbrella) return;
+    if (!umbMesh) {
+      umbMesh = new THREE.Group();
+      const canopy = new THREE.Mesh(new THREE.ConeGeometry(1.15, 0.5, 8, 1, true), new THREE.MeshLambertMaterial({ color: 0xd12b2b, side: THREE.DoubleSide }));
+      umbMesh.add(canopy);
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.35, 6), new THREE.MeshLambertMaterial({ color: 0x8a8a90 })); tip.position.y = 0.42; umbMesh.add(tip);
+      const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.15, 6), new THREE.MeshLambertMaterial({ color: 0x5a4632 })); stick.position.y = -0.55; umbMesh.add(stick);
+      umbMesh.visible = false; PL.scene.add(umbMesh);
+    }
+    PL.umbrella = true; umbMesh.visible = true; KS.audio && KS.audio.chute && KS.audio.chute();
+  }
+  function closeUmbrella() { PL.umbrella = false; if (umbMesh) umbMesh.visible = false; }
   function footUpdate(dt) {
     if (PL.climb) { climbUpdate(dt); return; }
     const a = axis(), run = I.down('ShiftLeft') || I.down('ShiftRight') || I.down('KeyRun');
@@ -205,7 +223,21 @@
       return;
     }
     if ((I.hit('Space') || I.hit('KeyJump')) && PL.grounded && !PL.swim) { PL.vy = 6.4; PL.grounded = false; }
-    PL.vy -= 20 * dt; PL.y += PL.vy * dt;
+    // umbrella: X opens it while falling; it also opens by itself when you fall off something high
+    if (!PL.grounded && !PL.swim && !PL.umbrella) {
+      const drop = PL.y - KS.groundAt(PL.x, PL.z, PL.y, 1.05);
+      if (I.hit('KeyX') && PL.vy < -1) openUmbrella();
+      else if (PL.vy < -8 && drop > 10) { openUmbrella(); KS.Game && KS.Game.notify('☂️ Umbrella open — steer with <b>W A S D</b>, press <b>X</b> to fold it.'); }
+      else if (PL.vy < -8 && drop > 8 && !PL.umbTold) { PL.umbTold = true; KS.Game && KS.Game.notify('☂️ Falling fast — press <b>X</b> to open your umbrella!'); }
+    }
+    if (PL.umbrella) {
+      if (I.hit('KeyX')) closeUmbrella();
+      else {
+        PL.vy += (-2.4 - PL.vy) * Math.min(1, dt * 3); // float down gently, no hard landing
+        if (Math.hypot(a.x, a.y) > 0.05) { const ang = Math.atan2(-a.x, a.y) + cam.yaw; PL.x += Math.sin(ang) * 4.5 * dt; PL.z += Math.cos(ang) * 4.5 * dt; PL.h = ang; }
+      }
+    } else PL.vy -= 20 * dt;
+    PL.y += PL.vy * dt;
     let g = KS.groundAt(PL.x, PL.z, PL.y, 1.05);
     const wl = KS.waterLevel(PL.x, PL.z), lvl = wl != null ? wl : KS.RIVER.water; // pools and the waterfall pool, else the river
     PL.swim = g < lvl - 0.6;
@@ -213,11 +245,13 @@
     if (PL.y <= g) {
       // a hard landing hurts: about 6 m is a bad fall, 15 m can knock you out
       if (PL.vy < -11.5 && !PL.swim) { const dmg = Math.round((-PL.vy - 11.5) * 6.5); KS.Game && KS.Game.hurt(dmg); KS.Game && KS.Game.notify(`🤕 Hard landing! −${dmg} health`, 'bad'); }
+      if (PL.umbrella) closeUmbrella(); // folded on landing
       PL.y = g; PL.vy = 0; PL.grounded = true;
     } else PL.grounded = PL.y - g < 0.05;
     let vy = PL.y;
     if (vy < 0.3 && vy > -0.2 && onSidewalk(PL.x, PL.z)) vy = Math.max(vy, 0.22);
     const pr = PL.person.root; pr.position.set(PL.x, vy, PL.z); pr.rotation.y = PL.h;
+    if (PL.umbrella && umbMesh) { umbMesh.position.set(PL.x, PL.y + 2.5, PL.z); umbMesh.rotation.set(0.1, PL.h, 0); }
     const p = PL.person;
     if (PL.swim) { p.armL.rotation.x = Math.sin(KS.clock * 5) * 2; p.armR.rotation.x = -Math.sin(KS.clock * 5) * 2; p.legL.rotation.x = p.legR.rotation.x = 0.3; }
     else KS.animWalk(p, dt, PL.grounded ? PL.speed : 0.01);
@@ -425,7 +459,7 @@
     }
     return maxD;
   }
-  PL.setCam = (m) => { cam.mode = (m + KS.CAMS.length) % KS.CAMS.length; KS.Game && KS.Game.notify('🎥 Camera: <b>' + KS.CAMS[cam.mode] + '</b>'); };
+  PL.setCam = (m) => { cam.mode = (m + KS.CAMS.length) % KS.CAMS.length; KS.Game && KS.Game.notify('🎥 Camera: <b>' + KS.CAMS[cam.mode] + '</b>' + (cam.mode === 2 && !PL.vehicle ? ' — first-person, so your character is hidden. Press <b>V</b> for a third-person view.' : '')); };
   PL.updateCamera = (camera, dt) => {
     if (I.hit('KeyV') || I.hit('KeyCam')) PL.setCam(cam.mode + 1);
     if (I.zoom) cam.want = KS.clamp(cam.want + I.zoom * 1.2, 2.5, 30);

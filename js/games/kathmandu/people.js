@@ -213,7 +213,7 @@
   KS.animPunch = (p, t) => { p.armR.rotation.x = -1.55 * Math.sin(Math.min(1, t) * Math.PI); p.armR.rotation.z = 0.2; };
 
   /* ---------------- pedestrian system ---------------- */
-  const Peds = (KS.Peds = { list: [] });
+  const Peds = (KS.Peds = { list: [], _nextId: 0, remote: false, ambientCount: 0 });
   const walkable = (c, r) => { const t = KS.blockType(c, r); return t !== 'river' && t !== 'outside'; };
   function rectOf(c, r) { const R = KS.World.blockRect(c, r); return { x0: R.x0 + 2, x1: R.x1 - 2, z0: R.z0 + 2, z1: R.z1 - 2 }; }
   function perimPos(ped, out) {
@@ -264,11 +264,12 @@
     placeAmbient(ped, px, pz, 215, 262);
   }
   const add = (scene, ped) => {
+    if (ped.id == null) ped.id = ++Peds._nextId; // mirrored walkers keep their own local id; the host's id lives in ped.netId
     // about one in four people carries a torch after dark
     if ((ped.ambient || ped.mode === 'plaza') && KS.chance(0.28) && KS.addBeam) { const t = new T.Mesh(new T.CylinderGeometry(0.03, 0.04, 0.18, 6).rotateX(Math.PI / 2), new T.MeshBasicMaterial({ color: 0xfff6d0 })); t.position.set(0.24, 0.95, 0.22); ped.p.root.add(t); KS.addBeam(ped.p.root, 0.24, 0.95, 0.32, true); }
     ped.home = ped.mode; scene.add(ped.p.root); Peds.list.push(ped); return ped; };
   Peds.init = (scene, count, px, pz) => {
-    Peds.scene = scene;
+    Peds.scene = scene; Peds.ambientCount = count;
     for (let i = 0; i < count; i++) {
       const kind = KS.pick(AMBIENT_KINDS), p = KS.makePerson(kind);
       add(scene, { p, kind, mode: 'walk', dir: KS.chance(0.5) ? 1 : -1, lat: KS.r(-1.3, 1.3), speed: kind === 'elder' || kind === 'grandma' ? 0.75 : kind === 'office' ? 1.6 : KS.r(1.0, 1.5), ambient: true, x: 0, z: 0, h: 0, y: 0, t: 0 });
@@ -316,6 +317,93 @@
     }
   };
 
+  /** two neighbours stop for a chat instead of walking past each other */
+  function tryChat(ped) {
+    if (ped.chatT || ped.patrol) return;
+    for (const o of Peds.list) {
+      if (o === ped || o.mode !== 'walk' || o.chatT || o.fight || o.flee || o.patrol) continue;
+      const dx = o.x - ped.x, dz = o.z - ped.z;
+      if (dx * dx + dz * dz > 9) continue;
+      const t = KS.r(12, 40);
+      ped.mode = 'chat'; ped.chatT = t; ped.chatWith = o;
+      o.mode = 'chat'; o.chatT = t; o.chatWith = ped;
+      return;
+    }
+  }
+
+  /* ---------- the same people for everyone (see traffic.js): guests mirror the host's walkers ----------
+     Only the ambient walkers differ per client — the kora circles, plaza crowds, sitters and police
+     posts are placed from the same world data, so they stay local on every client. */
+  const PED_MODE = { walk: 1, cross: 2, door: 3, plaza: 4, kora: 5, sit: 6, chat: 7 };
+  const PED_MODE_BACK = { 1: 'walk', 2: 'cross', 3: 'door', 4: 'plaza', 5: 'kora', 6: 'sit', 7: 'chat' };
+  Peds.setRemote = (on) => {
+    if (!!on === !!Peds.remote) return;
+    Peds.remote = !!on;
+    if (on) {
+      for (const ped of [...Peds.list]) if (ped.ambient && !ped.remote) Peds.remove(ped);
+      if (Peds.police) Peds.police = Peds.police.filter((p) => Peds.list.includes(p)); // dropped patrol officers leave the police list too
+    } else {
+      for (const ped of [...Peds.list]) if (ped.remote) Peds.remove(ped);
+      Peds.refill();
+    }
+  };
+  Peds.remove = (ped) => { const i = Peds.list.indexOf(ped); if (i >= 0) Peds.list.splice(i, 1); if (ped.p && ped.p.root.parent) ped.p.root.parent.remove(ped.p.root); };
+  Peds.refill = (px, pz) => {
+    const P = KS.Player, scene = Peds.scene; if (!scene) return;
+    px = px == null ? P.x : px; pz = pz == null ? P.z : pz;
+    let n = Peds.list.filter((p) => p.ambient).length;
+    while (n < Peds.ambientCount) {
+      const kind = KS.pick(AMBIENT_KINDS), p = KS.makePerson(kind);
+      add(scene, { p, kind, mode: 'walk', dir: KS.chance(0.5) ? 1 : -1, lat: KS.r(-1.3, 1.3), speed: kind === 'elder' || kind === 'grandma' ? 0.75 : kind === 'office' ? 1.6 : KS.r(1.0, 1.5), ambient: true, x: 0, z: 0, h: 0, y: 0, t: 0 });
+      placeAmbient(Peds.list[Peds.list.length - 1], px, pz, 10, 240);
+      n++;
+    }
+    // the two foot-patrol officers come back too
+    let patrol = Peds.list.filter((p) => p.patrol).length;
+    while (patrol < 2) {
+      const p = KS.makePerson('police');
+      const ped = add(scene, { p, kind: 'police', mode: 'walk', patrol: true, dir: patrol ? 1 : -1, lat: 0.6, speed: 1.05, ambient: true, x: 0, z: 0, h: 0, y: 0, t: 0 });
+      placeAmbient(ped, px, pz, 30, 160); if (Peds.police) Peds.police.push(ped);
+      patrol++;
+    }
+  };
+  /** [id, kind, x, z, heading, speed, mode] for ambient walkers near any player */
+  Peds.snapshot = (points, radius) => {
+    const out = [], r2 = radius * radius;
+    for (const ped of Peds.list) {
+      if (!ped.ambient || ped.fight || ped.flee || ped.down > 0) continue;
+      const m = PED_MODE[ped.mode]; if (!m) continue;
+      let near = false;
+      for (const p of points) { const dx = ped.x - p.x, dz = ped.z - p.z; if (dx * dx + dz * dz < r2) { near = true; break; } }
+      if (!near) continue;
+      const sp = ped.mode === 'walk' ? ped.speed : ped.mode === 'cross' ? ped.speed * 1.2 : 0;
+      out.push([ped.id, ped.kind, +ped.x.toFixed(1), +ped.z.toFixed(1), +ped.h.toFixed(2), +sp.toFixed(1), m]);
+    }
+    return out;
+  };
+  Peds.applySnapshot = (list) => {
+    if (!list || !Peds.scene) return;
+    const now = KS.clock, seen = new Set();
+    for (const e of list) {
+      const [id, kind, x, z, h, speed, mode] = e;
+      seen.add(id);
+      let ped = Peds.list.find((q) => q.remote && q.netId === id);
+      if (!ped) {
+        const p = KS.makePerson(kind);
+        ped = add(Peds.scene, { p, kind, mode: PED_MODE_BACK[mode] || 'walk', dir: 1, lat: 0, speed, ambient: false, remote: true, netId: id, x, z, h, y: 0.06, t: 0 });
+      }
+      ped.net = { x, z, h, speed, mode: PED_MODE_BACK[mode] || 'walk', t: now };
+    }
+    for (const ped of [...Peds.list]) if (ped.remote && (!seen.has(ped.netId) || (ped.net && now - ped.net.t > 3.5))) Peds.remove(ped);
+  };
+  function remotePed(ped, dt) {
+    const n = ped.net; if (!n) return;
+    const k = Math.min(1, dt * 7);
+    ped.x += (n.x - ped.x) * k; ped.z += (n.z - ped.z) * k; ped.h = KS.angLerp(ped.h, n.h, k);
+    ped.p.root.position.set(ped.x, ped.y || 0.06, ped.z); ped.p.root.rotation.y = ped.h;
+    KS.animWalk(ped.p, dt, n.speed);
+  }
+
   const tmp = { x: 0, z: 0, h: 0 };
   Peds.update = (dt, ctx) => {
     const { px, pz, cx, cz } = ctx;
@@ -335,6 +423,7 @@
       ped.p.root.visible = vis;
       if (!vis && !ped.ambient) continue;
       if (ped.hidden) { ped.p.root.visible = false; continue; } // police are off duty in Battle mode
+      if (Peds.remote && ped.remote) { if (vis) remotePed(ped, dt); continue; } // the host's walker, gliding to its next reported spot
       let moving = 0;
       const pr = ped.p.root;
       if (ped.down > 0) { // knocked over: lie, then get up
@@ -383,7 +472,7 @@
           for (let k = 0; k < 4; k++) {
             const cs = cornerS(R, k), a = ((s0 - cs) % L + L) % L, b = ((ped.s - cs) % L + L) % L;
             const passed = ped.dir > 0 ? (a > L - 2 && b < 2) : (a < 2 && b > L - 2);
-            if (passed && KS.chance(0.35)) {
+            if (passed && KS.chance(0.6)) { // cross to the next block more often: people go places, they don't loop one block forever
               const opt = KS.pick(CROSS[k]), nc = ped.c + opt[0], nr = ped.r + opt[1];
               if (walkable(nc, nr)) {
                 const nR = rectOf(nc, nr), o = perimPos(ped, tmp);
@@ -398,6 +487,7 @@
           }
           if (ped.mode === 'walk') { const o = perimPos(ped, tmp); ped.x = o.x; ped.z = o.z; ped.h = KS.angLerp(ped.h, o.h, Math.min(1, dt * 8)); }
           if (KS.chance(dt * 0.02)) ped.wait = KS.r(1, 5);
+          if (KS.chance(dt * 0.01)) tryChat(ped); // neighbours stop for a chat instead of walking past each other
           break;
         }
         case 'cross': {
@@ -410,6 +500,15 @@
           ped.x = ped.fromX + (ped.toX - ped.fromX) * t; ped.z = ped.fromZ + (ped.toZ - ped.fromZ) * t;
           ped.h = Math.atan2(ped.toX - ped.fromX, ped.toZ - ped.fromZ);
           if (t >= 1) { ped.mode = 'walk'; ped.dir = KS.chance(0.5) ? 1 : -1; }
+          break;
+        }
+        case 'chat': {
+          ped.chatT -= dt;
+          const o = ped.chatWith;
+          if (ped.chatT <= 0 || !o || o.mode !== 'chat') { ped.mode = 'walk'; ped.chatWith = null; ped.p.busyArm = false; break; }
+          ped.h = Math.atan2(o.x - ped.x, o.z - ped.z);
+          ped.gT = (ped.gT || KS.r(0, 9)) + dt; // talk with the hands
+          if (ped.kind !== 'monk' && ped.kind !== 'kid') { ped.p.busyArm = true; ped.p.armR.rotation.x = -0.45 - Math.max(0, Math.sin(ped.gT * 2.6)) * 0.7; ped.p.armL.rotation.x = -0.2 - Math.max(0, Math.sin(ped.gT * 1.9 + 1)) * 0.4; }
           break;
         }
         case 'kora': {

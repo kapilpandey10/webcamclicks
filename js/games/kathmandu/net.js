@@ -30,7 +30,7 @@
     try { await loadLib(); } catch (e) { N.fail(e.message); return; }
     N.room = code(); N.host = true; N.public = false;
     const peer = (N.peer = new window.Peer(PREFIX + N.room.toLowerCase(), options()));
-    peer.on('open', () => { N.state = 'host'; N.me = peer.id; sys(`Room ${N.room} created. Share the code with friends.`); N.render2(); });
+    peer.on('open', () => { N.state = 'host'; N.me = peer.id; setWorldRole(true); sys(`Room ${N.room} created. Share the code with friends.`); N.render2(); });
     peer.on('connection', (c) => { if (N.conns.size >= MAX - 1) { c.on('open', () => { c.send({ t: 'full' }); setTimeout(() => c.close(), 300); }); return; } wire(c); });
     common(peer);
   };
@@ -76,7 +76,7 @@
     const id = PUB + n; let settled = false;
     const peer = (N.peer = new window.Peer(id, options()));
     peer.on('open', () => {
-      settled = true; N.host = true; N.state = 'host'; N.me = peer.id;
+      settled = true; N.host = true; N.state = 'host'; N.me = peer.id; setWorldRole(true);
       sys(`🌍 You opened public world ${n}. Other players who come online will appear here.`); N.render2(); publicHello();
     });
     peer.on('connection', (c) => { if (N.conns.size >= MAX - 1) { c.on('open', () => { c.send({ t: 'full' }); setTimeout(() => c.close(), 300); }); return; } wire(c); });
@@ -112,7 +112,7 @@
     c.on('open', () => {
       N.conns.set(c.peer, c);
       c.send({ t: 'hello', name: N.name(), look: look() });
-      if (!N.host) { N.state = 'guest'; sys(N.public ? `🌍 Joined public world ${N.pubN} with other players.` : `Joined room ${N.room}.`); if (N.public) publicHello(); }
+      if (!N.host) { N.state = 'guest'; setWorldRole(false); sys(N.public ? `🌍 Joined public world ${N.pubN} with other players.` : `Joined room ${N.room}.`); if (N.public) publicHello(); }
       N.render2(); if (N.micOn) callAll();
     });
     c.on('data', (m) => onData(c, m));
@@ -129,6 +129,7 @@
       case 'hello': if (N.host) { upsert(c.peer, { name: clean(m.name, 16), look: m.look }); sys(`${clean(m.name, 16)} joined.`); roster(); if (c.open) c.send(worldMsg()); } break;
       case 'roster': N.roster = (m.list || []).slice(0, MAX); for (const r of N.roster) if (r.id !== N.me) upsert(r.id, { name: clean(r.name, 16) }); for (const id of [...N.players.keys()]) if (!N.roster.some((r) => r.id === id)) dropPlayer(id); N.render2(); if (N.micOn) callAll(); break;
       case 'world': if (!N.host) syncWorld(m); break;
+      case 'npc': if (!N.host) { if (KS.Traffic) KS.Traffic.applySnapshot(m.v); if (KS.Peds) KS.Peds.applySnapshot(m.p); if (N.state === 'guest' && KS.Traffic && !KS.Traffic.remote) setWorldRole(false); } break; // the host's traffic and walkers: the same cars, same people, same chase on every screen
       case 'match': case 'shot': case 'hit': case 'kill': case 'boom': case 'pick': // battle: the host passes everything on, then everyone handles it
         if (N.host) broadcast(m, c.peer);
         if (m.t === 'kill' && m.victim) { const p = N.players.get(m.victim); if (p) p.al = false; }
@@ -147,6 +148,17 @@
   N.sendAll = (m) => { if (N.state === 'host') broadcast(m); else if (N.state === 'guest') { const c = N.conns.get(N.hostId); c && c.open && c.send(m); } };
   /* ---------- one shared world: the host's clock and weather ---------- */
   function worldMsg() { const W = KS.Weather; return { t: 'world', time: KS.time, wx: W.type, mode: KS.Settings.data().timeMode || 'fast' }; }
+  /** host simulates the city, guests mirror it (see traffic.js / people.js) */
+  function setWorldRole(host) {
+    if (KS.Traffic) KS.Traffic.setRemote(!host);
+    if (KS.Peds) KS.Peds.setRemote(!host);
+  }
+  /** the host's traffic and walkers near any player, so every screen shows the same city */
+  function npcMsg() {
+    const P = KS.Player, points = [{ x: P.x, z: P.z }];
+    for (const p of N.players.values()) if (p.placed) points.push({ x: p.x, z: p.z });
+    return { t: 'npc', v: KS.Traffic ? KS.Traffic.snapshot(points, 240) : [], p: N.npcPed && KS.Peds ? KS.Peds.snapshot(points, 160) : null };
+  }
   function syncWorld(m) {
     const W = KS.Weather; N.worldSynced = true; W.auto = false; W.timer = 1e9; N.hostTimeMode = m.mode;
     if (typeof m.time === 'number' && Math.abs(KS.wrapAng(((m.time - KS.time) / 24) * Math.PI * 2)) > 0.02) KS.time = ((m.time % 24) + 24) % 24;
@@ -318,7 +330,7 @@
     if (N.peer) try { N.peer.destroy(); } catch (e) { /* ignore */ }
     if (N.mic) N.mic.getTracks().forEach((t) => t.stop());
     if (KS.Player.mode === 'ride') N.leaveRide();
-    N.peer = null; N.mic = null; N.micOn = false; N.arrived = false; N.follow = null; N.state = 'off';
+    N.peer = null; N.mic = null; N.micOn = false; N.arrived = false; N.follow = null; N.state = 'off'; setWorldRole(true); // back to playing alone: simulate the city yourself again
     if (N.worldSynced) { N.worldSynced = false; KS.Weather.auto = true; KS.Weather.timer = 60; } N.room = ''; N.roster = null;
     if (!silent) sys('You left the room.');
     N.render2();
@@ -331,8 +343,12 @@
     const P = KS.Player, I = KS.Input;
     if (N.micOn && N.ptt) setTalking(!!I.down('KeyG'));
     if (N.el && N.el.isConnected && KS.clock % 1 < dt) N.el.querySelectorAll('[data-dist]').forEach((e) => { const f = N.players.get(e.dataset.dist); if (f && f.placed) e.textContent = Math.round(Math.hypot(f.x - P.x, f.z - P.z)) + ' m'; });
-    netChases(dt, P);
+    if (!KS.Traffic || !KS.Traffic.remote) netChases(dt, P); // guests in remote mode skip this: the host's chasers arrive in the snapshots
     if (N.host) { N.worldT = (N.worldT || 0) - dt; if (N.worldT <= 0) { N.worldT = 2; broadcast(worldMsg()); } }
+    if (N.host) { // the shared city: traffic 4x a second, walkers every other tick
+      N.npcT = (N.npcT || 0) - dt;
+      if (N.npcT <= 0) { N.npcT = 0.25; N.npcPed = !N.npcPed; broadcast(npcMsg()); }
+    }
     if (!N.host && !N.arrived) { const h = N.players.get(N.hostId); if (h && h.placed) { N.arrived = true; N.goTo(h.id); sys(`You joined ${h.name}. Everyone is on the map as a coloured dot.`); } }
     if (N.follow) { const f = N.players.get(N.follow); if (!f) N.follow = null; else if (KS.clock % 2 < dt) { if (Math.hypot(f.x - P.x, f.z - P.z) < 12) { N.follow = null; KS.Game.notify(`You found ${esc(f.name)}!`); } else KS.Game.setWaypoint(f.x, f.z, true); } }
     N.sendT -= dt;

@@ -338,7 +338,7 @@
     // police alert
     if (L.heat > 0) {
       const chasers = KS.Traffic.chasers();
-      if (chasers.length < L.heat * 2 && KS.chance(dt * 0.5)) KS.Traffic.spawnPolice(P.x, P.z);
+      if (!KS.Traffic.remote && chasers.length < L.heat * 2 && KS.chance(dt * 0.5)) KS.Traffic.spawnPolice(P.x, P.z); // guests don't spawn their own police: the host's chasers arrive in the snapshots
       let near = 1e9;
       for (const c of chasers) near = Math.min(near, c.dist || 1e9);
       for (const p of KS.Peds.police) if (p.chasing) near = Math.min(near, p.dist || 1e9);

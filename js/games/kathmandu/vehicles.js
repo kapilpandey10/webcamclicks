@@ -8,25 +8,29 @@
   'use strict';
   const T = THREE, KS = window.KS;
 
+  /* top speed (m/s) — every type has its own certain maximum, no two alike:
+     a police bike (20) is always faster than any car, a tempo (8.5) always
+     the slowest thing with an engine. Traffic, chases and the player's own
+     driving all cap at this number (chases get a small pursuit allowance). */
   KS.VTYPES = {
     car: { name: 'Hatchback', len: 3.8, wid: 1.72, speed: 13, accel: 7, turn: 1.9, r: 1.7, seats: 'car' },
     sedan: { name: 'Sedan', len: 4.5, wid: 1.78, speed: 14.5, accel: 7.5, turn: 1.75, r: 1.9, seats: 'car' },
-    suv: { name: 'SUV', len: 4.6, wid: 1.9, speed: 14, accel: 7, turn: 1.6, r: 2.0, seats: 'car' },
-    ev: { name: 'Electric Car', len: 4.1, wid: 1.8, speed: 15, accel: 10, turn: 1.85, r: 1.8, seats: 'car' },
-    taxi: { name: 'Taxi', len: 3.7, wid: 1.66, speed: 13, accel: 7, turn: 2.0, r: 1.7, seats: 'car' },
-    police: { name: 'Police Jeep', len: 4.4, wid: 1.9, speed: 15, accel: 8, turn: 1.8, r: 1.9, seats: 'car' },
-    ambulance: { name: 'Ambulance', len: 5.2, wid: 1.95, speed: 15, accel: 7, turn: 1.6, r: 2.2, seats: 'van' },
+    suv: { name: 'SUV', len: 4.6, wid: 1.9, speed: 15, accel: 7, turn: 1.6, r: 2.0, seats: 'car' },
+    ev: { name: 'Electric Car', len: 4.1, wid: 1.8, speed: 16, accel: 10, turn: 1.85, r: 1.8, seats: 'car' },
+    taxi: { name: 'Taxi', len: 3.7, wid: 1.66, speed: 13.8, accel: 7, turn: 2.0, r: 1.7, seats: 'car' },
+    police: { name: 'Police Jeep', len: 4.4, wid: 1.9, speed: 16.5, accel: 8, turn: 1.8, r: 1.9, seats: 'car' },
+    ambulance: { name: 'Ambulance', len: 5.2, wid: 1.95, speed: 17, accel: 7, turn: 1.6, r: 2.2, seats: 'van' },
     micro: { name: 'Micro Bus', len: 5.0, wid: 1.9, speed: 12, accel: 5.5, turn: 1.6, r: 2.1, seats: 'van' },
     minibus: { name: 'Minibus', len: 7.4, wid: 2.2, speed: 11, accel: 4.2, turn: 1.25, r: 2.6, seats: 'bus' },
     bus: { name: 'City Bus', len: 10.6, wid: 2.5, speed: 10, accel: 3.6, turn: 1.0, r: 3.2, seats: 'bus' },
     tempo: { name: 'Safa Tempo', len: 2.6, wid: 1.55, speed: 8.5, accel: 4.5, turn: 2.0, r: 1.3, seats: 'van' },
     truck: { name: 'Painted Truck', len: 8, wid: 2.4, speed: 9, accel: 3.2, turn: 1.1, r: 2.8, seats: 'bus' },
-    pickup: { name: 'Pickup', len: 5.0, wid: 1.85, speed: 13, accel: 6.5, turn: 1.6, r: 2.1, seats: 'car' },
-    bike: { name: 'Commuter Bike', len: 2.0, wid: 0.75, speed: 16, accel: 10, turn: 2.6, r: 0.8, seats: 'bike' },
+    pickup: { name: 'Pickup', len: 5.0, wid: 1.85, speed: 14.2, accel: 6.5, turn: 1.6, r: 2.1, seats: 'car' },
+    bike: { name: 'Commuter Bike', len: 2.0, wid: 0.75, speed: 18, accel: 10, turn: 2.6, r: 0.8, seats: 'bike' },
     sport: { name: 'Sport Bike', len: 2.05, wid: 0.72, speed: 21, accel: 14, turn: 2.7, r: 0.8, seats: 'bike' },
-    cruiser: { name: 'Cruiser', len: 2.2, wid: 0.85, speed: 18, accel: 11, turn: 2.3, r: 0.85, seats: 'bike' },
-    scooter: { name: 'Scooter', len: 1.8, wid: 0.7, speed: 13, accel: 9, turn: 2.8, r: 0.8, seats: 'bike' },
-    policebike: { name: 'Police Bike', len: 2.0, wid: 0.8, speed: 19, accel: 12, turn: 2.6, r: 0.8, seats: 'bike' },
+    cruiser: { name: 'Cruiser', len: 2.2, wid: 0.85, speed: 19, accel: 11, turn: 2.3, r: 0.85, seats: 'bike' },
+    scooter: { name: 'Scooter', len: 1.8, wid: 0.7, speed: 12.5, accel: 9, turn: 2.8, r: 0.8, seats: 'bike' },
+    policebike: { name: 'Police Bike', len: 2.0, wid: 0.8, speed: 20, accel: 12, turn: 2.6, r: 0.8, seats: 'bike' },
     bicycle: { name: 'Bicycle', len: 1.75, wid: 0.6, speed: 5.2, accel: 3.2, turn: 2.6, r: 0.7, seats: 'bike' },
     helicopter: { name: 'Helicopter', len: 9, wid: 2.6, speed: 25, accel: 8, turn: 2.0, r: 3.5, seats: 'heli' },
   };

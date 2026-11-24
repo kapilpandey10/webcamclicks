@@ -258,12 +258,17 @@
     const tx = P.x + (pv ? Math.sin(pv.h) * pv.speed * 0.6 : 0), tz = P.z + (pv ? Math.cos(pv.h) * pv.speed * 0.6 : 0);
     const dx = tx - v.x, dz = tz - v.z, d = Math.hypot(dx, dz);
     const want = Math.atan2(dx, dz), t = v.type;
-    let target = d > 14 ? t.speed * (1.3 + heat * 0.1) : d > 5 ? d * 1.1 : 0;
+    /* a chase may run at the type's pursuit ceiling (its own max × 1.3), never
+       faster — a police bike still outruns a police jeep, and neither one
+       borrows another vehicle's speed. */
+    const ceiling = t.speed * 1.3;
+    let target = d > 14 ? ceiling : d > 5 ? d * 1.1 : 0;
     if (v.rev > 0) { v.rev -= dt; target = -4; }
     const diff = KS.wrapAng(want - v.h);
     v.h += KS.clamp(diff, -1, 1) * t.turn * 1.4 * Math.min(1, Math.abs(v.speed) / 4 + 0.3) * dt * (v.rev > 0 ? -1 : 1);
     if (Math.abs(diff) > 1.4 && d > 8) target = Math.min(target, 6);
     v.speed += KS.clamp(target - v.speed, -14 * dt, t.accel * 1.2 * dt);
+    if (v.speed > ceiling) v.speed = ceiling;
     let nx = v.x + Math.sin(v.h) * v.speed * dt, nz = v.z + Math.cos(v.h) * v.speed * dt;
     const c = KS.collide(nx, nz, t.r, v.y, 0.5);
     if (c.hit && Math.abs(v.speed) > 1) v.speed *= 0.5;
@@ -445,6 +450,12 @@
       }
       let target = v.maxSpeed * (v.mode === 'turn' ? (v.type.len < 2.3 ? 0.8 : 0.5) : 1) * (v.lane.hill && !v.lane.hw ? 0.6 : 1);
       if (ctx.rain) target *= 0.8;
+      // speed breakers: brake for them on approach and crawl over them —
+      // the cap is a braking curve (3.5 m/s on the bump, easing off with
+      // distance), not a sudden stop at the bump itself
+      const onBr = KS.onBreaker && KS.onBreaker(v.x, v.z);
+      const bd = KS.breakerDist ? KS.breakerDist(v.x, v.z, v.h) : Infinity;
+      if (bd < 15) target = Math.min(target, Math.sqrt(3.5 * 3.5 + 13 * bd));
       // red lights
       if (v.mode === 'lane' && v.kind !== 'ambulance') {
         const B = nodes[v.b];
@@ -485,13 +496,20 @@
       if (ob.who) {
         const lim = Math.max(0, (ob.d - 1.5) * 1.3);
         if (lim < target) target = lim;
+        /* held well below my own top speed by a slower vehicle ahead? A police
+           bike must not sit at car speed behind a tempo: after 3 s of it,
+           pull out and pass. (The player, peds and cows don't count.) */
+        const leader = ob.who && typeof ob.who === 'object' ? ob.who : null;
+        const heldBack = leader && leader.speed != null && leader.speed < v.maxSpeed * 0.8 && v.maxSpeed - leader.speed > 2;
+        if (heldBack && v.speed < v.maxSpeed * 0.8) v.slowT = (v.slowT || 0) + dt; else v.slowT = 0;
         if (v.speed < 0.6) {
           v.stuck += dt;
           if (v.stuck > 0.8 && v.honkT <= 0) { v.honkT = KS.r(1.5, 4); if (dCam < 90) KS.audio && KS.audio.horn(v.kind, Math.max(0.08, 1 - dCam / 90)); }
           const still = ob.who === 'cow' || ob.who === 'player' ? !(KS.Player.vehicle && Math.abs(KS.Player.vehicle.speed) > 0.5) || ob.who === 'cow' : ob.who !== 'ped' && (ob.who.parked || !ob.who.ai || ob.who.speed < 0.3);
           if (still && v.stuck > 2.5 && v.mode === 'lane' && !(v.over > 0) && v.lane.len - v.t > 12) { v.over = 9; v.clearT = 0; v.stuck = 0; }
         }
-      } else v.stuck = 0;
+        if (v.slowT > 3 && v.mode === 'lane' && !(v.over > 0) && v.lane.len - v.t > 12) { v.over = 9; v.clearT = 0; v.slowT = 0; }
+      } else { v.stuck = 0; v.slowT = 0; }
       // going home: head for the home lot now and then
       v.roamT -= dt;
       if (v.roamT <= 0 && v.home && !v.path && !v.route && v.mode === 'lane' && !v.uthao) { v.roamT = KS.r(80, 260); v.path = TR.pathNodes(v.b, v.home.node); v.pi = 0; }
@@ -499,6 +517,7 @@
       if (v.honkT < -8 && KS.chance(dt * 0.15)) { v.honkT = KS.r(4, 16); if (dCam < 70) KS.audio && KS.audio.horn(v.kind, Math.max(0.05, 0.6 - dCam / 120)); }
       const acc = target > v.speed ? v.type.accel : 14;
       v.speed += KS.clamp(target - v.speed, -acc * dt, acc * dt);
+      if (v.speed > v.maxSpeed) v.speed = v.maxSpeed; // the type's certain maximum — nothing here may push past it
       v.t += v.speed * dt;
       if (v.mode === 'lane') {
         const L = v.lane;
@@ -514,7 +533,7 @@
       }
       v.y = v.lane.hill ? KS.heightAt(v.x, v.z) + 0.06 : 0.06;
       if (v.root.visible) {
-        v.root.position.set(v.x, v.y, v.z); v.root.rotation.y = v.h;
+        v.root.position.set(v.x, v.y + (onBr ? 0.09 : 0), v.z); v.root.rotation.y = v.h;
         if (v.lane.hill && v.mode === 'lane') v.root.rotation.x = -Math.atan2(KS.heightAt(v.x + Math.sin(v.h), v.z + Math.cos(v.h)) - KS.heightAt(v.x, v.z), 1); else v.root.rotation.x = 0;
         if (KS.isBike(v.kind)) v.root.rotation.z = v.mode === 'turn' ? -0.18 : 0;
       }

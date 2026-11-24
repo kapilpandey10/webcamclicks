@@ -172,6 +172,7 @@
   A.thunder = (vol = 1) => { noise(0.25, 0.2 * vol, 1400, 'lowpass'); noise(3.5, 0.4 * vol, 160, 'lowpass', 0.05); };
   A.bell = (vol = 0.5) => { [523, 1318, 2093, 2794].forEach((f, i) => tone(f, 3.2 - i * 0.6, 'sine', (0.08 / (i + 1)) * vol, 0, null, 0.003)); };
   A.crash = (vol = 1) => { noise(0.4, 0.5 * vol, 900); tone(80, 0.35, 'sine', 0.4 * vol, 0, 40); noise(0.6, 0.15 * vol, 4000, 'highpass', 0.05); };
+  A.thump = () => { if (!ctx || !A.on) return; noise(0.12, 0.35, 300); tone(65, 0.14, 'sine', 0.4, 0, 38); }; // the dull thud of a wheel over a speed breaker
   A.paddle = () => { noise(0.35, 0.05, 700, 'bandpass', 0, 1.5); noise(0.15, 0.025, 2400, 'bandpass', 0.05, 2); };
   A.splash = () => { noise(1.4, 0.5, 700); noise(0.6, 0.3, 2400, 'bandpass', 0.1); };
   A.screech = (vol = 1) => { noise(0.28, 0.18 * vol, 2600, 'bandpass', 0, 6); tone(1250, 0.25, 'sawtooth', 0.025 * vol, 0, 1150); };

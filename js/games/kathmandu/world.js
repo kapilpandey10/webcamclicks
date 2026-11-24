@@ -298,6 +298,73 @@
     scene.add(KS.mesh(b, KS.M.vc, false));
   }
 
+  /* ================= speed breakers ================= */
+  function speedBreakers(scene) {
+    /* a raised, striped bump across the road in front of every school and the
+       hospital — drivers see it coming and crawl over it. KS.onBreaker is
+       the gameplay side: traffic and the player are capped to 3.5 m/s on one. */
+    const spots = [];
+    for (const sc of KS.SCHOOLS || []) if (!sc.village) spots.push([G.line(sc.c), G.line(sc.r) + 45, 'z']);
+    spots.push([G.line(7), G.line(5) + 45, 'z']); // Bir Hospital block
+    const b = new KS.Builder();
+    KS.speedBreakers = [];
+    for (const [x, z, ax] of spots) {
+      const alongZ = ax === 'z';
+      b.box(x, 0, z, alongZ ? G.ROAD : 1.4, 0.12, alongZ ? 1.4 : G.ROAD, 0x3a3a3c);
+      const n = 8, stripe = G.ROAD / n;
+      for (let k = 0; k < n; k++) {
+        const off = -G.ROAD / 2 + stripe * (k + 0.5);
+        b.box(alongZ ? x + off : x, 0.12, alongZ ? z : z + off, alongZ ? stripe - 0.1 : 1.5, 0.02, alongZ ? 1.5 : stripe - 0.1, k % 2 ? 0x111111 : 0xf2c418);
+      }
+      KS.speedBreakers.push({ x, z, ax });
+    }
+    scene.add(KS.mesh(b, KS.M.vc, false));
+    /** true while a vehicle is on a speed breaker (a short box across the road). */
+    KS.onBreaker = (x, z) => {
+      for (const s of KS.speedBreakers) {
+        if (s.ax === 'z' ? Math.abs(x - s.x) < G.ROAD / 2 + 0.5 && Math.abs(z - s.z) < 1.5 : Math.abs(z - s.z) < G.ROAD / 2 + 0.5 && Math.abs(x - s.x) < 1.5) return true;
+      }
+      return false;
+    };
+    /** metres ahead along a heading to the next speed breaker (Infinity if none
+        within 15 m) — so traffic can brake for it instead of hitting it flat out. */
+    KS.breakerDist = (x, z, h) => {
+      const fx = Math.sin(h), fz = Math.cos(h);
+      for (let d = 0; d <= 15; d += 0.5) if (KS.onBreaker(x + fx * d, z + fz * d)) return d;
+      return Infinity;
+    };
+  }
+
+  /* ================= the Ring Road, divided ================= */
+  function ringMedian(scene) {
+    /* the Ring Road is a divided 4-lane road, like the real one: a raised
+       concrete median with a yellow cap runs down its middle, broken only at
+       junctions so traffic can still turn (every turn-off — Swayambhu, the
+       Nagdhunga highway, the airport road, the mansion drive — meets the
+       ring at a grid junction, so every one of them falls in a gap). The
+       median is a solid for vehicles: U-turn at a junction, not over it. */
+    const b = new KS.Builder(), GAP = 13; // half the gap at each junction
+    for (const L of [G.line(0), G.line(G.N)]) { // west & east ring roads (run N-S)
+      for (let i = 0; i < G.N; i++) {
+        const z0 = G.line(i) + GAP, z1 = G.line(i + 1) - GAP;
+        if (z1 - z0 < 4) continue;
+        b.box(L, 0, (z0 + z1) / 2, 0.6, 0.6, z1 - z0, 0x9a9a9a);
+        b.box(L, 0.6, (z0 + z1) / 2, 0.64, 0.05, z1 - z0, 0xf2c418);
+        KS.addBox(L, (z0 + z1) / 2, 0.6, z1 - z0, 0.65, -50);
+      }
+    }
+    for (const L of [G.line(0), G.line(G.N)]) { // north & south ring roads (run E-W)
+      for (let i = 0; i < G.N; i++) {
+        const x0 = G.line(i) + GAP, x1 = G.line(i + 1) - GAP;
+        if (x1 - x0 < 4) continue;
+        b.box((x0 + x1) / 2, 0, L, x1 - x0, 0.6, 0.6, 0x9a9a9a);
+        b.box((x0 + x1) / 2, 0.6, L, x1 - x0, 0.05, 0.64, 0xf2c418);
+        KS.addBox((x0 + x1) / 2, L, x1 - x0, 0.6, 0.65, -50);
+      }
+    }
+    scene.add(KS.mesh(b, KS.M.vc, false));
+  }
+
   /* ================= buildings ================= */
   const FLOORS = [2, 3, 4, 5, 6, 7, 8];
   const inst = {}; // key style:floors -> list of {m: Matrix4, color, off}
@@ -750,6 +817,8 @@
   W.build = (scene) => {
     terrain(scene);
     roads(scene);
+    speedBreakers(scene);
+    ringMedian(scene);
     for (let c = 0; c < G.N; c++) for (let r = 0; r < G.N; r++) buildBlock(c, r);
     greenery();
     streetProps();

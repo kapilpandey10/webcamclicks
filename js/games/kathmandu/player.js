@@ -302,7 +302,10 @@
     if ((I.hit('KeyB') || I.hit('KeyNitro')) && up.nitro && PL.nitroCool <= 0) { PL.nitro = 3; PL.nitroCool = 18; KS.Game && KS.Game.notify('🔥 Nitro!'); KS.audio && KS.audio.nitro(); }
     PL.nitro = Math.max(0, PL.nitro - dt);
     const boost = PL.nitro > 0 ? 1.45 : 1, wet = KS.Weather.wet > 0.3;
-    const top = t.speed * 1.55 * eng * boost * (wet ? 0.9 : 1);
+    let top = t.speed * 1.55 * eng * boost * (wet ? 0.9 : 1);
+    // brake for a speed breaker ahead, on the same curve traffic uses
+    const bd = KS.breakerDist ? KS.breakerDist(v.x, v.z, v.h) : Infinity;
+    if (bd < 15) top = Math.min(top, Math.sqrt(3.5 * 3.5 + 13 * bd));
     if (v.vx == null) { v.vx = Math.sin(v.h) * v.speed; v.vz = Math.cos(v.h) * v.speed; v.yaw = 0; v.roll = 0; v.pitch = 0; }
     let fx = Math.sin(v.h), fz = Math.cos(v.h), rx = -fz, rz = fx;
     let vf = v.vx * fx + v.vz * fz, vl = v.vx * rx + v.vz * rz;
@@ -313,6 +316,11 @@
     else vf -= Math.sign(vf) * Math.min(Math.abs(vf), (1.6 + Math.abs(vf) * 0.22) * dt); // rolling resistance & air drag
     if (hand) vf -= Math.sign(vf) * Math.min(Math.abs(vf), (bike ? 9 : 6) * brk * dt);
     vf = KS.clamp(vf, -6, top);
+    // speed breakers: crawl over them, with a thump if you hit one too fast
+    if (KS.onBreaker && KS.onBreaker(v.x, v.z)) {
+      if (Math.abs(vf) > 3.5) { if (Math.abs(vf) > 6 && !v._brk) { cam.shake = Math.max(cam.shake, 0.15); KS.audio && KS.audio.thump && KS.audio.thump(); } vf = Math.sign(vf) * 3.5; }
+      v._brk = true;
+    } else v._brk = false;
     // steering builds a yaw rate; momentum lags behind the new heading, tyres pull it back
     const steer = KS.clamp(Math.abs(vf) / 5, 0, 1) * (1 - Math.min(0.5, Math.abs(vf) / (top * 2.4))) * (hand ? 1.4 : 1);
     v.yaw += (-a.x * t.turn * hdl * steer * Math.sign(vf || 1) - v.yaw) * Math.min(1, dt * (bike ? 10 : 7));

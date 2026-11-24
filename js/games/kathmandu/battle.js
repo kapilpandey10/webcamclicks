@@ -10,24 +10,33 @@
 
   /* ======================= the sky drop ======================= */
   const Drop = (KS.Drop = { phase: null });
+  const PLANE_ALT = 330; // the drop plane flies at this height and never climbs above it
+  const PLANE_LEN = 26; // the real turboprop, scaled to the old plane's size
   let plane, chute, scene;
-  function buildPlane() {
-    const g = new T.Group();
-    const body = new T.Mesh(new T.CylinderGeometry(2.2, 2.2, 26, 16).rotateX(Math.PI / 2), new T.MeshLambertMaterial({ color: 0x6b7458 }));
-    const nose = new T.Mesh(new T.SphereGeometry(2.2, 16, 10), body.material); nose.position.z = 13;
-    const tailCone = new T.Mesh(new T.ConeGeometry(2.2, 6, 16).rotateX(-Math.PI / 2), body.material); tailCone.position.set(0, 0.6, -16);
-    const wing = new T.Mesh(new T.BoxGeometry(36, 0.5, 5), new T.MeshLambertMaterial({ color: 0x5f684e })); wing.position.set(0, 1.2, 2);
-    const fin = new T.Mesh(new T.BoxGeometry(0.4, 6, 4), wing.material); fin.position.set(0, 3.6, -16);
-    const stab = new T.Mesh(new T.BoxGeometry(13, 0.35, 3), wing.material); stab.position.set(0, 1, -16.5);
-    const glass = new T.Mesh(new T.SphereGeometry(1.3, 12, 8), new T.MeshLambertMaterial({ color: 0x1a2a3a })); glass.position.set(0, 1, 13.6);
-    g.add(body, nose, tailCone, wing, fin, stab, glass);
-    KS.plProps = [];
-    for (const s of [-1, 1]) for (const o of [6.5, 12]) {
-      const e = new T.Mesh(new T.CylinderGeometry(0.9, 0.9, 4, 12).rotateX(Math.PI / 2), new T.MeshLambertMaterial({ color: 0x4a5040 })); e.position.set(s * o, 0.6, 3); g.add(e);
-      const pr = new T.Mesh(new T.BoxGeometry(4.2, 0.25, 0.08), new T.MeshLambertMaterial({ color: 0x222222 })); pr.position.set(s * o, 0.6, 5.1); g.add(pr); KS.plProps.push(pr);
-    }
-    g.visible = false; return g;
-  }
+  /** the real aeroplane: a turboprop commuter by vinish.dev (CC BY 4.0),
+      scaled to 26 m long and facing +Z like the old one, with its two
+      propellers kept as named pivots so they can still spin. One shared
+      load, cloned when a drop starts. */
+  Drop.loadModel = () => {
+    if (Drop._loading) return Drop._loading;
+    Drop._loading = new Promise((resolve) => {
+      const done = (m) => { Drop._model = m || null; resolve(Drop._model); };
+      if (typeof THREE.GLTFLoader !== 'function') return done(null);
+      new THREE.GLTFLoader().load('js/games/kathmandu/models/turboprop-commuter.glb', (g) => {
+        const inner = g.scene, box = new T.Box3().setFromObject(inner), size = new T.Vector3();
+        box.getSize(size);
+        inner.scale.setScalar(PLANE_LEN / Math.max(1, size.z)); // length runs along Z (nose +Z)
+        const c = new T.Box3().setFromObject(inner).getCenter(new T.Vector3());
+        inner.position.x -= c.x; inner.position.z -= c.z;
+        inner.position.y -= new T.Box3().setFromObject(inner).min.y;
+        const root = new T.Group(); root.add(inner);
+        const props = [];
+        root.traverse((o) => { if (/^propeller/i.test(o.name)) props.push(o.name); });
+        done({ root, props });
+      }, undefined, () => done(null));
+    });
+    return Drop._loading;
+  };
   function buildChute() {
     const g = new T.Group(), cols = [0xc8102e, 0xffffff, 0x1d3a8a, 0xffffff];
     for (let k = 0; k < 8; k++) {
@@ -39,14 +48,28 @@
     g.add(new T.LineSegments(lg, new T.LineBasicMaterial({ color: 0x444444 })));
     g.visible = false; return g;
   }
-  Drop.init = (sc) => { scene = sc; plane = buildPlane(); chute = buildChute(); scene.add(plane, chute); };
+  Drop.init = (sc) => {
+    scene = sc; chute = buildChute(); scene.add(chute);
+    Drop.loadModel().then((m) => {
+      if (!m || plane) return;
+      plane = m.root.clone(true); plane.visible = false; scene.add(plane);
+      KS.plProps = m.props.map((n) => plane.getObjectByName(n)).filter(Boolean);
+    });
+  };
   Drop.active = () => !!Drop.phase;
   /** start a drop. opts.path = [x0,z0,x1,z1] (shared in a match), opts.onLand */
   Drop.begin = (opts = {}) => {
     const PL = KS.Player; if (PL.vehicle) { PL.vehicle.speed = 0; PL.exit(); if (PL.vehicle) return false; }
     if (PL.boat) { PL.boat.nearJetty = true; PL.leaveBoat(); }
+    if (!plane) { // the real plane is still downloading: warm it up, then start
+      KS.Game && KS.Game.notify('✈️ Warming up the plane…');
+      Drop.loadModel().then((m) => { if (m) Drop.begin(opts); else KS.Game && KS.Game.notify('✈️ The plane could not load — check the connection and reload.'); });
+      return true;
+    }
     let path = opts.path;
-    if (!path) { const a = Math.random() * Math.PI * 2, off = (Math.random() - 0.5) * 500; const cx = -Math.sin(a) * off, cz = Math.cos(a) * off; path = [cx - Math.cos(a) * 1400, cz - Math.sin(a) * 1400, cx + Math.cos(a) * 1400, cz + Math.sin(a) * 1400]; }
+    /* the flight stays inside the map: it crosses the city and never the
+       void beyond it, and it never climbs above PLANE_ALT. */
+    if (!path) { const a = Math.random() * Math.PI * 2, off = (Math.random() - 0.5) * 300; const cx = -Math.sin(a) * off, cz = Math.cos(a) * off, R = 650; path = [cx - Math.cos(a) * R, cz - Math.sin(a) * R, cx + Math.cos(a) * R, cz + Math.sin(a) * R]; }
     Drop.path = path; Drop.t = 0; Drop.len = Math.hypot(path[2] - path[0], path[3] - path[1]); Drop.onLand = opts.onLand; Drop.phase = 'plane';
     plane.visible = true; PL.mode = 'plane'; PL.person.root.visible = false; PL.vy = 0; PL.speed = 0;
     KS.Cam.want = 30; KS.Cam.pitch = 0.35; KS.Cam.yaw = Math.atan2(path[2] - path[0], path[3] - path[1]);
@@ -71,8 +94,9 @@
     // the plane keeps flying (and leaves) whatever the player does
     if (plane.visible) {
       Drop.t += dt * 70; const u = Drop.t / Drop.len, x = KS.lerp(path[0], path[2], u), z = KS.lerp(path[1], path[3], u);
-      plane.position.set(x, 330, z); plane.rotation.y = Drop.h0 = Math.atan2(path[2] - path[0], path[3] - path[1]);
-      for (const pr of KS.plProps) pr.rotation.z += dt * 40;
+      const B = KS.BOUNDS; // hard boundary: the plane can never leave the map or climb
+      plane.position.set(KS.clamp(x, B.x0 + 20, B.x1 - 20), PLANE_ALT, KS.clamp(z, B.z0 + 20, B.z1 - 20)); plane.rotation.y = Drop.h0 = Math.atan2(path[2] - path[0], path[3] - path[1]);
+      for (const pr of KS.plProps || []) pr.rotation.z += dt * 40;
       if (u > 1.02) { plane.visible = false; KS.audio && KS.audio.planeHum(0); }
       else if (Drop.phase !== 'plane') KS.audio && KS.audio.planeHum(Math.max(0, 1 - Math.hypot(x - PL.x, z - PL.z) / 900));
     }

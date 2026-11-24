@@ -463,6 +463,8 @@
       } else if (n < want.length) setTimeout(() => Game.notify(`🚗 Realistic vehicles: ${n}/${want.length} models loaded.`), 1500);
     }
     KS.Player.init(scene); KS.Battle.init(scene); KS.Places.initHeli(scene);
+    await step('Warming up the sky-drop plane…');
+    if (KS.Drop && KS.Drop.loadModel) { try { await KS.Drop.loadModel(); } catch (e) { /* Drop.begin warms it up on demand */ } }
     await step('Waking up the city: pilgrims, porters, cows…');
     KS.reseed(3); KS.Animals.init(scene);
     KS.reseed(4); KS.Peds.init(scene, KS.quality.peds, KS.Player.x, KS.Player.z);
@@ -561,12 +563,21 @@
     $('btnBattle').onclick = () => { battle = true; $('btnPlay').onclick(); };
     $('btnMenu').onclick = () => pause(true);
     $('btnRec').onclick = () => Rec.toggle(); $('btnPhoto').onclick = () => Rec.photo();
+    $('btnRadio').onclick = () => Game.toggleRadio();
     $('btnPhone').onclick = () => KS.Uthao.toggle(); $('btnGarage').onclick = () => Game.openTab('garage');
     $('mediaClose').onclick = () => ($('mediaBox').hidden = true);
     document.querySelectorAll('[data-tab-btn]').forEach((b) => (b.onclick = () => Game.openTab(b.dataset.tabBtn)));
     $('radioOff').onclick = () => { KS.Radio.stop(); renderRadio(); };
     $('radioRetry').onclick = () => { KS.Radio.status = 'idle'; KS.Radio.load(); renderRadio(); };
   }
+  /** the HUD radio button (and the R key's off state): one tap silences the
+      radio, the next tap brings the first station back. */
+  Game.toggleRadio = () => {
+    const R = KS.Radio;
+    if (R.current()) { R.stop(); Game.notify('📻 Radio off'); }
+    else { A.init(); const st = R.play(0); Game.notify(st ? `📻 <b>${st.name}</b>` : '📻 Radio off'); }
+    if (KS.Phone.app === 'radio') KS.Phone.refresh();
+  };
   function renderRadio() {
     const R = KS.Radio, el = $('radioList'); el.innerHTML = '';
     $('radioStatus').textContent = R.status === 'loading' ? 'Finding live stations in Nepal…' : R.status === 'ready' ? `${R.stations.length} live stations from Nepal, via the Radio Browser open directory.` : R.status === 'offline' ? 'Live stations are unavailable right now (offline or blocked). The built-in stations still play.' : 'Live stations load when you start.';
@@ -734,6 +745,7 @@
       const st = KS.Radio.current(); $('radio').textContent = st ? '📻 ' + st.name : '📻 off (R)';
       $('nitro').hidden = !(PL.vehicle.up && PL.vehicle.up.nitro); $('nitro').textContent = PL.nitro > 0 ? '🔥 NITRO' : PL.nitroCool > 0 ? `Nitro ${Math.ceil(PL.nitroCool)}s` : 'Nitro ready (B)';
     }
+    $('btnRadio').classList.toggle('on', !!KS.Radio.current()); // the HUD radio button shows whether anything is playing
     if (Rec.on) $('recTime').textContent = Math.floor((KS.clock - Rec.t0) / 60) + ':' + String(Math.floor((KS.clock - Rec.t0) % 60)).padStart(2, '0');
     let prompt = '', bh = '';
     if (promptT > 0) { promptT -= 0.2; prompt = promptOverride; }

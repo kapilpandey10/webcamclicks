@@ -24,10 +24,11 @@
 
   /* ---------- connect ---------- */
   N.create = async () => {
+    if (N.public && N.state !== 'off') { N.publicOff = true; N.leave(true); }
     if (N.state !== 'off') return;
     N.state = 'connecting'; N.render2();
     try { await loadLib(); } catch (e) { N.fail(e.message); return; }
-    N.room = code(); N.host = true;
+    N.room = code(); N.host = true; N.public = false;
     const peer = (N.peer = new window.Peer(PREFIX + N.room.toLowerCase(), options()));
     peer.on('open', () => { N.state = 'host'; N.me = peer.id; sys(`Room ${N.room} created. Share the code with friends.`); N.render2(); });
     peer.on('connection', (c) => { if (N.conns.size >= MAX - 1) { c.on('open', () => { c.send({ t: 'full' }); setTimeout(() => c.close(), 300); }); return; } wire(c); });
@@ -35,17 +36,19 @@
   };
   N.join = async (room) => {
     room = String(room || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (N.public && N.state !== 'off' && room.length >= 4) { N.publicOff = true; N.leave(true); }
     if (N.state !== 'off' || room.length < 4) { if (room.length < 4) KS.Game.notify('Enter the 5-character room code.', 'bad'); return; }
     N.state = 'connecting'; N.render2();
     try { await loadLib(); } catch (e) { N.fail(e.message); return; }
-    N.room = room; N.host = false;
+    N.room = room; N.host = false; N.public = false;
     const peer = (N.peer = new window.Peer(undefined, options()));
     peer.on('open', () => { N.me = peer.id; const c = peer.connect(PREFIX + room.toLowerCase(), { reliable: true }); wire(c); N.hostId = c.peer; });
     common(peer);
   };
-  function common(peer) {
+  function common(peer, onErr) {
     peer.on('error', (e) => {
       const t = e && e.type;
+      if (onErr && onErr(e)) return;
       N.fail(t === 'unavailable-id' ? 'That room code is taken. Try again.' : t === 'peer-unavailable' ? 'Room not found. Check the code.' : t === 'network' || t === 'server-error' || t === 'socket-error' ? 'Could not reach the multiplayer server.' : 'Multiplayer error: ' + (t || e));
     });
     // voice: each player sends their own voice on their own outgoing calls; incoming calls are listen-only
@@ -59,15 +62,61 @@
     peer.on('disconnected', () => { if (N.state !== 'off') sys('Connection to the server dropped. Players already here stay connected.'); });
   }
   N.fail = (msg) => { KS.Game.notify('💬 ' + msg, 'bad'); N.leave(true); };
+
+  /* ---------- the public world: everyone who is online plays in the same Kathmandu ----------
+     Worlds have well-known ids. The first player to arrive hosts world 1 and the next ones join it;
+     when it is full (8) the next world opens. If the host leaves, the others elect a new host and carry on. */
+  const PUB = 'kstreets-world-v1-';
+  N.public = false;
+  N.joinPublic = async (n = 1) => {
+    if (N.state !== 'off' || N.publicOff) return;
+    if (n > 8) { sys('Every public world is full right now. Try again soon.'); return; }
+    N.state = 'connecting'; N.public = true; N.pubN = n; N.room = 'WORLD ' + n; N.render2();
+    try { await loadLib(); } catch (e) { N.public = false; N.fail(e.message); return; }
+    const id = PUB + n; let settled = false;
+    const peer = (N.peer = new window.Peer(id, options()));
+    peer.on('open', () => {
+      settled = true; N.host = true; N.state = 'host'; N.me = peer.id;
+      sys(`🌍 You opened public world ${n}. Other players who come online will appear here.`); N.render2(); publicHello();
+    });
+    peer.on('connection', (c) => { if (N.conns.size >= MAX - 1) { c.on('open', () => { c.send({ t: 'full' }); setTimeout(() => c.close(), 300); }); return; } wire(c); });
+    common(peer, (e) => {
+      if (settled) return false;
+      if (e.type === 'unavailable-id') { settled = true; try { peer.destroy(); } catch (x) { /* ignore */ } joinPublicAsGuest(id, n); return true; } // someone hosts it: join them
+      N.public = false; N.fail('Could not reach the online world (offline play continues).'); return true;
+    });
+  };
+  function joinPublicAsGuest(id, n) {
+    N.host = false; N.state = 'connecting';
+    const peer = (N.peer = new window.Peer(undefined, options()));
+    peer.on('open', () => { N.me = peer.id; const c = peer.connect(id, { reliable: true }); wire(c); N.hostId = c.peer; });
+    common(peer, (e) => {
+      if (e.type === 'peer-unavailable') { // the host has just gone: try to become the host of this world
+        N.leave(true); setTimeout(() => N.joinPublic(n), 300 + Math.random() * 1500); return true;
+      }
+      return false;
+    });
+  }
+  /** after leaving or losing a public world, come back automatically */
+  function rejoinPublic(n, wait) { N.leave(true); setTimeout(() => { if (!N.publicOff) N.joinPublic(n); }, wait); }
+  function publicHello() {
+    if (N.toldPublic) return; N.toldPublic = true;
+    KS.Game.notify('🌍 You are in the <b>public world</b> with real players. Be kind, and never share personal details. Chat with <b>Enter</b>; mute anyone in Phone → Friends.');
+  }
+  // a short list of words that are blanked out of names and chat
+  const BAD = /\b(fuck\w*|shit\w*|bitch\w*|cunt\w*|dick\w*|nigg\w*|fag\w*|randi\w*|machikne\w*|muji\w*|chikne\w*|lado\w*|puti\w*|kukur ko chhora)\b/gi;
+  N.filter = (t) => String(t).replace(BAD, (w) => '*'.repeat(w.length));
+  N.blocked = new Set();
+  N.toggleBlock = (id) => { if (N.blocked.has(id)) N.blocked.delete(id); else N.blocked.add(id); const p = N.players.get(id); if (p && p.voice) p.voice.g.gain.value = 0; N.render2(); };
   function wire(c) {
     c.on('open', () => {
       N.conns.set(c.peer, c);
       c.send({ t: 'hello', name: N.name(), look: look() });
-      if (!N.host) { N.state = 'guest'; sys(`Joined room ${N.room}.`); }
+      if (!N.host) { N.state = 'guest'; sys(N.public ? `🌍 Joined public world ${N.pubN} with other players.` : `Joined room ${N.room}.`); if (N.public) publicHello(); }
       N.render2(); if (N.micOn) callAll();
     });
     c.on('data', (m) => onData(c, m));
-    c.on('close', () => { N.conns.delete(c.peer); if (!N.host && c.peer === N.hostId) { sys('The host left. The room has closed.'); N.leave(true); return; } dropPlayer(c.peer); if (N.host) broadcast({ t: 'bye', id: c.peer }); roster(); });
+    c.on('close', () => { N.conns.delete(c.peer); if (!N.host && c.peer === N.hostId) { if (N.public) { sys('The world host left. Reconnecting you to the public world…'); rejoinPublic(N.pubN || 1, 400 + Math.random() * 2500); return; } sys('The host left. The room has closed.'); N.leave(true); return; } dropPlayer(c.peer); if (N.host) broadcast({ t: 'bye', id: c.peer }); roster(); });
     c.on('error', () => {});
   }
   function broadcast(m, except) { for (const [id, c] of N.conns) if (id !== except && c.open) c.send(m); }
@@ -76,7 +125,7 @@
     if (!m || typeof m !== 'object') return;
     const from = N.host ? c.peer : m.id || c.peer;
     switch (m.t) {
-      case 'full': N.fail('That room is full (8 players).'); break;
+      case 'full': if (N.public) { const n = N.pubN || 1; rejoinPublic(n + 1, 200); } else N.fail('That room is full (8 players).'); break;
       case 'hello': if (N.host) { upsert(c.peer, { name: clean(m.name, 16), look: m.look }); sys(`${clean(m.name, 16)} joined.`); roster(); if (c.open) c.send(worldMsg()); } break;
       case 'roster': N.roster = (m.list || []).slice(0, MAX); for (const r of N.roster) if (r.id !== N.me) upsert(r.id, { name: clean(r.name, 16) }); for (const id of [...N.players.keys()]) if (!N.roster.some((r) => r.id === id)) dropPlayer(id); N.render2(); if (N.micOn) callAll(); break;
       case 'world': if (!N.host) syncWorld(m); break;
@@ -89,7 +138,7 @@
       case 'bye': dropPlayer(m.id); N.render2(); break;
     }
   }
-  const clean = (t, n) => String(t || '').replace(/[\u0000-\u001f]/g, ' ').slice(0, n);
+  const clean = (t, n) => { const s2 = String(t || '').replace(/[\u0000-\u001f]/g, ' ').slice(0, n); return N.filter ? N.filter(s2) : s2; };
   function look() { const o = KS.Player.person && KS.Player.person.cfg; return o ? { top: o.topStyle === 'jacket' ? o.jacket : o.top, bottom: o.bottom, skin: o.skin, hat: o.hat, hatColor: o.hatColor, topStyle: o.topStyle } : null; }
 
   /* ---------- remote players ---------- */
@@ -208,6 +257,7 @@
   /* ---------- chat ---------- */
   function sys(text) { addChat('', text, null, true); }
   function addChat(name, text, from, system) {
+    if (from && N.blocked && N.blocked.has(from)) return; // muted player
     N.chat.push({ name, text, system, t: Date.now() }); if (N.chat.length > 60) N.chat.shift();
     if (!(KS.Phone && KS.Phone.open && KS.Phone.app === 'friends')) N.unread++;
     const f = $('chatFeed');
@@ -308,7 +358,7 @@
       }
       const d = Math.hypot(p.x - P.x, p.z - P.z);
       if (p.voice) {
-        p.voice.g.gain.value = N.proximity ? KS.clamp(1.2 - d / 55, 0, 1) : 1;
+        p.voice.g.gain.value = N.blocked.has(p.id) ? 0 : N.proximity ? KS.clamp(1.2 - d / 55, 0, 1) : 1;
         p.voice.an.getByteFrequencyData(p.voice.buf); let s = 0; for (const b of p.voice.buf) s += b; p.loud = s / p.voice.buf.length > 18;
       }
       // name tag
@@ -335,18 +385,22 @@
     const on = N.state === 'host' || N.state === 'guest';
     const players = [{ name: N.name() + ' (you)' }].concat([...N.players.values()]);
     el.innerHTML = on ? `
-      <div class="roomcode"><span>Room</span><b>${N.room}</b><button type="button" class="chip" id="netCopy">Copy invite link</button></div>
+      ${N.public ? `<div class="roomcode"><span>🌍 Public world</span><b>${N.pubN}</b></div>
+      <p class="ph-muted small">${players.length < 2 ? 'Nobody else is online here right now. Real players who open the game join this world automatically.' : `${players.length} real players in this world. Everyone is a coloured dot on your map.`} Be kind and never share personal details.</p>`
+      : `<div class="roomcode"><span>Room</span><b>${N.room}</b><button type="button" class="chip" id="netCopy">Copy invite link</button></div>
       ${players.length < 2 ? '<p class="ph-muted small">Waiting for friends… send them the invite link or the code. Keep this tab open.</p>' : ''}
-      <p class="ph-muted">${players.length} / ${MAX} players in the room. Each friend is a coloured dot on your map.</p>
-      <ul class="netlist">${[...N.players.values()].map((p) => `<li><i style="background:${p.color}"></i><b>${esc(p.name)}</b><small data-dist="${esc(p.id)}">${p.placed ? Math.round(Math.hypot(p.x - KS.Player.x, p.z - KS.Player.z)) + ' m' : 'connecting…'}</small><button type="button" class="chip" data-find="${esc(p.id)}">📍 Find</button><button type="button" class="chip" data-goto="${esc(p.id)}">🚀 Go to</button></li>`).join('')}</ul>
+      <p class="ph-muted">${players.length} / ${MAX} players in the room. Each friend is a coloured dot on your map.</p>`}
+      <ul class="netlist">${[...N.players.values()].map((p) => `<li><i style="background:${p.color}"></i><b>${esc(p.name)}</b><small data-dist="${esc(p.id)}">${p.placed ? Math.round(Math.hypot(p.x - KS.Player.x, p.z - KS.Player.z)) + ' m' : 'connecting…'}</small><button type="button" class="chip" data-find="${esc(p.id)}">📍 Find</button><button type="button" class="chip" data-goto="${esc(p.id)}">🚀 Go to</button><button type="button" class="chip" data-block="${esc(p.id)}">${N.blocked.has(p.id) ? '🔈 Unmute' : '🔇 Mute'}</button></li>`).join('')}</ul>
       <div class="req-btns"><button type="button" class="btn small-btn ${N.micOn ? '' : 'ghost'}" id="netMic">${N.micOn ? '🎙 Mic on' : '🎙 Turn mic on'}</button>
       <label class="set tog"><input type="checkbox" id="netPtt" ${N.ptt ? 'checked' : ''}><span>Push to talk (hold G)</span></label></div>
       <label class="set tog"><input type="checkbox" id="netProx" ${N.proximity ? 'checked' : ''}><span>Voices get quieter with distance</span></label>
       ${N.host ? '<button type="button" class="btn small-btn" id="netBattle">⚔️ Start a battle match for everyone</button>' : '<p class="ph-muted small">⚔️ Battle matches are started by the room host.</p>'}
       <div class="chatlog" id="netLog"></div>
       <form id="netForm" class="chatform"><input id="netText" maxlength="200" placeholder="Message… (Enter)" autocomplete="off" aria-label="Chat message"><button type="submit" class="btn small-btn">Send</button></form>
-      <button type="button" class="btn ghost small-btn" id="netLeave">Leave room</button>`
-      : `<ol class="howto"><li><b>One player</b> taps <b>Create room</b>.</li><li>They tap <b>Copy invite link</b> and send it (WhatsApp, Viber, Messenger…).</li><li><b>Friends</b> open the link, or type the 5-letter code below and tap <b>Join</b>.</li><li>Everyone appears in the same Kathmandu. Chat with <kbd>Enter</kbd>; tap <b>Turn mic on</b> and allow the microphone to talk.</li></ol>
+      <button type="button" class="btn ghost small-btn" id="netLeave">${N.public ? 'Leave the public world (play alone)' : 'Leave room'}</button>`
+      : `<div class="req-btns"><button type="button" class="btn small-btn" id="netPublic" ${N.state === 'connecting' ? 'disabled' : ''}>🌍 ${N.state === 'connecting' && N.public ? 'Connecting…' : 'Join the public world (everyone online)'}</button></div>
+      <p class="ph-muted small">Or play with just your friends in a private room:</p>
+      <ol class="howto"><li><b>One player</b> taps <b>Create room</b>.</li><li>They tap <b>Copy invite link</b> and send it (WhatsApp, Viber, Messenger…).</li><li><b>Friends</b> open the link, or type the 5-letter code below and tap <b>Join</b>.</li><li>Everyone appears in the same Kathmandu. Chat with <kbd>Enter</kbd>; tap <b>Turn mic on</b> and allow the microphone to talk.</li></ol>
       <label class="set"><span>Your name</span><input id="netName" maxlength="16" value="${esc(N.name())}" aria-label="Your name"></label>
       <div class="req-btns"><button type="button" class="btn small-btn" id="netCreate" ${N.state === 'connecting' ? 'disabled' : ''}>${N.state === 'connecting' ? 'Connecting…' : 'Create room'}</button></div>
       <form id="netJoinForm" class="chatform"><input id="netCode" maxlength="6" placeholder="Room code" autocomplete="off" aria-label="Room code" style="text-transform:uppercase" value="${esc(N.invite || '')}"><button type="submit" class="btn small-btn">Join</button></form>
@@ -354,7 +408,10 @@
     const b = (id, fn) => { const x = $(id); if (x) x.onclick = fn; };
     b('netCreate', () => { const n = $('netName'); if (n && n.value.trim()) { KS.Shop.data.netName = clean(n.value.trim(), 16); KS.Shop.save(); } N.create(); });
     const jf = $('netJoinForm'); if (jf) jf.onsubmit = (e) => { e.preventDefault(); const n = $('netName'); if (n && n.value.trim()) { KS.Shop.data.netName = clean(n.value.trim(), 16); KS.Shop.save(); } N.join($('netCode').value); };
-    b('netLeave', () => N.leave()); b('netMic', () => N.toggleMic());
+    b('netLeave', () => { if (N.public) { N.publicOff = true; KS.Settings.data().online = false; KS.Shop.save(); } N.leave(); });
+    b('netPublic', () => { N.publicOff = false; KS.Settings.data().online = true; KS.Shop.save(); N.joinPublic(); });
+    el.querySelectorAll('[data-block]').forEach((x) => (x.onclick = () => N.toggleBlock(x.dataset.block)));
+    b('netMic', () => N.toggleMic());
     b('netBattle', () => { KS.Phone.toggle(false); KS.Battle.startMatch(); });
     el.querySelectorAll('[data-find]').forEach((x) => (x.onclick = () => N.find(x.dataset.find)));
     el.querySelectorAll('[data-goto]').forEach((x) => (x.onclick = () => N.goTo(x.dataset.goto)));

@@ -211,21 +211,27 @@
     b.box(M.x0 + lw / 2, 0, M.z1, lw, wallH, 0.7, 0xf0ead8); KS.addBox(M.x0 + lw / 2, M.z1, lw, 0.7, wallH);
     b.box(M.x1 - rw / 2, 0, M.z1, rw, wallH, 0.7, 0xf0ead8); KS.addBox(M.x1 - rw / 2, M.z1, rw, 0.7, wallH);
     for (let x = M.x0; x <= M.x1; x += 6) for (const z of [M.z0, M.z1]) b.sphere(x, wallH + 0.25, z, 0.35, 0xd9a52b, 1, 6); // gold finials
-    for (let k = 0; k < 9; k++) b.box(M.gx - gap / 2 + 0.5 + k, 0, M.z1, 0.08, 2.8, 0.08, 0x1a1a1a); // iron gate (closed)
-    KS.addBox(M.gx, M.z1, gap, 0.4, 2.8).tag = 'gate';
+    KS.mansionGate = KS.addBox(M.gx, M.z1, gap, 0.4, 2.8); KS.mansionGate.tag = 'gate'; // the iron gate itself is built (and opened) in places.js
     b.box(M.gx + 7, 0, M.z1 + 3, 2.2, 2.6, 2.2, 0xd8d0c0); b.roof(M.gx + 7, 2.6, M.z1 + 3, 3, 1, 0x7a3524, 0.2); // guard booth
     b.box(M.gx, 0.1, (M.z1 + cz) / 2, 6, 0.06, M.z1 - cz, 0xc8b89a); // driveway
     // the villa: white columns, balconies, red roof, a golden dome
     const vx = cx, vz = cz - 18;
     b.box(vx, 0.1, vz, 44, 0.9, 22, 0xe8e2d4); KS.addBox(vx, vz, 44, 22, 1);
-    b.box(vx, 1, vz, 40, 12, 18, 0xfaf6ee); b.box(vx, 13, vz, 41, 0.6, 19, 0xd9d1bf); b.roof(vx, 13.6, vz, 44, 4, 0x8a2a1f, 0.4);
+    // ground floor: a hollow shell you can walk into (door in the middle of the front), rooms inside; the upper floor is closed
+    const WC = 0xfaf6ee, t = 0.4, top = 13;
+    const wall = (x, z, w, d) => { b.box(x, 1, z, w, 5.4, d, WC); KS.addBox(x, z, w, d, top); };
+    wall(vx - 10.85, vz + 8.8, 18.3, t); wall(vx + 10.85, vz + 8.8, 18.3, t); b.box(vx, 4.4, vz + 8.8, 3.4, 2, t, WC); // front with the doorway
+    wall(vx, vz - 8.8, 40, t); wall(vx - 19.8, vz, t, 18); wall(vx + 19.8, vz, t, 18);
+    for (const sx of [-1, 1]) { const x = vx + sx * 7; wall(x, vz - 4.1, t, 9.8); wall(x, vz + 6.1, t, 5.8); b.box(x, 4.2, vz + 2, t, 2.2, 2.4, WC); } // partitions with doorways
+    b.box(vx, 6.4, vz, 40, 0.3, 18, 0xe8e2d4); b.box(vx, 6.7, vz, 40, 6.3, 18, WC); KS.addBox(vx, vz, 40, 18, 18, 6.4); // ceiling and the closed upper floor
+    b.box(vx, 0, vz + 12.0, 8, 0.35, 1.0, 0xe8e2d4); KS.addBox(vx, vz + 12.0, 8, 1.0, 0.35); b.box(vx, 0, vz + 11.3, 8, 0.7, 0.6, 0xe8e2d4); KS.addBox(vx, vz + 11.3, 8, 0.6, 0.7); // front steps
+    KS.MANSION.house = { vx, vz, w: 40, d: 18, floor: 1 };
+    b.box(vx, 13, vz, 41, 0.6, 19, 0xd9d1bf); b.roof(vx, 13.6, vz, 44, 4, 0x8a2a1f, 0.4);
     for (let k = 0; k < 10; k++) b.cyl(vx - 18 + k * 4, 1, vz + 9.8, 0.45, 12, 0xffffff, 12);
     b.box(vx, 6.2, vz + 10.5, 40, 0.4, 2.2, 0xd9d1bf); for (let k = 0; k < 40; k++) b.box(vx - 19.5 + k, 6.6, vz + 11.5, 0.08, 1, 0.08, 0xd9a52b);
-    for (let f = 0; f < 2; f++) for (let k = 0; k < 8; k++) b.box(vx - 16 + k * 4.6, 2.4 + f * 5.4, vz + 9.06, 1.8, 2.8, 0.1, 0x3b5a6a);
+    for (let f = 0; f < 2; f++) for (let k = 0; k < 8; k++) { const x = vx - 16 + k * 4.6; if (f === 0 && Math.abs(x - vx) < 3) continue; b.box(x, 2.4 + f * 5.4, vz + 9.06, 1.8, 2.8, 0.1, 0x3b5a6a); }
     b.cyl(vx, 17.4, vz, 3.4, 1, 0xd9a52b, 16); b.sphere(vx, 18.4, vz, 3.2, 0xd9a52b, 0.9, 16, true); b.cyl(vx, 21.2, vz, 0.15, 2, 0xd9a52b, 6);
-    KS.addBox(vx, vz, 40, 18, 18);
-    // pool, fountain, garden, helipad, garage
-    b.box(vx - 14, 0, cz + 16, 18, 0.5, 9, 0xe8e2d4); b.box(vx - 14, 0.48, cz + 16, 16.5, 0.05, 7.5, 0x3fb8d8); KS.addBox(vx - 14, cz + 16, 18, 9, 0.5);
+    // fountain, garden, helipad, garage (the swimming pool is built in places.js)
     b.cyl(M.gx, 0.1, cz + 22, 4, 0.8, 0xe8e2d4, 18); b.cyl(M.gx, 0.6, cz + 22, 3.4, 0.3, 0x5a95b0, 18); b.cyl(M.gx, 0.6, cz + 22, 0.4, 3, 0xffffff, 8); KS.addCircle(M.gx, cz + 22, 4, 0.9);
     b.cyl(vx + 32, 0.1, cz + 18, 7, 0.08, 0x666a70, 24); b.box(vx + 32, 0.19, cz + 18, 1, 0.01, 6, 0xf4f4ee); b.box(vx + 30, 0.19, cz + 18, 1, 0.01, 6, 0xf4f4ee); b.box(vx + 34, 0.19, cz + 18, 1, 0.01, 6, 0xf4f4ee); b.box(vx + 32, 0.19, cz + 18, 4, 0.01, 1, 0xf4f4ee);
     b.box(vx + 30, 0, vz, 14, 4, 12, 0xfaf6ee); b.box(vx + 30, 4, vz, 14.4, 0.4, 12.4, 0x8a2a1f); KS.addBox(vx + 30, vz, 14, 12, 4.4);

@@ -20,6 +20,7 @@
       <h4>Controls & display</h4>
       ${slider('sens', 'Look sensitivity', st.sens, 0.3, 2, 0.1)}
       <label class="set tog"><input type="checkbox" data-set="invertY" ${st.invertY ? 'checked' : ''}><span>Invert vertical look</span></label>
+      <label class="set tog"><input type="checkbox" data-set="online" ${st.online !== false ? 'checked' : ''}><span>Play in the public online world with real players</span></label>
       <label class="set tog"><input type="checkbox" data-set="minimap" ${st.minimap ? 'checked' : ''}><span>Show minimap</span></label>
       <label class="set tog"><input type="checkbox" data-set="guide" ${st.guide ? 'checked' : ''}><span>Show goals on screen</span></label>
       <label class="set tog"><input type="checkbox" data-set="high" ${KS.quality.level === 'high' ? 'checked' : ''}><span>High graphics (shadows, more traffic) · reload to apply</span></label>
@@ -33,6 +34,7 @@
         if (k === 'high') { KS.quality.level = v ? 'high' : 'low'; KS.Shop.data.quality = KS.quality.level; KS.Shop.save(); return; }
         st[k] = v; KS.Shop.save();
         if (k === 'sens') { const o = inp.parentElement.querySelector('output'); if (o) o.textContent = Math.round((v / 2) * 100) + '%'; }
+        if (k === 'online') { if (v) { KS.Net.publicOff = false; KS.Net.joinPublic(); } else if (KS.Net.public) { KS.Net.publicOff = true; KS.Net.leave(); } }
         if (k === 'minimap') $('minimap').parentElement.hidden = !v;
         if (k === 'guide') Guide.render();
       });

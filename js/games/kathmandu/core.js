@@ -142,6 +142,11 @@
     { id: 'stream', w: 2.4, bed: true, pts: [[-150, -1070, 69.4], [-162, -1052, 66], [-176, -1030, 60], [-190, -1000, 50], [-202, -965, 39], [-210, -930, 28], [-214, -890, 16]] },
   ]);
   for (const P of TPATHS) { const xs = P.pts.map((p) => p[0]), zs = P.pts.map((p) => p[1]), m = P.w + 8; P.bx0 = Math.min(...xs) - m; P.bx1 = Math.max(...xs) + m; P.bz0 = Math.min(...zs) - m; P.bz1 = Math.max(...zs) + m; }
+  /** the water level where you can swim (pools, the waterfall pool), or null */
+  KS.waterLevel = (x, z) => {
+    for (const w of KS.swimZones || []) if (w.r ? (x - w.x) ** 2 + (z - w.z) ** 2 < w.r * w.r : x > w.x0 && x < w.x1 && z > w.z0 && z < w.z1) return w.water;
+    return null;
+  };
   /** distance from (x,z) to a polyline: { d, h (interpolated height), u (0..1 along) } */
   KS.pathNear = (P, x, z) => {
     let best = { d: 1e9, h: 0 };

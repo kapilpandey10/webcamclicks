@@ -83,6 +83,11 @@
     const PL = KS.Player;
     if (KS.trialGround && Math.hypot(PL.x - KS.trialGround.counter.x, PL.z - KS.trialGround.counter.z) < 3.5) { KS.Law.openCounter(); return; }
     if (KS.agent && Math.hypot(PL.x - KS.agent.x, PL.z - KS.agent.z) < 2.6) { KS.Law.agentTalk(); return; }
+    if (KS.Mansion.nearBooth(PL)) {
+      KS.modal('🎟️ Sadbhav Thakuri Residence · सद्भाव ठकुरी निवास', `<p>"Namaste! A tour of the residence: the grand hall, the dining room, the lounge and library, the gardens with the fountain and gazebo, and the swimming pool (you may swim)."</p><p>Ticket: <b>रु ${KS.Mansion.price}</b>.</p>`,
+        [[KS.Mansion.ticket ? 'You have a ticket ✔' : `Buy a ticket · रु ${KS.Mansion.price}`, () => { KS.modalClose(); KS.Mansion.buy(); }], ['Maybe later', () => KS.modalClose()]]);
+      return;
+    }
     if (KS.Heli.nearBooth(PL)) {
       KS.modal('🚁 Sadbhav Air · सद्भाव एयर', `<p>"Namaste! A two-minute helicopter tour over Rani Pokhari, Narayanhiti, Boudhanath, Pashupati, the airport, Basantapur Durbar Square and Swayambhu, then a circle round Dharahara."</p><p>Ticket: <b>रु ${KS.Heli.price}</b>. You have रु ${Math.round(D.cash).toLocaleString('en-IN')}.</p>`,
         [[`Fly now · रु ${KS.Heli.price}`, () => { KS.modalClose(); KS.Heli.start(); }], ['Maybe later', () => KS.modalClose()]]);
@@ -521,6 +526,8 @@
       const start = () => {
         const lic = KS.Law.data().lic;
         KS.Guide.render();
+        // join the public online world (unless a friend's invite link brought you here, or you turned it off)
+        if (!KS.Net.invite && KS.Settings.data().online !== false) setTimeout(() => KS.Net.joinPublic(), 1500);
         if (battle) { KS.Battle.startMatch(); return; }
         KS.Drop.begin({ onLand: () => Game.notify(lic.A ? '🪂 Namaste, Kathmandu! Press <b>C</b> to call your bicycle or scooter here, <b>Q</b> for your phone.' : '🪂 Namaste! You have <b>no licence yet</b>: press <b>C</b> to call your <b>bicycle</b> (no licence needed). <b>Q</b> opens your phone.') });
         Game.notify('✈️ The plane is crossing the valley. Press <b>Space</b> (or Jump) when you want to jump. Tap <b>M</b> to mark where to land.');
@@ -709,9 +716,10 @@
       const v = KS.Traffic.nearest(PL.x, PL.z, 3.6);
       if (v) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ${v.owned ? 'Ride your' : v.ai ? 'Take the' : 'Ride the'} ${v.type.name.toLowerCase()}`;
       else if (KS.prayerWheels.some(([x, z]) => Math.hypot(x - PL.x, z - PL.z) < 2.4)) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Spin the prayer wheel`;
-      else if (PL.swim) prompt = 'Swimming in the Bagmati… head for the bank!';
+      else if (PL.swim) prompt = KS.waterLevel(PL.x, PL.z) != null ? '🏊 Swimming! Walk to the edge or the steps to climb out.' : 'Swimming in the Bagmati… head for the bank!';
       else if (Game.momoPending && Math.hypot(PL.x - MOMO.x, PL.z - MOMO.z) < 12) prompt = 'Step into the beam to collect the <b>momo order</b>';
       else if ((KS.lifts || []).some((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5)) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ${(KS.lifts.find((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5)).label}`;
+      else if (KS.Mansion.nearBooth(PL)) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> 🎟️ ${KS.Mansion.ticket ? 'Your tour ticket ✔' : `House & garden tour ticket · रु ${KS.Mansion.price}`}`;
       else if (KS.Heli.nearBooth(PL) && !KS.Heli.flying) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> 🚁 Sadbhav Air helicopter tour · रु ${KS.Heli.price}`;
       else if (KS.Net && KS.Net.boardHint && (bh = KS.Net.boardHint())) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ${bh}`;
       else if (KS.agent && Math.hypot(PL.x - KS.agent.x, PL.z - KS.agent.z) < 2.6) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Talk to the man in sunglasses 🕶️`;

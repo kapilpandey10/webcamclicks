@@ -109,6 +109,34 @@
     trees.count = tn; trees.castShadow = KS.quality.shadows; scene.add(trees);
     // ferns and grass between them
     if (KS.Nature) { KS.Nature.region(-260, -30, -1150, -900, 0.06, null, (x, z) => !clear(x, z) && Math.hypot(x - J.x, z - J.z) < 30); KS.Nature.region(J.x - 30, J.x + 30, J.z - 6, J.z + 30, 0.25, null, (x, z) => Math.hypot(x - J.pool.x, z - J.pool.z) < J.pool.r + 1.5); }
+    // more to see: a side fall, a wooden footbridge, a viewpoint, a tea stall with visitors, prayer flags, a rainbow in the spray
+    { const e = new KS.Builder();
+      const f3 = new T.Mesh(new T.PlaneGeometry(3.2, 34), fallMat()); f3.position.set(fx + 15, J.base + 17, fz + 9); f3.rotation.y = -0.45; scene.add(f3);
+      e.box(fx + 15, J.base + 33, fz + 8.5, 6, 2, 4, 0x5a564c);
+      // footbridge over the stream just below the pool
+      const s0 = S.pts[1], s1 = S.pts[2], bx = (s0[0] + s1[0]) / 2, bz = (s0[1] + s1[1]) / 2, by = Math.max(s0[2], s1[2]) + 1.3, ry = Math.atan2(s1[0] - s0[0], s1[1] - s0[1]) + Math.PI / 2;
+      e.box(bx, by - 0.2, bz, 2.2, 0.2, 9, 0x7a5432, ry); for (const sd of [-1, 1]) { e.box(bx + Math.cos(ry) * sd * 1.05, by, bz - Math.sin(ry) * sd * 1.05, 0.08, 1, 9, 0x5a3a22, ry); }
+      for (let k = -4; k <= 4; k++) for (const sd of [-1, 1]) e.box(bx + Math.cos(ry) * sd * 1.05 + Math.sin(ry) * k, by - 0.2, bz - Math.sin(ry) * sd * 1.05 + Math.cos(ry) * k, 0.1, 1.1, 0.1, 0x5a3a22);
+      for (let k = -4; k <= 4; k += 1) KS.addBox(bx + Math.sin(ry) * k, bz + Math.cos(ry) * k, 2.2, 1.2, by);
+      // viewpoint deck on the east side
+      const vx = J.x + 26, vz = J.z - 2, vy = KS.heightAt(vx, vz) + 0.3;
+      e.box(vx, vy - 0.3, vz, 6, 0.3, 5, 0x7a5432); KS.addBox(vx, vz, 6, 5, vy); for (let k = 0; k < 7; k++) e.box(vx - 3, vy, vz - 2.5 + k * 0.8, 0.08, 1, 0.08, 0x5a3a22);
+      const vb = new T.Mesh(new T.PlaneGeometry(2.6, 0.7), new T.MeshLambertMaterial({ side: T.DoubleSide, map: KS.tex(256, 70, (g, w, h) => { g.fillStyle = '#5a3a22'; g.fillRect(0, 0, w, h); g.fillStyle = '#ffe9a8'; g.textAlign = 'center'; g.font = `700 30px ${KS.FONT}`; g.fillText('दृश्य स्थल · VIEWPOINT', w / 2, 46, w - 12); }) }));
+      vb.position.set(vx + 2.6, vy + 1.6, vz + 2.6); scene.add(vb);
+      // tea stall and benches in the meadow, with visitors enjoying the spray
+      const tx = J.x - 18, tz = J.z + 14, ty = KS.heightAt(tx, tz);
+      e.box(tx, ty, tz, 3, 1, 1.6, 0x7a4a2a); e.box(tx, ty + 2.4, tz, 3.6, 0.08, 2.6, 0xc8102e); for (const sx of [-1, 1]) e.box(tx + sx * 1.7, ty, tz + 1.2, 0.08, 2.4, 0.08, 0x555555); KS.addBox(tx, tz, 3, 1.6, ty + 1);
+      for (let k = 0; k < 4; k++) { const x = J.x - 10 + k * 6, z = J.z + 20 + (k % 2) * 3, y = KS.heightAt(x, z); e.box(x, y, z, 2, 0.45, 0.5, 0x7a5432); KS.sitSpots.push([x, z, y + 0.45, KS.pick(['tourist', 'man', 'woman', 'student', 'kid'])]); }
+      KS.plazas.push({ x0: J.x - 22, x1: J.x + 18, z0: J.z + 6, z1: J.z + 26, n: 10, kinds: ['tourist', 'tourist', 'man', 'woman', 'student', 'kid', 'elder'] });
+      scene.add(KS.mesh(e));
+      KS.World.flags([J.x - 30, J.base + 9, J.z + 4], [J.x + 22, J.base + 11, J.z - 6], 2.4, 0.9);
+      // a rainbow that shows in the spray when the sun is out
+      const rb = new T.Mesh(new T.TorusGeometry(16, 1.4, 8, 48, Math.PI), new T.ShaderMaterial({ transparent: true, depthWrite: false, side: T.DoubleSide, uniforms: { uA: { value: 0.3 } },
+        vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: 'uniform float uA; varying vec3 vP; void main(){ float r = (length(vP.xy) - 14.6) / 2.8; vec3 c = 0.5 + 0.5 * cos(6.2832 * (r * 0.9 + vec3(0.0, 0.33, 0.67))); gl_FragColor = vec4(c, uA * smoothstep(0.0, 0.2, r) * smoothstep(1.0, 0.8, r)); }' }));
+      rb.position.set(J.x, J.base + 2, J.pool.z + 4); scene.add(rb); Pl.rainbow = rb;
+    }
+    KS.swimZones = KS.swimZones || []; KS.swimZones.push({ x: J.pool.x, z: J.pool.z, r: J.pool.r, water: J.base - 0.55 });
     KS.landmarks.push({ id: 'jharna', name: 'Chhahare Jharna', np: 'छहरे झरना', x: J.x, z: J.z, r: 45, stop: { x: P.x, z: P.z }, fact: 'A tall waterfall in the green hills towards Nuwakot. Park at the end of the road and take the stone steps through the jungle.' });
     KS.rng = rng;
   };
@@ -116,6 +144,7 @@
     U.uTime.value = KS.clock;
     const PL = KS.Player, dist = Math.hypot(PL.x - J.x, PL.z - J.z);
     if (KS.audio && KS.audio.waterfall) KS.audio.waterfall(Math.max(0, 1 - dist / 220));
+    if (Pl.rainbow) Pl.rainbow.material.uniforms.uA.value = 0.32 * (KS.day || 1) * (1 - (KS.Weather.cur.cloud || 0) * 0.8);
     if (dist > 400) { for (const m of mist) m.s.visible = false; return; }
     for (const m of mist) {
       m.t += dt; if (m.t > 6) m.t -= 6; const u = m.t / 6, a = m.t * 1.7 + mist.indexOf(m);
@@ -210,5 +239,128 @@
     $('dropHud').hidden = true; $('dropHud')._h = ''; KS.audio && KS.audio.heli && KS.audio.heli(0);
     KS.Game.notify('🚁 Thank you for flying Sadbhav Air! धन्यवाद! Come again.', 'good'); KS.Game.giveTokens(1, 'Sky tour');
   }
-  Pl.update = (dt) => { Pl.updateJharna(dt); Heli.update(dt); };
+  /* ======================= Sadbhav Thakuri Residence: a रु 50 tour ======================= */
+  const Man = (KS.Mansion = { price: 50, ticket: false, seen: new Set() });
+  const poolMat = () => new T.ShaderMaterial({ uniforms: U, transparent: true, depthWrite: false,
+    vertexShader: 'varying vec2 vP; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vP = w.xz; gl_Position = projectionMatrix * viewMatrix * w; }',
+    fragmentShader: `uniform float uTime; varying vec2 vP;
+      void main(){ float c = sin(vP.x * 2.1 + uTime * 1.3) * sin(vP.y * 1.7 - uTime * 1.1) + sin((vP.x + vP.y) * 3.3 + uTime * 2.0) * 0.5;
+        vec3 col = mix(vec3(0.15, 0.62, 0.78), vec3(0.75, 0.95, 1.0), smoothstep(0.6, 1.4, c)); gl_FragColor = vec4(col, 0.82); }` });
+  let gateBars, drops, dropPos, guards = [];
+  Pl.buildMansion = (scene) => {
+    const M = KS.MANSION, H = M.house; if (!H) return;
+    const { vx, vz } = H, cx = (M.x0 + M.x1) / 2, cz = (M.z0 + M.z1) / 2, b = new KS.Builder(), y0 = H.floor;
+    // --- inside the house: marble floor, a grand hall, a dining room and a lounge
+    const marble = KS.tex(128, 128, (g, w, h) => { for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { g.fillStyle = (i + j) % 2 ? '#e9e4da' : '#c9c1b2'; g.fillRect(i * 32, j * 32, 32, 32); } });
+    marble.repeat.set(10, 4.5); const fl = new T.Mesh(new T.PlaneGeometry(39.2, 17.2).rotateX(-Math.PI / 2), new T.MeshLambertMaterial({ map: marble })); fl.position.set(vx, y0 + 0.02, vz); scene.add(fl);
+    // grand hall (centre)
+    b.box(vx, y0 + 0.03, vz + 2, 4, 0.02, 13, 0x8a1020); // red carpet to the door
+    // the grand staircase (up to the closed upper floor)
+    for (let k = 0; k < 10; k++) b.box(vx, y0 + k * 0.52, vz - 4.6 - k * 0.42, 4.6, 0.52, 0.42, k % 2 ? 0xd9d1bf : 0xe8e2d4); KS.addBox(vx, vz - 6.6, 4.6, 4.6, 6.2);
+    for (const sx of [-1, 1]) b.box(vx + sx * 2.4, y0 + 0.5, vz - 6.6, 0.12, 5, 4.4, 0xd9a52b);
+    for (const sx of [-1, 1]) { b.box(vx + sx * 4.2, y0, vz + 3, 1, 0.8, 3.4, 0x6a1a1a); b.box(vx + sx * 4.7, y0 + 0.8, vz + 3, 0.3, 0.6, 3.4, 0x6a1a1a); KS.addBox(vx + sx * 4.2, vz + 3, 1.2, 3.4, y0 + 2); } // sofas
+    b.box(vx, y0, vz + 3, 2.2, 0.45, 1.2, 0x3a2414); b.cyl(vx, y0 + 0.45, vz + 3, 0.25, 0.4, 0xd9a52b, 10); KS.addBox(vx, vz + 3, 2.2, 1.2, y0 + 1.6); // coffee table & vase
+    b.box(vx - 6.6, y0 + 2.2, vz - 4, 0.1, 1.8, 2.6, 0xd9a52b); b.box(vx - 6.54, y0 + 2.4, vz - 4, 0.1, 1.4, 2.2, 0x2a4a6a); // a painting
+    b.box(vx + 6.6, y0 + 2.2, vz - 4, 0.1, 1.8, 2.6, 0xd9a52b); b.box(vx + 6.54, y0 + 2.4, vz - 4, 0.1, 1.4, 2.2, 0x6a3a2a);
+    for (const sx of [-1, 1]) { b.cyl(vx + sx * 5.5, y0, vz + 7.5, 0.4, 0.7, 0x7a4a2a, 10); b.sphere(vx + sx * 5.5, y0 + 1.4, vz + 7.5, 0.8, 0x2f6a2a, 1, 8); } // potted palms
+    b.cyl(vx, y0 + 4.6, vz + 1, 1.3, 0.15, 0xd9a52b, 16); for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2; b.cyl(vx + Math.cos(a) * 1.2, y0 + 3.9, vz + 1 + Math.sin(a) * 1.2, 0.03, 0.7, 0xd9a52b, 4); } // chandelier frame
+    // dining room (west)
+    const dx = vx - 13;
+    b.box(dx, y0, vz, 2, 0.85, 8, 0x4a2a16); KS.addBox(dx, vz, 2, 8, y0 + 2);
+    for (let k = 0; k < 5; k++) for (const sx of [-1, 1]) { b.box(dx + sx * 1.5, y0, vz - 3 + k * 1.5, 0.6, 0.5, 0.6, 0x6a3a1a); b.box(dx + sx * 1.8, y0 + 0.5, vz - 3 + k * 1.5, 0.1, 0.8, 0.6, 0x6a3a1a); b.cyl(dx + sx * 0.6, y0 + 0.86, vz - 3 + k * 1.5, 0.22, 0.03, 0xffffff, 10); }
+    b.box(dx, y0, vz - 8, 5, 1.6, 0.6, 0x3a2414); b.box(dx - 6, y0 + 2.2, vz, 0.1, 1.6, 3, 0xd9a52b); b.box(dx - 5.94, y0 + 2.4, vz, 0.1, 1.2, 2.6, 0x3a6a3a);
+    // lounge (east): a piano, a big bed, bookshelves
+    const lx = vx + 13;
+    b.box(lx + 2.5, y0, vz - 5, 3, 0.6, 4, 0xf0ece0); b.box(lx + 2.5, y0 + 0.6, vz - 6.8, 3, 1.4, 0.3, 0x6a1a2a); b.box(lx + 2.5, y0 + 0.6, vz - 4.5, 2.8, 0.25, 2.8, 0xe8e0d0); KS.addBox(lx + 2.5, vz - 5, 3, 4, y0 + 2);
+    b.box(lx - 3, y0, vz + 4, 2.2, 1, 1.4, 0x111111); b.box(lx - 3, y0 + 1, vz + 3.5, 2.2, 0.06, 0.4, 0xf4f4f4); b.box(lx - 3, y0 + 1, vz + 4.6, 2.2, 0.9, 0.2, 0x111111); KS.addBox(lx - 3, vz + 4, 2.2, 1.4, y0 + 2);
+    for (let k = 0; k < 3; k++) { b.box(lx + 6.4, y0, vz - 1 + k * 2, 0.6, 3.2, 1.9, 0x4a2a16); for (let r = 0; r < 4; r++) b.box(lx + 6.1, y0 + 0.4 + r * 0.75, vz - 1 + k * 2, 0.08, 0.5, 1.7, KS.pick([0x8a2a1a, 0x1a3a6a, 0x2a5a2a, 0xa8862a])); }
+    KS.addBox(lx + 6.4, vz + 1, 0.6, 6, y0 + 3.2);
+    b.box(lx, y0 + 0.03, vz, 6, 0.02, 4, 0x2a3a6a);
+    scene.add(KS.mesh(b, KS.M.vc, false));
+    // warm light inside; glowing chandelier bulbs
+    const glow = new T.MeshBasicMaterial({ color: 0xfff2c0 });
+    for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2, m = new T.Mesh(new T.SphereGeometry(0.12, 8, 6), glow); m.position.set(vx + Math.cos(a) * 1.2, y0 + 3.85, vz + 1 + Math.sin(a) * 1.2); scene.add(m); }
+    Man.light = new T.PointLight(0xffe0b0, 0, 28, 1.4); Man.light.position.set(vx, y0 + 4, vz + 1); scene.add(Man.light);
+    // --- the raised swimming pool with steps up, steps inside and a diving board
+    const px = vx - 14, pz = cz + 16, PW = 16, PD = 8, e = new KS.Builder();
+    e.box(px, 0.05, pz, PW, 0.1, PD, 0x2a8ab0);
+    for (const [ox, oz, w, d] of [[0, -PD / 2, PW + 1, 0.5], [0, PD / 2, PW + 1, 0.5], [-PW / 2, 0, 0.5, PD + 1], [PW / 2, 0, 0.5, PD + 1]]) { e.box(px + ox, 0, pz + oz, w, 1.65, d, 0xf2eee4); KS.addBox(px + ox, pz + oz, w, d, 1.65); }
+    for (let k = 0; k < 2; k++) { e.box(px + PW / 2 + 0.8 + (1 - k) * 0.7, 0, pz, 0.7, 0.55 * (k + 1), 2.4, 0xe8e2d4); KS.addBox(px + PW / 2 + 0.8 + (1 - k) * 0.7, pz, 0.7, 2.4, 0.55 * (k + 1)); } // steps up, outside
+    for (let k = 0; k < 2; k++) { e.box(px + PW / 2 - 0.6 - k * 0.8, 0, pz, 0.8, 0.9 - k * 0.4, 2.4, 0xe8e2d4); KS.addBox(px + PW / 2 - 0.6 - k * 0.8, pz, 0.8, 2.4, 0.9 - k * 0.4); } // steps inside
+    e.box(px - PW / 2 + 1.5, 1.65, pz, 3, 0.12, 0.6, 0x2a6a8a); e.box(px - PW / 2 + 0.3, 0, pz, 0.4, 1.8, 0.6, 0xe8e2d4);
+    for (let k = 0; k < 4; k++) { e.box(px - 5 + k * 3.4, 0, pz + PD / 2 + 2.2, 1.8, 0.35, 0.7, 0xffffff); e.box(px - 5 + k * 3.4, 0.35, pz + PD / 2 + 2.5, 1.8, 0.5, 0.12, 0xffffff); } // sun loungers
+    // --- the garden: flower beds, hedges, a gazebo, lamps
+    for (let k = 0; k < 8; k++) { const x = M.gx - 28 + k * 8, z = cz + 32; e.box(x, 0, z, 5, 0.35, 2, 0x6a4a2a); for (let f = 0; f < 6; f++) e.sphere(x - 2 + f * 0.8, 0.5, z + KS.r(-0.6, 0.6), 0.28, KS.pick([0xe23a5a, 0xf2c418, 0xffffff, 0xb83ae2, 0xff7a1a]), 1, 6); }
+    for (const sx of [-1, 1]) { e.box(M.gx + sx * 7, 0, (M.z1 + cz) / 2 + 6, 1, 1.1, 40, 0x2f6a2a); KS.addBox(M.gx + sx * 7, (M.z1 + cz) / 2 + 6, 1, 40, 1.1); }
+    const gzx = M.x1 - 18, gzz = cz + 30; e.cyl(gzx, 0, gzz, 4, 0.3, 0xe8e2d4, 8); for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; e.cyl(gzx + Math.cos(a) * 3.5, 0.3, gzz + Math.sin(a) * 3.5, 0.15, 3, 0xffffff, 6); } e.roof(gzx, 3.3, gzz, 8, 1.8, 0x8a2a1f, 0.3);
+    for (let k = 0; k < 6; k++) { e.cyl(M.gx + (k % 2 ? 4 : -4), 0, M.z1 - 8 - Math.floor(k / 2) * 14, 0.06, 3, 0x222222, 6); e.sphere(M.gx + (k % 2 ? 4 : -4), 3.1, M.z1 - 8 - Math.floor(k / 2) * 14, 0.25, 0xfff2c0, 1, 8); }
+    // ticket window on the guard booth
+    e.box(M.gx + 7, 1, M.z1 + 4.12, 1.2, 0.9, 0.05, 0x1a2a3a);
+    scene.add(KS.mesh(e));
+    const water = new T.Mesh(new T.PlaneGeometry(PW - 0.6, PD - 0.6).rotateX(-Math.PI / 2), poolMat()); water.position.set(px, 1.45, pz); scene.add(water);
+    KS.swimZones = KS.swimZones || []; KS.swimZones.push({ x0: px - PW / 2 + 0.25, x1: px + PW / 2 - 0.25, z0: pz - PD / 2 + 0.25, z1: pz + PD / 2 - 0.25, water: 1.45 });
+    const tb = new T.Mesh(new T.PlaneGeometry(2.4, 0.8), new T.MeshLambertMaterial({ side: T.DoubleSide, map: KS.tex(256, 86, (g, w, h) => { g.fillStyle = '#15151a'; g.fillRect(0, 0, w, h); g.strokeStyle = '#d9a52b'; g.lineWidth = 4; g.strokeRect(4, 4, w - 8, h - 8); g.fillStyle = '#e8c15a'; g.textAlign = 'center'; g.font = '700 26px "Barlow Condensed", sans-serif'; g.fillText('🎟️ HOUSE & GARDEN TOUR', w / 2, 36, w - 16); g.font = `600 24px ${KS.FONT}`; g.fillText('भ्रमण टिकट · रु 50', w / 2, 70); }) }));
+    tb.position.set(M.gx + 7, 2.2, M.z1 + 4.15); scene.add(tb);
+    // --- the fountain: water jets and falling drops
+    const fz = cz + 22, N2 = 90; dropPos = new Float32Array(N2 * 3); Man.drops = Array.from({ length: N2 }, () => ({ t: Math.random() * 1.6, a: Math.random() * Math.PI * 2, s: 0.6 + Math.random() * 0.6 }));
+    const dg = new T.BufferGeometry(); dg.setAttribute('position', new T.BufferAttribute(dropPos, 3));
+    drops = new T.Points(dg, new T.PointsMaterial({ color: 0xdff4ff, size: 0.16, transparent: true, opacity: 0.85 })); drops.frustumCulled = false; scene.add(drops);
+    const bowl = new T.Mesh(new T.CircleGeometry(3.3, 24).rotateX(-Math.PI / 2), poolMat()); bowl.position.set(M.gx, 0.92, fz); scene.add(bowl);
+    Man.fountain = { x: M.gx, z: fz };
+    // --- the iron gate: slides open when you have a ticket
+    gateBars = new T.Group(); const barM = new T.MeshLambertMaterial({ color: 0x1a1a1a }), goldM = new T.MeshLambertMaterial({ color: 0xd9a52b });
+    for (let k = 0; k < 9; k++) { const bar = new T.Mesh(new T.BoxGeometry(0.08, 2.8, 0.08), barM); bar.position.set(-4 + k, 1.4, 0); gateBars.add(bar); const tip = new T.Mesh(new T.ConeGeometry(0.08, 0.25, 6), goldM); tip.position.set(-4 + k, 2.9, 0); gateBars.add(tip); }
+    const rail = new T.Mesh(new T.BoxGeometry(8.6, 0.12, 0.1), barM); rail.position.y = 1.2; gateBars.add(rail); gateBars.position.set(M.gx, 0, M.z1); scene.add(gateBars);
+    // --- the tour stops and the security team
+    Man.stops = [{ id: 'hall', name: 'the grand hall', x: vx, z: vz + 1, r: 5 }, { id: 'dining', name: 'the dining room', x: vx - 13, z: vz, r: 5 }, { id: 'lounge', name: 'the lounge and library', x: vx + 13, z: vz, r: 5 },
+      { id: 'fountain', name: 'the fountain', x: M.gx, z: fz, r: 7 }, { id: 'pool', name: 'the swimming pool', x: px, z: pz, r: 11 }, { id: 'gazebo', name: 'the garden gazebo', x: gzx, z: gzz, r: 7 }];
+    const loops = [[[M.gx - 10, M.z1 - 6], [M.gx - 10, cz + 8], [M.x0 + 8, cz + 8], [M.x0 + 8, M.z1 - 6]], [[M.gx + 10, M.z1 - 6], [M.x1 - 8, M.z1 - 6], [M.x1 - 8, cz], [M.gx + 26, cz], [M.gx + 26, cz + 20]], [[vx - 22, vz + 11], [vx + 22, vz + 11], [vx + 22, M.z0 + 8], [vx - 22, M.z0 + 8]], [[vx - 2, vz + 6], [vx - 2, vz - 2], [vx + 12, vz - 1], [vx - 12, vz - 1]]];
+    for (const loop of loops) {
+      const o = KS.outfitFor('office'); Object.assign(o, { topStyle: 'jacket', jacket: 0x111111, top: 0xffffff, tie: 0x111111, glasses: true, hat: null });
+      const g = KS.makePerson('office', o); scene.add(g.root);
+      const inside = loop === loops[3];
+      guards.push({ p: g, loop, i: 0, x: loop[0][0], z: loop[0][1], y: inside ? y0 : 0.1, wait: KS.r(0, 3), sayT: 0 });
+    }
+    KS.landmarks.push({ minor: true, id: 'mansiontour', name: 'Thakuri Residence tour', np: 'निवास भ्रमण', x: M.gx + 7, z: M.z1 + 5, r: 6, fact: 'Buy a रु 50 ticket at the guard booth to tour the house, the garden, the fountain and the swimming pool.' });
+  };
+  Man.nearBooth = (P) => { const M = KS.MANSION; return Math.hypot(P.x - (M.gx + 7), P.z - (M.z1 + 5.2)) < 2.4; };
+  Man.buy = () => {
+    const D = KS.Shop.data;
+    if (Man.ticket) { KS.Game.notify('🎟️ You already have a ticket. Enjoy the tour!'); return; }
+    if (D.cash < Man.price) { KS.Game.notify(`The tour ticket is रु ${Man.price}.`, 'bad'); return; }
+    D.cash -= Man.price; Man.ticket = true; Man.seen.clear(); KS.audio.coin && KS.audio.coin(); KS.Game.save && KS.Game.save();
+    KS.Game.notify('🎟️ Welcome to the Sadbhav Thakuri Residence! See <b>the grand hall, dining room, lounge, fountain, swimming pool and gazebo</b>. You may swim in the pool.', 'good');
+  };
+  Man.update = (dt) => {
+    const M = KS.MANSION; if (!M || !gateBars) return;
+    const PL = KS.Player, near = Math.abs(PL.x - (M.x0 + M.x1) / 2) < 140 && Math.abs(PL.z - (M.z0 + M.z1) / 2) < 140;
+    // the gate slides open for ticket holders
+    const open = Man.ticket ? 1 : 0; Man.gateK = KS.lerp(Man.gateK || 0, open, Math.min(1, dt * 1.5)); gateBars.position.x = M.gx + Man.gateK * 8.6; KS.mansionGate.top = Man.gateK > 0.6 ? -1 : 2.8;
+    if (Man.light) Man.light.intensity = near ? 1.5 : 0;
+    if (!near) { if (drops) drops.visible = false; return; }
+    // fountain drops
+    drops.visible = true; const F = Man.fountain;
+    Man.drops.forEach((d, i) => { d.t += dt; if (d.t > 1.6) d.t -= 1.6; const r = d.t * 1.8 * d.s, y = 1 + 4.2 * d.t - 4.9 * d.t * d.t * 1.6; dropPos[i * 3] = F.x + Math.cos(d.a) * r; dropPos[i * 3 + 1] = Math.max(0.9, y + 1.8); dropPos[i * 3 + 2] = F.z + Math.sin(d.a) * r; });
+    drops.geometry.attributes.position.needsUpdate = true;
+    // guards walk their rounds
+    for (const g of guards) {
+      if (g.wait > 0) { g.wait -= dt; KS.animWalk(g.p, dt, 0); g.p.root.rotation.y += Math.sin(KS.clock * 0.7) * dt * 0.4; }
+      else { const [tx, tz] = g.loop[g.i], dx = tx - g.x, dz = tz - g.z, d = Math.hypot(dx, dz); if (d < 0.4) { g.i = (g.i + 1) % g.loop.length; g.wait = KS.r(1.5, 4); } else { const sp = 1.25; g.x += (dx / d) * sp * dt; g.z += (dz / d) * sp * dt; g.p.root.rotation.y = Math.atan2(dx, dz); KS.animWalk(g.p, dt, sp); } }
+      g.p.root.position.set(g.x, g.y, g.z);
+      g.sayT -= dt; const pd = Math.hypot(PL.x - g.x, PL.z - g.z);
+      if (pd < 4 && g.sayT <= 0) { g.sayT = 12; KS.say(g.p.root, KS.pick(Man.ticket ? ['Namaste! Enjoy the tour.', 'Please do not touch the paintings.', 'The pool is open, sir.', 'Welcome to the residence.'] : ['Ticket please! रु 50 at the booth.', 'Sorry, ticket holders only.']), 2.4); }
+    }
+    // inside the walls?
+    const inside = PL.x > M.x0 + 0.5 && PL.x < M.x1 - 0.5 && PL.z > M.z0 + 0.5 && PL.z < M.z1 - 0.5;
+    if (inside && !Man.ticket && PL.mode === 'foot') { // climbed over the wall without a ticket: escorted out
+      KS.audio.whistle && KS.audio.whistle(1); PL.x = M.gx + 3; PL.z = M.z1 + 4; PL.y = 0.2; PL.vy = 0; PL.climb = null;
+      KS.Game.notify('👮 Security: "No ticket, no entry!" You are walked back to the gate. Tickets (रु 50) at the guard booth.', 'bad');
+    }
+    if (inside && Man.ticket) for (const st of Man.stops) if (!Man.seen.has(st.id) && Math.hypot(PL.x - st.x, PL.z - st.z) < st.r) {
+      Man.seen.add(st.id); KS.Game.notify(`🏛️ You saw ${st.name} (${Man.seen.size}/${Man.stops.length})`, 'good');
+      if (Man.seen.size === Man.stops.length) { KS.Game.giveTokens(2, 'Mansion tour complete'); KS.Game.notify('🏆 Tour complete! Thank you for visiting the Sadbhav Thakuri Residence.', 'good'); }
+    }
+  };
+
+  Pl.update = (dt) => { Pl.updateJharna(dt); Heli.update(dt); Man.update(dt); };
 })();

@@ -206,8 +206,9 @@
     if ((I.hit('Space') || I.hit('KeyJump')) && PL.grounded && !PL.swim) { PL.vy = 6.4; PL.grounded = false; }
     PL.vy -= 20 * dt; PL.y += PL.vy * dt;
     let g = KS.groundAt(PL.x, PL.z, PL.y, 1.05);
-    PL.swim = g < KS.RIVER.water - 0.6;
-    if (PL.swim) g = KS.RIVER.water - 1.25;
+    const wl = KS.waterLevel(PL.x, PL.z), lvl = wl != null ? wl : KS.RIVER.water; // pools and the waterfall pool, else the river
+    PL.swim = g < lvl - 0.6;
+    if (PL.swim) g = lvl - 1.25;
     if (PL.y <= g) {
       // a hard landing hurts: about 6 m is a bad fall, 15 m can knock you out
       if (PL.vy < -11.5 && !PL.swim) { const dmg = Math.round((-PL.vy - 11.5) * 6.5); KS.Game && KS.Game.hurt(dmg); KS.Game && KS.Game.notify(`🤕 Hard landing! −${dmg} health`, 'bad'); }

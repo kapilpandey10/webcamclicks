@@ -757,7 +757,7 @@
     if (KS.Landmarks) KS.Landmarks.build(scene, W);
     if (KS.Extras) KS.Extras.build(scene, W);
     if (KS.Signs) KS.Signs.build(scene, W);
-    if (KS.Places) KS.Places.buildJharna(scene);
+    if (KS.Places) { KS.Places.buildJharna(scene); KS.Places.buildMansion(scene); }
     // Thamel: prayer flags & festival lights criss-crossing the streets
     for (const [c, r] of [[4, 2], [4, 3], [5, 3], [3, 3]]) {
       const R = W.blockRect(c, r);

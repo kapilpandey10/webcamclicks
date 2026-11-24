@@ -175,8 +175,8 @@
     h.box(143, 4.2, -49, 47, 0.15, 21, 0xf2f0ea); // interior ceiling
     for (let f = 0; f < 4; f++) for (let i = 0; i < 9; i++) h.box(cx - 13 + i * 5.2, 4.6 + f * 2.9, -37.65, 2.6, 1.6, 0.1, 0x5a8aa8);
     for (const wx of [123, 129, 137, 143, 149, 155, 163]) { h.box(wx, 1.8, -38, 2.6, 1.4, 0.7, 0x5a8aa8); h.box(wx, 1.8, -60, 2.6, 1.4, 0.7, 0x5a8aa8); }
-    h.box(cx - 2, 0, cz + 11, 14, 4, 5, 0xe8e6e0); h.box(cx - 2, 4, cz + 11, 15, 0.4, 6, 0xc81e1e); // emergency bay canopy
-    KS.addBox(cx - 2, cz + 11, 14, 5, 4.4);
+    /* (the old solid emergency-bay box is gone — round 13 replaced it with a
+       glass entrance lobby, so the door is no longer hidden behind a block) */
     h.box(cx + 8, 12.6, -37.6, 3, 3, 0.2, 0xffffff); h.box(cx + 8, 13.6, -37.55, 2.2, 0.8, 0.1, 0xc81e1e); h.box(cx + 8, 12.9, -37.55, 0.8, 2.2, 0.1, 0xc81e1e);
     // partitions: lobby | rooms (doors to Emergency, the ward and the office), and the two room dividers
     wall(123, -50, 8, 0.4, 0, 4.2); wall(136, -50, 10, 0.4, 0, 4.2); wall(152, -50, 14, 0.4, 0, 4.2); wall(165, -50, 4, 0.4, 0, 4.2);
@@ -211,33 +211,68 @@
     KS.hospital = { x: cx - 2, z: R.z1 - 2 };
     KS.landmarks.push({ id: 'hospital', minor: true, name: 'Bir Hospital', np: 'वीर अस्पताल', x: cx, z: cz, r: 26, stop: { x: cx - 2, z: R.z1 + 2 }, fact: 'Nepal’s oldest hospital. Walk in — the reception, the ward and the doctors’ office are all inside.' });
 
-    /* ---------- Bir Hospital, round 9: a grander entrance, two helipads, a roof lift ----------
-       Entrance: a columned portico over the door, glass doors swung open, a big
-       lit red cross and an EMERGENCY sign. Ground helipad in the forecourt and
-       a rooftop helipad on the roof (the roof is a walkable slab; a glass lift
-       on the east wall takes you up and down). More doctors, a pharmacy counter
-       and a garden in front. */
+    /* ---------- Bir Hospital, round 9 + round 13: a grand entrance, two helipads, a roof lift ----------
+       Entrance (round 13): the old thin portico and the solid red bay hid the
+       door, so the entrance is now a bright glass lobby that projects 10 m
+       out from the south wall — glass front and sides, a big lit BIR HOSPITAL
+       sign, tall glass double doors, and a red carpet to the door. The
+       ambulance bay is an open canopy on columns to the east, so nothing
+       blocks the view of the door any more. Ground helipad in the forecourt
+       and a rooftop helipad on the roof (the roof is a walkable slab; a glass
+       lift on the east wall takes you up and down). More doctors, a pharmacy
+       counter and a garden in front. */
     {
       const hb = new KS.Builder();
-      /* the portico: two columns and a canopy over the door (x 131..135, z -38). */
-      hb.cyl(129.5, 0, -35.5, 0.45, 3.6, 0xf2f0ea, 10); hb.cyl(136.5, 0, -35.5, 0.45, 3.6, 0xf2f0ea, 10);
-      hb.box(133, 3.6, -36.5, 10, 0.35, 4.5, 0xc81e1e); // red portico roof
-      hb.box(133, 3.9, -36.5, 10.2, 0.15, 4.7, 0x8a2a1a);
-      KS.addBox(129.5, -35.5, 0.9, 0.9, 3.6); KS.addBox(136.5, -35.5, 0.9, 0.9, 3.6); // the columns are solid
-      /* glass doors, swung open flat against the door frame so the doorway stays clear. */
-      hb.box(131.2, 0, -37.6, 0.06, 2.6, 1.1, 0x9ac8e0, Math.PI / 2.4);
-      hb.box(134.8, 0, -37.6, 0.06, 2.6, 1.1, 0x9ac8e0, -Math.PI / 2.4);
-      /* a big red cross above the entrance, and an EMERGENCY board on the portico. */
+      /* the entrance lobby: a glass box projecting out from the door (x 131..135, z -38)
+         to the forecourt (z -28), 12 m wide, roof at 5 m. */
+      hb.box(133, 0, -33, 12, 0.15, 10, 0xd8d4ca); // floor slab
+      hb.box(133, 0.16, -33, 2.2, 0.04, 10, 0xc81e1e); // red carpet to the door
+      KS.addBox(133, -33, 12, 10, 0.15, 0); // the porch floor is walkable
+      /* glass front (z -28): panels either side of the 4 m entrance, lintel above it. */
+      hb.box(129, 0, -28, 4, 4.5, 0.15, 0x9ac8e0); hb.box(137, 0, -28, 4, 4.5, 0.15, 0x9ac8e0);
+      hb.box(133, 3, -28, 4, 2, 0.15, 0x9ac8e0); // lintel glass over the entrance
+      KS.addBox(129, -28, 4, 0.15, 4.5); KS.addBox(137, -28, 4, 0.15, 4.5); KS.addBox(133, -28, 4, 0.15, 5, 3);
+      /* glass sides (x 127 and x 139) with solid corner pillars. */
+      hb.box(127, 0, -33, 0.15, 4.5, 10, 0x9ac8e0); hb.box(139, 0, -33, 0.15, 4.5, 10, 0x9ac8e0);
+      KS.addBox(127, -33, 0.15, 10, 4.5); KS.addBox(139, -33, 0.15, 10, 4.5);
+      hb.cyl(127.2, 0, -28.2, 0.35, 5, 0xf2f0ea, 10); hb.cyl(138.8, 0, -28.2, 0.35, 5, 0xf2f0ea, 10);
+      KS.addBox(127.2, -28.2, 0.7, 0.7, 5); KS.addBox(138.8, -28.2, 0.7, 0.7, 5);
+      /* the roof: a flat slab with a red fascia on the front, and the big sign. */
+      hb.box(133, 5, -33, 12.6, 0.3, 10.6, 0xf2f0ea);
+      hb.box(133, 4.7, -27.9, 12.6, 0.6, 0.2, 0xc81e1e); // red fascia
+      KS.addBox(133, -33, 12.6, 10.6, 5.3, 5); // the roof is solid (landable)
+      /* tall glass double doors at the building wall, standing open so the doorway
+         reads as a door — with bright frames and handles. */
+      hb.box(132, 0, -37.9, 0.08, 3, 1.9, 0x9ac8e0, 0.5); hb.box(134, 0, -37.9, 0.08, 3, 1.9, 0x9ac8e0, -0.5);
+      hb.box(132, 0, -37.9, 0.12, 3, 0.12, 0x8a2a1a, 0.5); hb.box(134, 0, -37.9, 0.12, 3, 0.12, 0x8a2a1a, -0.5);
+      hb.box(132.6, 1.1, -37.9, 0.1, 0.1, 0.3, 0xd8a028, 0.5); hb.box(133.4, 1.1, -37.9, 0.1, 0.1, 0.3, 0xd8a028, -0.5);
+      /* a big red cross above the doors, on the building face. */
       hb.box(133, 4.6, -37.7, 2.4, 0.7, 0.15, 0xffffff); hb.box(133, 4.6, -37.7, 0.7, 2.4, 0.15, 0xffffff);
       hb.box(133, 4.6, -37.62, 2.0, 0.4, 0.1, 0xc81e1e); hb.box(133, 4.6, -37.62, 0.4, 2.0, 0.1, 0xc81e1e);
-      /* the forecourt: a red EMERGENCY bay in front of the door and a stretcher. */
-      hb.box(133, 0.03, -32, 8, 0.06, 5, 0xc81e1e);
-      hb.box(133, 0.05, -32, 7, 0.05, 4, 0x8a2a1a);
-      hb.box(140, 0.4, -33, 0.7, 0.15, 2, 0x3a5a8a); hb.box(140, 0.55, -33.8, 0.5, 0.1, 0.3, 0xffffff); // a stretcher by the bay
+      /* a stretcher by the entrance, and the ambulance bay: an open canopy on
+         columns to the east (x 145..157, z -36..-26), with an ambulance under it. */
+      hb.box(140, 0.4, -30, 0.7, 0.15, 2, 0x3a5a8a); hb.box(140, 0.55, -30.8, 0.5, 0.1, 0.3, 0xffffff);
+      hb.box(151, 4.2, -31, 13, 0.3, 11, 0xc81e1e); // bay roof
+      hb.box(151, 4.5, -31, 13.2, 0.15, 11.2, 0x8a2a1a);
+      for (const [bx, bz] of [[145.5, -25.5], [156.5, -25.5], [145.5, -36.5], [156.5, -36.5]]) { hb.cyl(bx, 0, bz, 0.3, 4.2, 0xf2f0ea, 8); KS.addBox(bx, bz, 0.6, 0.6, 4.2); }
+      KS.addBox(151, -31, 13, 11, 4.5, 4.2); // the bay roof is solid (landable)
+      /* a white ambulance with a red cross, parked under the bay. */
+      hb.box(151, 0, -31, 2.2, 1.6, 4.6, 0xffffff);
+      hb.box(151, 1.6, -31, 2.2, 0.7, 4.6, 0xffffff);
+      hb.box(151, 0.4, -28.6, 2.0, 0.5, 0.15, 0xc81e1e); hb.box(151, 0.4, -28.6, 0.5, 1.2, 0.15, 0xc81e1e); // red cross on the front
+      hb.box(151, 1.9, -31, 2.3, 0.15, 4.7, 0xc81e1e); // red stripe on the roof
+      hb.cyl(150, 0.4, -29, 0.4, 0.3, 0x1a1a1a, 10); hb.cyl(152, 0.4, -29, 0.4, 0.3, 0x1a1a1a, 10);
+      hb.cyl(150, 0.4, -33, 0.4, 0.3, 0x1a1a1a, 10); hb.cyl(152, 0.4, -33, 0.4, 0.3, 0x1a1a1a, 10);
+      KS.addBox(151, -31, 2.2, 4.6, 2.3); // the ambulance is solid
+      /* the forecourt: a red EMERGENCY bay marking on the ground in front of the lobby. */
+      hb.box(133, 0.03, -25, 8, 0.06, 4, 0xc81e1e);
+      hb.box(133, 0.05, -25, 7, 0.05, 3, 0x8a2a1a);
       /* a pharmacy counter inside the lobby, with its own sign. */
       hb.box(125, 0, -52, 2.6, 1, 0.8, 0x2a6a3a); hb.box(125, 1, -52, 2.8, 0.1, 1, 0x1a4a2a);
       scene.add(KS.mesh(hb));
-      board(scene, 'EMERGENCY', 'आपतकालीन · 24 HOURS', 133, 5.6, -34.2, 0, 7, 1.6, '#c81e1e', '#ffffff');
+      /* the big sign on the front of the entrance lobby, facing the forecourt. */
+      board(scene, 'वीर अस्पताल', 'BIR HOSPITAL · EMERGENCY', 133, 6.1, -27.7, 0, 10, 2, '#ffffff', '#c81e1e');
+      board(scene, 'EMERGENCY', 'आपतकालीन · 24 HOURS', 151, 5.1, -25.4, 0, 7, 1.6, '#c81e1e', '#ffffff');
       board(scene, 'फार्मेसी', 'PHARMACY', 125, 2.4, -51.5, 0, 4, 1.2, '#2a6a3a', '#ffffff');
       /* more staff: two extra doctors/nurses on the ward and in the lobby. */
       KS.doctorSpots.push([155, -55, Math.PI, 'nurse'], [133, -49.3, Math.PI, 'doctor']);

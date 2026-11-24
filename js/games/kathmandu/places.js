@@ -221,8 +221,8 @@
     marble.repeat.set(10, 4.5); const fl = new T.Mesh(new T.PlaneGeometry(39.2, 17.2).rotateX(-Math.PI / 2), new T.MeshLambertMaterial({ map: marble })); fl.position.set(vx, y0 + 0.02, vz); scene.add(fl);
     // grand hall (centre)
     b.box(vx, y0 + 0.03, vz + 2, 4, 0.02, 13, 0x8a1020); // red carpet to the door
-    // the grand staircase (up to the closed upper floor)
-    for (let k = 0; k < 10; k++) b.box(vx, y0 + k * 0.52, vz - 4.6 - k * 0.42, 4.6, 0.52, 0.42, k % 2 ? 0xd9d1bf : 0xe8e2d4); KS.addBox(vx, vz - 6.6, 4.6, 4.6, 6.2);
+    // the grand staircase (up to the open upper floor) — every step is a solid you can climb
+    for (let k = 0; k < 10; k++) { b.box(vx, y0 + k * 0.52, vz - 4.6 - k * 0.42, 4.6, 0.52, 0.42, k % 2 ? 0xd9d1bf : 0xe8e2d4); KS.addBox(vx, vz - 4.6 - k * 0.42, 4.6, 0.42, y0 + (k + 1) * 0.52, y0 + k * 0.52); }
     for (const sx of [-1, 1]) b.box(vx + sx * 2.4, y0 + 0.5, vz - 6.6, 0.12, 5, 4.4, 0xd9a52b);
     for (const sx of [-1, 1]) { b.box(vx + sx * 4.2, y0, vz + 3, 1, 0.8, 3.4, 0x6a1a1a); b.box(vx + sx * 4.7, y0 + 0.8, vz + 3, 0.3, 0.6, 3.4, 0x6a1a1a); KS.addBox(vx + sx * 4.2, vz + 3, 1.2, 3.4, y0 + 2); } // sofas
     b.box(vx, y0, vz + 3, 2.2, 0.45, 1.2, 0x3a2414); b.cyl(vx, y0 + 0.45, vz + 3, 0.25, 0.4, 0xd9a52b, 10); KS.addBox(vx, vz + 3, 2.2, 1.2, y0 + 1.6); // coffee table & vase
@@ -243,6 +243,68 @@
     KS.addBox(lx + 6.4, vz + 1, 0.6, 6, y0 + 3.2);
     b.box(lx, y0 + 0.03, vz, 6, 0.02, 4, 0x2a3a6a);
     scene.add(KS.mesh(b, KS.M.vc, false));
+    // --- level 2 (floor at y2): kitchen (west), bedroom (centre), toilet (east), and the front balcony
+    const y2 = H.floor2 || 6.7, u = new KS.Builder(); // the kitchen sits over the dining room (dx) and the toilet over the lounge (lx)
+    // kitchen: terracotta tiles, a counter with stove and sink, a fridge, a table with chairs
+    u.box(dx, y2 + 0.01, vz, 12, 0.02, 16, 0xc47a3a);
+    u.box(161.2, y2, vz - 2, 1, 1, 10, 0x8a6a4a); KS.addBox(161.2, vz - 2, 1, 10, y2 + 1, y2);
+    u.box(161.2, y2 + 1, vz - 4, 0.8, 0.06, 1.2, 0x1a1a1a); for (const dz of [-4.4, -3.6]) u.cyl(161.2, y2 + 1.05, vz + dz, 0.16, 0.03, 0x333333, 8);
+    u.box(161.2, y2 + 1, vz + 2, 0.8, 0.15, 1, 0xffffff); u.cyl(161.2, y2 + 1.2, vz + 1.6, 0.04, 0.4, 0x8a8a90, 6);
+    u.box(161.5, y2, vz - 7.5, 1.2, 2.2, 1, 0xf0f0f0); KS.addBox(161.5, vz - 7.5, 1.2, 1, y2 + 2.2, y2);
+    u.cyl(dx, y2, vz + 2, 1.1, 0.08, 0x6a4a2a, 12); u.cyl(dx, y2, vz + 2, 0.12, 0.8, 0x4a2a16, 8); KS.addBox(dx, vz + 2, 2.2, 2.2, y2 + 0.9, y2);
+    for (const [cx2, cz2] of [[dx - 1.8, vz + 2], [dx + 1.8, vz + 2], [dx, vz + 0.2], [dx, vz + 3.8]]) { u.box(cx2, y2, cz2, 0.55, 0.45, 0.55, 0x6a3a1a); u.box(cx2, y2 + 0.45, cz2, 0.55, 0.5, 0.1, 0x6a3a1a); }
+    u.cyl(dx, y2 + 2.8, vz + 2, 0.3, 0.3, 0xd9a52b, 8);
+    // bedroom: a red rug, a big double bed with pillows, bedside tables, a dresser with a mirror
+    u.box(vx, y2 + 0.01, vz + 2, 5, 0.02, 3.5, 0x8a1020);
+    u.box(184, y2, vz - 6.5, 2.2, 0.5, 2.6, 0x6a3a1a); u.box(184, y2 + 0.5, vz - 6.5, 2, 0.25, 2.4, 0xf0ece0); u.box(184, y2 + 0.75, vz - 6, 2, 0.12, 1.4, 0x2a4a6a);
+    u.box(183.4, y2 + 0.75, vz - 7.6, 0.8, 0.2, 0.5, 0xffffff); u.box(184.6, y2 + 0.75, vz - 7.6, 0.8, 0.2, 0.5, 0xffffff);
+    u.box(184, y2, vz - 7.9, 2.2, 1.2, 0.15, 0x4a2a16); KS.addBox(184, vz - 6.5, 2.2, 2.6, y2 + 1, y2);
+    for (const sx of [-1, 1]) { u.box(184 + sx * 1.6, y2, vz - 7.6, 0.6, 0.6, 0.6, 0x6a4a2a); u.cyl(184 + sx * 1.6, y2 + 0.75, vz - 7.6, 0.12, 0.3, 0xd9a52b, 8); }
+    u.box(174.5, y2, vz - 8, 2, 1, 0.6, 0x6a4a2a); u.box(174.5, y2 + 1.8, vz - 8.2, 1.2, 1, 0.05, 0xcfe0e8);
+    // toilet: blue tiles, a toilet, a sink with a mirror, a shower, towels
+    u.box(lx, y2 + 0.01, vz, 12, 0.02, 16, 0x9ec8d8);
+    u.cyl(lx - 3, y2, vz - 6, 0.45, 0.4, 0xffffff, 10); u.box(lx - 3, y2 + 0.4, vz - 6.6, 0.7, 0.6, 0.25, 0xffffff); KS.addBox(lx - 3, vz - 6, 1, 1, y2 + 0.8, y2);
+    u.box(lx + 3, y2, vz - 6, 1, 0.9, 0.6, 0xffffff); u.box(lx + 3, y2 + 1.6, vz - 6.3, 0.9, 0.9, 0.05, 0xcfe0e8); KS.addBox(lx + 3, vz - 6, 1, 0.6, y2 + 1, y2);
+    u.box(lx + 4, y2, vz + 3, 0.05, 2.2, 2, 0xbfe0e8); u.cyl(lx + 4, y2 + 2.2, vz + 3, 0.15, 0.1, 0x8a8a90, 8); u.box(lx + 4, y2 + 0.01, vz + 3, 1.6, 0.06, 1.6, 0xffffff);
+    u.box(lx - 4, y2 + 1.2, vz + 2, 0.05, 0.06, 1.2, 0x8a8a90); u.box(lx - 4, y2 + 1.2, vz + 2, 0.5, 0.7, 0.06, 0xe23a5a);
+    // balcony furniture: two chairs, a table, a plant (the slab and railings are in signs.js)
+    for (const sx of [-1, 1]) { u.box(vx + sx * 6, 6.6, vz + 10.5, 0.6, 0.9, 0.6, 0x8a6a4a); u.box(vx + sx * 6, 6.6 + 0.9, vz + 10.8, 0.6, 0.6, 0.1, 0x8a6a4a); }
+    u.cyl(vx, 6.6, vz + 10.5, 0.5, 0.08, 0x6a4a2a, 10); u.cyl(vx, 6.6, vz + 10.5, 0.08, 0.7, 0x4a2a16, 8); KS.addBox(vx, vz + 10.5, 1, 1, 7.4, 6.6);
+    u.cyl(vx + 8, 6.6, vz + 10.5, 0.35, 0.6, 0x7a4a2a, 10); u.sphere(vx + 8, 6.6 + 1.1, vz + 10.5, 0.6, 0x2f6a2a, 1, 8);
+    scene.add(KS.mesh(u, KS.M.vc, false));
+    Man.light2 = new T.PointLight(0xffe0b0, 0, 32, 1.4); Man.light2.position.set(vx, y2 + 4, vz); scene.add(Man.light2);
+    // --- the bedroom wardrobe: double doors (O opens them) and bright jewellery inside (C collects it)
+    const wx = vx - 4, wz = vz - 8.2;
+    const wd = new KS.Builder();
+    wd.box(wx, y2, wz - 0.32, 2.2, 2.4, 0.06, 0x4a2a16); wd.box(wx - 1.07, y2, wz, 0.06, 2.4, 0.7, 0x4a2a16); wd.box(wx + 1.07, y2, wz, 0.06, 2.4, 0.7, 0x4a2a16);
+    wd.box(wx, y2 + 2.37, wz, 2.2, 0.06, 0.7, 0x4a2a16); wd.box(wx, y2, wz, 2.2, 0.06, 0.7, 0x4a2a16);
+    wd.box(wx, y2 + 0.8, wz, 2, 0.05, 0.6, 0x6a4a2a); wd.box(wx, y2 + 1.6, wz, 2, 0.05, 0.6, 0x6a4a2a);
+    scene.add(KS.mesh(wd, KS.M.vc, false));
+    KS.addBox(wx, wz, 2.2, 0.7, y2 + 2.4, y2); // the wardrobe is a solid you cannot walk through
+    const doorMat = new T.MeshLambertMaterial({ color: 0x5a3420 });
+    const knobMat = new T.MeshLambertMaterial({ color: 0xd9a52b });
+    const mkDoor = (hingeX, dir) => {
+      const g = new T.Group(); g.position.set(hingeX, y2, wz + 0.35);
+      const panel = new T.Mesh(new T.BoxGeometry(1.05, 2.3, 0.06), doorMat); panel.position.set(dir * 0.525, 1.15, 0); g.add(panel);
+      const knob = new T.Mesh(new T.SphereGeometry(0.05, 8, 6), knobMat); knob.position.set(dir * 0.95, 1.15, 0.06); g.add(knob);
+      scene.add(g); return g;
+    };
+    Man.wardrobe = { x: wx, z: wz, y: y2, open: false, doorK: 0, doorL: mkDoor(wx - 1.1, 1), doorR: mkDoor(wx + 1.1, -1) };
+    const goldMat = new T.MeshBasicMaterial({ color: 0xffd21f });
+    const gemCols = [0xff3a5a, 0x3aa0ff, 0x2fd060, 0xff7ad9, 0x00e5d4];
+    const jewels = new T.Group(); jewels.position.set(wx, y2, wz);
+    for (let k = 0; k < 3; k++) { const n = new T.Mesh(new T.TorusGeometry(0.16, 0.03, 6, 16), goldMat); n.position.set(-0.6 + k * 0.6, 1.9, 0.1); jewels.add(n); }
+    for (let k = 0; k < 5; k++) { const g = new T.Mesh(new T.OctahedronGeometry(0.13), new T.MeshBasicMaterial({ color: gemCols[k] })); g.position.set(-0.7 + k * 0.35, 1.05, 0.1); jewels.add(g); }
+    for (let k = 0; k < 3; k++) { const b2 = new T.Mesh(new T.BoxGeometry(0.32, 0.09, 0.14), goldMat); b2.position.set(-0.4 + k * 0.4, 0.32, 0.1); jewels.add(b2); }
+    jewels.visible = false; scene.add(jewels);
+    Man.wardrobeLight = new T.PointLight(0xffc860, 0, 5, 1.2); Man.wardrobeLight.position.set(wx, y2 + 1.6, wz + 0.8); scene.add(Man.wardrobeLight);
+    Man.jewels = jewels;
+    Man.jewellery = { inWardrobe: true, inHands: false };
+    // a little gold bundle to carry in the hand once you collect the jewellery
+    const hb = new T.Group();
+    for (let k = 0; k < 3; k++) { const s = new T.Mesh(new T.SphereGeometry(0.09, 8, 6), goldMat); s.position.set((k - 1) * 0.12, 0.05, 0); hb.add(s); }
+    const hg = new T.Mesh(new T.OctahedronGeometry(0.11), new T.MeshBasicMaterial({ color: 0xff3a5a })); hg.position.set(0, 0.18, 0); hb.add(hg);
+    Man.handJewels = hb;
     // warm light inside; glowing chandelier bulbs
     const glow = new T.MeshBasicMaterial({ color: 0xfff2c0 });
     for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2, m = new T.Mesh(new T.SphereGeometry(0.12, 8, 6), glow); m.position.set(vx + Math.cos(a) * 1.2, y0 + 3.85, vz + 1 + Math.sin(a) * 1.2); scene.add(m); }
@@ -279,14 +341,30 @@
     const rail = new T.Mesh(new T.BoxGeometry(8.6, 0.12, 0.1), barM); rail.position.y = 1.2; gateBars.add(rail); gateBars.position.set(M.gx, 0, M.z1); scene.add(gateBars);
     // --- the tour stops and the security team
     Man.stops = [{ id: 'hall', name: 'the grand hall', x: vx, z: vz + 1, r: 5 }, { id: 'dining', name: 'the dining room', x: vx - 13, z: vz, r: 5 }, { id: 'lounge', name: 'the lounge and library', x: vx + 13, z: vz, r: 5 },
+      { id: 'kitchen', name: 'the upstairs kitchen', x: vx - 13, z: vz, r: 5, y: y2 }, { id: 'bedroom', name: 'the upstairs bedroom', x: vx, z: vz, r: 5, y: y2 },
       { id: 'fountain', name: 'the fountain', x: M.gx, z: fz, r: 7 }, { id: 'pool', name: 'the swimming pool', x: px, z: pz, r: 11 }, { id: 'gazebo', name: 'the garden gazebo', x: gzx, z: gzz, r: 7 }];
     const loops = [[[M.gx - 10, M.z1 - 6], [M.gx - 10, cz + 8], [M.x0 + 8, cz + 8], [M.x0 + 8, M.z1 - 6]], [[M.gx + 10, M.z1 - 6], [M.x1 - 8, M.z1 - 6], [M.x1 - 8, cz], [M.gx + 26, cz], [M.gx + 26, cz + 20]], [[vx - 22, vz + 11], [vx + 22, vz + 11], [vx + 22, M.z0 + 8], [vx - 22, M.z0 + 8]], [[vx - 2, vz + 6], [vx - 2, vz - 2], [vx + 12, vz - 1], [vx - 12, vz - 1]]];
     for (const loop of loops) {
       const o = KS.outfitFor('office'); Object.assign(o, { topStyle: 'jacket', jacket: 0x111111, top: 0xffffff, tie: 0x111111, glasses: true, hat: null });
       const g = KS.makePerson('office', o); scene.add(g.root);
       const inside = loop === loops[3];
-      guards.push({ p: g, loop, i: 0, x: loop[0][0], z: loop[0][1], y: inside ? y0 : 0.1, wait: KS.r(0, 3), sayT: 0 });
+      guards.push({ p: g, loop, i: 0, x: loop[0][0], z: loop[0][1], y: inside ? y0 : 0.1, wait: KS.r(0, 3), sayT: 0, mansion: true, kind: 'guard', hp: 100, down: 0, fight: 0, punchT: 0, kickT: 0 });
     }
+    // the two gate guards: they walk left and right along the gate, a weapon in hand
+    for (const [x0, x1] of [[M.gx - 10, M.gx], [M.gx, M.gx + 10]]) {
+      const o = KS.outfitFor('office'); Object.assign(o, { topStyle: 'jacket', jacket: 0x111111, top: 0xffffff, tie: 0x111111, glasses: true, hat: null });
+      const g = KS.makePerson('office', o); scene.add(g.root);
+      guards.push({ p: g, mode: 'line', x0, x1, z: M.z1 + 2.2, dir: x0 === M.gx - 10 ? 1 : -1, x: (x0 + x1) / 2, y: 0.1, wait: 0, sayT: 0, mansion: true, kind: 'guard', hp: 100, down: 0, fight: 0, punchT: 0, kickT: 0, gate: true });
+    }
+    // the staff upstairs: a cook in the kitchen and a housekeeper in the bedroom — they fight back too
+    for (const [kind, role, loop] of [
+      ['cook', 'man', [[dx - 3, vz - 2], [dx + 3, vz - 2], [dx + 3, vz + 4], [dx - 3, vz + 4]]],
+      ['housekeeper', 'woman', [[vx - 5, vz + 2], [vx + 5, vz + 2], [vx + 5, vz - 4], [vx - 5, vz - 4]]],
+    ]) {
+      const g = KS.makePerson(role, KS.outfitFor(role)); scene.add(g.root);
+      guards.push({ p: g, loop, i: 0, x: loop[0][0], z: loop[0][1], y: y2, wait: KS.r(0, 3), sayT: 0, mansion: true, kind, hp: 100, down: 0, fight: 0, punchT: 0, kickT: 0 });
+    }
+    Man.people = guards;
     KS.landmarks.push({ minor: true, id: 'mansiontour', name: 'Thakuri Residence tour', np: 'निवास भ्रमण', x: M.gx + 7, z: M.z1 + 5, r: 6, fact: 'Buy a रु 50 ticket at the guard booth to tour the house, the garden, the fountain and the swimming pool.' });
   };
   Man.nearBooth = (P) => { const M = KS.MANSION; return Math.hypot(P.x - (M.gx + 7), P.z - (M.z1 + 5.2)) < 2.4; };
@@ -295,34 +373,155 @@
     if (Man.ticket) { KS.Game.notify('🎟️ You already have a ticket. Enjoy the tour!'); return; }
     if (D.cash < Man.price) { KS.Game.notify(`The tour ticket is रु ${Man.price}.`, 'bad'); return; }
     D.cash -= Man.price; Man.ticket = true; Man.seen.clear(); KS.audio.coin && KS.audio.coin(); KS.Game.save && KS.Game.save();
-    KS.Game.notify('🎟️ Welcome to the Sadbhav Thakuri Residence! See <b>the grand hall, dining room, lounge, fountain, swimming pool and gazebo</b>. You may swim in the pool.', 'good');
+    KS.Game.notify('🎟️ Welcome to the Sadbhav Thakuri Residence! See <b>the grand hall, dining room, lounge, the upstairs kitchen and bedroom, the fountain, swimming pool and gazebo</b>. You may swim in the pool.', 'good');
+  };
+  /** a member of the household is hit (punch or gunshot): they go down, get up
+      fighting, and your tour ticket is cancelled on the spot. */
+  Man.hitPerson = (mp, dmg, fromX, fromZ) => {
+    if (!mp || mp.dead) return false;
+    mp.hp = (mp.hp == null ? 100 : mp.hp) - dmg;
+    if (mp.hp > 0) {
+      mp.down = 2.2; mp.fight = 0; mp.getUpFight = true;
+      const dx = mp.x - fromX, dz = mp.z - fromZ, d = Math.hypot(dx, dz) || 1;
+      mp.x += (dx / d) * 0.8; mp.z += (dz / d) * 0.8;
+      KS.say(mp.p.root, KS.pick(['Aija! Aija!', 'Ma pani dekhauchhu!', 'Ke herchas?!']), 1.8, 'angry');
+      KS.audio && KS.audio.punch && KS.audio.punch();
+      Man.cancelTicket('you attacked a member of the household');
+      return true;
+    }
+    mp.dead = true; mp.down = 1e9; mp.fight = 0;
+    mp.p.inner.rotation.x = -1.5; mp.p.inner.position.y = 0.12;
+    KS.say(mp.p.root, '…', 2, 'angry');
+    KS.audio && KS.audio.punch && KS.audio.punch();
+    KS.Game && KS.Game.notify('💀 A member of the household is down!', 'bad');
+    Man.cancelTicket('you attacked a member of the household');
+    return true;
+  };
+  /** lose the tour ticket for misbehaving: the gate closes behind you and the
+      household turns on you. The gate never traps anyone inside, though. */
+  Man.cancelTicket = (reason) => {
+    if (!Man.ticket) return;
+    Man.ticket = false;
+    KS.Game.notify(`🎟️ Your tour ticket has been CANCELLED — ${reason}.`, 'bad');
+    KS.audio && KS.audio.whistle && KS.audio.whistle(1);
+    const PL = KS.Player;
+    for (const g of guards) if (!g.dead && g.down <= 0 && Math.hypot(g.x - PL.x, g.z - PL.z) < 30 && Math.abs(g.y - PL.y) < 4) { g.fight = 9; g.down = 0; g.p.inner.rotation.x = 0; g.p.inner.position.y = 0; }
+  };
+  Man.nearWardrobe = (PL) => { const W = Man.wardrobe; return W && Math.hypot(PL.x - W.x, PL.z - W.z) < 2.6 && Math.abs(PL.y - W.y) < 2.5; };
+  /** O by the bedroom wardrobe: swing the double doors open or shut. */
+  Man.toggleWardrobe = () => {
+    const PL = KS.Player, W = Man.wardrobe;
+    if (!W || !Man.nearWardrobe(PL)) return false;
+    W.open = !W.open;
+    KS.audio && KS.audio.ding && KS.audio.ding();
+    KS.Game.notify(W.open ? '👗 The wardrobe swings open — gold necklaces, bright gems and gold bars!' : '👗 You closed the wardrobe.', W.open ? 'good' : '');
+    return true;
+  };
+  /** C by the open wardrobe: take the jewellery into your hands. */
+  Man.tryCollect = () => {
+    const PL = KS.Player, W = Man.wardrobe;
+    if (!W || !Man.nearWardrobe(PL) || !W.open || !Man.jewellery.inWardrobe) return false;
+    Man.jewellery.inWardrobe = false; Man.jewellery.inHands = true;
+    Man.jewels.visible = false; Man.wardrobeLight.intensity = 0;
+    if (PL.person && PL.person.armR) { Man.handJewels.position.set(0, -0.5, 0.07); PL.person.armR.add(Man.handJewels); }
+    KS.audio && KS.audio.coin && KS.audio.coin();
+    KS.Game.notify('💎 You pocketed the jewellery. Get out quietly — and do not let the guard at the gate see it in your hands…', 'good');
+    return true;
+  };
+  /** arrested while carrying the jewellery: it is confiscated. */
+  Man.onArrest = () => {
+    if (!Man.jewellery.inHands) return;
+    Man.jewellery.inHands = false;
+    if (Man.handJewels.parent) Man.handJewels.parent.remove(Man.handJewels);
+    KS.Game.notify('💎 The police confiscated the stolen jewellery.', 'bad');
   };
   Man.update = (dt) => {
     const M = KS.MANSION; if (!M || !gateBars) return;
     const PL = KS.Player, near = Math.abs(PL.x - (M.x0 + M.x1) / 2) < 140 && Math.abs(PL.z - (M.z0 + M.z1) / 2) < 140;
-    // the gate slides open for ticket holders
-    const open = Man.ticket ? 1 : 0; Man.gateK = KS.lerp(Man.gateK || 0, open, Math.min(1, dt * 1.5)); gateBars.position.x = M.gx + Man.gateK * 8.6; KS.mansionGate.top = Man.gateK > 0.6 ? -1 : 2.8;
+    const inside = PL.x > M.x0 + 0.5 && PL.x < M.x1 - 0.5 && PL.z > M.z0 + 0.5 && PL.z < M.z1 - 0.5;
+    // the gate slides open for ticket holders — and it never traps anyone inside
+    const open = (Man.ticket || inside) ? 1 : 0; Man.gateK = KS.lerp(Man.gateK || 0, open, Math.min(1, dt * 1.5)); gateBars.position.x = M.gx + Man.gateK * 8.6; KS.mansionGate.top = Man.gateK > 0.6 ? -1 : 2.8;
     if (Man.light) Man.light.intensity = near ? 1.5 : 0;
+    if (Man.light2) Man.light2.intensity = near ? 1.2 : 0;
+    // the wardrobe doors swing open and shut, and the jewellery glows inside
+    if (Man.wardrobe) {
+      const W = Man.wardrobe, target = W.open ? 1 : 0;
+      W.doorK += Math.max(-1, Math.min(1, target - W.doorK)) * Math.min(1, dt * 3);
+      W.doorL.rotation.y = -W.doorK * 1.9; W.doorR.rotation.y = W.doorK * 1.9;
+      const show = W.doorK > 0.3 && Man.jewellery.inWardrobe;
+      Man.jewels.visible = show; Man.wardrobeLight.intensity = show ? 1.6 : 0;
+    }
+    // the jewellery in your hands follows the player's hand (the player model is rebuilt when the outfit changes)
+    if (Man.jewellery.inHands && PL.person && PL.person.armR && Man.handJewels.parent !== PL.person.armR) { Man.handJewels.position.set(0, -0.5, 0.07); PL.person.armR.add(Man.handJewels); }
+    // got away? far enough from the gate with the jewellery in your hands: a clean getaway pays रु 500
+    if (Man.jewellery.inHands && Math.hypot(PL.x - M.gx, PL.z - M.z1) > 100) {
+      Man.jewellery.inHands = false; if (Man.handJewels.parent) Man.handJewels.parent.remove(Man.handJewels);
+      KS.Game.pay(500, 'You got away with the Thakuri jewellery!'); KS.audio.coin && KS.audio.coin();
+      Man.jewelChecked = false;
+    }
+    // leaving with the jewellery: a guard at the gate may notice it
+    if (Man.jewellery.inHands && !Man.jewelChecked && Man.wasInside && !inside) {
+      Man.jewelChecked = true;
+      const gateNear = guards.some((g) => g.gate && !g.dead && Math.hypot(g.x - PL.x, g.z - PL.z) < 10);
+      if (Math.random() < (gateNear ? 0.8 : 0.35)) {
+        KS.Game.notify('👮 The guard at the gate spotted the jewellery in your hands! "CHOR! CHOR!"', 'bad');
+        KS.audio.whistle && KS.audio.whistle(1);
+        Man.cancelTicket('the guard spotted the jewellery in your hands');
+        KS.Law && KS.Law.raise(2, 'Jewellery theft at the Thakuri residence');
+        for (const g of guards) if (g.gate && !g.dead) { g.fight = 9; g.down = 0; g.p.inner.rotation.x = 0; g.p.inner.position.y = 0; }
+      } else KS.Game.notify('👀 You slipped past the gate with the jewellery. Now run — get 100 m away!', 'good');
+    }
+    Man.wasInside = inside;
     if (!near) { if (drops) drops.visible = false; return; }
     // fountain drops
     drops.visible = true; const F = Man.fountain;
     Man.drops.forEach((d, i) => { d.t += dt; if (d.t > 1.6) d.t -= 1.6; const r = d.t * 1.8 * d.s, y = 1 + 4.2 * d.t - 4.9 * d.t * d.t * 1.6; dropPos[i * 3] = F.x + Math.cos(d.a) * r; dropPos[i * 3 + 1] = Math.max(0.9, y + 1.8); dropPos[i * 3 + 2] = F.z + Math.sin(d.a) * r; });
     drops.geometry.attributes.position.needsUpdate = true;
-    // guards walk their rounds
+    // the household: dead, down, fighting, patrolling
     for (const g of guards) {
-      if (g.wait > 0) { g.wait -= dt; KS.animWalk(g.p, dt, 0); g.p.root.rotation.y += Math.sin(KS.clock * 0.7) * dt * 0.4; }
-      else { const [tx, tz] = g.loop[g.i], dx = tx - g.x, dz = tz - g.z, d = Math.hypot(dx, dz); if (d < 0.4) { g.i = (g.i + 1) % g.loop.length; g.wait = KS.r(1.5, 4); } else { const sp = 1.25; g.x += (dx / d) * sp * dt; g.z += (dz / d) * sp * dt; g.p.root.rotation.y = Math.atan2(dx, dz); KS.animWalk(g.p, dt, sp); } }
+      if (g.dead) { g.p.root.position.set(g.x, g.y, g.z); continue; }
+      if (g.gate && !g.gun && KS.Weapons && KS.Weapons.battleGunMesh) { g.gun = KS.Weapons.battleGunMesh('smg'); if (g.gun) { g.gun.scale.setScalar(1.3); g.gun.position.set(0, -0.6, 0.07); g.p.armR.add(g.gun); } }
+      const dx = PL.x - g.x, dz = PL.z - g.z, pd = Math.hypot(dx, dz), sameFloor = Math.abs(PL.y - g.y) < 3;
+      if (g.down > 0) {
+        g.down -= dt;
+        g.p.inner.rotation.x = KS.lerp(g.p.inner.rotation.x, -1.5, Math.min(1, dt * 6)); g.p.inner.position.y = KS.lerp(g.p.inner.position.y, 0.12, Math.min(1, dt * 6));
+        if (g.down <= 0) {
+          g.p.inner.rotation.x = 0; g.p.inner.position.y = 0;
+          if (g.getUpFight && pd < 15 && sameFloor && PL.mode === 'foot') { g.fight = 9; g.getUpFight = false; KS.say(g.p.root, KS.pick(['Ma pani dekhauchhu!', 'Tero ticket cancel!', 'Chor!']), 2, 'angry'); }
+          g.getUpFight = false;
+        }
+        g.p.root.position.set(g.x, g.y, g.z); continue;
+      }
+      if (g.fight > 0) {
+        g.fight -= dt;
+        if (pd > 18 || PL.vehicle || !sameFloor || g.fight <= 0) { g.fight = 0; g.p.inner.rotation.x = 0; g.p.inner.position.y = 0; }
+        else {
+          g.punchT = Math.max(0, g.punchT - dt); g.kickT = Math.max(0, g.kickT - dt);
+          if (pd > 1.1) { const sp = 3.2; g.x += (dx / pd) * sp * dt; g.z += (dz / pd) * sp * dt; g.p.root.rotation.y = Math.atan2(dx, dz); KS.animWalk(g.p, dt, sp); }
+          if (pd <= 1.1 && g.punchT <= 0) { g.punchT = 1.1; g.punchA = 0; KS.Game.hurt(KS.r(6, 11)); KS.Game.notify('👊 A member of the household punched you!', 'bad'); KS.audio && KS.audio.punch && KS.audio.punch(); }
+          else if (pd > 1.1 && pd <= 2.4 && g.kickT <= 0) { g.kickT = 1.6; g.kickA = 0; KS.Game.hurt(KS.r(8, 14)); KS.Game.notify('🦶 A member of the household kicked you!', 'bad'); KS.audio && KS.audio.punch && KS.audio.punch(); }
+          if (g.punchA != null) { g.punchA += dt * 4; g.p.busyArm = true; KS.animPunch(g.p, g.punchA); if (g.punchA >= 1) { g.punchA = null; g.p.busyArm = false; } }
+          if (g.kickA != null) { g.kickA += dt * 3; KS.animKick(g.p, g.kickA); if (g.kickA >= 1) { g.kickA = null; g.p.legR.rotation.x = 0; g.p.legL.rotation.x = 0; } }
+          const cc = KS.collide(g.x, g.z, 0.3, g.y, 1.0); g.x = cc.x; g.z = cc.z;
+          g.p.root.position.set(g.x, g.y, g.z); continue;
+        }
+      }
+      // patrol: a loop of waypoints, or a line back and forth along the gate
+      if (g.mode === 'line') {
+        if (g.wait > 0) { g.wait -= dt; KS.animWalk(g.p, dt, 0); }
+        else { const sp = 1.1, tx = g.dir > 0 ? g.x1 : g.x0; g.x += g.dir * sp * dt; g.p.root.rotation.y = g.dir > 0 ? Math.PI / 2 : -Math.PI / 2; KS.animWalk(g.p, dt, sp); if (g.dir > 0 ? g.x >= g.x1 : g.x <= g.x0) { g.x = tx; g.dir = -g.dir; g.wait = KS.r(1, 2); } }
+      } else if (g.wait > 0) { g.wait -= dt; KS.animWalk(g.p, dt, 0); g.p.root.rotation.y += Math.sin(KS.clock * 0.7) * dt * 0.4; }
+      else { const [tx, tz] = g.loop[g.i], dx2 = tx - g.x, dz2 = tz - g.z, d2 = Math.hypot(dx2, dz2); if (d2 < 0.4) { g.i = (g.i + 1) % g.loop.length; g.wait = KS.r(1.5, 4); } else { const sp = 1.25; g.x += (dx2 / d2) * sp * dt; g.z += (dz2 / d2) * sp * dt; g.p.root.rotation.y = Math.atan2(dx2, dz2); KS.animWalk(g.p, dt, sp); } }
       g.p.root.position.set(g.x, g.y, g.z);
-      g.sayT -= dt; const pd = Math.hypot(PL.x - g.x, PL.z - g.z);
-      if (pd < 4 && g.sayT <= 0) { g.sayT = 12; KS.say(g.p.root, KS.pick(Man.ticket ? ['Namaste! Enjoy the tour.', 'Please do not touch the paintings.', 'The pool is open, sir.', 'Welcome to the residence.'] : ['Ticket please! रु 50 at the booth.', 'Sorry, ticket holders only.']), 2.4); }
+      g.sayT -= dt; const pd2 = Math.hypot(PL.x - g.x, PL.z - g.z);
+      if (pd2 < 4 && g.sayT <= 0) { g.sayT = 12; KS.say(g.p.root, KS.pick(Man.ticket ? ['Namaste! Enjoy the tour.', 'Please do not touch the paintings.', 'The pool is open, sir.', 'Welcome to the residence.'] : ['Ticket please! रु 50 at the booth.', 'Sorry, ticket holders only.']), 2.4); }
     }
-    // inside the walls?
-    const inside = PL.x > M.x0 + 0.5 && PL.x < M.x1 - 0.5 && PL.z > M.z0 + 0.5 && PL.z < M.z1 - 0.5;
-    if (inside && !Man.ticket && PL.mode === 'foot') { // climbed over the wall without a ticket: escorted out
+    // climbed over the wall without a ticket: escorted out — unless the household is already fighting you
+    if (inside && !Man.ticket && PL.mode === 'foot' && !guards.some((g) => g.fight > 0)) {
       KS.audio.whistle && KS.audio.whistle(1); PL.x = M.gx + 3; PL.z = M.z1 + 4; PL.y = 0.2; PL.vy = 0; PL.climb = null;
       KS.Game.notify('👮 Security: "No ticket, no entry!" You are walked back to the gate. Tickets (रु 50) at the guard booth.', 'bad');
     }
-    if (inside && Man.ticket) for (const st of Man.stops) if (!Man.seen.has(st.id) && Math.hypot(PL.x - st.x, PL.z - st.z) < st.r) {
+    if (inside && Man.ticket) for (const st of Man.stops) if (!Man.seen.has(st.id) && (st.y == null || Math.abs(PL.y - st.y) < 2) && Math.hypot(PL.x - st.x, PL.z - st.z) < st.r) {
       Man.seen.add(st.id); KS.Game.notify(`🏛️ You saw ${st.name} (${Man.seen.size}/${Man.stops.length})`, 'good');
       if (Man.seen.size === Man.stops.length) { KS.Game.giveTokens(2, 'Mansion tour complete'); KS.Game.notify('🏆 Tour complete! Thank you for visiting the Sadbhav Thakuri Residence.', 'good'); }
     }

@@ -719,6 +719,14 @@
       const dx = ped.x - x, dz = ped.z - z, d = Math.hypot(dx, dz);
       if (d < bd && (dx * fx + dz * fz) / (d || 1) > 0.3) { bd = d; best = ped; }
     }
+    // the household can be punched too — and they punch back
+    let bestMansion = null;
+    if (KS.Mansion && KS.Mansion.people) for (const mp of KS.Mansion.people) {
+      if (!mp.p.root.visible || mp.down > 0 || mp.dead || Math.abs((mp.y || 0) - KS.Player.y) > 3) continue;
+      const dx = mp.x - x, dz = mp.z - z, d = Math.hypot(dx, dz);
+      if (d < bd && (dx * fx + dz * fz) / (d || 1) > 0.3) { bd = d; bestMansion = mp; }
+    }
+    if (bestMansion) { KS.Mansion.hitPerson(bestMansion, 25, x, z); return bestMansion; }
     if (best) {
       // a punch hurts: 25 damage, and at 0 health the pedestrian stays down
       if (KS.Damage && KS.Damage.hitPed) KS.Damage.hitPed(best, 25, x, z);

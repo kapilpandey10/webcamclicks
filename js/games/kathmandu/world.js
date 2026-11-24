@@ -291,6 +291,118 @@
     scene.add(KS.mesh(b, KS.M.vc, false));
   }
 
+  /* ================= the elevated toll expressway (round 15) =================
+     A second Ring Road stacked 12 m above the first, like the multi-level
+     flyovers in China: a fast way across the city, no lights, no junctions,
+     no traffic jams. Four ramps climb from the Ring Road to the deck, each
+     with a toll gantry at the foot — drive under it and the tag reader beeps
+     ("tit") and takes Rs 15. The deck is a loop of thin slabs (one per ring
+     sample) so vehicles drive on it via groundAt; pillars stand in the Ring
+     Road median, and a low concrete barrier runs along both deck edges. */
+  function expressway(scene, mR) {
+    const P = KS.ringLoopPts, n = P.length, H = 12, DW = 14;
+    /* the deck ribbon, 12 m up, same road texture as the Ring Road. */
+    {
+      const pos = [], uv = [], idx = [];
+      let s = 0;
+      for (let i = 0; i < n; i++) {
+        const p = P[i], q = P[(i + 1) % n];
+        const nx = Math.cos(p.h), nz = -Math.sin(p.h);
+        pos.push(p.x + (nx * DW) / 2, H + 0.07, p.z + (nz * DW) / 2, p.x - (nx * DW) / 2, H + 0.07, p.z - (nz * DW) / 2);
+        uv.push(0, s / 32, 1, s / 32);
+        s += Math.hypot(q.x - p.x, q.z - p.z);
+      }
+      for (let i = 0; i < n; i++) {
+        const a = i * 2, b = ((i + 1) % n) * 2;
+        idx.push(a, a + 1, b, a + 1, b + 1, b);
+      }
+      const geo = new T.BufferGeometry();
+      geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
+      geo.setAttribute('uv', new T.Float32BufferAttribute(uv, 2));
+      geo.setIndex(idx);
+      geo.computeVertexNormals();
+      const m = new T.Mesh(geo, mR); m.receiveShadow = true; scene.add(m);
+    }
+    const b = new KS.Builder();
+    /* deck slabs (one per loop sample), pillars in the median, edge barriers. */
+    for (let i = 0; i < n; i++) {
+      const p = P[i];
+      KS.addBox(p.x, p.z, DW, 11.5, H, H - 0.3, p.h); // the thin deck slab
+      if (i % 4 === 0) { // a pillar in the median every ~44 m
+        b.cyl(p.x, 0, p.z, 0.7, H, 0x8d887e, 8);
+        KS.addBox(p.x, p.z, 1.4, 1.4, H, 0);
+      }
+      if (i % 2 === 0) { // low concrete barrier along both deck edges
+        const nx = Math.cos(p.h), nz = -Math.sin(p.h);
+        b.box(p.x + nx * (DW / 2 - 0.3), H, p.z + nz * (DW / 2 - 0.3), 0.3, 0.9, 11, 0x9a958c, p.h);
+        b.box(p.x - nx * (DW / 2 - 0.3), H, p.z - nz * (DW / 2 - 0.3), 0.3, 0.9, 11, 0x9a958c, p.h);
+        if (i % 4 === 0) {
+          KS.addBox(p.x + nx * (DW / 2 - 0.3), p.z + nz * (DW / 2 - 0.3), 0.3, 11, H + 0.9, H, p.h);
+          KS.addBox(p.x - nx * (DW / 2 - 0.3), p.z - nz * (DW / 2 - 0.3), 0.3, 11, H + 0.9, H, p.h);
+        }
+      }
+    }
+    /* the centroid of the loop, for the outward normal of each ramp. */
+    let cx = 0, cz = 0;
+    for (const p of P) { cx += p.x; cz += p.z; }
+    cx /= n; cz /= n;
+    const RAMPS = [
+      { name: 'Kalanki', np: 'कलंकी', x: -560, z: 120 },
+      { name: 'Balaju', np: 'बालाजु', x: -560, z: -260 },
+      { name: 'Chabahil', np: 'चाबहिल', x: 380, z: -480 },
+      { name: 'Koteshwor', np: 'कोटेश्वर', x: 540, z: 300 },
+    ];
+    KS.tollGantries = [];
+    KS.expressway = { height: H, ramps: [] };
+    for (const r of RAMPS) {
+      /* the loop point nearest this place. */
+      let bi = 0, bd = Infinity;
+      for (let i = 0; i < n; i++) { const d = (P[i].x - r.x) * (P[i].x - r.x) + (P[i].z - r.z) * (P[i].z - r.z); if (d < bd) { bd = d; bi = i; } }
+      const p = P[bi], h = p.h;
+      let ox = p.x - cx, oz = p.z - cz; const ol = Math.hypot(ox, oz) || 1; ox /= ol; oz /= ol; // outward
+      const bx = -Math.sin(h), bz = -Math.cos(h); // backward along the loop
+      const rh = Math.atan2(bx, bz); // heading of the ramp
+      const sx = p.x + ox * 10, sz = p.z + oz * 10; // ramp top, at deck height beside the deck
+      const RW = 10, NSTEPS = 30, RISE = H / NSTEPS; // 0.4 m per 4 m step
+      for (let k = 0; k < NSTEPS; k++) {
+        const d = k * 4 + 2, top = H - k * RISE;
+        const x = sx + bx * d, z = sz + bz * d;
+        b.box(x, top - 0.4, z, RW, 0.4, 4.2, 0x8d887e, rh);
+        KS.addBox(x, z, RW, 4.2, top, top - 0.4, rh);
+      }
+      /* side curbs on the ramp. */
+      for (let k = 0; k < NSTEPS; k += 2) {
+        const d = k * 4 + 2, top = H - k * RISE;
+        const x = sx + bx * d, z = sz + bz * d;
+        const nx = Math.cos(rh), nz = -Math.sin(rh);
+        b.box(x + nx * (RW / 2 - 0.2), top, z + nz * (RW / 2 - 0.2), 0.3, 0.5, 4.2, 0x9a958c, rh);
+        b.box(x - nx * (RW / 2 - 0.2), top, z - nz * (RW / 2 - 0.2), 0.3, 0.5, 4.2, 0x9a958c, rh);
+      }
+      /* the toll gantry at the foot of the ramp: two posts, a crossbeam, and a
+         TOLL sign. The tag reader is the small box on the beam. */
+      const gx = sx + bx * 114, gz = sz + bz * 114;
+      const gnx = Math.cos(rh), gnz = -Math.sin(rh);
+      b.cyl(gx + gnx * 5.2, 0, gz + gnz * 5.2, 0.35, 6, 0x3a3a3a, 8);
+      b.cyl(gx - gnx * 5.2, 0, gz - gnz * 5.2, 0.35, 6, 0x3a3a3a, 8);
+      b.box(gx, 5.6, gz, 11.4, 0.5, 0.5, 0x3a3a3a, rh);
+      b.box(gx, 5.2, gz, 0.8, 0.6, 0.4, 0xffc81e, rh); // the tag reader
+      KS.addBox(gx + gnx * 5.2, gz + gnz * 5.2, 0.7, 0.7, 6);
+      KS.addBox(gx - gnx * 5.2, gz - gnz * 5.2, 0.7, 0.7, 6);
+      const signTex = KS.tex(512, 128, (g, w, hh) => {
+        g.fillStyle = '#1a1a1a'; g.fillRect(0, 0, w, hh);
+        g.strokeStyle = '#ffc81e'; g.lineWidth = 6; g.strokeRect(8, 8, w - 16, hh - 16);
+        g.fillStyle = '#ffc81e'; g.textAlign = 'center'; g.font = '700 56px ' + KS.FONT;
+        g.fillText('🛣️ TOLL · रु 15', w / 2, 82);
+      });
+      const sign = new T.Mesh(new T.PlaneGeometry(8, 2), new T.MeshLambertMaterial({ map: signTex, side: T.DoubleSide }));
+      sign.position.set(gx, 6.8, gz); sign.rotation.y = rh; scene.add(sign);
+      KS.tollGantries.push({ name: r.name, np: r.np, x: gx, z: gz });
+      KS.expressway.ramps.push({ name: r.name, np: r.np, topX: sx, topZ: sz, botX: sx + bx * 120, botZ: sz + bz * 120, h: rh });
+    }
+    scene.add(KS.mesh(b, KS.M.vc, false));
+    if (KS.landmarks) KS.landmarks.push({ id: 'expressway', name: 'Ring Road Expressway 🛣️', np: 'एक्सप्रेसवे', x: 0, z: 0, r: 600, fact: 'The elevated toll expressway above the Ring Road — Rs 15 a ride, no lights, no jams. Take a ramp up at Kalanki, Balaju, Chabahil or Koteshwor.' });
+  }
+
   /* ================= roads, sidewalks, bridges ================= */
   function roads(scene) {
     const tN = roadTex(false), tR = roadTex(true);
@@ -310,6 +422,7 @@
       }
     }
     ringRoad(scene, mR, mN);
+    expressway(scene, mR);
     // Swayambhu access road climbing the hill, and airport road
     const sw = KS.SWAYAMBHU;
     const climb = new KS.Builder();

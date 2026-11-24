@@ -108,7 +108,11 @@
       for (const type in PLAYER_BIKES) queue(PLAYER_BIKES[type], 'own:' + type, (KS.VTYPES[type] || { len: 2 }).len);
       for (const type in TRAFFIC_BIKES) queue(TRAFFIC_BIKES[type], 'traf:' + type, (KS.VTYPES[type] || { len: 2 }).len);
       queue(BOAT_FILE, 'boat', 2.6);
-      Promise.all(jobs).then(() => {
+      // report progress as each model lands, so the loading screen can count
+      // up honestly instead of guessing: game.js sets VM.onProgress.
+      const total = jobs.length; let done = 0;
+      const tracked = jobs.map((j) => j.then(() => { done++; if (VM.onProgress) VM.onProgress(done, total); }));
+      Promise.all(tracked).then(() => {
         VM.boat = VM.models.boat || null;
         VM.ready = true;
         resolve(true);

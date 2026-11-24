@@ -193,7 +193,7 @@
     if (KS.Weapons && KS.Weapons.nearest(PL.x, PL.z, 3.5)) { KS.Weapons.openShop(KS.Weapons.nearest(PL.x, PL.z, 3.5)); return; }
     if (KS.agent && Math.hypot(PL.x - KS.agent.x, PL.z - KS.agent.z) < 2.6) { KS.Law.agentTalk(); return; }
     if (KS.Mansion.nearBooth(PL)) {
-      KS.modal('🎟️ Sadbhav Thakuri Residence · सद्भाव ठकुरी निवास', `<p>"Namaste! A tour of the residence: the grand hall, the dining room, the lounge and library, the gardens with the fountain and gazebo, and the swimming pool (you may swim)."</p><p>Ticket: <b>रु ${KS.Mansion.price}</b>.</p>`,
+      KS.modal('🎟️ Sadbhav Thakuri Residence · सद्भाव ठकुरी निवास', `<p>"Namaste! A tour of the residence: the grand hall, the dining room, the lounge and library, the upstairs kitchen, bedroom and balcony, the gardens with the fountain and gazebo, and the swimming pool (you may swim)."</p><p>Ticket: <b>रु ${KS.Mansion.price}</b>.</p>`,
         [[KS.Mansion.ticket ? 'You have a ticket ✔' : `Buy a ticket · रु ${KS.Mansion.price}`, () => { KS.modalClose(); KS.Mansion.buy(); }], ['Maybe later', () => KS.modalClose()]]);
       return;
     }
@@ -298,23 +298,9 @@
     const heli = v && v.kind === 'helicopter';
     if (v && KS.noDriveAt && KS.noDriveAt(PL.x, PL.z) && v.kind !== 'bicycle' && !(heli && (v.alt || 0) > 3)) Game.prompt('🚫 Pedestrian area: no vehicles beyond the bollards');
     if (v && !heli && Game.limit !== (Game.limit = KS.speedLimit(PL.x, PL.z)) && Game.limit) Game.notify('🏫 School zone: 25 km/h until 16:00');
-    if (v && !heli && v.kind !== 'bicycle') for (const c of KS.speedCams) { // heads-up before a camera
-      const d = Math.hypot(PL.x - c.x, PL.z - c.z);
-      if (d < 150 && d > 40 && !c.warned) { c.warned = true; Game.notify(KS.speedLimit(c.x, c.z) ? '📷 Speed camera ahead · school zone 25 km/h' : '📷 Speed camera ahead (active 9:00–16:00 on school days)'); }
-      if (d > 220) c.warned = false;
-    }
-    if (!v || Law.trial || v.kind === 'bicycle' || v.kind === 'helicopter') { lastSig = null; return; } // no road rules in the sky: no cameras, no speeding fines
-    const kmh = Math.abs(v.speed) * 3.6, lim = KS.speedLimit(PL.x, PL.z);
+    if (!v || Law.trial || v.kind === 'bicycle' || v.kind === 'helicopter') { lastSig = null; return; } // no road rules in the sky, and no speed fines at all
+    const kmh = Math.abs(v.speed) * 3.6;
     Game.kmh = kmh;
-    // speed cameras: e-challan, a little tolerance like real cameras
-    for (const c of KS.speedCams) {
-      if (lim && c.cool <= 0 && Math.hypot(PL.x - c.x, PL.z - c.z) < 30 && kmh > lim + 6) {
-        c.cool = 12; c.flash.material.opacity = 1; flash('cam');
-        Law.ticket('speeding', { kmh, limit: lim, over: kmh - lim });
-      }
-    }
-    // police see you speeding: they whistle you over (they may let you go)
-    if (lim && kmh > lim + 10 && Law.policeNear(PL.x, PL.z, 40)) Law.offense('speeding', { kmh, limit: lim, over: kmh - lim });
     // red-light cameras at every signal
     const s = KS.Traffic.signalAt(PL.x, PL.z);
     if (s && s !== lastSig) {
@@ -561,15 +547,35 @@
     scene = new T.Scene();
     camera = new T.PerspectiveCamera(62, innerWidth / innerHeight, 0.3, 9500);
     KS.scene = scene; KS.camera = camera; KS.renderer = renderer;
-    const step = (msg) => { $('loadmsg').textContent = msg; return new Promise((r) => setTimeout(r, 30)); };
-    await step('Laying the Ring Road and the lanes of Thamel…');
+    // the loading screen counts up 1 → 100%: "Downloading content NN%", with a
+    // bar. The number follows the real loading stages, and the vehicles — the
+    // slowest part — move it from 45% to 78% as each model lands.
+    let loadShown = 0, loadTarget = 0;
+    const setLoad = (pct, msg) => {
+      loadTarget = Math.max(loadTarget, pct);
+      if (msg) $('loadmsg').textContent = msg;
+    };
+    const loadTick = setInterval(() => {
+      if (loadShown < loadTarget) {
+        loadShown = Math.min(loadTarget, loadShown + 1);
+        const bar = $('loadbar') && $('loadbar').firstElementChild, pctEl = $('loadpct');
+        if (bar) bar.style.width = loadShown + '%';
+        if (pctEl) pctEl.textContent = 'Downloading content ' + loadShown + '%';
+      }
+    }, 30);
+    setLoad(5, 'Laying the Ring Road and the lanes of Thamel…');
     if (KS.Props) { try { await KS.Props.load(); } catch (e) { /* code-built props stay */ } }
     KS.reseed(1); KS.World.build(scene);
+    setLoad(20, 'Digging the Nagdhunga tunnel, planting rice terraces…');
     KS.reseed(2); KS.Nature.build(scene);
-    await step('Digging the Nagdhunga tunnel, planting rice terraces…');
     KS.Weather.init(scene, renderer);
-    await step('Loading realistic vehicles…');
-    if (KS.VehicleModels) { try { await KS.VehicleModels.load(); } catch (e) { /* code-built vehicles stay */ } if (KS.VehicleModels.ready) KS.VehicleModels.swapBoats(); }
+    if (KS.VehicleModels) {
+      KS.VehicleModels.onProgress = (done, total) => setLoad(45 + Math.round((33 * done) / Math.max(1, total)));
+      setLoad(45, 'Downloading the vehicles…');
+      try { await KS.VehicleModels.load(); } catch (e) { /* code-built vehicles stay */ }
+      setLoad(78, 'Vehicles ready.');
+      if (KS.VehicleModels.ready) KS.VehicleModels.swapBoats();
+    }
     if (KS.VehicleModels) { // say plainly whether the realistic models made it in, so a silent fallback is never a mystery
       const want = ['car', 'sedan', 'suv', 'taxi', 'police', 'pickup', 'truck', 'bus', 'micro', 'minibus', 'ambulance', 'ev', 'tempo', 'bicycle', 'helicopter'];
       const n = want.filter((t) => KS.VehicleModels.models[t]).length;
@@ -584,13 +590,13 @@
           [['Got it — let me reload', () => location.reload()], ['Keep playing without vehicles', () => KS.modalClose()]]), 1500);
       } else if (n < want.length) setTimeout(() => Game.notify(`🚗 Realistic vehicles: ${n}/${want.length} models loaded.`), 1500);
     }
+    setLoad(82, 'Warming up the sky-drop plane…');
     KS.Player.init(scene); KS.Battle.init(scene); KS.Places.initHeli(scene);
-    await step('Warming up the sky-drop plane…');
     if (KS.Drop && KS.Drop.loadModel) { try { await KS.Drop.loadModel(); } catch (e) { /* Drop.begin warms it up on demand */ } }
-    await step('Waking up the city: pilgrims, porters, cows…');
+    setLoad(88, 'Waking up the city: pilgrims, porters, cows…');
     KS.reseed(3); KS.Animals.init(scene);
     KS.reseed(4); KS.Peds.init(scene, KS.quality.peds, KS.Player.x, KS.Player.z);
-    await step('Starting the traffic lights (and the honking)…');
+    setLoad(95, 'Starting the traffic lights (and the honking)…');
     KS.reseed(5); KS.Traffic.init(scene, KS.quality.cars, KS.Player.x, KS.Player.z);
     const cyc = KS.Traffic.park('bicycle', -131, -263.2, Math.PI / 2, { owned: true }); if (cyc) cyc.ownedId = 'cycle';
     const sc = KS.Traffic.park('scooter', -124, -263.4, Math.PI / 2, { owned: true }); if (sc) { sc.ownedId = 'sathi'; }
@@ -600,7 +606,7 @@
     KS.Traffic.park('taxi', 6.6, -36, Math.PI); KS.Traffic.park('tempo', -88.6, 60, 0); KS.Traffic.park('pickup', -528, 104, 0);
     if (KS.Heli && KS.Heli.pad) KS.Traffic.park('helicopter', KS.Heli.pad.x, KS.Heli.pad.z, Math.PI); // the one helicopter you can fly yourself
     for (const [k, x, z, h] of KS.mansionCars || []) KS.Traffic.park(k, x, z, h, { color: k === 'sedan' ? 0x111111 : 0x1a1a1a });
-    for (const [x, z] of KS.mansionGuards || []) { const o = KS.outfitFor('office'); Object.assign(o, { topStyle: 'jacket', jacket: 0x111111, top: 0xffffff, tie: 0x111111, glasses: true, hat: null }); const g = KS.makePerson('office', o); g.root.position.set(x, 0.1, z); g.root.rotation.y = 0; g.armL.rotation.x = g.armR.rotation.x = -0.2; scene.add(g.root); }
+    // the mansion gate guards are built in places.js now: they patrol the gate, with a weapon in hand
     KS.Input.init(canvas);
     target = makeMarker(0xffd21f); scene.add(target);
     momoShop = makeMarker(0xf2a516); momoShop.position.set(MOMO.x, 0.22, MOMO.z); momoShop.visible = false; scene.add(momoShop);
@@ -646,6 +652,7 @@
     addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
     document.addEventListener('visibilitychange', () => { if (document.hidden && KS.state === 'play') pause(true); });
     KS.Radio.onchange = () => { if (KS.state === 'pause') renderRadio(); };
+    setLoad(100, 'Ready!'); clearInterval(loadTick);
     $('loading').hidden = true; $('title').hidden = false;
     buildMenu(); KS.Phone.init(); KS.Uthao.render();
     if (!KS.Settings.data().minimap) $('minimap').parentElement.hidden = true;
@@ -675,6 +682,9 @@
     const renderCharPick = () => {
       const D = KS.Shop.data;
       document.querySelectorAll('.charcard').forEach((c) => c.classList.toggle('sel', c.dataset.gender === D.gender));
+      // the big avatar card on the dashboard mirrors the selected hero
+      const sel = document.querySelector('.charcard.sel');
+      if (sel) { const em = $('avatarEmoji'), nm = $('avatarName'), rl = $('avatarRole'); if (em) em.textContent = sel.querySelector('.char-emoji').textContent; if (nm) nm.textContent = sel.querySelector('.char-name').textContent; if (rl) rl.textContent = sel.querySelector('.char-desc').textContent; }
       const row = $('wardrobeRow'); if (!row) return;
       row.innerHTML = '';
       for (const it of KS.Shop.WARDROBE.filter((w) => w.slot === 'top' && D.items.includes(w.id))) {
@@ -702,6 +712,23 @@
     };
     let battle = false;
     $('btnBattle').onclick = () => { battle = true; $('btnPlay').onclick(); };
+    // the dashboard: your cash and coins, and the three icon buttons up top
+    const tc = $('titleCash'), tt = $('titleTokens');
+    if (tc) tc.textContent = 'रु ' + Math.round(KS.Shop.data.cash).toLocaleString('en-IN');
+    if (tt) tt.textContent = KS.Shop.data.tokens + ' 🪙';
+    const syncTitleSettings = () => {
+      const snd = $('tSoundToggle'), q = $('tQualityToggle'), mm = $('tMinimapToggle');
+      if (snd) { snd.textContent = A.on ? 'On' : 'Off'; snd.classList.toggle('on', A.on); $('tSound').textContent = A.on ? '🔊' : '🔇'; }
+      if (q) { q.textContent = KS.quality.level === 'high' ? 'High' : 'Low'; q.classList.toggle('on', KS.quality.level === 'high'); }
+      if (mm) { const on = KS.Settings.data().minimap !== false; mm.textContent = on ? 'On' : 'Off'; mm.classList.toggle('on', on); }
+    };
+    $('tHow').onclick = () => { const p = $('howtoPanel'); p.hidden = !p.hidden; $('tHow').classList.toggle('on', !p.hidden); if (!p.hidden) { $('titleSettings').hidden = true; $('tSettings').classList.remove('on'); } };
+    $('tSettings').onclick = () => { const p = $('titleSettings'); p.hidden = !p.hidden; $('tSettings').classList.toggle('on', !p.hidden); syncTitleSettings(); if (!p.hidden) { $('howtoPanel').hidden = true; $('tHow').classList.remove('on'); } };
+    $('tSound').onclick = () => { A.setOn(!A.on); Game.save(); syncTitleSettings(); };
+    $('tSoundToggle').onclick = () => { A.setOn(!A.on); Game.save(); syncTitleSettings(); };
+    $('tQualityToggle').onclick = () => { KS.quality.level = KS.quality.level === 'high' ? 'low' : 'high'; Game.save(); syncTitleSettings(); };
+    $('tMinimapToggle').onclick = () => { const s = KS.Settings.data(); s.minimap = s.minimap === false; Game.save(); syncTitleSettings(); };
+    syncTitleSettings();
     $('btnMenu').onclick = () => pause(true);
     $('btnRec').onclick = () => Rec.toggle(); $('btnPhoto').onclick = () => Rec.photo();
     $('btnRadio').onclick = () => Game.toggleRadio();
@@ -741,8 +768,9 @@
     KS.Shop.renderGarage($('garageList')); KS.Shop.renderWardrobe($('wardrobeList')); renderRadio(); KS.Law.renderCard($('licenceCard'));
     KS.Settings.render($('settingsBox'));
     const L = KS.Law.data(), P = KS.Player, lic = ['A', 'B'].map((c) => `<span class="pill ${L.lic[c] && L.suspend <= 0 ? 'ok' : 'no'}">${c} ${L.lic[c] ? (L.suspend > 0 ? 'suspended' : '✔ valid') : '✖ none'}</span>`).join('');
+    const fines = L.fines || [], fineTotal = fines.reduce((a, f) => a + f.amount, 0);
     $('homeBox').innerHTML = `<div class="homegrid">
-      <div class="hcard"><h4>Licence</h4><div>${lic}</div><small>${L.lic.A || L.lic.B ? `Demerit points ${L.points}/12` : 'No licence: bicycle only (or risk a police fine)'}</small>${L.lic.A ? '' : '<button type="button" class="btn small-btn" id="homeLic">Show the way to the licence office</button>'}</div>
+      <div class="hcard"><h4>Licence</h4><div>${lic}</div><small>${L.lic.A || L.lic.B ? (fines.length ? `🧾 ${fines.length} pending fine${fines.length > 1 ? 's' : ''} · रु ${Math.round(fineTotal).toLocaleString('en-IN')} (Phone → Licence to pay)` : 'No pending fines') : 'No licence: bicycle only (or risk a police fine)'}</small>${L.lic.A ? '' : '<button type="button" class="btn small-btn" id="homeLic">Show the way to the licence office</button>'}</div>
       <div class="hcard"><h4>You</h4><div>Health <b>${Math.round(P.health)}%</b> · Karma <b>${Math.round(D.karma)}</b></div><div>Cash <b>रु ${Math.round(D.cash).toLocaleString('en-IN')}</b> · Coins <b>${D.tokens} 🪙</b></div><small>${P.health < 50 ? '❤️ Low! ' : ''}Eat fruit at street stalls (Phone → Food finds the nearest) or rest to heal. Crashes, falls and fights hurt.</small></div>
       <div class="hcard" style="grid-column:1/-1"><h4>Goals · ${KS.GOALS.filter((g) => g.done()).length} / ${KS.GOALS.length}</h4>${KS.Guide.list()}</div>
       <div class="hcard"><h4>Quick</h4><div class="chips"><button type="button" class="chip" data-q="phone">📱 Phone</button><button type="button" class="chip" data-q="map">🗺️ Map</button><button type="button" class="chip" data-q="friends">💬 Play with friends</button><button type="button" class="chip" data-q="bike">🚲 Bring my bicycle</button><button type="button" class="chip" data-q="battle">${KS.Battle.on ? '🌏 Back to the open world' : '⚔️ Battle mode'}</button><button type="button" class="chip" data-q="drop">✈️ Fly & parachute somewhere</button></div></div>
@@ -754,6 +782,41 @@
   };
   $('btnUthao') && ($('btnUthao').onclick = () => { KS.Uthao.toggle(); Game.refreshMenu(); });
   const fmtTime = (t) => { const h = Math.floor(t), m = Math.floor((t - h) * 60); return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; };
+
+  /* ======================= the toll expressway (round 15) =======================
+     Rs 15 a ride: drive under a toll gantry at the foot of a ramp and the tag
+     reader beeps ("tit") and takes the toll. You are only charged when you
+     ride up onto the deck — coming back down is free, and you are never
+     charged twice for the same ride. */
+  KS.Toll = {
+    FEE: 15, lastPaid: 0, lastOnDeck: 0, onDeck: false,
+    update(dt) {
+      const PL = KS.Player; if (!PL || !KS.tollGantries || !KS.tollGantries.length) return;
+      const onDeck = (PL.y || 0) > 10 && KS.ringLoopDist && KS.ringLoopDist(PL.x, PL.z) < 12;
+      if (onDeck) KS.Toll.lastOnDeck = Date.now();
+      KS.Toll.onDeck = onDeck;
+      const th = typeof document !== 'undefined' && document.getElementById ? document.getElementById('tollHud') : null;
+      if (th) th.hidden = !onDeck;
+      if (PL.vehicle) { // only a vehicle can take the ramp
+        for (const g of KS.tollGantries) {
+          if (Math.hypot(g.x - PL.x, g.z - PL.z) > 7) continue;
+          const now = Date.now();
+          if (now - KS.Toll.lastPaid < 60000) continue; // one toll per ride
+          if (now - KS.Toll.lastOnDeck < 10000) continue; // just came down — free exit
+          KS.Toll.lastPaid = now;
+          const D = KS.Shop && KS.Shop.data;
+          if (D && D.cash >= KS.Toll.FEE) {
+            D.cash -= KS.Toll.FEE; KS.Shop.save();
+            KS.Game.notify(`🛣️ <b>Tit!</b> Toll tag read at ${g.name} — <b>रु ${KS.Toll.FEE}</b> for the expressway. Fast lane to the other side!`, 'good');
+          } else {
+            KS.Game.notify(`🛣️ <b>Tit!</b> Toll tag read at ${g.name} — not enough cash for the रु ${KS.Toll.FEE} toll, ride free this time.`, 'good');
+          }
+          if (KS.audio && KS.audio.beep) KS.audio.beep(1);
+          break;
+        }
+      }
+    },
+  };
 
   /* ======================= main loop ======================= */
   const clock = new T.Clock();
@@ -783,7 +846,10 @@
       if (I.hit('Backspace') && KS.Phone.open) KS.Phone.home();
       if (I.hit('Enter')) KS.Net.quickChat();
       if (I.hit('KeyK')) Rec.toggle();
-      if (I.hit('KeyC') && !PL.vehicle && PL.mode === 'foot') KS.Shop.deliver(D.lastRide && D.garage.some((g) => g.id === D.lastRide) ? D.lastRide : 'cycle');
+      if (I.hit('KeyO') && PL.mode === 'foot' && KS.Mansion) KS.Mansion.toggleWardrobe(); // O opens the wardrobe in the bedroom upstairs
+      if (I.hit('KeyC') && !PL.vehicle && PL.mode === 'foot') { // C by the open wardrobe takes the jewellery; anywhere else it calls your vehicle
+        if (!(KS.Mansion && KS.Mansion.tryCollect())) KS.Shop.deliver(D.lastRide && D.garage.some((g) => g.id === D.lastRide) ? D.lastRide : 'cycle');
+      }
       if (I.hit('KeyJ')) Rec.photo();
       if (I.hit('KeyZ') || I.hit('KeyEat')) Game.eatFromBag();
       if (I.hit('KeyH') || I.hit('KeyHorn')) {
@@ -838,7 +904,7 @@
       else { const t = cyc - 130; fp.position.set(rx, 2.6, Math.max(-380, 360 - (60 * t - 1.5 * t * t))); fp.rotation.set(0, Math.PI, 0); }
     }
     if (play) {
-      missionUpdate(dt); KS.Uthao.update(dt); violations(dt); KS.Law.update(dt); KS.Net.update(dt, camera); KS.Nature.update();
+      missionUpdate(dt); KS.Uthao.update(dt); violations(dt); KS.Law.update(dt); KS.Toll.update(dt); KS.Net.update(dt, camera); KS.Nature.update();
       // the green marker over your bicycle until you have ridden it
       const bike = KS.Traffic.list.find((v) => v.ownedId === 'cycle');
       bikeMark.visible = !!bike && !KS.Guide.flag('bike') && PL.vehicle !== bike;
@@ -887,7 +953,8 @@
   function showCard(l) {
     const c = $('card'); $('cardNp').textContent = l.np; $('cardEn').textContent = l.name; $('cardFact').textContent = l.fact;
     c.hidden = false; c.classList.remove('show'); void c.offsetWidth; c.classList.add('show');
-    clearTimeout(showCard.t); showCard.t = setTimeout(() => (c.hidden = true), 6500);
+    clearTimeout(showCard.t); showCard.t = setTimeout(() => (c.hidden = true), 4000); // a small toast, not a billboard: gone in 4 s, or tap it away
+    c.onclick = () => { clearTimeout(showCard.t); c.hidden = true; };
     A.bell(0.5);
   }
   function updateHUD() {
@@ -929,6 +996,8 @@
       else if (Game.momoPending && Math.hypot(PL.x - MOMO.x, PL.z - MOMO.z) < 12) prompt = 'Step into the beam to collect the <b>momo order</b>';
       else if ((KS.lifts || []).some((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5)) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ${(KS.lifts.find((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5)).label}`;
       else if (KS.Mansion.nearBooth(PL)) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> 🎟️ ${KS.Mansion.ticket ? 'Your tour ticket ✔' : `House & garden tour ticket · रु ${KS.Mansion.price}`}`;
+      else if (KS.Mansion.wardrobe && KS.Mansion.nearWardrobe(PL) && KS.Mansion.wardrobe.open && KS.Mansion.jewellery.inWardrobe) prompt = `<kbd>${coarse ? 'Take' : 'C'}</kbd> 💎 Take the jewellery`;
+      else if (KS.Mansion.wardrobe && KS.Mansion.nearWardrobe(PL)) prompt = `<kbd>${coarse ? 'Open' : 'O'}</kbd> 👗 ${KS.Mansion.wardrobe.open ? 'Close the wardrobe' : 'Open the wardrobe'}`;
       else if (KS.Mountains && KS.Mountains.skiHire && Math.hypot(PL.x - KS.Mountains.skiHire.x, PL.z - KS.Mountains.skiHire.z) < 4) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ⛷️ ${PL.board ? 'You have a board — ride down!' : `Hire a snowboard · रु ${KS.Mountains.skiPrice}`}`;
       else if (KS.Mountains && KS.Mountains.teaHouse && Math.hypot(PL.x - KS.Mountains.teaHouse.x, PL.z - KS.Mountains.teaHouse.z) < 4) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ☕ Hot chiya · रु ${KS.Mountains.chiyaPrice} (+20 health)`;
       else if (KS.Mountains && KS.Mountains.paraOffice && Math.hypot(PL.x - KS.Mountains.paraOffice.x, PL.z - KS.Mountains.paraOffice.z) < 4) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> 🪂 ${PL.paraTicket ? 'You have a ticket — go to the takeoff!' : `Paragliding ticket · रु ${KS.Mountains.paraPrice}`}`;

@@ -248,19 +248,29 @@
     // the villa: white columns, balconies, red roof, a golden dome
     const vx = cx, vz = cz - 18;
     b.box(vx, 0.1, vz, 44, 0.9, 22, 0xe8e2d4); KS.addBox(vx, vz, 44, 22, 1);
-    // ground floor: a hollow shell you can walk into (door in the middle of the front), rooms inside; the upper floor is closed
-    const WC = 0xfaf6ee, t = 0.4, top = 13;
-    const wall = (x, z, w, d) => { b.box(x, 1, z, w, 5.4, d, WC); KS.addBox(x, z, w, d, top); };
+    // ground floor: a hollow shell you can walk into (door in the middle of the front), rooms inside
+    const WC = 0xfaf6ee, t = 0.4;
+    const wall = (x, z, w, d) => { b.box(x, 1, z, w, 5.4, d, WC); KS.addBox(x, z, w, d, 6.4); }; // ground-floor walls only reach the ceiling
     wall(vx - 10.85, vz + 8.8, 18.3, t); wall(vx + 10.85, vz + 8.8, 18.3, t); b.box(vx, 4.4, vz + 8.8, 3.4, 2, t, WC); // front with the doorway
     wall(vx, vz - 8.8, 40, t); wall(vx - 19.8, vz, t, 18); wall(vx + 19.8, vz, t, 18);
     for (const sx of [-1, 1]) { const x = vx + sx * 7; wall(x, vz - 4.1, t, 9.8); wall(x, vz + 6.1, t, 5.8); b.box(x, 4.2, vz + 2, t, 2.2, 2.4, WC); } // partitions with doorways
-    b.box(vx, 6.4, vz, 40, 0.3, 18, 0xe8e2d4); b.box(vx, 6.7, vz, 40, 6.3, 18, WC); KS.addBox(vx, vz, 40, 18, 18, 6.4); // ceiling and the closed upper floor
+    // level 2: the same shell one floor up — kitchen (west), bedroom (centre), toilet (east) — and a front balcony
+    const uwall = (x, z, w, d) => { b.box(x, 6.7, z, w, 6.3, d, WC); KS.addBox(x, z, w, d, 13, 6.7); };
+    uwall(vx - 10.85, vz + 8.8, 17.7, t); uwall(vx + 10.85, vz + 8.8, 17.7, t); // front, leaving the balcony door in the middle
+    b.box(vx, 9.5, vz + 8.8, 4.6, 3.5, t, WC); KS.addBox(vx, vz + 8.8, 4.6, t, 13, 9.5); // lintel over the balcony door
+    uwall(vx, vz - 8.8, 40, t); uwall(vx - 19.8, vz, t, 18); uwall(vx + 19.8, vz, t, 18);
+    for (const sx of [-1, 1]) { const x = vx + sx * 7; uwall(x, vz - 4.1, t, 9.8); uwall(x, vz + 6.1, t, 5.8); b.box(x, 9.5, vz + 2, t, 3.5, 2.4, WC); KS.addBox(x, vz + 2, t, 2.4, 13, 9.5); } // partitions with doorways upstairs
+    // the level-2 floor: four slabs with a stairwell hole over the grand staircase (x 177.7..182.3, z -692.6..-696)
+    const slab = (x, z, w, d) => { b.box(x, 6.4, z, w, 0.3, d, 0xe8e2d4); KS.addBox(x, z, w, d, 6.7, 6.4); };
+    slab(vx, vz + 2.4, 40, 14); slab(vx, vz - 8.5, 40, 1); slab(vx - 11.15, vz - 6.3, 17.7, 3.4); slab(vx + 11.15, vz - 6.3, 17.7, 3.4);
     b.box(vx, 0, vz + 12.0, 8, 0.35, 1.0, 0xe8e2d4); KS.addBox(vx, vz + 12.0, 8, 1.0, 0.35); b.box(vx, 0, vz + 11.3, 8, 0.7, 0.6, 0xe8e2d4); KS.addBox(vx, vz + 11.3, 8, 0.6, 0.7); // front steps
-    KS.MANSION.house = { vx, vz, w: 40, d: 18, floor: 1 };
+    KS.MANSION.house = { vx, vz, w: 40, d: 18, floor: 1, floor2: 6.7 };
     b.box(vx, 13, vz, 41, 0.6, 19, 0xd9d1bf); b.roof(vx, 13.6, vz, 44, 4, 0x8a2a1f, 0.4);
     for (let k = 0; k < 10; k++) b.cyl(vx - 18 + k * 4, 1, vz + 9.8, 0.45, 12, 0xffffff, 12);
-    b.box(vx, 6.2, vz + 10.5, 40, 0.4, 2.2, 0xd9d1bf); for (let k = 0; k < 40; k++) b.box(vx - 19.5 + k, 6.6, vz + 11.5, 0.08, 1, 0.08, 0xd9a52b);
-    for (let f = 0; f < 2; f++) for (let k = 0; k < 8; k++) { const x = vx - 16 + k * 4.6; if (f === 0 && Math.abs(x - vx) < 3) continue; b.box(x, 2.4 + f * 5.4, vz + 9.06, 1.8, 2.8, 0.1, 0x3b5a6a); }
+    b.box(vx, 6.2, vz + 10.5, 40, 0.4, 2.2, 0xd9d1bf); KS.addBox(vx, vz + 10.5, 40, 2.2, 6.6, 6.2); // the balcony slab is walkable now
+    KS.addBox(vx, vz + 11.5, 40, 0.12, 7.6, 6.6); KS.addBox(vx - 19.9, vz + 10.5, 0.12, 2.2, 7.6, 6.6); KS.addBox(vx + 19.9, vz + 10.5, 0.12, 2.2, 7.6, 6.6); // balcony railings, so you cannot fall off
+    for (let k = 0; k < 40; k++) b.box(vx - 19.5 + k, 6.6, vz + 11.5, 0.08, 1, 0.08, 0xd9a52b);
+    for (let f = 0; f < 2; f++) for (let k = 0; k < 8; k++) { const x = vx - 16 + k * 4.6; if (f === 0 && Math.abs(x - vx) < 3) continue; if (f === 1 && Math.abs(x - vx) < 5.5) continue; b.box(x, 2.4 + f * 5.4, vz + 9.06, 1.8, 2.8, 0.1, 0x3b5a6a); } // windows (none over the balcony door upstairs)
     b.cyl(vx, 17.4, vz, 3.4, 1, 0xd9a52b, 16); b.sphere(vx, 18.4, vz, 3.2, 0xd9a52b, 0.9, 16, true); b.cyl(vx, 21.2, vz, 0.15, 2, 0xd9a52b, 6);
     // fountain, garden, helipad, garage (the swimming pool is built in places.js)
     b.cyl(M.gx, 0.1, cz + 22, 4, 0.8, 0xe8e2d4, 18); b.cyl(M.gx, 0.6, cz + 22, 3.4, 0.3, 0x5a95b0, 18); b.cyl(M.gx, 0.6, cz + 22, 0.4, 3, 0xffffff, 8); KS.addCircle(M.gx, cz + 22, 4, 0.9);
@@ -271,7 +281,7 @@
     scene.add(KS.mesh(b));
     // luxury cars in the drive, guards at the gate
     KS.mansionCars = [['suv', vx + 6, vz + 15, 0.3], ['sedan', vx - 6, vz + 15, -0.3], ['suv', vx + 26, vz + 10, 0]].map(([k, x, z, h]) => [k, x, z, h]);
-    KS.mansionGuards = [[M.gx - 6, M.z1 + 2.2], [M.gx + 6, M.z1 + 2.2]];
+    // the gate guards are built in places.js now: they patrol the gate, with a weapon in hand
     // brass nameplate on black marble beside the gate, and a smaller one on the other pillar
     const plate = tex(512, 192, (g, w, h) => {
       const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#15151a'); gr.addColorStop(1, '#2a2a30'); g.fillStyle = gr; g.fillRect(0, 0, w, h);

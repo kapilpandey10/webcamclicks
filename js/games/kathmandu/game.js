@@ -32,13 +32,66 @@
   Game.hurt = (dmg) => {
     const PL = KS.Player; if (PL.mode === 'dead') return; PL.health -= dmg; KS.Cam.shake = 0.3; A.punch(); flash('hurt');
     if (PL.health <= 0 && KS.Battle && KS.Battle.on) { PL.health = 0; if (PL.vehicle) { PL.vehicle.speed = 0; PL.exit(); } KS.Battle.died(); return; }
-    if (PL.health <= 0) {
-      PL.health = 100; if (PL.vehicle) PL.exit();
-      PL.x = KS.hospital.x; PL.z = KS.hospital.z + 6; PL.y = 0.2;
-      Game.pay(-300, 'You blacked out. Hospital bill'); Game.notify('🏥 You woke up at the City Hospital.', 'bad');
-      KS.Peds.list.forEach((p) => (p.fight = 0));
-    }
+    if (PL.health <= 0) startFaint();
   };
+  /* ---------- fainting, the ambulance, and waking up in Bir Hospital ----------
+     At 0% health the player does not teleport: they faint where they fall, an
+     ambulance drives over with its siren on, and they wake up in a hospital
+     bed in Bir Hospital — eyes opening, blinking, like coming round. */
+  const Faint = { on: false, stage: '', t: 0, amb: null };
+  Game.faint = Faint;
+  function fadeBlack(on) { const el = $('fadeBlack'); if (el) el.style.opacity = on ? '1' : '0'; }
+  function blinkEyes() { // eyelids: shut, then open slowly, then two quick blinks
+    const el = $('wakeEyes'); if (!el) return;
+    el.classList.add('instant'); el.classList.add('closed');
+    void el.offsetWidth; el.classList.remove('instant');
+    requestAnimationFrame(() => el.classList.remove('closed'));
+    setTimeout(() => { el.classList.add('blink'); el.classList.add('closed'); }, 1600);
+    setTimeout(() => el.classList.remove('closed'), 1800);
+    setTimeout(() => el.classList.add('closed'), 2150);
+    setTimeout(() => { el.classList.remove('closed'); el.classList.remove('blink'); }, 2350);
+  }
+  function startFaint() {
+    const PL = KS.Player;
+    PL.health = 0;
+    if (PL.vehicle) PL.exit();
+    PL.mode = 'dead';
+    if (PL.person && PL.person.root) { PL.person.root.rotation.set(-Math.PI / 2 * 0.92, PL.h, 0); PL.person.root.position.y = 0.35; }
+    KS.Peds.list.forEach((p) => (p.fight = 0));
+    Faint.on = true; Faint.stage = 'down'; Faint.t = 0; Faint.amb = null;
+    Game.notify('😵 You blacked out…', 'bad');
+    const amb = KS.Traffic.spawn('ambulance', PL.x, PL.z, 25, 160);
+    if (amb) { KS.Traffic.startChase(amb); Faint.amb = amb; Game.notify('🚑 An ambulance is on its way.', 'good'); }
+  }
+  function wakeInHospital() {
+    const PL = KS.Player, bed = KS.wakeBed || KS.hospital;
+    PL.x = bed.x; PL.z = bed.z; PL.y = 0.2; PL.h = bed.h || 0;
+    PL.health = 60;
+    PL.mode = 'dead'; // still lying — on the ward bed now
+    if (PL.person && PL.person.root) { PL.person.root.rotation.set(-Math.PI / 2 * 0.92, PL.h, 0); PL.person.root.position.set(PL.x, 0.95, PL.z); }
+    Game.pay(-300, 'Bir Hospital bill');
+    Game.notify('🏥 You woke up in Bir Hospital.', 'bad');
+    setTimeout(() => { // sit up and get out of bed
+      if (PL.mode !== 'dead') return;
+      PL.mode = 'foot';
+      if (PL.person && PL.person.root) PL.person.root.rotation.set(0, PL.h, 0);
+      Game.notify('You can walk out when you are ready — the doctors are in the rooms around you.', 'good');
+    }, 2600);
+  }
+  function faintUpdate(dt) {
+    if (!Faint.on) return;
+    Faint.t += dt;
+    const PL = KS.Player;
+    if (Faint.stage === 'down') {
+      const amb = Faint.amb;
+      if (amb && Math.hypot(amb.x - PL.x, amb.z - PL.z) < 9) { KS.Traffic.endChase(amb); Faint.stage = 'loading'; Faint.t = 0; fadeBlack(true); }
+      else if (Faint.t > 25) { Faint.stage = 'loading'; Faint.t = 0; fadeBlack(true); } // no ambulance could reach you: the hospital takes over anyway
+    } else if (Faint.stage === 'loading') {
+      if (Faint.t > 1.4) { wakeInHospital(); Faint.stage = 'waking'; Faint.t = 0; }
+    } else if (Faint.stage === 'waking') {
+      if (Faint.t > 0.4) { fadeBlack(false); blinkEyes(); Faint.on = false; Faint.stage = ''; }
+    }
+  }
   Game.onPunch = (ped) => {
     Game.karma(-4, 'Started a fight');
     if (KS.Law.policeNear(ped.x, ped.z, 45)) KS.Law.raise(1, 'Fighting in public');
@@ -94,12 +147,18 @@
         [[KS.Mansion.ticket ? 'You have a ticket ✔' : `Buy a ticket · रु ${KS.Mansion.price}`, () => { KS.modalClose(); KS.Mansion.buy(); }], ['Maybe later', () => KS.modalClose()]]);
       return;
     }
-    if (KS.Heli.nearBooth(PL)) {
-      KS.modal('🚁 Sadbhav Air · सद्भाव एयर', `<p>"Namaste! A two-minute helicopter tour over Rani Pokhari, Narayanhiti, Boudhanath, Pashupati, the airport, Basantapur Durbar Square and Swayambhu, then a circle round Dharahara."</p><p>Ticket: <b>रु ${KS.Heli.price}</b>. You have रु ${Math.round(D.cash).toLocaleString('en-IN')}.</p>`,
-        [[`Fly now · रु ${KS.Heli.price}`, () => { KS.modalClose(); KS.Heli.start(); }], ['Maybe later', () => KS.modalClose()]]);
-      return;
-    }
     const lift = (KS.lifts || []).find((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5);
+    const M = KS.Mountains;
+    if (M && M.skiHire && Math.hypot(PL.x - M.skiHire.x, PL.z - M.skiHire.z) < 4) { PL.hireBoard(); return; }
+    if (M && M.teaHouse && Math.hypot(PL.x - M.teaHouse.x, PL.z - M.teaHouse.z) < 4) {
+      if (D.cash < M.chiyaPrice) { KS.Game.notify(`Hot chiya costs रु ${M.chiyaPrice}.`, 'bad'); return; }
+      D.cash -= M.chiyaPrice; PL.health = Math.min(100, PL.health + 20); KS.Game.save && KS.Game.save();
+      KS.Game.notify('☕ Hot chiya! Warm and sweet — +20 health.', 'good'); return;
+    }
+    if (M && M.paraOffice && Math.hypot(PL.x - M.paraOffice.x, PL.z - M.paraOffice.z) < 4) { PL.buyParaTicket(); return; }
+    if (M && M.paraTakeoff && PL.paraTicket && Math.hypot(PL.x - M.paraTakeoff.x, PL.z - M.paraTakeoff.z) < 6) { PL.launchParaglider(); return; }
+    if (KS.Flight && Math.hypot(PL.x - KS.Flight.counter.x, PL.z - KS.Flight.counter.z) < 4) { KS.Flight.buyTicket(); return; }
+    if (KS.Flight && KS.Flight.nearPlane(PL) && KS.Flight.ticket) { KS.Flight.board(); return; }
     if (lift) { flash('photo'); A.ding(); PL.x = lift.to.x; PL.z = lift.to.z; PL.y = lift.to.y; PL.vy = 0; if (lift.to.y > 10) { KS.Guide.flag('lift', true); Game.notify('🗼 Welcome to the Dharahara viewing deck. Look north for the Himalaya.'); KS.Cam.yaw = Math.PI; } return; }
     if (KS.pond && !PL.boat && Math.hypot(PL.x - KS.pond.jetty.x, PL.z - KS.pond.jetty.z) < 2.8) {
       const bt = KS.pondBoats.find((q) => !q.used); if (!bt) { Game.notify('All the boats are out. Wait a moment.'); return; }
@@ -120,9 +179,15 @@
       }], ['Maybe later', () => KS.modalClose()]]));
       return;
     }
-    for (const [x, z] of KS.prayerWheels) if (Math.hypot(x - PL.x, z - PL.z) < 2.4) {
-      if (KS.clock - wheelT > 2) { wheelT = KS.clock; A.prayer(); KS.say(PL.person.root, 'Om mani padme hum 🙏', 2.2, 'calm'); Game.karma(+1, 'Spun a prayer wheel'); }
-      return;
+    for (let wi = 0; wi < KS.prayerWheels.length; wi++) {
+      const [x, z] = KS.prayerWheels[wi];
+      if (Math.hypot(x - PL.x, z - PL.z) < 2.4) {
+        if (KS.clock - wheelT > 2) {
+          wheelT = KS.clock; A.prayer(); KS.say(PL.person.root, 'Om mani padme hum 🙏', 2.2, 'calm'); Game.karma(+1, 'Spun a prayer wheel');
+          if (KS.prayerWheelDrums && KS.prayerWheelDrums.boost) KS.prayerWheelDrums.boost[wi] = 4; // this wheel spins fast for a while
+        }
+        return;
+      }
     }
     for (const [x, z] of KS.bells) if (Math.hypot(x - PL.x, z - PL.z) < 9) { A.bell(0.8); KS.say(PL.person.root, '🔔 Dong…', 1.5, 'calm'); return; }
     let best = null, bd = 5;
@@ -180,14 +245,15 @@
     const PL = KS.Player, v = PL.vehicle, Law = KS.Law;
     for (const c of KS.speedCams) { c.cool = Math.max(0, c.cool - dt); c.flash.material.opacity = Math.max(0, c.flash.material.opacity - dt * 3); }
     for (const s2 of KS.signals) if (s2.camFlash) s2.camFlash.material.opacity = Math.max(0, s2.camFlash.material.opacity - dt * 3);
-    if (v && KS.noDriveAt && KS.noDriveAt(PL.x, PL.z) && v.kind !== 'bicycle') Game.prompt('🚫 Pedestrian area: no vehicles beyond the bollards');
-    if (v && Game.limit !== (Game.limit = KS.speedLimit(PL.x, PL.z)) && Game.limit) Game.notify('🏫 School zone: 25 km/h until 16:00');
-    if (v && v.kind !== 'bicycle') for (const c of KS.speedCams) { // heads-up before a camera
+    const heli = v && v.kind === 'helicopter';
+    if (v && KS.noDriveAt && KS.noDriveAt(PL.x, PL.z) && v.kind !== 'bicycle' && !(heli && (v.alt || 0) > 3)) Game.prompt('🚫 Pedestrian area: no vehicles beyond the bollards');
+    if (v && !heli && Game.limit !== (Game.limit = KS.speedLimit(PL.x, PL.z)) && Game.limit) Game.notify('🏫 School zone: 25 km/h until 16:00');
+    if (v && !heli && v.kind !== 'bicycle') for (const c of KS.speedCams) { // heads-up before a camera
       const d = Math.hypot(PL.x - c.x, PL.z - c.z);
       if (d < 150 && d > 40 && !c.warned) { c.warned = true; Game.notify(KS.speedLimit(c.x, c.z) ? '📷 Speed camera ahead · school zone 25 km/h' : '📷 Speed camera ahead (active 9:00–16:00 on school days)'); }
       if (d > 220) c.warned = false;
     }
-    if (!v || Law.trial || v.kind === 'bicycle') { lastSig = null; return; }
+    if (!v || Law.trial || v.kind === 'bicycle' || v.kind === 'helicopter') { lastSig = null; return; } // no road rules in the sky: no cameras, no speeding fines
     const kmh = Math.abs(v.speed) * 3.6, lim = KS.speedLimit(PL.x, PL.z);
     Game.kmh = kmh;
     // speed cameras: e-challan, a little tolerance like real cameras
@@ -292,11 +358,16 @@
     g.fillStyle = '#6fa3c4'; g.fillRect(0, mz(KS.RIVER.z0), MAP.W, (KS.RIVER.z1 - KS.RIVER.z0) * MAP.px);
     g.fillStyle = '#5a8fb3'; g.fillRect(mx(22), mz(-156), 46 * MAP.px, 46 * MAP.px);
     g.fillStyle = '#8e8e94'; g.fillRect(mx(719), mz(-380), 32 * MAP.px, 760 * MAP.px); g.fillRect(mx(610), mz(-90), 60 * MAP.px, 220 * MAP.px);
-    for (let i = 0; i <= G.N; i++) {
-      const ring = i === 0 || i === G.N, w = G.roadHalf(i) * 2 * MAP.px;
-      g.fillStyle = ring ? '#f3d27a' : '#fbfaf4';
+    for (let i = 0; i <= G.N; i++) { // every grid line is an ordinary street now; the Ring Road is the loop below
+      const w = G.roadHalf(i) * 2 * MAP.px;
+      g.fillStyle = '#fbfaf4';
       g.fillRect(mx(G.line(i)) - w / 2, mz(-551), w, 1102 * MAP.px); g.fillRect(mx(-551), mz(G.line(i)) - w / 2, 1102 * MAP.px, w);
     }
+    // the Ring Road loop, gold like the real Chakrapath on a map, with its connectors
+    g.strokeStyle = '#f3d27a'; g.lineWidth = G.RING * MAP.px; g.lineJoin = 'round'; g.lineCap = 'round';
+    g.beginPath(); KS.ringLoopPts.forEach((p, i) => (i ? g.lineTo(mx(p.x), mz(p.z)) : g.moveTo(mx(p.x), mz(p.z)))); g.closePath(); g.stroke();
+    g.lineWidth = G.ROAD * MAP.px;
+    for (const c of KS.ringConnectors) { g.beginPath(); g.moveTo(mx(c.x1), mz(c.z1)); g.lineTo(mx(c.x2), mz(c.z2)); g.stroke(); }
     g.fillStyle = '#fbfaf4'; g.fillRect(mx(KS.SWAYAMBHU.x + 20), mz(-96), (-540 - KS.SWAYAMBHU.x - 20) * MAP.px, 12 * MAP.px); g.fillRect(mx(540), mz(-7), 80 * MAP.px, 14 * MAP.px);
     // Nagdhunga highway and tunnel
     g.fillStyle = '#f3d27a'; g.fillRect(mx(KS.HW.x1), mz(KS.HW.z - 7), (KS.HW.x0 - KS.HW.x1) * MAP.px, 14 * MAP.px);
@@ -442,6 +513,7 @@
     KS.scene = scene; KS.camera = camera; KS.renderer = renderer;
     const step = (msg) => { $('loadmsg').textContent = msg; return new Promise((r) => setTimeout(r, 30)); };
     await step('Laying the Ring Road and the lanes of Thamel…');
+    if (KS.Props) { try { await KS.Props.load(); } catch (e) { /* code-built props stay */ } }
     KS.reseed(1); KS.World.build(scene);
     KS.reseed(2); KS.Nature.build(scene);
     await step('Digging the Nagdhunga tunnel, planting rice terraces…');
@@ -475,7 +547,7 @@
     const sg = D.garage.find((g) => g.id === 'sathi'); KS.Shop.delivered = sc; if (sg && sc) { sc.up = sg.up; sc.horn = sg.horn; }
     KS.Law.data();
     KS.Traffic.park('taxi', 6.6, -36, Math.PI); KS.Traffic.park('tempo', -88.6, 60, 0); KS.Traffic.park('pickup', -528, 104, 0);
-    if (KS.Heli && KS.Heli.pad2) KS.Traffic.park('helicopter', KS.Heli.pad2.x, KS.Heli.pad2.z, Math.PI); // the helicopter you can fly yourself
+    if (KS.Heli && KS.Heli.pad) KS.Traffic.park('helicopter', KS.Heli.pad.x, KS.Heli.pad.z, Math.PI); // the one helicopter you can fly yourself
     for (const [k, x, z, h] of KS.mansionCars || []) KS.Traffic.park(k, x, z, h, { color: k === 'sedan' ? 0x111111 : 0x1a1a1a });
     for (const [x, z] of KS.mansionGuards || []) { const o = KS.outfitFor('office'); Object.assign(o, { topStyle: 'jacket', jacket: 0x111111, top: 0xffffff, tie: 0x111111, glasses: true, hat: null }); const g = KS.makePerson('office', o); g.root.position.set(x, 0.1, z); g.root.rotation.y = 0; g.armL.rotation.x = g.armR.rotation.x = -0.2; scene.add(g.root); }
     KS.Input.init(canvas);
@@ -651,12 +723,17 @@
       }
       PL.update(dt);
     }
-    KS.Battle.update(dt); KS.Places.update(dt);
+    KS.Battle.update(dt); KS.Places.update(dt); if (KS.Mountains) KS.Mountains.update(dt);
+    faintUpdate(dt);
+    // Tibetan music in the two sacred places: Boudhanath and Swayambhu
+    const inSacred = Math.hypot(PL.x - 405, PL.z + 225) < 48 || Math.hypot(PL.x + 700, PL.z + 90) < 70;
+    if (inSacred && !(KS.Radio && KS.Radio.playing)) { if (A.tibetanStart) A.tibetanStart(); }
+    else if (A.tibetanStop) A.tibetanStop();
     Game.honk = Math.max(0, (Game.honk || 0) - dt);
     KS.Weather.update(dt, camera, { focus: tmpV.set(PL.x, PL.y, PL.z) });
     const ctx = { px: PL.x, pz: PL.z, cx: camera.position.x, cz: camera.position.z, night: KS.night, rain: KS.Weather.wet > 0.3, playerVehicle: PL.vehicle, player: { x: PL.x, z: PL.z, len: PL.len, wid: PL.wid } };
     KS.Traffic.update(dt, ctx);
-    if (!D.heliSeen && !D.heliHinted && KS.Heli && KS.Heli.pad2 && !PL.vehicle && PL.mode === 'foot' && Math.hypot(PL.x - KS.Heli.pad2.x, PL.z - KS.Heli.pad2.z) < 30) { D.heliHinted = true; Game.save(); Game.notify('🚁 A helicopter you can fly is parked on this pad — walk up and press <b>E</b> to get in.'); }
+    if (!D.heliSeen && !D.heliHinted && KS.Heli && KS.Heli.pad && !PL.vehicle && PL.mode === 'foot' && Math.hypot(PL.x - KS.Heli.pad.x, PL.z - KS.Heli.pad.z) < 30) { D.heliHinted = true; Game.save(); Game.notify('🚁 A helicopter you can fly is parked on this pad — walk up and press <b>E</b> to get in. Mind the buildings: fly into one fast and it crashes.'); }
     if (KS.VehicleModels) KS.VehicleModels.tick(dt);
     KS.Peds.update(dt, ctx);
     KS.Animals.update(dt, { px: PL.x, pz: PL.z, playerSpeed: Math.abs(PL.speed), honk: Game.honk > 0.35, inVehicle: !!PL.vehicle, vehicleKind: PL.vehicle && (KS.isBike(PL.vehicle.kind) ? 'bike' : 'car'), night: KS.night });
@@ -667,6 +744,19 @@
       U.uLight.value = 0.3 + 0.7 * KS.day + 0.15 * KS.night;
     }
     for (const h of KS.clockHands) h.hand.rotation.z = h.k === 'h' ? -((KS.time % 12) / 12) * Math.PI * 2 : -(KS.time % 1) * Math.PI * 2;
+    // the prayer wheels turn slowly on their own; one the player spun goes faster for a while
+    if (KS.prayerWheelDrums && KS.prayerWheelDrums.mesh) {
+      const W = KS.prayerWheelDrums, dummy = W._dummy || (W._dummy = new T.Object3D());
+      for (let i = 0; i < W.angles.length; i++) {
+        W.boost[i] = Math.max(0, (W.boost[i] || 0) - dt * 0.5);
+        W.angles[i] += dt * (0.35 + (W.boost[i] || 0));
+        dummy.position.set(W.pos[i][0], W.pos[i][1], W.pos[i][2]);
+        dummy.rotation.set(0, W.angles[i], 0);
+        dummy.updateMatrix();
+        W.mesh.setMatrixAt(i, dummy.matrix);
+      }
+      W.mesh.instanceMatrix.needsUpdate = true;
+    }
     const fp = KS.flyingPlane; if (fp) {
       const cyc = KS.clock % 150, rx = KS.runwayX;
       if (cyc < 12) { fp.visible = true; fp.position.set(rx, 2.6, 360); fp.rotation.set(0, Math.PI, 0); }
@@ -739,9 +829,14 @@
     $('karma').style.setProperty('--k', D.karma + '%'); $('karmaV').textContent = Math.round(D.karma);
     $('health').style.setProperty('--h', Math.max(0, PL.health) + '%');
     const bagN = (D.bag && D.bag.fruit) || 0, bg = $('bagHud'); if (bg) { bg.hidden = !bagN; bg.textContent = `🎒 🍎×${bagN} (Z)`; }
+    const temp = KS.temperatureAt ? KS.temperatureAt(PL.x, PL.z) : 18, te = $('temp'); if (te) { te.textContent = `🌡️ ${temp}°C`; te.classList.toggle('cold', temp <= 0); }
     if (PL.vehicle) {
-      const kmh = Math.round(Math.abs(PL.vehicle.speed) * 3.6), lim = KS.speedLimit(PL.x, PL.z);
-      $('kmh').textContent = kmh; $('limit').hidden = !lim; if (lim) { $('limit').textContent = lim; $('limit').classList.toggle('over', kmh > lim + 2); }
+      const heli = PL.vehicle.kind === 'helicopter';
+      const kmh = Math.round(Math.abs(PL.vehicle.speed) * 3.6), lim = heli ? null : KS.speedLimit(PL.x, PL.z);
+      $('kmh').textContent = kmh;
+      if (heli) { // a helicopter has no road speed limit: the badge shows altitude instead
+        $('limit').hidden = false; $('limit').textContent = Math.round(PL.vehicle.alt || 0); $('limit').classList.remove('over'); $('limit').classList.add('alt'); $('limit').title = 'Altitude (m)';
+      } else { $('limit').hidden = !lim; if (lim) { $('limit').textContent = lim; $('limit').classList.toggle('over', kmh > lim + 2); $('limit').classList.remove('alt'); $('limit').title = 'Speed limit'; } }
       const st = KS.Radio.current(); $('radio').textContent = st ? '📻 ' + st.name : '📻 off (R)';
       $('nitro').hidden = !(PL.vehicle.up && PL.vehicle.up.nitro); $('nitro').textContent = PL.nitro > 0 ? '🔥 NITRO' : PL.nitroCool > 0 ? `Nitro ${Math.ceil(PL.nitroCool)}s` : 'Nitro ready (B)';
     }
@@ -757,7 +852,12 @@
       else if (Game.momoPending && Math.hypot(PL.x - MOMO.x, PL.z - MOMO.z) < 12) prompt = 'Step into the beam to collect the <b>momo order</b>';
       else if ((KS.lifts || []).some((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5)) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ${(KS.lifts.find((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5)).label}`;
       else if (KS.Mansion.nearBooth(PL)) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> 🎟️ ${KS.Mansion.ticket ? 'Your tour ticket ✔' : `House & garden tour ticket · रु ${KS.Mansion.price}`}`;
-      else if (KS.Heli.nearBooth(PL) && !KS.Heli.flying) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> 🚁 Sadbhav Air helicopter tour · रु ${KS.Heli.price}`;
+      else if (KS.Mountains && KS.Mountains.skiHire && Math.hypot(PL.x - KS.Mountains.skiHire.x, PL.z - KS.Mountains.skiHire.z) < 4) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ⛷️ ${PL.board ? 'You have a board — ride down!' : `Hire a snowboard · रु ${KS.Mountains.skiPrice}`}`;
+      else if (KS.Mountains && KS.Mountains.teaHouse && Math.hypot(PL.x - KS.Mountains.teaHouse.x, PL.z - KS.Mountains.teaHouse.z) < 4) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ☕ Hot chiya · रु ${KS.Mountains.chiyaPrice} (+20 health)`;
+      else if (KS.Mountains && KS.Mountains.paraOffice && Math.hypot(PL.x - KS.Mountains.paraOffice.x, PL.z - KS.Mountains.paraOffice.z) < 4) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> 🪂 ${PL.paraTicket ? 'You have a ticket — go to the takeoff!' : `Paragliding ticket · रु ${KS.Mountains.paraPrice}`}`;
+      else if (KS.Mountains && KS.Mountains.paraTakeoff && PL.paraTicket && Math.hypot(PL.x - KS.Mountains.paraTakeoff.x, PL.z - KS.Mountains.paraTakeoff.z) < 6) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> 🪂 Launch the paraglider!`;
+      else if (KS.Flight && Math.hypot(PL.x - KS.Flight.counter.x, PL.z - KS.Flight.counter.z) < 4) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ✈️ ${KS.Flight.ticket ? 'You have a ticket — board the plane!' : `Mountain flight ticket · रु ${KS.Flight.price}`}`;
+      else if (KS.Flight && KS.Flight.nearPlane(PL) && KS.Flight.ticket) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ✈️ Board the plane (4 seats)`;
       else if (KS.Net && KS.Net.boardHint && (bh = KS.Net.boardHint())) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ${bh}`;
       else if (KS.agent && Math.hypot(PL.x - KS.agent.x, PL.z - KS.agent.z) < 2.6) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Talk to the man in sunglasses 🕶️`;
       else if (KS.pond && !PL.boat && Math.hypot(PL.x - KS.pond.jetty.x, PL.z - KS.pond.jetty.z) < 2.8) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Hire a rowing boat (रु 100)`;

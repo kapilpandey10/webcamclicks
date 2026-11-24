@@ -36,7 +36,7 @@
   function randomLot(px, pz, a, b) { const L = KS.World.lots; for (let i = 0; i < 300; i++) { const l = KS.pick(L), d = Math.hypot(l.x - px, l.z - pz); if (d > a && d < b) return l; } return KS.pick(L); }
   function landmarkStop(l) { return l.stop || KS.Game.stopFor(l); }
   function destFor(t, from) {
-    if (t.toHospital) return { x: KS.hospital.x, z: KS.hospital.z + 6, name: 'City Hospital' };
+    if (t.toHospital) return { x: KS.hospital.x, z: KS.hospital.z + 6, name: 'Bir Hospital' };
     if (t.landmark === 'boudha') { const l = KS.landmarks.find((x) => x.id === 'boudha'); return { ...landmarkStop(l), name: l.name }; }
     if (t.village) { const s = KS.pick(KS.villageSpots); return { x: s.x, z: s.z, name: 'Dhunibesi Village' }; }
     if (t.fromVillage) return { ...KALIMATI };

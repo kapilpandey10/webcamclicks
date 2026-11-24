@@ -161,15 +161,55 @@
     R = W.blockRect(7, 5); cx = (R.x0 + R.x1) / 2; cz = (R.z0 + R.z1) / 2;
     const h = new KS.Builder();
     h.box(cx, 0.1, cz, R.x1 - R.x0 - 8, 0.06, R.z1 - R.z0 - 8, 0x8d8676);
-    h.box(cx + 8, 0, cz - 4, 48, 16, 22, 0xf2f0ea); h.box(cx + 8, 3, cz - 4, 48.2, 0.6, 22.2, 0xc81e1e); h.box(cx + 8, 16, cz - 4, 49, 0.6, 23, 0xd8d4ca);
-    for (let f = 0; f < 4; f++) for (let i = 0; i < 9; i++) h.box(cx - 13 + i * 5.2, 4.6 + f * 2.9, cz + 7.05, 2.6, 1.6, 0.1, 0x5a8aa8);
+    /* Bir Hospital, hollow and explorable: real walls with a door under the
+       emergency canopy, a lobby with a reception desk, and three rooms
+       behind it — Emergency, a ward, and a doctor's office. The upper
+       floors stay a solid-looking shell above the 4.2 m ceiling. */
+    const wall = (x, z, w, d, y0, y1) => { h.box(x, y0, z, w, y1 - y0, d, 0xf2f0ea); KS.addBox(x, z, w, d, y1, y0); };
+    wall(125, -38, 12, 0.6, 0, 16); wall(151, -38, 32, 0.6, 0, 16); // south wall, door gap at x 131..135
+    wall(133, -38, 4, 0.6, 3, 16); // lintel over the door
+    wall(143, -60, 48, 0.6, 0, 16); wall(119, -49, 0.6, 22, 0, 16); wall(167, -49, 0.6, 22, 0, 16);
+    h.box(143, 3, -38, 48.4, 0.6, 0.7, 0xc81e1e); h.box(143, 3, -60, 48.4, 0.6, 0.7, 0xc81e1e); // red band
+    h.box(119, 3, -49, 0.7, 0.6, 22.4, 0xc81e1e); h.box(167, 3, -49, 0.7, 0.6, 22.4, 0xc81e1e);
+    h.box(143, 16, -49, 49, 0.6, 23, 0xd8d4ca); // roof cap
+    h.box(143, 4.2, -49, 47, 0.15, 21, 0xf2f0ea); // interior ceiling
+    for (let f = 0; f < 4; f++) for (let i = 0; i < 9; i++) h.box(cx - 13 + i * 5.2, 4.6 + f * 2.9, -37.65, 2.6, 1.6, 0.1, 0x5a8aa8);
+    for (const wx of [123, 129, 137, 143, 149, 155, 163]) { h.box(wx, 1.8, -38, 2.6, 1.4, 0.7, 0x5a8aa8); h.box(wx, 1.8, -60, 2.6, 1.4, 0.7, 0x5a8aa8); }
     h.box(cx - 2, 0, cz + 11, 14, 4, 5, 0xe8e6e0); h.box(cx - 2, 4, cz + 11, 15, 0.4, 6, 0xc81e1e); // emergency bay canopy
-    h.box(cx + 8, 12.6, cz + 7.2, 3, 3, 0.2, 0xffffff); h.box(cx + 8, 13.6, cz + 7.35, 2.2, 0.8, 0.1, 0xc81e1e); h.box(cx + 8, 12.9, cz + 7.35, 0.8, 2.2, 0.1, 0xc81e1e);
-    KS.addBox(cx + 8, cz - 4, 48, 22, 16.6); KS.addBox(cx - 2, cz + 11, 14, 5, 4.4);
+    KS.addBox(cx - 2, cz + 11, 14, 5, 4.4);
+    h.box(cx + 8, 12.6, -37.6, 3, 3, 0.2, 0xffffff); h.box(cx + 8, 13.6, -37.55, 2.2, 0.8, 0.1, 0xc81e1e); h.box(cx + 8, 12.9, -37.55, 0.8, 2.2, 0.1, 0xc81e1e);
+    // partitions: lobby | rooms (doors to Emergency, the ward and the office), and the two room dividers
+    wall(123, -50, 8, 0.4, 0, 4.2); wall(136, -50, 10, 0.4, 0, 4.2); wall(152, -50, 14, 0.4, 0, 4.2); wall(165, -50, 4, 0.4, 0, 4.2);
+    wall(129, -50, 4, 0.4, 2.6, 4.2); wall(143, -50, 4, 0.4, 2.6, 4.2); wall(161, -50, 4, 0.4, 2.6, 4.2);
+    wall(135, -58, 0.4, 4, 0, 4.2); wall(135, -51.5, 0.4, 3, 0, 4.2); wall(135, -54.5, 0.4, 3, 2.6, 4.2);
+    wall(151, -58, 0.4, 4, 0, 4.2); wall(151, -51.5, 0.4, 3, 0, 4.2); wall(151, -54.5, 0.4, 3, 2.6, 4.2);
     scene.add(KS.mesh(h));
-    board(scene, 'अस्पताल', 'HOSPITAL · EMERGENCY', cx - 2, 5.2, cz + 13.6, 0, 8, 2, '#ffffff', '#c81e1e');
+    // furniture: real models where they loaded, code-built where they did not
+    const f = new KS.Builder();
+    const prop = (name, x, z, ry, y) => {
+      const m = KS.Props && KS.Props.build(name);
+      if (m) { m.position.set(x, (y == null ? 0.13 : y) + 0.05, z); m.rotation.y = ry || 0; scene.add(m); return true; }
+      return false;
+    };
+    const bed = (x, z) => { if (!prop('bed', x, z, 0)) { f.box(x, 0, z, 1, 0.5, 2.1, 0xf4f4f4); f.box(x, 0.5, z - 0.8, 0.8, 0.15, 0.4, 0xffffff); f.box(x, 0.15, z, 1.05, 0.12, 2.15, 0x1d4fb8); } KS.addBox(x, z, 1.1, 2.2, 0.9); };
+    const chair = (x, z, ry) => { if (!prop('chair', x, z, ry)) { f.box(x, 0.45, z, 0.5, 0.08, 0.5, 0x3a5a8a, ry); f.box(x, 0.53, z, 0.5, 0.5, 0.08, 0x3a5a8a, ry); } };
+    const plant = (x, z) => { if (!prop('plant', x, z, 0)) { f.cyl(x, 0, z, 0.25, 0.4, 0x8a5a30, 10); f.sphere(x, 0.7, z, 0.45, 0x2a7a3a, 0.9, 10); } };
+    const computer = (x, z, ry, y) => { if (!prop('computer', x, z, ry, y)) f.box(x, y + 0.25, z, 0.5, 0.4, 0.06, 0x111418, ry); };
+    // lobby: reception desk + computer, waiting chairs, potted plants
+    f.box(143, 0, -48.5, 3, 0.9, 0.8, 0x8a6a3a); computer(143, -48.5, Math.PI, 0.9);
+    for (const wx of [124, 130, 156, 162]) chair(wx, -40, Math.PI);
+    plant(121, -40); plant(165, -40); plant(150, -47);
+    // Emergency: two beds; Ward: three beds (the middle one is where you wake up); Office: desk + computer + chair
+    bed(124, -55); bed(130, -55);
+    bed(139, -55); bed(143, -55); bed(147, -55);
+    f.box(159, 0, -58.5, 2.4, 0.75, 0.8, 0x6a4a2a); computer(159, -58.5, 0, 0.75); chair(159, -57, Math.PI);
+    f.box(164, 0, -55, 0.5, 2.2, 3, 0x8a6a3a); f.box(121, 0, -55, 0.5, 2.2, 3, 0x8a6a3a); // shelves in the office and Emergency
+    scene.add(KS.mesh(f, KS.M.vc, false));
+    KS.wakeBed = { x: 143, z: -55, h: 0 };
+    KS.doctorSpots = [[127, -55, 0, 'doctor'], [141, -57, 0, 'doctor'], [149, -57, Math.PI, 'nurse'], [159, -56.5, Math.PI, 'doctor'], [143, -49.3, 0, 'nurse']];
+    board(scene, 'वीर अस्पताल', 'BIR HOSPITAL · EMERGENCY', cx - 2, 5.2, cz + 13.6, 0, 8, 2, '#ffffff', '#c81e1e');
     KS.hospital = { x: cx - 2, z: R.z1 - 2 };
-    KS.landmarks.push({ id: 'hospital', minor: true, name: 'City Hospital', np: 'अस्पताल', x: cx, z: cz, r: 26, stop: { x: cx - 2, z: R.z1 + 2 }, fact: 'Emergency patients are urgent fares: get them here fast and gently.' });
+    KS.landmarks.push({ id: 'hospital', minor: true, name: 'Bir Hospital', np: 'वीर अस्पताल', x: cx, z: cz, r: 26, stop: { x: cx - 2, z: R.z1 + 2 }, fact: 'Nepal’s oldest hospital. Walk in — the reception, the ward and the doctors’ office are all inside.' });
   }
 
   /* ---------- traffic lights, zebra crossings, speed-limit signs, speed cameras ---------- */

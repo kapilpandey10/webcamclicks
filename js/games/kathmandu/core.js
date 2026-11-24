@@ -27,12 +27,90 @@
   KS.angLerp = (a, b, t) => a + KS.wrapAng(b - a) * t;
 
   /* ---------- city grid ----------
-     12 x 12 blocks of 90 m. Road centre lines at x,z = -540 + i*90. Outer lines are the Ring Road.
-     Nepal drives on the LEFT. */
+     12 x 12 blocks of 90 m. Road centre lines at x,z = -540 + i*90. Every grid
+     line is an ordinary 16 m street now; the Ring Road is the loop below, not
+     the square the grid used to draw. Nepal drives on the LEFT. */
   const G = (KS.G = { N: 12, B: 90, O: -540, ROAD: 16, RING: 22, HALF: 540 });
   G.line = (i) => G.O + i * G.B;
-  G.roadHalf = (i) => (i === 0 || i === G.N ? G.RING / 2 : G.ROAD / 2);
+  G.roadHalf = () => G.ROAD / 2;
   G.blockOf = (x, z) => ({ c: Math.floor((x - G.O) / G.B), r: Math.floor((z - G.O) / G.B) });
+
+  /* ---------- the Ring Road: a real loop, not a square ----------
+     The real Chakrapath is an irregular oval around the city, and the big
+     junctions sit on it: Tokha and Samakhusi in the north, Gangabu and
+     Balaju in the west, Kalanki and Balkhu in the south-west, Mahalaxmi and
+     Kupondole across the Bagmati, Koteshwar, Sinamangal and Gaushala in the
+     east, Chabahil and Maharajgunj in the north-east. A closed Catmull-Rom
+     spline through them, sampled once here; the road ribbon, the median,
+     the traffic nodes, the minimap and the signs all read the same samples,
+     so the road the player drives, the road the traffic drives and the road
+     on the map are one road. */
+  KS.RING_LOOP = [
+    { name: 'Tokha', np: 'टोखा', x: 30, z: -640 },
+    { name: 'Samakhusi', np: 'सामाखुसी', x: -190, z: -600 },
+    { name: 'Gangabu', np: 'गंगबु', x: -430, z: -480 },
+    { name: 'Balaju', np: 'बालाजु', x: -560, z: -260 },
+    { name: 'Kalanki', np: 'कलंकी', x: -560, z: 120 },
+    { name: 'Balkhu', np: 'बल्खु', x: -420, z: 380 },
+    { name: 'Mahalaxmi', np: 'महालक्ष्मी', x: 40, z: 620 },
+    { name: 'Kupondole', np: 'कुपण्डोल', x: 480, z: 560 },
+    { name: 'Koteshwor', np: 'कोटेश्वर', x: 540, z: 300 },
+    { name: 'Sinamangal', np: 'सिनामंगल', x: 560, z: -40 },
+    { name: 'Gaushala', np: 'गौशाला', x: 540, z: -300 },
+    { name: 'Chabahil', np: 'चाबहिल', x: 380, z: -480 },
+    { name: 'Maharajgunj', np: 'महाराजगंज', x: 120, z: -575 }, // south of the Thakuri mansion (its grounds run x 120..240, z -735..-605): the loop must not cut through the walled compound
+  ];
+  KS.ringLoopPts = (() => {
+    const W = KS.RING_LOOP, n = W.length, N = 360, out = [];
+    for (let i = 0; i < n; i++) {
+      const p0 = W[(i - 1 + n) % n], p1 = W[i], p2 = W[(i + 1) % n], p3 = W[(i + 2) % n];
+      for (let k = 0; k < N / n; k++) {
+        const t = k / (N / n), t2 = t * t, t3 = t2 * t;
+        out.push({
+          x: 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+          z: 0.5 * ((2 * p1.z) + (-p0.z + p2.z) * t + (2 * p0.z - 5 * p1.z + 4 * p2.z - p3.z) * t2 + (-p0.z + 3 * p1.z - 3 * p2.z + p3.z) * t3),
+        });
+      }
+    }
+    // heading at each sample, and arclength (for the median gaps at junctions)
+    let s = 0;
+    for (let i = 0; i < out.length; i++) {
+      const a = out[i], b = out[(i + 1) % out.length];
+      a.h = Math.atan2(b.x - a.x, b.z - a.z); a.s = s; s += Math.hypot(b.x - a.x, b.z - a.z);
+    }
+    KS.ringLoopLen = s; // total loop length in metres
+    return out;
+  })();
+  /** distance from a point to the Ring Road centre line (true segment distance) */
+  KS.ringLoopDist = (x, z) => {
+    const P = KS.ringLoopPts; let best = Infinity;
+    for (let i = 0; i < P.length; i++) {
+      const a = P[i], b = P[(i + 1) % P.length], dx = b.x - a.x, dz = b.z - a.z, L2 = dx * dx + dz * dz;
+      const u = L2 > 0 ? Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / L2)) : 0;
+      const ex = a.x + u * dx - x, ez = a.z + u * dz - z, d = ex * ex + ez * ez;
+      if (d < best) best = d;
+    }
+    return Math.sqrt(best);
+  };
+  /** the short connector road from each loop junction to the nearest grid junction */
+  KS.ringConnectors = KS.RING_LOOP.map((w) => {
+    let bi = 0, bj = 0, bd = Infinity;
+    for (let i = 0; i <= G.N; i++) for (let j = 0; j <= G.N; j++) {
+      const d = Math.hypot(G.line(i) - w.x, G.line(j) - w.z);
+      if (d < bd) { bd = d; bi = i; bj = j; }
+    }
+    return { name: w.name, np: w.np, x1: w.x, z1: w.z, x2: G.line(bi), z2: G.line(bj), gi: bi, gj: bj };
+  });
+  /** true while a point is on the Ring Road or one of its connectors (for keeping buildings, trees and benches off the road) */
+  KS.nearRingRoad = (x, z, r) => {
+    if (KS.ringLoopDist(x, z) < r) return true;
+    for (const c of KS.ringConnectors) {
+      const dx = c.x2 - c.x1, dz = c.z2 - c.z1, L2 = dx * dx + dz * dz;
+      const u = L2 > 0 ? Math.max(0, Math.min(1, ((x - c.x1) * dx + (z - c.z1) * dz) / L2)) : 0;
+      if (Math.hypot(c.x1 + u * dx - x, c.z1 + u * dz - z) < r) return true;
+    }
+    return false;
+  };
 
   /* block layout: [col,row] -> type. col runs west->east, row runs north->south */
   const layout = {};
@@ -181,7 +259,7 @@
     const dp = Math.hypot(x - J.pool.x, z - J.pool.z); if (dp < J.pool.r + 4) h = KS.lerp(h, J.base - 1.8, KS.smooth(J.pool.r + 4, J.pool.r - 2, dp));
     return h;
   }
-  function natural(x, z) { return shapeNorth(x, z, natural0(x, z)); }
+  function natural(x, z) { return shapePaths(x, z, shapeNorth(x, z, natural0(x, z))); }
   function natural0(x, z) {
     let h = 0;
     // valley rim hills (Shivapuri, Nagarjun, Chandragiri, Phulchoki)
@@ -193,6 +271,11 @@
       const basin = 22 + Math.max(0, d - 240) * 0.36 + 6 * KS.fbm(x * 0.01, z * 0.01);
       h = KS.lerp(h, basin, KS.smooth(-1350, -1720, x));
     }
+    // the snow peak (Shivapuri) and the paragliding hill: smooth cones on the rim
+    const ds = Math.hypot(x - KS.SNOWPEAK.x, z - KS.SNOWPEAK.z);
+    if (ds < 500) h += KS.SNOWPEAK.bump * Math.exp(-(ds * ds) / (2 * KS.SNOWPEAK.sigma * KS.SNOWPEAK.sigma));
+    const dp = Math.hypot(x - KS.PARAGLIDE.x, z - KS.PARAGLIDE.z);
+    if (dp < 400) h += KS.PARAGLIDE.bump * Math.exp(-(dp * dp) / (2 * KS.PARAGLIDE.sigma * KS.PARAGLIDE.sigma));
     // Swayambhu hill
     const sw = KS.SWAYAMBHU;
     const dx = x - sw.x, dz = z - sw.z, d = Math.sqrt(dx * dx + dz * dz);
@@ -212,17 +295,57 @@
   }
   /** ground height. forMesh: the visible terrain (the hill stays solid over the tunnel) */
   KS.heightAt = (x, z, forMesh) => {
-    const h = natural(x, z);
+    let h = natural(x, z);
     if (x < HW.x0 && x > HW.x1) {
       const dz = Math.abs(z - HW.z), tun = x < HW.pE - 6 && x > HW.pW + 6;
       if (forMesh && tun) return h;
       if (dz < 8) return KS.roadH(x);
       if (dz < 26 && !tun) return KS.lerp(KS.roadH(x), h, KS.smooth(8, 26, dz));
     }
+    /* the Ring Road cuts its own flat corridor: the valley floor is already
+       flat, but the loop grazes the foot of Swayambhu hill on the west side,
+       so the ground is levelled within 14 m of the centre line. */
+    const rd = KS.ringLoopDist(x, z);
+    if (rd < 22) h = KS.lerp(0, h, KS.smooth(14, 22, rd));
     return h;
   };
 
-  /* junctions with traffic lights (the rest are run by traffic police or nobody) */
+  /* ---------- the snow mountain (Shivapuri) and the paragliding hill ----------
+     Two new peaks on the valley rim: a snowy summit in the north, and a
+     paragliding hill in the west. The snow line is where the ground turns
+     white; the temperature falls about 7°C for every 100 m you climb. */
+  KS.SNOWPEAK = { x: -450, z: -1250, bump: 180, sigma: 280 };
+  KS.PARAGLIDE = { x: -1200, z: 300, bump: 70, sigma: 200 };
+  KS.SNOWLINE = 240;
+  KS.temperatureAt = (x, z) => Math.round(18 - KS.heightAt(x, z) * 0.07);
+  /* mountain paths: a road up to the snow peak, a road up to the paragliding
+     hill, and a trekking path to the summit. The ground is flattened near
+     them, like the Jharna road, so the roads and the trail are walkable. */
+  const MOUNTAIN_PATHS = (KS.MOUNTAIN_PATHS = [
+    { id: 'snowroad', w: 6, pts: [[-100, -996, 0], [-180, -1030, 0], [-260, -1080, 0], [-330, -1140, 0], [-390, -1190, 0], [-430, -1220, 0], [-450, -1235, 0]] },
+    { id: 'pararoad', w: 6, pts: [[-560, 150, 0], [-750, 180, 0], [-950, 230, 0], [-1100, 270, 0], [-1180, 295, 0], [-1200, 300, 0]] },
+    { id: 'trek', w: 2.2, pts: [[-400, -600, 0], [-380, -800, 0], [-360, -1000, 0], [-380, -1150, 0], [-430, -1230, 0]] },
+    { id: 'snowstream', w: 3, bed: true, pts: [[-450, -1245, 0], [-400, -1150, 0], [-300, -1080, 0], [-200, -1060, 0], [-180, -1000, 0], [-220, -900, 0], [-300, -800, 0], [-400, -700, 0], [-500, -600, 0], [-560, -450, 0], [-580, -300, 0], [-600, -150, 0], [-610, 0, 0], [-620, 150, 0], [-630, 300, 0], [-640, 450, 0], [-650, 495, 0]] },
+  ]);
+  for (const P of MOUNTAIN_PATHS) { const xs = P.pts.map((p) => p[0]), zs = P.pts.map((p) => p[1]), m = P.w + 8; P.bx0 = Math.min(...xs) - m; P.bx1 = Math.max(...xs) + m; P.bz0 = Math.min(...zs) - m; P.bz1 = Math.max(...zs) + m; }
+  let mountainsShaped = false;
+  function shapeMountains() {
+    mountainsShaped = true;
+    for (const P of MOUNTAIN_PATHS) for (const p of P.pts) p[2] = natural0(p[0], p[1]);
+    // the snow stream only ever flows downhill, to the Bagmati
+    const S = MOUNTAIN_PATHS.find((p) => p.id === 'snowstream');
+    for (let k = 1; k < S.pts.length; k++) S.pts[k][2] = Math.min(S.pts[k - 1][2] - 0.4, natural0(S.pts[k][0], S.pts[k][1]) - 1.2);
+  }
+  function shapePaths(x, z, h) {
+    if (!mountainsShaped) shapeMountains();
+    for (const P of MOUNTAIN_PATHS) {
+      if (x < P.bx0 || x > P.bx1 || z < P.bz0 || z > P.bz1) continue;
+      const n = KS.pathNear(P, x, z), edge = P.w + (P.bed ? 12 : 9); if (n.d > edge) continue;
+      const tgt = P.bed ? n.h - 0.8 * Math.max(0, 1 - n.d / P.w) : n.h;
+      h = KS.lerp(h, tgt, KS.smooth(edge, P.w, n.d));
+    }
+    return h;
+  }
   KS.SIGNALS = [[6, 4], [7, 7], [8, 8], [9, 6], [4, 9], [2, 6], [7, 3], [9, 9], [0, 7], [12, 6], [6, 12], [6, 0], [3, 2], [8, 10]];
   KS.SPEEDCAMS = [{ x: G.line(2) + 12, z: G.line(4) + 45, ax: 'z' }, { x: G.line(7) + 45, z: G.line(1) + 12, ax: 'x' }, { x: G.line(10) - 12, z: G.line(10) + 45, ax: 'z' }, { x: G.line(3) + 45, z: G.line(10) - 12, ax: 'x' }];
 

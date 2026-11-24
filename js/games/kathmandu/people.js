@@ -97,6 +97,14 @@
         o.bag = c(0.5) ? 'doko' : null; o.shoes = o.skin; break;
       case 'police':
         o.top = 0x3a5a8a; o.bottom = 0x1a2440; o.hat = 'cap'; o.hatColor = 0x1a2440; o.vestHi = true; o.gloves = 0xffffff; o.shoes = 0x111111; break;
+      case 'doctor':
+        o.coat = 0xffffff; o.lanyard = true; o.top = 0x9fc4e8; o.bottom = 0x23283a; o.glasses = c(0.5); o.shoes = 0x111111; break;
+      case 'nurse':
+        o.top = 0xe8f0f8; o.bottom = 0x2a4a6a; o.lanyard = true; o.glasses = c(0.3); o.shoes = 0x1a1a1a; break;
+      case 'trekker': // a Himalayan trekker: bright shell jacket, warm hat, backpack and a walking stick
+        o.topStyle = 'jacket'; o.jacket = P_([0xc81e1e, 0x1d4fb8, 0xe86412, 0x1f8a4c, 0xf2c418, 0x0a8a9a]); o.top = 0xe0e0e0;
+        o.bottom = P_([0x2a2f45, 0x4a3a2a, 0x333333]); o.bag = 'backpack'; o.bagColor = P_([0x333333, 0x4a5a3a, 0xc81e1e, 0x1d4fb8]);
+        o.hat = 'beanie'; o.hatColor = P_([0xc81e1e, 0x1d4fb8, 0xf2c418, 0x333333]); o.cane = true; o.shoes = 0x3a2414; break;
       case 'jogger':
         o.topStyle = 'tshirt'; o.top = P_([0xc81e1e, 0x1d4fb8, 0xf4f4f4, 0x1f8a4c, 0x333333]); o.bottom = P_([0x222222, 0x23283a]); o.shoes = 0xf4f4f4; o.hat = c(0.3) ? 'cap' : null; o.hatColor = 0x222222; break;
       case 'kid':
@@ -292,6 +300,24 @@
       if (!KS.chance(0.45)) continue;
       const p = KS.makePerson(KS.pick(['elder', 'woman', 'man', 'student', 'grandma'])); KS.animSit(p);
       add(scene, { p, kind: p.kind, mode: 'sit', x: bx, z: bz, y: 0.05, h: ry, t: 0 });
+    }
+    for (const [dx, dz, dh, dkind] of (KS.doctorSpots || [])) { // Bir Hospital staff: local, standing at their posts
+      const p = KS.makePerson(dkind);
+      add(scene, { p, kind: dkind, mode: 'stand', x: dx, z: dz, y: 0.15, h: dh, t: 0, gT: KS.r(2, 6) });
+    }
+    // Himalayan trekkers on the trekking path (never more than 20), and people
+    // walking the two mountain roads. They follow their path and turn round at
+    // the ends; they are local, so they are never respawned into the city.
+    if (KS.MOUNTAIN_PATHS) {
+      const trek = KS.MOUNTAIN_PATHS.find((p) => p.id === 'trek'), snow = KS.MOUNTAIN_PATHS.find((p) => p.id === 'snowroad'), para = KS.MOUNTAIN_PATHS.find((p) => p.id === 'pararoad');
+      const walkers = [];
+      for (let i = 0; i < 14; i++) walkers.push(['trekker', trek]); // the trekking party, well under the 20-person limit
+      for (let i = 0; i < 4; i++) walkers.push([KS.pick(['man', 'woman', 'tourist', 'elder']), snow]);
+      for (let i = 0; i < 3; i++) walkers.push([KS.pick(['man', 'woman', 'tourist']), para]);
+      for (const [kind, path] of walkers) {
+        const p = KS.makePerson(kind), pi = KS.ri(0, path.pts.length - 1), [sx, sz] = path.pts[pi];
+        add(scene, { p, kind, mode: 'trek', path, pi, dir: KS.chance(0.5) ? 1 : -1, x: sx + KS.r(-1, 1), z: sz + KS.r(-1, 1), y: KS.heightAt(sx, sz) + 0.02, h: KS.r(0, 6.3), speed: KS.r(0.9, 1.3), t: 0 });
+      }
     }
     Peds.police = [];
     for (const [i, j] of [[6, 5], [5, 3], [6, 8]]) { // posts on the corner kerb, out of the traffic
@@ -530,6 +556,20 @@
           if (ped.kind === 'monk' || ped.kind === 'elder' || ped.kind === 'grandma') { ped.p.busyArm = true; ped.p.armR.rotation.x = -0.9; }
           break;
         }
+        case 'trek': { // trekkers and mountain-road walkers: follow their path, turn round at the ends
+          const pts = ped.path.pts, n = pts.length;
+          const tx = pts[ped.pi][0], tz = pts[ped.pi][1], dx = tx - ped.x, dz = tz - ped.z, d = Math.hypot(dx, dz);
+          if (d < 1.2) {
+            ped.pi += ped.dir;
+            if (ped.pi >= n) { ped.pi = n - 2; ped.dir = -1; }
+            else if (ped.pi < 0) { ped.pi = 1; ped.dir = 1; }
+          } else {
+            moving = ped.speed; ped.x += (dx / d) * ped.speed * dt; ped.z += (dz / d) * ped.speed * dt;
+            ped.h = KS.angLerp(ped.h, Math.atan2(dx, dz), Math.min(1, dt * 6));
+          }
+          ped.y = KS.heightAt(ped.x, ped.z) + 0.02;
+          break;
+        }
         case 'plaza': {
           const z = ped.zone;
           if (ped.wait > 0) { // standing and chatting: talk with the hands
@@ -553,6 +593,11 @@
           const ex = tx - ped.x, ez = tz - ped.z, e = Math.hypot(ex, ez);
           if (e > 0.6) { const sp = ped === Peds.lastChaser ? ped.speed : 1; ped.x += (ex / e) * sp * dt; ped.z += (ez / e) * sp * dt; moving = sp; ped.h = Math.atan2(ex, ez); }
           if (d < 0.7 && Math.hypot(b.vx, b.vz) < 4) { const a = KS.r(0, Math.PI * 2), f = KS.r(6, 12); b.vx = Math.cos(a) * f; b.vz = Math.sin(a) * f; if (KS.chance(0.1)) KS.say(ped.p.root, KS.pick(LINES.kid), 1.5); }
+          break;
+        }
+        case 'stand': { // doctors and nurses: stay at their post, turn to look around now and then
+          ped.gT = (ped.gT || KS.r(2, 6)) - dt;
+          if (ped.gT <= 0) { ped.h += KS.r(-0.6, 0.6); ped.gT = KS.r(3, 8); }
           break;
         }
         case 'police': {

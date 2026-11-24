@@ -136,6 +136,96 @@
     if (PL.y <= g2) { PL.y = g2; if (Drop.phase === 'fall') { KS.Game && KS.Game.hurt(35); } land(); }
   };
 
+  /* ======================= the passenger flight: buy a ticket at the
+     airport, ride the turboprop yourself. Four seats: you and up to three
+     fellow passengers. The plane takes off from the runway, flies a scenic
+     circuit over the city and past the snow peak, and lands back at the
+     airport. Press E to skip to the landing. */
+  const Flight = (KS.Flight = { price: 2000, seats: 4, phase: 'parked', ticket: false });
+  const FLIGHT_NAMES = ['Sita', 'Ramesh', 'Anita', 'Bikash', 'Maya', 'Suman', 'Laxmi', 'Deepak'];
+  let fplane = null, fpass = [];
+  Flight.counter = { x: 624, z: 20 }; // the ticket desk, outside the terminal
+  Flight.parkedAt = { x: 735, z: 200 }; // the plane waits on the runway
+  Flight.init = (sc) => {
+    scene = sc;
+    Drop.loadModel().then((m) => {
+      if (!m || fplane) return;
+      fplane = m.root.clone(true); fplane.visible = true; scene.add(fplane);
+      fplane.position.set(Flight.parkedAt.x, 0.3, Flight.parkedAt.z); fplane.rotation.y = Math.PI; // facing north, down the runway
+      KS.flightProps = m.props.map((n) => fplane.getObjectByName(n)).filter(Boolean);
+    });
+  };
+  Flight.buyTicket = () => {
+    const PL = KS.Player, D = KS.Shop.data;
+    if (Flight.ticket) { KS.Game.notify('✈️ You already have a flight ticket — walk to the plane on the runway and press <b>E</b> to board.'); return; }
+    if (Math.hypot(PL.x - Flight.counter.x, PL.z - Flight.counter.z) > 4) return;
+    if (D.cash < Flight.price) { KS.Game.notify(`A mountain flight ticket costs रु ${Flight.price}.`, 'bad'); return; }
+    D.cash -= Flight.price; KS.Game.save && KS.Game.save(); Flight.ticket = true;
+    // three fellow passengers, waiting at the terminal
+    fpass = [];
+    for (let k = 0; k < 3; k++) {
+      const kind = KS.pick(['man', 'woman', 'tourist', 'elder']), p = KS.makePerson(kind);
+      p.root.position.set(Flight.counter.x + KS.r(-3, 3), 0.2, Flight.counter.z + 4 + k * 2);
+      scene.add(p.root);
+      fpass.push({ p, kind, name: FLIGHT_NAMES[KS.ri(0, FLIGHT_NAMES.length - 1)], seat: k + 2, boarded: false });
+    }
+    KS.Game.notify('✈️ Mountain flight ticket bought for रु 2,000! Walk to the plane on the runway and press <b>E</b> to board. Four seats — you and three fellow passengers.', 'good');
+  };
+  Flight.nearPlane = (PL) => fplane && Flight.phase === 'parked' && Math.hypot(PL.x - Flight.parkedAt.x, PL.z - Flight.parkedAt.z) < 8;
+  Flight.board = () => {
+    const PL = KS.Player;
+    if (!Flight.ticket || !fplane || Flight.phase !== 'parked') return false;
+    if (PL.vehicle) PL.exit();
+    Flight.ticket = false; Flight.phase = 'takeoff'; Flight.t = 0; Flight.lastH = Math.PI;
+    PL.mode = 'flight'; PL.person.root.visible = false; PL.vy = 0; PL.speed = 0;
+    for (const f of fpass) { f.boarded = true; f.p.root.visible = false; } // seated inside
+    // the scenic circuit: the runway, the city, the snow peak, the valley, home
+    const pts = [
+      new T.Vector3(735, 0.3, 200), new T.Vector3(735, 0.3, -300), new T.Vector3(600, 120, -500),
+      new T.Vector3(0, 220, -600), new T.Vector3(-450, 260, -1250), new T.Vector3(-700, 240, -600),
+      new T.Vector3(-800, 200, 0), new T.Vector3(-400, 180, 500), new T.Vector3(400, 150, 550),
+      new T.Vector3(735, 60, 500), new T.Vector3(735, 0.3, 200),
+    ];
+    Flight.curve = new T.CatmullRomCurve3(pts, false, 'centripetal');
+    Flight.dur = 150; // about two and a half minutes in the air
+    KS.Cam.want = 26; KS.Cam.pitch = 0.3;
+    $('dropHud').hidden = false; KS.audio && KS.audio.planeHum(1);
+    KS.Game.notify('✈️ Welcome aboard the mountain flight! Four seats, three fellow passengers, and a view of Shivapuri. Press <b>E</b> to skip to the landing.');
+    return true;
+  };
+  Flight.update = (dt) => {
+    if (!fplane) return;
+    for (const pr of KS.flightProps || []) pr.rotation.z += dt * 40;
+    if (Flight.phase === 'parked') return;
+    const PL = KS.Player, I = KS.Input;
+    Flight.t += dt;
+    if ((I.hit('KeyE') || I.hit('KeyEnter')) && Flight.t > 5) { Flight.t = Flight.dur - 8; KS.Game.notify('✈️ The pilot heads back to the airport.'); }
+    const u = Math.min(1, Flight.t / Flight.dur);
+    const pos = Flight.curve.getPoint(u), nxt = Flight.curve.getPoint(Math.min(1, u + 0.004));
+    const h = Math.atan2(nxt.x - pos.x, nxt.z - pos.z), dh = KS.wrapAng(h - (Flight.lastH ?? h)); Flight.lastH = h;
+    fplane.position.copy(pos); fplane.rotation.set(0, h, KS.clamp(dh * 8, -0.25, 0.25), 'YXZ');
+    PL.x = pos.x; PL.z = pos.z; PL.y = pos.y + 2; PL.h = h;
+    if (KS.clock - I.lastLook > 3) KS.Cam.yaw = KS.angLerp(KS.Cam.yaw, h, Math.min(1, dt * 0.8));
+    // what you are flying over
+    let near = null, nd = 300; for (const l of KS.landmarks) if (!l.minor) { const dd = Math.hypot(l.x - pos.x, l.z - pos.z); if (dd < nd) { nd = dd; near = l; } }
+    const left = Math.max(0, Math.ceil(Flight.dur - Flight.t));
+    const cap = `✈️ <b>Mountain Flight</b> · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')} left · <b>${Math.round(pos.y)} m</b><br>Seat 1A · with ${fpass.map((f) => f.name).join(', ')}${near ? `<br><b>${near.name}</b> <span lang="ne">${near.np}</span><br><small>${near.fact || ''}</small>` : '<br><small>Look around with the mouse or by dragging.</small>'}<br><small><kbd>E</kbd> skip to the landing</small>`;
+    const hud = $('dropHud'); if (hud._h !== cap) { hud._h = cap; hud.innerHTML = cap; }
+    KS.audio && KS.audio.planeHum(1);
+    if (Flight.t >= Flight.dur) {
+      // landed: back on foot at the terminal, the fellow passengers walk away
+      Flight.phase = 'parked'; Flight.t = 0;
+      fplane.position.set(Flight.parkedAt.x, 0.3, Flight.parkedAt.z); fplane.rotation.set(0, Math.PI, 0);
+      PL.mode = 'foot'; PL.person.root.visible = true;
+      PL.x = 660; PL.z = 20; PL.y = 0.3; PL.vy = 0; KS.Cam.want = 4; KS.Cam.pitch = 0.22;
+      $('dropHud').hidden = true; $('dropHud')._h = ''; KS.audio && KS.audio.planeHum(0);
+      for (const f of fpass) { f.p.root.visible = true; f.p.root.position.set(660 + KS.r(-4, 4), 0.2, 26 + KS.r(0, 6)); }
+      setTimeout(() => { for (const f of fpass) scene.remove(f.p.root); fpass = []; }, 12000);
+      KS.Game.notify('✈️ Welcome back to Tribhuvan Airport! धन्यवाद for flying with us.', 'good');
+      KS.Game.giveTokens(1, 'Mountain flight');
+    }
+  };
+
   /* ======================= coins to collect on the streets and up on the roofs ======================= */
   const Coins = (KS.Coins = { list: [] });
   let coinMesh; const cd = new T.Object3D();
@@ -580,5 +670,5 @@
   /** for the maps */
   B.mapInfo = () => (B.zone ? { x: B.zone.x, z: B.zone.z, r: KS.clock < B.zone.t0 ? 700 : zoneR() } : null);
   B.botList = () => B.bots;
-  B.init = (sc) => { scene = sc; Drop.init(sc); Coins.init(); };
+  B.init = (sc) => { scene = sc; Drop.init(sc); Flight.init(sc); Coins.init(); };
 })();

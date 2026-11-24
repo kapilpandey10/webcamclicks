@@ -198,7 +198,117 @@
     PL.umbrella = true; umbMesh.visible = true; KS.audio && KS.audio.chute && KS.audio.chute();
   }
   function closeUmbrella() { PL.umbrella = false; if (umbMesh) umbMesh.visible = false; }
+
+  /* ---------- snowboard: hire one for रु 150 at the top of Shivapuri, ride
+     the south face down. Gravity pulls you downhill; A/D steer, W tucks for
+     speed, S brakes. Press E to step off and hand the board back. */
+  let boardMesh = null;
+  function boardMeshGet() {
+    if (!boardMesh) {
+      boardMesh = new THREE.Group();
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.05, 1.5), new THREE.MeshLambertMaterial({ color: 0x1d4fb8 }));
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.02, 0.3), new THREE.MeshLambertMaterial({ color: 0xf2c418 }));
+      stripe.position.y = 0.03; boardMesh.add(deck); boardMesh.add(stripe);
+      boardMesh.visible = false; PL.scene.add(boardMesh);
+    }
+    return boardMesh;
+  }
+  PL.hireBoard = () => {
+    const M = KS.Mountains, D = KS.Shop.data;
+    if (!M || !M.skiHire) return;
+    if (PL.board) { KS.Game && KS.Game.notify('⛷️ You already have a board — ride down, then press <b>E</b> to hand it back.'); return; }
+    if (Math.hypot(PL.x - M.skiHire.x, PL.z - M.skiHire.z) > 4) return;
+    if (D.cash < M.skiPrice) { KS.Game && KS.Game.notify(`A snowboard costs रु ${M.skiPrice}.`, 'bad'); return; }
+    D.cash -= M.skiPrice; KS.Game.save && KS.Game.save();
+    PL.board = true; PL.boardSpeed = 0; PL.boardH = PL.h;
+    boardMeshGet().visible = true;
+    KS.Game && KS.Game.notify('⛷️ Snowboard hired for रु 150! Ride the south face down — <b>A/D</b> steer, <b>W</b> tuck, <b>S</b> brake, <b>E</b> to step off.', 'good');
+  };
+  function boardUpdate(dt) {
+    const a = axis();
+    if (I.hit('KeyE') || I.hit('KeyEnter')) { PL.board = false; boardMesh.visible = false; PL.speed = 0; KS.Game && KS.Game.notify('⛷️ Board handed back. धन्यवाद!'); return; }
+    // downhill: the slope pulls the board along the steepest descent
+    const e = 1.5, gx = (KS.heightAt(PL.x + e, PL.z) - KS.heightAt(PL.x - e, PL.z)) / (2 * e), gz = (KS.heightAt(PL.x, PL.z + e) - KS.heightAt(PL.x, PL.z - e)) / (2 * e);
+    const slope = Math.hypot(gx, gz), dhx = slope > 0.01 ? -gx / slope : 0, dhz = slope > 0.01 ? -gz / slope : 0;
+    const fwd = Math.sin(PL.boardH), fwdZ = Math.cos(PL.boardH);
+    const along = dhx * fwd + dhz * fwdZ; // how much of the slope is ahead of the board
+    PL.boardSpeed += (along * 9 * slope - PL.boardSpeed * (I.down('KeyS') ? 1.6 : 0.35) + (I.down('KeyW') ? 1.2 : 0)) * dt;
+    PL.boardSpeed = KS.clamp(PL.boardSpeed, 0, 20);
+    PL.boardH += -a.x * 1.6 * dt;
+    PL.x += Math.sin(PL.boardH) * PL.boardSpeed * dt; PL.z += Math.cos(PL.boardH) * PL.boardSpeed * dt;
+    PL.h = PL.boardH; PL.speed = PL.boardSpeed;
+    const g = KS.groundAt(PL.x, PL.z, PL.y, 1.05);
+    PL.y = g + 0.12; PL.vy = 0; PL.grounded = true;
+    if (boardMesh) { boardMesh.position.set(PL.x, PL.y + 0.05, PL.z); boardMesh.rotation.set(0, PL.boardH, 0); }
+    const pr = PL.person.root; pr.position.set(PL.x, PL.y, PL.z); pr.rotation.y = PL.h;
+    KS.animWalk(PL.person, dt, PL.boardSpeed);
+    // off the snow, the board stops and you step off
+    if (KS.heightAt(PL.x, PL.z) < KS.SNOWLINE - 30 && PL.boardSpeed < 0.6) { PL.board = false; boardMesh.visible = false; PL.speed = 0; KS.Game && KS.Game.notify('⛷️ You rode down to the snow line — board handed back.'); }
+  }
+
+  /* ---------- paraglider: buy a रु 150 ticket at the hill office, launch from
+     the takeoff, and glide down to the valley. A/D steer, W dives, S flares
+     for a soft landing. The ticket is used up when you land. */
+  let paraMesh = null;
+  function paraMeshGet() {
+    if (!paraMesh) {
+      paraMesh = new THREE.Group();
+      const cols = [0xc8102e, 0xffffff, 0x1d4fb8, 0xf2c418];
+      for (let k = 0; k < 8; k++) {
+        const seg = new THREE.Mesh(new THREE.SphereGeometry(3.2, 6, 6, (k / 8) * Math.PI * 2, Math.PI / 4, 0, Math.PI / 2.6), new THREE.MeshLambertMaterial({ color: cols[k % 4], side: THREE.DoubleSide }));
+        seg.scale.set(1.5, 0.45, 1); paraMesh.add(seg);
+      }
+      const pts = []; for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2; pts.push(Math.cos(a) * 4.4, 0.4, Math.sin(a) * 3.2, 0, -3.4, 0); }
+      const lg = new T.BufferGeometry(); lg.setAttribute('position', new T.Float32BufferAttribute(pts, 3));
+      paraMesh.add(new T.LineSegments(lg, new T.LineBasicMaterial({ color: 0x444444 })));
+      paraMesh.visible = false; PL.scene.add(paraMesh);
+    }
+    return paraMesh;
+  }
+  PL.buyParaTicket = () => {
+    const M = KS.Mountains, D = KS.Shop.data;
+    if (!M || !M.paraOffice) return;
+    if (PL.paraTicket) { KS.Game && KS.Game.notify('🪂 You already have a paragliding ticket — walk to the takeoff and press <b>E</b> to fly.'); return; }
+    if (Math.hypot(PL.x - M.paraOffice.x, PL.z - M.paraOffice.z) > 4) return;
+    if (D.cash < M.paraPrice) { KS.Game && KS.Game.notify(`A paragliding ticket costs रु ${M.paraPrice}.`, 'bad'); return; }
+    D.cash -= M.paraPrice; KS.Game.save && KS.Game.save(); PL.paraTicket = true;
+    KS.Game && KS.Game.notify('🪂 Paragliding ticket bought for रु 150! Walk to the takeoff (the flat grassy ramp) and press <b>E</b> to launch.', 'good');
+  };
+  PL.launchParaglider = () => {
+    const M = KS.Mountains;
+    if (!M || !M.paraTakeoff || !PL.paraTicket) return false;
+    if (Math.hypot(PL.x - M.paraTakeoff.x, PL.z - M.paraTakeoff.z) > 6) return false;
+    PL.paraglide = true; PL.paraTicket = false; PL.grounded = false; PL.vy = 0;
+    PL.h = Math.atan2(-M.paraTakeoff.x, -M.paraTakeoff.z); // facing the valley (towards the city)
+    paraMeshGet().visible = true;
+    KS.audio && KS.audio.chute && KS.audio.chute();
+    KS.Game && KS.Game.notify('🪂 You are flying! Steer with <b>A/D</b>, <b>W</b> to dive, <b>S</b> to flare and land soft.', 'good');
+    return true;
+  };
+  function paraUpdate(dt) {
+    const a = axis();
+    PL.h += -a.x * 1.2 * dt;
+    const dive = I.down('KeyW') ? 1 : 0, flare = I.down('KeyS') ? 1 : 0;
+    const fwd = 8 + dive * 5 - flare * 3, sink = flare ? -0.6 : dive ? -3.2 : -1.5;
+    PL.x += Math.sin(PL.h) * fwd * dt; PL.z += Math.cos(PL.h) * fwd * dt;
+    PL.y += sink * dt; PL.vy = sink; PL.speed = fwd;
+    const g = KS.groundAt(PL.x, PL.z, PL.y, 1.05);
+    if (PL.y <= g) {
+      PL.y = g; PL.vy = 0; PL.grounded = true; PL.paraglide = false;
+      if (paraMesh) paraMesh.visible = false;
+      if (sink < -2.5) { KS.Game && KS.Game.hurt(15); KS.Game && KS.Game.notify('🤕 A hard landing! Flare with <b>S</b> just before you touch down.', 'bad'); }
+      else KS.Game && KS.Game.notify('🪂 Landed in the valley! What a flight.', 'good');
+      return;
+    }
+    PL.grounded = false;
+    if (paraMesh) { paraMesh.position.set(PL.x, PL.y + 4.2, PL.z); paraMesh.rotation.set(0.08, PL.h, 0); }
+    const pr = PL.person.root; pr.position.set(PL.x, PL.y, PL.z); pr.rotation.y = PL.h;
+    PL.person.legL.rotation.x = -0.4; PL.person.legR.rotation.x = 0.2;
+    if (!PL.person.busyArm) { PL.person.armL.rotation.set(-2.4, 0, 0.4); PL.person.armR.rotation.set(-2.4, 0, -0.4); }
+  }
   function footUpdate(dt) {
+    if (PL.board) { boardUpdate(dt); return; }
+    if (PL.paraglide) { paraUpdate(dt); return; }
     if (PL.climb) { climbUpdate(dt); return; }
     const a = axis(), run = I.down('ShiftLeft') || I.down('ShiftRight') || I.down('KeyRun');
     const fx = Math.sin(cam.yaw), fz = Math.cos(cam.yaw), rx = -fz, rz = fx;
@@ -396,16 +506,37 @@
     PL.throttle = a.y > 0.1 ? a.y : 0;
   }
 
-  /* ---------- helicopter: fly the Sadbhav Air machine parked at Dharahara ----------
+  /* ---------- helicopter: fly the one machine parked on the Dharahara helipad ----------
      W/S: fly forward and back · A/D: turn · hold Space: climb · hold C: come down.
-     Buildings only matter when you are low; above them you fly straight over. */
+     No road speed limit applies up here, and the sky is the limit: the
+     helicopter can climb to 500 m, as high as the player wants to go. The
+     climb and descent are gentle — the vertical speed eases in and out, and
+     close to the ground the descent flares itself, so landings are smooth
+     instead of a drop. Buildings only matter when you are low; above them
+     you fly straight over. */
+  /* ---------- the helicopter can crash: fly into a building fast, or slam
+     into a hillside, and it goes down in smoke. You take a heavy hit, and a
+     replacement is flown in to the helipad after half a minute. */
+  function crashHeli() {
+    const v = PL.vehicle; if (!v) return;
+    const x = v.x, y = v.y, z = v.z;
+    v.speed = 0; v.vx = 0; v.vz = 0; v.vy = 0; v.alt = 0; v.y = KS.groundAt(v.x, v.z, v.y, 1);
+    PL.exit(); // step out at the crash site
+    if (KS.Traffic) KS.Traffic.remove(v);
+    if (KS.Heli) KS.Heli.crash(x, y, z);
+    KS.audio && KS.audio.explosion && KS.audio.explosion();
+    KS.Game && KS.Game.notify('💥 The helicopter crashed!', 'bad');
+    KS.Game && KS.Game.hurt(70); // a heavy hit — low health and you faint at the crash site
+  }
   function heliUpdate(dt) {
     const v = PL.vehicle, t = v.type, a = axis();
     if (v.alt == null) { v.alt = 0; v.vy = 0; v.vx = 0; v.vz = 0; }
     const up = I.down('Space') || I.down('KeyJump'), down = I.down('KeyC');
-    const wantVy = up ? 5 : down ? -5 : 0;
-    v.vy += (wantVy - v.vy) * Math.min(1, dt * 2.5);
-    v.alt = Math.max(0, Math.min(200, v.alt + v.vy * dt));
+    let wantVy = up ? 7 : down ? -7 : 0;
+    if (v.alt < 6 && wantVy < -2) wantVy = -2; // flare: never slam into the ground
+    v.vy += (wantVy - v.vy) * Math.min(1, dt * 2.0);
+    v.alt = Math.max(0, Math.min(500, v.alt + v.vy * dt));
+    if (v.alt === 0 && v.vy < -5) { crashHeli(); return; } // slammed into the ground (a hillside) while falling fast
     if (v.alt === 0 && v.vy < 0) v.vy = 0;
     const fx = Math.sin(v.h), fz = Math.cos(v.h);
     v.vx += fx * a.y * 9 * dt; v.vz += fz * a.y * 9 * dt;
@@ -414,7 +545,13 @@
     const sp = Math.hypot(v.vx, v.vz), top = 26;
     if (sp > top) { v.vx *= top / sp; v.vz *= top / sp; }
     let nx = v.x + v.vx * dt, nz = v.z + v.vz * dt;
-    if (v.alt < 3) { const c = KS.collide(nx, nz, t.r, v.y, 0.5); nx = c.x; nz = c.z; if (c.hit) { v.vx *= 0.5; v.vz *= 0.5; } }
+    if (v.alt < 3) {
+      const c = KS.collide(nx, nz, t.r, v.y, 0.5); nx = c.x; nz = c.z;
+      if (c.hit) {
+        if (Math.hypot(v.vx, v.vz) > 8) { crashHeli(); return; } // flew into a building fast: it crashes
+        v.vx *= 0.5; v.vz *= 0.5; // a slow nudge just bumps you off
+      }
+    }
     v.x = nx; v.z = nz;
     v.y = KS.groundAt(v.x, v.z, v.y, 0.5) + v.alt;
     const fwd = v.vx * fx + v.vz * fz;
@@ -430,8 +567,8 @@
 
   PL.update = (dt) => {
     if (PL.mode === 'plane' || PL.mode === 'fall' || PL.mode === 'chute') { KS.Drop.update(dt); PL.len = 0.5; PL.wid = 0.6; PL.torch.intensity = 0; PL.headlight.intensity = 0; return; }
+    if (PL.mode === 'flight') { if (KS.Flight) KS.Flight.update(dt); PL.len = 0.5; PL.wid = 0.6; PL.torch.intensity = 0; PL.headlight.intensity = 0; return; } // riding the aeroplane as a passenger
     if (PL.mode === 'dead') { PL.speed = 0; return; }
-    if (PL.mode === 'heli') { PL.len = 0.5; PL.wid = 0.6; PL.speed = 0; return; } // flown by Sadbhav Air (places.js)
     if (PL.mode === 'ride') { KS.Net && KS.Net.rideUpdate(dt); return; } // a passenger in a friend's vehicle
     if (I.hit('KeyE') || I.hit('KeyEnter')) {
       if (PL.mode === 'boat') PL.leaveBoat();

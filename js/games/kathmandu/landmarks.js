@@ -4,7 +4,7 @@
   const T = THREE, KS = window.KS, G = KS.G, P = KS.palette;
   const L = (KS.Landmarks = {});
   KS.landmarks = [];
-  KS.prayerWheels = []; KS.bells = []; KS.pigeonSpots = []; KS.monkeySpots = []; KS.sitSpots = [];
+  KS.prayerWheels = []; KS.prayerWheelDrums = { mesh: null, pos: [], angles: [], boost: [] }; KS.bells = []; KS.pigeonSpots = []; KS.monkeySpots = []; KS.sitSpots = [];
   KS.koras = []; KS.plazas = []; KS.clockHands = []; KS.noRoad = [];
   const add = (o) => KS.landmarks.push(o);
 
@@ -118,8 +118,9 @@
   function wheels(b, cx, cz, r, n, y) {
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2, x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r;
-      b.cyl(x, y + 0.4, z, 0.32, 0.9, 0xc9a23a, 10); b.cyl(x, y + 1.3, z, 0.07, 0.25, 0x444444, 4);
+      b.cyl(x, y + 1.3, z, 0.07, 0.25, 0x444444, 4); // axle post + top knob (the frame stays in the Builder mesh)
       KS.prayerWheels.push([x, z]);
+      KS.prayerWheelDrums.pos.push([x, y + 0.85, z]); // the gold drum spins; Game.update drives it
     }
   }
 
@@ -203,7 +204,9 @@
     brickPaving(scene, R.x0, R.x1, R.z0, R.z1, 0.15, '#b9a58a');
     const b = new KS.Builder();
     let y = 0.15;
-    for (const [s, h] of [[60, 1.4], [50, 1.4], [42, 1.4]]) {
+    // the plinth is smaller than it was: its widest corner now clears the
+    // prayer-wheel ring and the kora path, so nobody walks through the stupa
+    for (const [s, h] of [[46, 1.4], [40, 1.4], [36, 1.4]]) {
       b.box(cx, y, cz, s, h, s, P.white); b.box(cx, y, cz, s * 0.78, h, s * 1.12, P.white); b.box(cx, y, cz, s * 1.12, h, s * 0.78, P.white);
       b.box(cx, y + h - 0.1, cz, s + 0.4, 0.2, s + 0.4, 0xd7d0c2);
       KS.addBox(cx, cz, s * 0.78, s * 1.12, y + h); KS.addBox(cx, cz, s * 1.12, s * 0.78, y + h); KS.addBox(cx, cz, s, s, y + h);
@@ -211,21 +214,24 @@
     }
     const top = stupa(scene, b, cx, y, cz, 17);
     wheels(b, cx, cz, 34.5, 72, 0.15);
-    // prayer flags from the spire to the platform
+    // a paved kora walking path, outside the wheels and clear of the buildings
+    const koraPath = new T.Mesh(new T.RingGeometry(36.5, 40.5, 64).rotateX(-Math.PI / 2), new T.MeshLambertMaterial({ color: 0xc9b89a }));
+    koraPath.position.set(cx, 0.17, cz); koraPath.receiveShadow = true; scene.add(koraPath);
+    // prayer flags from the spire to the platform, over the kora path
     for (let i = 0; i < 16; i++) {
       const a = (i / 16) * Math.PI * 2;
-      KS.World.flags([cx, top - 6, cz], [cx + Math.sin(a) * 31, 2.6, cz + Math.cos(a) * 31], 3, 1.1);
+      KS.World.flags([cx, top - 6, cz], [cx + Math.sin(a) * 37, 2.6, cz + Math.cos(a) * 37], 3, 1.1);
     }
     // monastery (gompa) on a corner: white walls, maroon band, golden roof
-    b.box(R.x1 - 9, 0, R.z1 - 9, 14, 9, 12, P.white); b.box(R.x1 - 9, 7.4, R.z1 - 9, 14.2, 1.6, 12.2, P.maroon);
-    b.roof(R.x1 - 9, 9, R.z1 - 9, 16, 3, P.gold, 0.45); KS.addBox(R.x1 - 9, R.z1 - 9, 14, 12, 12);
+    b.box(R.x1 - 7, 0, R.z1 - 7, 10, 9, 10, P.white); b.box(R.x1 - 7, 7.4, R.z1 - 7, 10.2, 1.6, 10.2, P.maroon);
+    b.roof(R.x1 - 7, 9, R.z1 - 7, 12, 3, P.gold, 0.45); KS.addBox(R.x1 - 7, R.z1 - 7, 10, 10, 12);
     // ring of houses on the other corners
     for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1]]) {
       const hx = cx + sx * 33, hz = cz + sz * 33;
       W.addBuilding(hx, hz, 8, 8, KS.ri(4, 5), KS.ri(0, 1), Math.atan2(sx, sz) + Math.PI, KS.pick(P.walls), 'thamel');
     }
     scene.add(KS.mesh(b));
-    KS.koras.push({ x: cx, z: cz, r0: 32, r1: 36, n: 34, kinds: ['monk', 'monk', 'woman', 'man', 'tourist', 'elder'] });
+    KS.koras.push({ x: cx, z: cz, r0: 37, r1: 40, n: 34, kinds: ['monk', 'monk', 'woman', 'man', 'tourist', 'elder'] });
     KS.pigeonSpots.push([cx, cz + 34, 30]);
     add({ id: 'boudha', name: 'Boudhanath Stupa', np: 'बौद्धनाथ स्तूप', x: cx, z: cz, r: 40, fact: 'One of the largest stupas in the world. Walk clockwise with the pilgrims and spin the prayer wheels.' });
   }
@@ -534,12 +540,31 @@
     KS.addBox(672, -50, 26, 28, 4);
     KS.flyingPlane = KS.makePlane(true); scene.add(KS.flyingPlane);
     KS.runwayX = rx;
+    // the mountain-flight ticket desk, outside the terminal: buy a ticket and ride the aeroplane yourself
+    const tb2 = new KS.Builder();
+    tb2.box(624, 0, 20, 3, 1.1, 1.6, 0x7a4a2a); tb2.box(624, 1.1, 20, 3.2, 0.08, 1.8, 0xc8102e); tb2.box(624, 1.1, 20, 0.12, 1.6, 0.12, 0x666666);
+    KS.addBox(624, 20, 3, 1.6, 1.2); scene.add(KS.mesh(tb2));
+    textBoard(scene, '✈️ पर्वतीय उडान', 624, 2.8, 20, -Math.PI / 2, 3.4, 1.1, '#1d3a8a', '#ffffff');
     add({ id: 'airport', name: 'Tribhuvan International Airport', np: 'त्रिभुवन अन्तर्राष्ट्रिय विमानस्थल', x: 690, z: 0, r: 70, fact: 'Nepal\'s main international airport, 1,338 m above sea level, with Himalayan views on approach.' });
   }
 
   L.build = (scene, W) => {
     durbar(scene, W); boudha(scene, W); swayambhu(scene, W); pashupati(scene, W);
     dharahara(scene, W); ranipokhari(scene, W); tundikhel(scene, W); palaces(scene, W); airport(scene, W);
+    // the prayer-wheel drums are one instanced mesh, so they can all spin
+    const D = KS.prayerWheelDrums;
+    D.mesh = new T.InstancedMesh(new T.CylinderGeometry(0.32, 0.32, 0.9, 10), new T.MeshLambertMaterial({ color: 0xc9a23a }), D.pos.length);
+    D.mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
+    D.mesh.castShadow = true;
+    D.angles = D.pos.map(() => 0); D.boost = D.pos.map(() => 0);
+    const dummy = new T.Object3D();
+    D.pos.forEach((p, i) => { dummy.position.set(p[0], p[1], p[2]); dummy.rotation.set(0, 0, 0); dummy.updateMatrix(); D.mesh.setMatrixAt(i, dummy.matrix); });
+    scene.add(D.mesh);
+    // a few real potted plants around the Boudha square, just outside the kora path
+    if (KS.Props) for (const [px, pz] of [[405, -267.5], [405, -182.5], [362.5, -225], [447.5, -225]]) {
+      const m = KS.Props.build('plant');
+      if (m) { m.position.set(px, 0.2, pz); scene.add(m); }
+    }
     add({ id: 'thamel', name: 'Thamel', np: 'ठमेल', x: -135, z: -270, r: 60, fact: 'The traveller\'s quarter: trekking shops, momo cafes, prayer flags over every lane.' });
     add({ id: 'ason', name: 'Asan Tole', np: 'असन टोल', x: -45, z: -135, r: 32, fact: 'The oldest bazaar in town, selling spices, rice and festival goods for centuries.' });
     add({ minor: true, id: 'newroad', name: 'New Road', np: 'न्युरोड', x: -45, z: 90, r: 40, fact: 'The shopping street rebuilt after the great 1934 earthquake.' });

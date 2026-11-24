@@ -9,7 +9,7 @@
 
   /* ---------- road graph ---------- */
   const nodes = [], idx = (i, j) => i * (G.N + 1) + j;
-  for (let i = 0; i <= G.N; i++) for (let j = 0; j <= G.N; j++) nodes.push({ x: G.line(i), z: G.line(j), i, j, nb: [], ring: i === 0 || i === G.N || j === 0 || j === G.N });
+  for (let i = 0; i <= G.N; i++) for (let j = 0; j <= G.N; j++) nodes.push({ x: G.line(i), z: G.line(j), i, j, nb: [] });
   const blocked = (kind, line, from) => KS.noRoad.some((n) => n[0] === kind && n[1] === line && n[2] === from);
   function link(a, b) { nodes[a].nb.push(b); nodes[b].nb.push(a); }
   TR.idx = idx;
@@ -26,6 +26,20 @@
       const n = nodes.push({ x, z: KS.HW.z, nb: [], hw: true, hill: true, spur: x === -2260 }) - 1; link(prev, n); prev = n;
     }
     if (KS.MANSION) { const m = nodes.push({ x: KS.MANSION.gx, z: KS.MANSION.gz - 6, nb: [], spur: true }) - 1; link(m, idx(8, 0)); }
+    /* the Ring Road loop: a node every ~65 m along the spline, so the chords
+       between them hug the curve, linked into a closed circuit, with a
+       connector from each named junction to the nearest grid junction. The
+       loop nodes are ring roads (two lanes each way, 12.5 m junction
+       clearance); the connectors are ordinary two-lane streets. */
+    const P = KS.ringLoopPts, loopIdx = [];
+    for (let i = 0; i < P.length; i += 6) loopIdx.push(nodes.push({ x: P[i].x, z: P[i].z, nb: [], ring: true, loop: true }) - 1);
+    for (let i = 0; i < loopIdx.length; i++) link(loopIdx[i], loopIdx[(i + 1) % loopIdx.length]);
+    KS.ringLoopNodes = loopIdx;
+    for (const c of KS.ringConnectors) {
+      let best = loopIdx[0], bd = Infinity;
+      for (const ni of loopIdx) { const d = Math.hypot(nodes[ni].x - c.x1, nodes[ni].z - c.z1); if (d < bd) { bd = d; best = ni; } }
+      link(best, idx(c.gi, c.gj));
+    }
     for (const s of KS.signals) { const n = nodes[idx(s.i, s.j)]; n.sig = s; }
     TR.nodes = nodes;
   };
@@ -34,7 +48,7 @@
     const A = nodes[a], B = nodes[b], long = v.type && v.type.len > 6 ? 3.5 : 0; // buses & trucks swing wide
     const margin = (n) => (n.spur || n.hw ? 0 : (n.ring ? 12.5 : 9.5) + long);
     let dx = B.x - A.x, dz = B.z - A.z; const L = Math.hypot(dx, dz); dx /= L; dz /= L;
-    const ring = A.ring && B.ring && (A.i === B.i || A.j === B.j) && !A.spur && !B.spur && !A.hw && !B.hw;
+    const ring = A.ring && B.ring && ((A.loop && B.loop) || A.i === B.i || A.j === B.j) && !A.spur && !B.spur && !A.hw && !B.hw;
     const off = (ring ? (v.outer ? 7.2 : 3.4) : 3.5) + v.lat;
     const lx = dz, lz = -dx; // left of travel (Nepal drives on the left)
     out.sx = A.x + dx * margin(A) + lx * off; out.sz = A.z + dz * margin(A) + lz * off;

@@ -175,6 +175,7 @@
         if (h > -0.2 && n2 > 0.55) c.lerp(new T.Color(0x7a8a4a), 0.6);
       }
       else if (h < -0.5) c.setHex(0x6b5a40);
+      else if (h > KS.SNOWLINE) c.setHex(0xf4f6f8).offsetHSL(0, 0, (n - 0.5) * 0.04); // snow above the snow line
       else if (m < 560) c.setHex(0x9f9177).offsetHSL(0, 0, (n - 0.5) * 0.08);
       else if (h > 60) c.setHex(0x3f5f2e).lerp(new T.Color(0x56703c), n);
       else c.setHex(0x7c8e4c).lerp(new T.Color(0x9a9a5c), n).offsetHSL(0, 0, (n - 0.5) * 0.1);
@@ -240,28 +241,76 @@
     rocks.count = n; rocks.receiveShadow = true; rocks.castShadow = KS.quality.shadows; scene.add(rocks);
   }
 
+  /* ================= the Ring Road loop =================
+     A ribbon of road following the spline in core.js (22 m wide, the 4-lane
+     ring texture), plus a connector ribbon from every loop junction to the
+     nearest grid junction, and bridge decks where the loop crosses the
+     Bagmati — the same slab-and-pier treatment the grid roads get, so
+     vehicles drive over the river on the bridge instead of into the water. */
+  function ringRoad(scene, mR, mN) {
+    const P = KS.ringLoopPts;
+    const ribbon = (pts, width, mat, closed) => {
+      const n = pts.length, pos = [], uv = [], idx = [];
+      let s = 0;
+      for (let i = 0; i < n; i++) {
+        const p = pts[i], q = pts[(i + 1) % n];
+        const nx = Math.cos(p.h), nz = -Math.sin(p.h); // left of travel
+        pos.push(p.x + (nx * width) / 2, 0.07, p.z + (nz * width) / 2, p.x - (nx * width) / 2, 0.07, p.z - (nz * width) / 2);
+        uv.push(0, s / 32, 1, s / 32);
+        s += Math.hypot(q.x - p.x, q.z - p.z);
+      }
+      const segs = closed ? n : n - 1;
+      for (let i = 0; i < segs; i++) {
+        const a = i * 2, b = ((i + 1) % n) * 2;
+        idx.push(a, a + 1, b, a + 1, b + 1, b);
+      }
+      const geo = new T.BufferGeometry();
+      geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
+      geo.setAttribute('uv', new T.Float32BufferAttribute(uv, 2));
+      geo.setIndex(idx);
+      geo.computeVertexNormals();
+      const m = new T.Mesh(geo, mat); m.receiveShadow = true; scene.add(m);
+    };
+    ribbon(P, G.RING, mR, true);
+    for (const c of KS.ringConnectors) { // short roads from each junction into the city
+      const dx = c.x2 - c.x1, dz = c.z2 - c.z1, h = Math.atan2(dx, dz), pts = [];
+      for (let k = 0; k <= 4; k++) pts.push({ x: c.x1 + (dx * k) / 4, z: c.z1 + (dz * k) / 4, h });
+      ribbon(pts, G.ROAD, mN, false);
+    }
+    const b = new KS.Builder();
+    for (let i = 0; i < P.length; i++) { // bridge decks over the Bagmati
+      const p = P[i];
+      if (p.z < KS.RIVER.z0 - 4 || p.z > KS.RIVER.z1 + 4) continue;
+      b.box(p.x, -0.7, p.z, 26, 1.45, 26, 0x8d887e);
+      b.box(p.x, -3, p.z, 24, 1.8, 2.2, 0x7d786e);
+      KS.addBox(p.x, p.z, 26, 26, 0.06, -3);
+    }
+    scene.add(KS.mesh(b, KS.M.vc, false));
+  }
+
   /* ================= roads, sidewalks, bridges ================= */
   function roads(scene) {
     const tN = roadTex(false), tR = roadTex(true);
     const mN = new T.MeshLambertMaterial({ map: tN, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
     const mR = new T.MeshLambertMaterial({ map: tR, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
     KS.roadMats = [mN, mR];
-    const len = G.HALF * 2 + G.RING;
+    const len = G.HALF * 2 + G.ROAD;
     for (let i = 0; i <= G.N; i++) {
-      const w = G.roadHalf(i) * 2, ring = i === 0 || i === G.N, mat = ring ? mR : mN;
+      const w = G.roadHalf(i) * 2, mat = mN; // every grid line is an ordinary street now; the Ring Road is the loop below
       for (let axis = 0; axis < 2; axis++) {
         const geo = new T.PlaneGeometry(w, len); geo.rotateX(-Math.PI / 2);
         const uv = geo.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setY(k, uv.getY(k) * len / 32);
         const m = new T.Mesh(geo, mat); m.receiveShadow = true;
-        const y = 0.05 + (ring ? 0.012 : 0) + axis * 0.004;
+        const y = 0.05 + axis * 0.004;
         if (axis === 0) m.position.set(G.line(i), y, 0); else { m.rotation.y = Math.PI / 2; m.position.set(0, y, G.line(i)); }
         scene.add(m);
       }
     }
+    ringRoad(scene, mR, mN);
     // Swayambhu access road climbing the hill, and airport road
     const sw = KS.SWAYAMBHU;
     const climb = new KS.Builder();
-    for (let x = -540 - G.RING / 2; x > sw.x + 22; x -= 2) {
+    for (let x = -540; x > sw.x + 22; x -= 2) {
       const h0 = KS.heightAt(x, sw.z), h1 = KS.heightAt(x - 2, sw.z);
       climb.box(x - 1, Math.min(h0, h1) - 0.2, sw.z, 2.2, Math.abs(h1 - h0) + 0.32, 12, 0x4c4c4e);
     }
@@ -339,28 +388,43 @@
   function ringMedian(scene) {
     /* the Ring Road is a divided 4-lane road, like the real one: a raised
        concrete median with a yellow cap runs down its middle, broken only at
-       junctions so traffic can still turn (every turn-off — Swayambhu, the
-       Nagdhunga highway, the airport road, the mansion drive — meets the
-       ring at a grid junction, so every one of them falls in a gap). The
-       median is a solid for vehicles: U-turn at a junction, not over it. */
-    const b = new KS.Builder(), GAP = 13; // half the gap at each junction
-    for (const L of [G.line(0), G.line(G.N)]) { // west & east ring roads (run N-S)
-      for (let i = 0; i < G.N; i++) {
-        const z0 = G.line(i) + GAP, z1 = G.line(i + 1) - GAP;
-        if (z1 - z0 < 4) continue;
-        b.box(L, 0, (z0 + z1) / 2, 0.6, 0.6, z1 - z0, 0x9a9a9a);
-        b.box(L, 0.6, (z0 + z1) / 2, 0.64, 0.05, z1 - z0, 0xf2c418);
-        KS.addBox(L, (z0 + z1) / 2, 0.6, z1 - z0, 0.65, -50);
+       the junctions (the loop's named places), so traffic can still turn.
+       The median is a solid for vehicles — U-turn at a junction, not over
+       it — built as a chain of small circles along the centre line, because
+       a diagonal median cannot be an axis-aligned box. It stays steppable
+       on foot (top 0.65, on-foot step ~1.0). */
+    const P = KS.ringLoopPts, b = new KS.Builder();
+    const GAP = 13; // half the gap at each junction, along the loop
+    const wayS = KS.RING_LOOP.map((w) => { // arclength of each junction
+      let best = Infinity, bs = 0;
+      for (let i = 0; i < P.length; i++) {
+        const d = Math.hypot(P[i].x - w.x, P[i].z - w.z);
+        if (d < best) { best = d; bs = P[i].s; }
       }
+      return bs;
+    });
+    const gapAt = (s) => {
+      for (const bs of wayS) {
+        const ds = Math.abs(s - bs);
+        if (Math.min(ds, KS.ringLoopLen - ds) < GAP) return true;
+      }
+      return false;
+    };
+    // visual: short straight chunks of concrete + yellow cap, following the curve
+    for (let i = 0; i < P.length; i += 2) {
+      const p = P[i], q = P[(i + 2) % P.length];
+      const midS = (p.s + Math.hypot(q.x - p.x, q.z - p.z) / 2) % KS.ringLoopLen;
+      if (gapAt(midS)) continue;
+      const mx = (p.x + q.x) / 2, mz = (p.z + q.z) / 2, len = Math.hypot(q.x - p.x, q.z - p.z);
+      const h = Math.atan2(q.x - p.x, q.z - p.z);
+      b.box(mx, 0, mz, 0.6, 0.6, len + 0.4, 0x9a9a9a, h);
+      b.box(mx, 0.6, mz, 0.64, 0.05, len + 0.4, 0xf2c418, h);
     }
-    for (const L of [G.line(0), G.line(G.N)]) { // north & south ring roads (run E-W)
-      for (let i = 0; i < G.N; i++) {
-        const x0 = G.line(i) + GAP, x1 = G.line(i + 1) - GAP;
-        if (x1 - x0 < 4) continue;
-        b.box((x0 + x1) / 2, 0, L, x1 - x0, 0.6, 0.6, 0x9a9a9a);
-        b.box((x0 + x1) / 2, 0.6, L, x1 - x0, 0.05, 0.64, 0xf2c418);
-        KS.addBox((x0 + x1) / 2, L, x1 - x0, 0.6, 0.65, -50);
-      }
+    // solid: circles along the centre line (one per sample, skipping the gaps)
+    for (let i = 0; i < P.length; i++) {
+      const p = P[i];
+      if (gapAt(p.s)) continue;
+      KS.addCircle(p.x, p.z, 0.55, 0.65, -50);
     }
     scene.add(KS.mesh(b, KS.M.vc, false));
   }
@@ -384,10 +448,15 @@
     const front = (o, y, along = 0) => [cx + fx * (d / 2 + o) + rx * along, y, cz + fz * (d / 2 + o) + rz * along];
     // ground floor shop
     const shopKind = area === 'thamel' ? KS.pick([0, 2, 2, 4, 0, 3]) : area === 'outskirts' ? KS.pick([1, 1, 0, 0, 4]) : KS.pick([0, 0, 1, 2, 3, 4]);
+    /* no front doors at the sacred sites: the houses ringing Boudhanath, the
+       shrines at Swayambhu and the temples of Durbar Square are not homes
+       people step out of — pilgrims walk the kora, they do not emerge from
+       the gompa walls. */
+    const sacred = Math.hypot(cx - 405, cz + 225) < 55 || Math.hypot(cx + 700, cz + 90) < 60 || Math.hypot(cx + 112, cz - 26) < 60;
     if (!(area === 'outskirts' && KS.chance(0.3))) {
       const [sx, sy, sz] = front(0.12, 0.2); dummy.position.set(sx, sy, sz); dummy.rotation.set(0, ry, 0); dummy.scale.set(w * 0.94, 2.7, 0.3); dummy.updateMatrix();
       shopInst[shopKind].push(dummy.matrix.clone());
-      W.lots.push({ x: sx + fx * 3, z: sz + fz * 3, fx, fz, kind: shopKind });
+      if (!sacred) W.lots.push({ x: sx + fx * 3, z: sz + fz * 3, fx, fz, kind: shopKind });
       // sign board
       if (KS.chance(area === 'outskirts' ? 0.5 : 0.92)) {
         const si = area === 'thamel' ? KS.ri(0, KS.SIGNS.length - 1) : KS.ri(0, KS.SIGNS.length - 1);
@@ -447,6 +516,7 @@
     const R = W.blockRect(c, r), x0 = R.x0 + SW + 0.3, x1 = R.x1 - SW - 0.3, z0 = R.z0 + SW + 0.3, z1 = R.z1 - SW - 0.3;
     const D = KS.r(13, 17);
     const mk = (cx, cz, w, d, ry) => {
+      if (KS.nearRingRoad(cx, cz, 16)) return; // the Ring Road cuts through the outer blocks: no building on the road
       if (pr.area === 'outskirts' && KS.chance(0.12)) { emptyLot(cx, cz, w, d); return; }
       const style = pickStyle(pr.st);
       let fl = KS.ri(pr.fl[0], pr.fl[1]); if (style === 2) fl = Math.min(fl, 5);
@@ -495,7 +565,7 @@
 
   /* ================= trees ================= */
   const trees = [];
-  W.tree = (x, z, h = 6, kind) => trees.push({ x, z, h, kind: kind || (KS.chance(0.2) ? 'pine' : 'broad') });
+  W.tree = (x, z, h = 6, kind) => { if (KS.nearRingRoad(x, z, 13)) return; trees.push({ x, z, h, kind: kind || (KS.chance(0.2) ? 'pine' : 'broad') }); };
   function buildTrees(scene) {
     const trunkG = new T.CylinderGeometry(0.22, 0.35, 1, 6).translate(0, 0.5, 0);
     const leafG = new T.IcosahedronGeometry(1, 1);
@@ -765,10 +835,15 @@
     KS.benches = KS.benches || [];
   };
   W.bench = (b, x, z, ry) => {
-    const s = Math.sin(ry), c = Math.cos(ry);
-    b.box(x, 0.45, z, 2.2, 0.08, 0.55, 0x8a5a30, ry); b.box(x - s * 0.25, 0.53, z - c * 0.25, 2.2, 0.5, 0.08, 0x8a5a30, ry);
-    b.box(x + c * 0.9, 0, z - s * 0.9, 0.08, 0.45, 0.5, 0x333333, ry); b.box(x - c * 0.9, 0, z + s * 0.9, 0.08, 0.45, 0.5, 0x333333, ry);
-    (KS.benchSpots = KS.benchSpots || []).push([x + s * 0.05, z + c * 0.05, ry]);
+    // a real park bench when its model loaded, else the code-built one —
+    // the GLB bench is placed at the end of the build, from KS.propBenches
+    if (KS.Props && KS.Props.models.bench) { (KS.propBenches = KS.propBenches || []).push([x, z, ry]); }
+    else {
+      const s = Math.sin(ry), c = Math.cos(ry);
+      b.box(x, 0.45, z, 2.2, 0.08, 0.55, 0x8a5a30, ry); b.box(x - s * 0.25, 0.53, z - c * 0.25, 2.2, 0.5, 0.08, 0x8a5a30, ry);
+      b.box(x + c * 0.9, 0, z - s * 0.9, 0.08, 0.45, 0.5, 0x333333, ry); b.box(x - c * 0.9, 0, z + s * 0.9, 0.08, 0.45, 0.5, 0x333333, ry);
+    }
+    (KS.benchSpots = KS.benchSpots || []).push([x + Math.sin(ry) * 0.05, z + Math.cos(ry) * 0.05, ry]);
   };
 
   /* ================= parks & outskirts greenery ================= */
@@ -806,6 +881,7 @@
       if (z > KS.RIVER.z0 - 20 && z < KS.RIVER.z1 + 20) continue;
       if (x > 540 && x < 860 && Math.abs(z) < 440) continue;
       if (Math.hypot(x - sw.x, z - sw.z) < 160) continue;
+      if (KS.nearRingRoad(x, z, 16)) continue; // the Ring Road cuts through the outskirts: no house on the road
       const y = KS.heightAt(x, z), b = W.chunk(x, z), h = KS.ri(2, 4) * FLOOR, w = KS.r(7, 11), d = KS.r(7, 10), ry = KS.r(0, 3);
       b.box(x, y - 1, z, w, h + 1, d, KS.pick(P.walls), ry);
       b.box(x, y + h, z, w + 0.4, 0.3, d + 0.4, 0x9a958a, ry);
@@ -827,6 +903,7 @@
     if (KS.Extras) KS.Extras.build(scene, W);
     if (KS.Signs) KS.Signs.build(scene, W);
     if (KS.Places) { KS.Places.buildJharna(scene); KS.Places.buildMansion(scene); }
+    if (KS.Mountains) KS.Mountains.build(scene); // the snow peak, the paragliding hill, the trekking path (before the flags are built, so its prayer flags render)
     // Thamel: prayer flags & festival lights criss-crossing the streets.
     // Each string must span the WHOLE road (16 m) and anchor in the building
     // faces on both sides — a string that starts mid-road reads as flags
@@ -841,6 +918,13 @@
     buildInstanced(scene);
     buildTrees(scene);
     buildFlags(scene);
+    // the real park benches: one GLB clone per bench spot recorded while building
+    if (KS.Props && KS.Props.models.bench) {
+      for (const [x, z, ry] of (KS.propBenches || [])) {
+        const m = KS.Props.build('bench'); if (!m) continue;
+        m.position.set(x, KS.heightAt(x, z) + 0.05, z); m.rotation.y = ry; scene.add(m);
+      }
+    }
     mountains(scene);
     W.flushChunks(scene);
   };

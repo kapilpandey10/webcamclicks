@@ -178,6 +178,7 @@ body.is-touch #notes { top: 30%; }
 .spd { display: flex; align-items: center; gap: 12px; }
 #limit { width: 46px; height: 46px; border-radius: 50%; background: #fff; color: #111; border: 6px solid #c8102e; display: grid; place-items: center; font-family: var(--hud); font-weight: 800; font-size: 18px; flex: none; }
 #limit.over { animation: blink .5s infinite; box-shadow: 0 0 0 4px rgba(200,16,46,0.6); }
+#limit.alt { border-color: #1d4fb8; font-size: 15px; }
 #nitro { font-family: var(--hud); font-size: 13px; color: #ffb02e; }
 #phone { position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); width: min(300px, calc(100vw - 32px)); background: #101418; border-radius: 18px; box-shadow: 0 0 0 3px #2a2f36, 0 14px 40px rgba(0,0,0,0.5); overflow: hidden; pointer-events: auto; }
 #phone header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #0f8a7a; font-family: var(--hud); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
@@ -309,9 +310,20 @@ ul.challan li b { color: #ffe27a; white-space: nowrap; font-family: var(--hud); 
 #touch .bt { display: none; } body.battle #touch .bt { display: inline-block; } body.battle #touch [data-key="KeyHorn"], body.battle #touch [data-key="KeyNitro"], body.battle #touch [data-key="KeyAccept"] { display: none; }
 body.battle .tr #karma, body.battle .tr #lawHud { display: none; }
 #bagHud { font-size: 13px; background: rgba(20,14,10,.6); border-radius: 99px; padding: 1px 9px; }
+#temp { font-size: 13px; background: rgba(20,14,10,.6); border-radius: 99px; padding: 1px 9px; }
+#temp.cold { background: rgba(29,79,184,.75); }
 #mouseHint { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); background: rgba(20,14,10,0.78); padding: 6px 14px; border-radius: 99px; font-size: 14px; pointer-events: none; white-space: nowrap; }
 .howto { margin: 0 0 8px; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
 #lowHealth { position: fixed; inset: 0; pointer-events: none; z-index: 8; opacity: 0; background: radial-gradient(circle, rgba(0,0,0,0) 55%, rgba(160,0,20,.55) 100%); transition: opacity .4s; }
+#fadeBlack { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 40; transition: opacity .9s; }
+#wakeEyes { position: fixed; inset: 0; pointer-events: none; z-index: 41; }
+#wakeEyes .lid { position: absolute; left: 0; right: 0; height: 50vh; background: #000; transition: transform 1.1s ease; }
+#wakeEyes .lid.top { top: 0; transform: translateY(-100%); }
+#wakeEyes .lid.bot { bottom: 0; transform: translateY(100%); }
+#wakeEyes.closed .lid.top { transform: translateY(0); }
+#wakeEyes.closed .lid.bot { transform: translateY(0); }
+#wakeEyes.instant .lid { transition: none; }
+#wakeEyes.blink .lid { transition-duration: .18s; }
 #cine { position: fixed; inset: 0; z-index: 19; pointer-events: none; }
 #cine::before, #cine::after { content: ""; position: absolute; left: 0; right: 0; height: 11vh; background: #000; }
 #cine::before { top: 0; } #cine::after { bottom: 0; }
@@ -372,7 +384,7 @@ body.battle #navBox { top: 50px; }
       <div><kbd>M</kbd> map · <kbd>V</kbd> camera</div><div><kbd>K</kbd> record · <kbd>J</kbd> photo</div>
       <div><kbd>F</kbd> punch</div><div><kbd>Esc</kbd> menu, licence, garage</div>
       <div><kbd>Click</kbd> shoot · <kbd>Right-click</kbd> aim</div><div><kbd>1–5</kbd> weapons · <kbd>R</kbd> reload (Battle)</div>
-      <div><kbd>🚁</kbd> helicopter at Dharahara: W/S fly, A/D turn</div><div><kbd>Space</kbd> climb · <kbd>C</kbd> come down</div>
+      <div><kbd>🚁</kbd> the one helicopter at Dharahara: W/S fly, A/D turn</div><div><kbd>Space</kbd> climb · <kbd>C</kbd> come down — mind the buildings, it can crash</div>
     </div>
     <p class="touchhint">Left stick to walk or drive, drag anywhere to look, <b>Ride</b> to take any bike, taxi, tempo or bus.</p>
     <div class="cta">
@@ -380,7 +392,7 @@ body.battle #navBox { top: 50px; }
       <button class="btn ghost" id="btnBattle" type="button">⚔️ Battle mode</button>
       <span class="small">Headphones on: the city honks.</span>
     </div>
-    <p class="small" style="color:#b9c2cc">Vehicle models by vinish.dev — “Sedan 01”, “Street Motorcycle”, “Bicycle”, “Helicopter”, “Rowboat” and the low-poly car pack — CC BY 4.0. Auto-rickshaw and commuter scooter by 3D Assets (CC0), touring motorcycle by Polyfork (royalty-free), found through the 3D Asset Server (3d.shep.bot). The sky-drop aeroplane is the “Turboprop Commuter” by vinish.dev, CC BY 4.0.</p>
+    <p class="small" style="color:#b9c2cc">Vehicle models by vinish.dev — “Sedan 01”, “Street Motorcycle”, “Bicycle”, “Helicopter”, “Rowboat” and the low-poly car pack — CC BY 4.0. Auto-rickshaw and commuter scooter by 3D Assets (CC0), touring motorcycle by Polyfork (royalty-free), found through the 3D Asset Server (3d.shep.bot). The sky-drop aeroplane is the “Turboprop Commuter” by vinish.dev, CC BY 4.0. Park bench by Polyfork (royalty-free); consultation chair, potted plant, monitor and ward bed by 3D Assets (CC0).</p>
   </div>
 </section>
 
@@ -409,6 +421,7 @@ body.battle #navBox { top: 50px; }
     <div id="karma">Karma <span class="bar"><i></i></span><span id="karmaV">50</span></div>
     <div class="hrow">Health <span id="health"><i></i></span></div>
     <div id="bagHud" hidden></div>
+    <div id="temp" title="Temperature where you are">🌡️ 18°C</div>
     <div id="lawHud"></div>
     <div id="recDot" hidden>● REC <span id="recTime">0:00</span></div>
     <div class="hudbtns"><button id="btnPhoto" type="button" title="Photo (J)">Photo</button><button id="btnRec" type="button" title="Record video (K)">Rec</button><button id="btnGarage" type="button">Garage</button><button id="btnRadio" type="button" title="Radio on/off (R)">📻</button><button id="btnMenu" type="button">Menu</button></div>
@@ -447,6 +460,8 @@ body.battle #navBox { top: 50px; }
 <div id="bubbles"></div>
 <div id="nameTags"></div>
 <div id="lowHealth"></div>
+<div id="fadeBlack"></div>
+<div id="wakeEyes"><div class="lid top"></div><div class="lid bot"></div></div>
 <div id="cine" hidden><div id="cineCap"><div id="cineNp" lang="ne"></div><div id="cineEn"></div></div><div id="cineSkip">Space to skip</div></div>
 <div id="flash" class="flash"></div>
 <div id="lawModal" hidden><div class="lawcard" role="dialog" aria-labelledby="lawTitle"><h3 id="lawTitle"></h3><div id="lawBody"></div><div id="lawBtns"></div></div></div>
@@ -528,14 +543,18 @@ body.battle #navBox { top: 50px; }
         <div class="msec" style="grid-column: 1 / -1"><h3>How to play</h3><div class="howgrid">
           <div><b>🎯 What to do</b><span>Follow the <b>Goals</b> box (top left). Each goal teaches one part of the game and pays cash and coins. The full list is on the Home tab.</span></div>
           <div><b>💰 Money &amp; coins</b><span>Earn rupees (रु) from jobs and Uthao rides, spend them on vehicles, upgrades, fruit and fines. Coins 🪙 come from 4★+ rides, new places and goals, and buy clothes.</span></div>
-          <div><b>❤️ Health</b><span>Crashes, falls, fights and being hit by traffic hurt. Buy fruit at a street stall (Phone → Food shows the nearest) or rest. At 0% you wake up at the hospital and pay the bill.</span></div>
+          <div><b>❤️ Health</b><span>Crashes, falls, fights and being hit by traffic hurt. Buy fruit at a street stall (Phone → Food shows the nearest) or rest. At 0% you faint where you fall — an ambulance picks you up and you wake up in a bed in Bir Hospital, and pay the bill.</span></div>
           <div><b>🛵 Making a living</b><span>Phone → Jobs for momo deliveries; press <kbd>U</kbd> to go online on Uthao, <kbd>Y</kbd> accepts a request. Pick up at the yellow beam, follow the blue line, drive smoothly.</span></div>
           <div><b>🪪 Licences &amp; police</b><span>Start with the bicycle. Pass the written test and trial at the Trial ground for a bike (A) or car (B) licence. Blue shields on the map are traffic police: slow down near them and near 📷 camera signs.</span></div>
           <div><b>🌦 Weather</b><span>It is always daytime. The weather turns by itself at random: clear, cloudy, dust &amp; haze, fog, a quick shower or a storm. Press <kbd>T</kbd> to pick the weather yourself.</span></div>
           <div><b>💬 Multiplayer</b><span>Phone → Friends → <b>Create room</b> → <b>Copy invite link</b> and send it. Friends open the link and tap Join (up to 8 players). Tap <b>Turn mic on</b> and allow the microphone in your browser to talk; hold <kbd>G</kbd> for push to talk. Everyone shares the host's time and weather, and police chases are seen by all.</span></div>
           <div><b>🖱 Camera &amp; mouse</b><span>Click the game and the mouse turns the camera (over-the-shoulder view). Press <kbd>Alt</kbd> (or <kbd>Esc</kbd>) to get the cursor back without pausing; <kbd>P</kbd> or Menu pauses. <kbd>V</kbd> changes the view, the mouse wheel zooms.</span></div>
           <div><b>🚣 Things to do</b><span>Take the lift up Dharahara (door on the upper step, press <kbd>E</kbd>). Hire a rowing boat at the wooden jetty inside Rani Pokhari's south gate (रु 100) and row out round the shrine.</span></div>
-          <div><b>🚁 Sadbhav Air</b><span>Helicopter city tours from the helipad beside Dharahara: walk to the red booth and press <kbd>E</kbd>. Two minutes over Rani Pokhari, Boudhanath, Pashupati, Durbar Square, Swayambhu and more for रु 350.</span></div>
+          <div><b>🚁 The helicopter</b><span>There is one helicopter in the city, on the helipad beside Dharahara — walk up and press <kbd>E</kbd> to fly it yourself. It climbs to 500 m, but fly into a building fast, or slam into a hillside, and it crashes: you take a heavy hit, and a replacement is flown in after half a minute.</span></div>
+          <div><b>✈️ Mountain flight</b><span>Buy a रु 2,000 ticket at the desk outside the airport terminal, then walk to the plane on the runway and press <kbd>E</kbd> to board. Four seats — you and three fellow passengers — for a scenic flight over the city and past the snow peak, landing back at the airport.</span></div>
+          <div><b>⛷️ Shivapuri snow peak</b><span>Drive up the mountain road from Chhahare Jharna to the snowy summit. Hire a snowboard for रु 150 at the hut and ride the south face down — <kbd>A/D</kbd> steer, <kbd>W</kbd> tucks for speed, <kbd>S</kbd> brakes, <kbd>E</kbd> steps off. It snows up there, and the temperature in the top-left corner drops below zero. Hot chiya at the tea house (रु 50, +20 health).</span></div>
+          <div><b>🪂 Paragliding</b><span>Drive up the western hill road to the paragliding hill. Buy a रु 150 ticket at the office, walk to the takeoff and press <kbd>E</kbd> to launch — steer with <kbd>A/D</kbd>, <kbd>W</kbd> dives, <kbd>S</kbd> flares for a soft landing in the valley.</span></div>
+          <div><b>🥾 Trekking</b><span>A marked trekking path climbs from the Ring Road to the Shivapuri summit, with prayer flags all the way and a camp (three tents and a campfire) halfway. Up to 20 trekkers walk the path — and only the path. A snow stream runs down from the peak to the Bagmati.</span></div>
           <div><b>🏞️ Chhahare Jharna</b><span>A tall waterfall in the hills towards Nuwakot (north of the city). Drive up the road from the Ring Road, park at the top and follow the stone steps through the jungle. Swim in the pool, cross the footbridge, have tea at the stall and look for the rainbow in the spray from the viewpoint.</span></div>
           <div><b>🌍 Online with real players</b><span>When you start, you join the <b>public world</b> automatically: everyone online plays in the same Kathmandu (up to 8 per world; more worlds open as needed). Chat with <kbd>Enter</kbd>, tap <b>Turn mic on</b> in Phone → Friends to talk (voices are louder when you are close). Mute anyone there. Prefer only friends? Leave the public world and create a private room. Turn it off in Settings.</span></div>
           <div><b>🏛️ Thakuri Residence tour</b><span>Buy a रु 50 ticket at the guard booth by the mansion gate: walk through the grand hall, dining room and lounge, the garden with its fountain and gazebo, and swim in the pool. Security guards patrol; no ticket, no entry.</span></div>
@@ -579,28 +598,30 @@ body.battle #navBox { top: 50px; }
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="js/games/kathmandu/lib/GLTFLoader.js?v=20261124d"></script>
-<script src="js/games/kathmandu/core.js?v=20261124d"></script>
-<script src="js/games/kathmandu/world.js?v=20261124d"></script>
-<script src="js/games/kathmandu/landmarks.js?v=20261124d"></script>
-<script src="js/games/kathmandu/extras.js?v=20261124d"></script>
-<script src="js/games/kathmandu/nature.js?v=20261124d"></script>
-<script src="js/games/kathmandu/signs.js?v=20261124d"></script>
-<script src="js/games/kathmandu/places.js?v=20261124d"></script>
-<script src="js/games/kathmandu/people.js?v=20261124d"></script>
-<script src="js/games/kathmandu/vehicles.js?v=20261124d"></script>
-<script src="js/games/kathmandu/vehicleModels.js?v=20261124d"></script>
-<script src="js/games/kathmandu/traffic.js?v=20261124d"></script>
-<script src="js/games/kathmandu/weather.js?v=20261124d"></script>
-<script src="js/games/kathmandu/audio.js?v=20261124d"></script>
-<script src="js/games/kathmandu/shop.js?v=20261124d"></script>
-<script src="js/games/kathmandu/player.js?v=20261124d"></script>
-<script src="js/games/kathmandu/uthao.js?v=20261124d"></script>
-<script src="js/games/kathmandu/law.js?v=20261124d"></script>
-<script src="js/games/kathmandu/ui.js?v=20261124d"></script>
-<script src="js/games/kathmandu/net.js?v=20261124d"></script>
-<script src="js/games/kathmandu/battle.js?v=20261124d"></script>
-<script src="js/games/kathmandu/game.js?v=20261124d"></script>
+<script src="js/games/kathmandu/lib/GLTFLoader.js?v=20261124f"></script>
+<script src="js/games/kathmandu/core.js?v=20261124f"></script>
+<script src="js/games/kathmandu/world.js?v=20261124f"></script>
+<script src="js/games/kathmandu/landmarks.js?v=20261124f"></script>
+<script src="js/games/kathmandu/extras.js?v=20261124f"></script>
+<script src="js/games/kathmandu/nature.js?v=20261124f"></script>
+<script src="js/games/kathmandu/signs.js?v=20261124f"></script>
+<script src="js/games/kathmandu/places.js?v=20261124f"></script>
+<script src="js/games/kathmandu/mountains.js?v=20261124f"></script>
+<script src="js/games/kathmandu/people.js?v=20261124f"></script>
+<script src="js/games/kathmandu/vehicles.js?v=20261124f"></script>
+<script src="js/games/kathmandu/vehicleModels.js?v=20261124f"></script>
+<script src="js/games/kathmandu/props.js?v=20261124f"></script>
+<script src="js/games/kathmandu/traffic.js?v=20261124f"></script>
+<script src="js/games/kathmandu/weather.js?v=20261124f"></script>
+<script src="js/games/kathmandu/audio.js?v=20261124f"></script>
+<script src="js/games/kathmandu/shop.js?v=20261124f"></script>
+<script src="js/games/kathmandu/player.js?v=20261124f"></script>
+<script src="js/games/kathmandu/uthao.js?v=20261124f"></script>
+<script src="js/games/kathmandu/law.js?v=20261124f"></script>
+<script src="js/games/kathmandu/ui.js?v=20261124f"></script>
+<script src="js/games/kathmandu/net.js?v=20261124f"></script>
+<script src="js/games/kathmandu/battle.js?v=20261124f"></script>
+<script src="js/games/kathmandu/game.js?v=20261124f"></script>
 <script>if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('is-touch');</script>
 </body>
 </html>

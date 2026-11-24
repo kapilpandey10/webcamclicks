@@ -172,6 +172,41 @@
   A.thunder = (vol = 1) => { noise(0.25, 0.2 * vol, 1400, 'lowpass'); noise(3.5, 0.4 * vol, 160, 'lowpass', 0.05); };
   A.bell = (vol = 0.5) => { [523, 1318, 2093, 2794].forEach((f, i) => tone(f, 3.2 - i * 0.6, 'sine', (0.08 / (i + 1)) * vol, 0, null, 0.003)); };
   A.crash = (vol = 1) => { noise(0.4, 0.5 * vol, 900); tone(80, 0.35, 'sine', 0.4 * vol, 0, 40); noise(0.6, 0.15 * vol, 4000, 'highpass', 0.05); };
+  A.explosion = () => { noise(0.3, 0.7, 900); tone(60, 1.2, 'sine', 0.5, 0, 30); noise(2.2, 0.5, 220, 'lowpass', 0.05); noise(0.8, 0.2, 4000, 'highpass', 0.02); }; // a helicopter going down: a deep boom and a long rumble
+  /* ---------- Tibetan music: a low drone, singing bowls and a slow flute,
+     for Boudhanath and Swayambhu. It starts when you walk in and stops when
+     you leave; it is quiet, and it stays off while the radio is playing. */
+  let tib = null;
+  A.tibetanStart = () => {
+    if (!ctx || !A.on || tib) return;
+    const g = ctx.createGain(); g.gain.value = 0; g.connect(bus.music); g.gain.setTargetAtTime(0.5, now(), 1.5);
+    const drone = [55, 82.5].map((f) => { const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f; const og = ctx.createGain(); og.gain.value = 0.05; o.connect(og).connect(g); o.start(); return o; });
+    const notes = [523.25, 587.33, 659.25, 783.99, 880, 1046.5]; // C major pentatonic, high and airy
+    let step = 0;
+    const play = () => {
+      if (!tib) return;
+      const t = now();
+      if (step % 4 === 0) { // a singing bowl every fourth beat
+        [392, 587.33, 784].forEach((f, i) => { const o = ctx.createOscillator(), og = ctx.createGain(); o.type = 'sine'; o.frequency.value = f; og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.05 / (i + 1), t + 0.02); og.gain.exponentialRampToValueAtTime(0.0001, t + 6); o.connect(og).connect(g); o.start(t); o.stop(t + 6.2); });
+      }
+      if (step % 2 === 1) { // a flute note on the off-beats, wandering up and down the scale
+        const f = notes[Math.floor(Math.random() * notes.length)];
+        const o = ctx.createOscillator(), og = ctx.createGain(), vib = ctx.createOscillator(), vg = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = f; vib.frequency.value = 5.5; vg.gain.value = 6; vib.connect(vg).connect(o.frequency);
+        og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.07, t + 0.3); og.gain.exponentialRampToValueAtTime(0.0001, t + 2.8);
+        o.connect(og).connect(g); o.start(t); vib.start(t); o.stop(t + 3); vib.stop(t + 3);
+      }
+      step++;
+      tib.timer = setTimeout(play, 2600);
+    };
+    tib = { g, drone, timer: setTimeout(play, 400) };
+  };
+  A.tibetanStop = () => {
+    if (!tib) return;
+    const t = tib; tib = null; clearTimeout(t.timer);
+    t.g.gain.setTargetAtTime(0, now(), 0.6);
+    setTimeout(() => { t.drone.forEach((o) => { try { o.stop(); } catch (e) { /* already stopped */ } }); t.g.disconnect(); }, 2500);
+  };
   A.thump = () => { if (!ctx || !A.on) return; noise(0.12, 0.35, 300); tone(65, 0.14, 'sine', 0.4, 0, 38); }; // the dull thud of a wheel over a speed breaker
   A.paddle = () => { noise(0.35, 0.05, 700, 'bandpass', 0, 1.5); noise(0.15, 0.025, 2400, 'bandpass', 0.05, 2); };
   A.splash = () => { noise(1.4, 0.5, 700); noise(0.6, 0.3, 2400, 'bandpass', 0.1); };

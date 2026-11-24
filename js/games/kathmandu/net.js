@@ -90,6 +90,8 @@
     N.host = false; N.state = 'connecting';
     const peer = (N.peer = new window.Peer(undefined, options()));
     peer.on('open', () => { N.me = peer.id; const c = peer.connect(id, { reliable: true }); wire(c); N.hostId = c.peer; });
+    // the server can keep a vanished host's id for a while: if nobody answers, try again (and take over once it is free)
+    clearTimeout(N.joinT); N.joinT = setTimeout(() => { if (N.peer === peer && N.state === 'connecting' && N.public) rejoinPublic(n, 1000 + Math.random() * 3000); }, 12000);
     common(peer, (e) => {
       if (e.type === 'peer-unavailable') { // the host has just gone: try to become the host of this world
         N.leave(true); setTimeout(() => N.joinPublic(n), 300 + Math.random() * 1500); return true;
@@ -112,7 +114,7 @@
     c.on('open', () => {
       N.conns.set(c.peer, c);
       c.send({ t: 'hello', name: N.name(), look: look() });
-      if (!N.host) { N.state = 'guest'; sys(N.public ? `🌍 Joined public world ${N.pubN} with other players.` : `Joined room ${N.room}.`); if (N.public) publicHello(); }
+      if (!N.host) { N.state = 'guest'; N.lastHost = performance.now(); sys(N.public ? `🌍 Joined public world ${N.pubN} with other players.` : `Joined room ${N.room}.`); if (N.public) publicHello(); }
       N.render2(); if (N.micOn) callAll();
     });
     c.on('data', (m) => onData(c, m));
@@ -123,6 +125,7 @@
   function roster() { if (!N.host) return; const list = [{ id: N.me, name: N.name() }].concat([...N.players.values()].map((p) => ({ id: p.id, name: p.name }))); broadcast({ t: 'roster', list }); N.roster = list; N.render2(); }
   function onData(c, m) {
     if (!m || typeof m !== 'object') return;
+    if (!N.host && c.peer === N.hostId) N.lastHost = performance.now(); // heartbeat: the host is still there
     const from = N.host ? c.peer : m.id || c.peer;
     switch (m.t) {
       case 'full': if (N.public) { const n = N.pubN || 1; rejoinPublic(n + 1, 200); } else N.fail('That room is full (8 players).'); break;
@@ -332,6 +335,13 @@
     if (N.micOn && N.ptt) setTalking(!!I.down('KeyG'));
     if (N.el && N.el.isConnected && KS.clock % 1 < dt) N.el.querySelectorAll('[data-dist]').forEach((e) => { const f = N.players.get(e.dataset.dist); if (f && f.placed) e.textContent = Math.round(Math.hypot(f.x - P.x, f.z - P.z)) + ' m'; });
     netChases(dt, P);
+    // a host whose browser closed may never say goodbye: after 12 s of silence, find (or become) the new host
+    if (N.state === 'guest' && N.lastHost && performance.now() - N.lastHost > 12000) {
+      N.lastHost = 0;
+      if (N.public) { sys('Lost the world host. Reconnecting you to the public world…'); rejoinPublic(N.pubN || 1, 300 + Math.random() * 2000); }
+      else { sys('The host has gone. The room has closed.'); N.leave(true); }
+      return;
+    }
     if (N.host) { N.worldT = (N.worldT || 0) - dt; if (N.worldT <= 0) { N.worldT = 2; broadcast(worldMsg()); } }
     if (!N.host && !N.arrived) { const h = N.players.get(N.hostId); if (h && h.placed) { N.arrived = true; N.goTo(h.id); sys(`You joined ${h.name}. Everyone is on the map as a coloured dot.`); } }
     if (N.follow) { const f = N.players.get(N.follow); if (!f) N.follow = null; else if (KS.clock % 2 < dt) { if (Math.hypot(f.x - P.x, f.z - P.z) < 12) { N.follow = null; KS.Game.notify(`You found ${esc(f.name)}!`); } else KS.Game.setWaypoint(f.x, f.z, true); } }

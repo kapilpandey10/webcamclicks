@@ -56,7 +56,8 @@
     KS.Uthao.trip && KS.Uthao.cancel(); PL.rebuild();
   };
   Game.onEnter = (v) => {
-    Game.notify(`<b>${v.type.name}</b> <span>${coarse ? '' : 'E get out · H horn · R radio · U Uthao app'}</span>`);
+    if (v.kind === 'helicopter') Game.notify(`<b>Helicopter</b> <span><kbd>W</kbd>/<kbd>S</kbd> fly · <kbd>A</kbd>/<kbd>D</kbd> turn · hold <kbd>Space</kbd> to climb · hold <kbd>C</kbd> to come down · <kbd>E</kbd> get out (land first)</span>`);
+    else Game.notify(`<b>${v.type.name}</b> <span>${coarse ? '' : 'E get out · H horn · R radio · U Uthao app'}</span>`);
     $('speedo').hidden = false; $('vname').textContent = v.type.name;
     if (KS.isBike(v.kind)) KS.Player.rebuild();
     if (v.kind === 'bicycle') KS.Guide.flag('bike', true);
@@ -440,6 +441,8 @@
     KS.reseed(2); KS.Nature.build(scene);
     await step('Digging the Nagdhunga tunnel, planting rice terraces…');
     KS.Weather.init(scene, renderer);
+    await step('Loading realistic vehicles…');
+    if (KS.VehicleModels) { try { await KS.VehicleModels.load(); } catch (e) { /* code-built vehicles stay */ } if (KS.VehicleModels.ready) KS.VehicleModels.swapBoats(); }
     KS.Player.init(scene); KS.Battle.init(scene); KS.Places.initHeli(scene);
     await step('Waking up the city: pilgrims, porters, cows…');
     KS.reseed(3); KS.Animals.init(scene);
@@ -451,6 +454,7 @@
     const sg = D.garage.find((g) => g.id === 'sathi'); KS.Shop.delivered = sc; if (sg) { sc.up = sg.up; sc.horn = sg.horn; }
     KS.Law.data();
     KS.Traffic.park('taxi', 6.6, -36, Math.PI); KS.Traffic.park('tempo', -88.6, 60, 0); KS.Traffic.park('pickup', -528, 104, 0);
+    if (KS.Heli && KS.Heli.pad2) KS.Traffic.park('helicopter', KS.Heli.pad2.x, KS.Heli.pad2.z, Math.PI); // the helicopter you can fly yourself
     for (const [k, x, z, h] of KS.mansionCars || []) KS.Traffic.park(k, x, z, h, { color: k === 'sedan' ? 0x111111 : 0x1a1a1a });
     for (const [x, z] of KS.mansionGuards || []) { const o = KS.outfitFor('office'); Object.assign(o, { topStyle: 'jacket', jacket: 0x111111, top: 0xffffff, tie: 0x111111, glasses: true, hat: null }); const g = KS.makePerson('office', o); g.root.position.set(x, 0.1, z); g.root.rotation.y = 0; g.armL.rotation.x = g.armR.rotation.x = -0.2; scene.add(g.root); }
     KS.Input.init(canvas);
@@ -622,6 +626,7 @@
     KS.Weather.update(dt, camera, { focus: tmpV.set(PL.x, PL.y, PL.z) });
     const ctx = { px: PL.x, pz: PL.z, cx: camera.position.x, cz: camera.position.z, night: KS.night, rain: KS.Weather.wet > 0.3, playerVehicle: PL.vehicle, player: { x: PL.x, z: PL.z, len: PL.len, wid: PL.wid } };
     KS.Traffic.update(dt, ctx);
+    if (KS.VehicleModels) KS.VehicleModels.tick(dt);
     KS.Peds.update(dt, ctx);
     KS.Animals.update(dt, { px: PL.x, pz: PL.z, playerSpeed: Math.abs(PL.speed), honk: Game.honk > 0.35, inVehicle: !!PL.vehicle, vehicleKind: PL.vehicle && (KS.isBike(PL.vehicle.kind) ? 'bike' : 'car'), night: KS.night });
     for (const u of KS.timeUniforms) u.value = KS.clock;

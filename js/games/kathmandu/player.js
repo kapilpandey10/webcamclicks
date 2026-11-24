@@ -120,6 +120,7 @@
   PL.exit = () => {
     const v = PL.vehicle; if (!v) return;
     if (Math.abs(v.speed) > 6) return;
+    if (v.kind === 'helicopter') { KS.audio && KS.audio.heli && KS.audio.heli(0); v.alt = 0; v.vy = 0; v.vx = 0; v.vz = 0; }
     if (v.root.rotation.z) v.root.rotation.z = 0;
     const sx = Math.cos(v.h), sz = -Math.sin(v.h);
     let x = v.x + sx * (v.type.wid / 2 + 0.9), z = v.z + sz * (v.type.wid / 2 + 0.9);
@@ -257,7 +258,7 @@
   PL.onSidewalk = onSidewalk;
 
   /* ---------- vehicle physics: momentum, grip and sliding, weight, body roll & dive ---------- */
-  const MASS = { bicycle: 0.12, bike: 0.25, scooter: 0.22, sport: 0.27, cruiser: 0.3, policebike: 0.27, car: 1.1, taxi: 1.1, ev: 1.4, sedan: 1.3, suv: 1.8, police: 1.8, pickup: 1.8, micro: 1.9, ambulance: 2.1, tempo: 0.9, minibus: 3.5, bus: 6, truck: 7 };
+  const MASS = { bicycle: 0.12, bike: 0.25, scooter: 0.22, sport: 0.27, cruiser: 0.3, policebike: 0.27, car: 1.1, taxi: 1.1, ev: 1.4, sedan: 1.3, suv: 1.8, police: 1.8, pickup: 1.8, micro: 1.9, ambulance: 2.1, tempo: 0.9, minibus: 3.5, bus: 6, truck: 7, helicopter: 3.5 };
   KS.massOf = (k) => MASS[k] || 1;
   function driveUpdate(dt) {
     const v = PL.vehicle, t = v.type, a = axis(), up = v.up || { engine: 0, brakes: 0, handling: 0, nitro: 0 }, bike = KS.isBike(v.kind), m1 = KS.massOf(v.kind);
@@ -353,6 +354,38 @@
     PL.throttle = a.y > 0.1 ? a.y : 0;
   }
 
+  /* ---------- helicopter: fly the Sadbhav Air machine parked at Dharahara ----------
+     W/S: fly forward and back · A/D: turn · hold Space: climb · hold C: come down.
+     Buildings only matter when you are low; above them you fly straight over. */
+  function heliUpdate(dt) {
+    const v = PL.vehicle, t = v.type, a = axis();
+    if (v.alt == null) { v.alt = 0; v.vy = 0; v.vx = 0; v.vz = 0; }
+    const up = I.down('Space') || I.down('KeyJump'), down = I.down('KeyC');
+    const wantVy = up ? 5 : down ? -5 : 0;
+    v.vy += (wantVy - v.vy) * Math.min(1, dt * 2.5);
+    v.alt = Math.max(0, Math.min(200, v.alt + v.vy * dt));
+    if (v.alt === 0 && v.vy < 0) v.vy = 0;
+    const fx = Math.sin(v.h), fz = Math.cos(v.h);
+    v.vx += fx * a.y * 9 * dt; v.vz += fz * a.y * 9 * dt;
+    v.h += -a.x * 1.1 * dt;
+    const drag = Math.exp(-0.6 * dt); v.vx *= drag; v.vz *= drag;
+    const sp = Math.hypot(v.vx, v.vz), top = 26;
+    if (sp > top) { v.vx *= top / sp; v.vz *= top / sp; }
+    let nx = v.x + v.vx * dt, nz = v.z + v.vz * dt;
+    if (v.alt < 3) { const c = KS.collide(nx, nz, t.r, v.y, 0.5); nx = c.x; nz = c.z; if (c.hit) { v.vx *= 0.5; v.vz *= 0.5; } }
+    v.x = nx; v.z = nz;
+    v.y = KS.groundAt(v.x, v.z, v.y, 0.5) + v.alt;
+    const fwd = v.vx * fx + v.vz * fz;
+    v.pitch = v.pitch || 0; v.roll = v.roll || 0;
+    v.pitch += (KS.clamp(-fwd * 0.006, -0.12, 0.08) - v.pitch) * Math.min(1, dt * 4);
+    v.roll += (KS.clamp(a.x * 0.12, -0.15, 0.15) - v.roll) * Math.min(1, dt * 4);
+    v.root.position.set(v.x, v.y + 0.02, v.z);
+    v.root.rotation.set(v.pitch, v.h, v.roll, 'YXZ');
+    v.speed = Math.hypot(v.vx, v.vz);
+    PL.x = v.x; PL.z = v.z; PL.y = v.y; PL.h = v.h; PL.speed = v.speed;
+    KS.audio && KS.audio.heli && KS.audio.heli(1);
+  }
+
   PL.update = (dt) => {
     if (PL.mode === 'plane' || PL.mode === 'fall' || PL.mode === 'chute') { KS.Drop.update(dt); PL.len = 0.5; PL.wid = 0.6; PL.torch.intensity = 0; PL.headlight.intensity = 0; return; }
     if (PL.mode === 'dead') { PL.speed = 0; return; }
@@ -360,11 +393,12 @@
     if (PL.mode === 'ride') { KS.Net && KS.Net.rideUpdate(dt); return; } // a passenger in a friend's vehicle
     if (I.hit('KeyE') || I.hit('KeyEnter')) {
       if (PL.mode === 'boat') PL.leaveBoat();
+      else if (PL.mode === 'drive' && PL.vehicle && PL.vehicle.kind === 'helicopter' && (PL.vehicle.alt || 0) > 1) KS.Game && KS.Game.notify('🚁 Land first — hold <b>C</b> to come down, then press <b>E</b>.', 'bad');
       else if (PL.mode === 'drive') PL.exit();
       else if (!(KS.Net && KS.Net.tryBoard && KS.Net.tryBoard())) { const v = KS.Traffic.nearest(PL.x, PL.z, 3.6); if (v) PL.enter(v); else KS.Game && KS.Game.interact(); }
     }
     if (PL.mode === 'ride') return; // just got into a friend's vehicle (net.js moves you from the next frame)
-    if (PL.mode === 'foot') footUpdate(dt); else if (PL.mode === 'boat') boatUpdate(dt); else if (PL.vehicle) driveUpdate(dt);
+    if (PL.mode === 'foot') footUpdate(dt); else if (PL.mode === 'boat') boatUpdate(dt); else if (PL.vehicle) { if (PL.vehicle.kind === 'helicopter') heliUpdate(dt); else driveUpdate(dt); }
     PL.health = Math.min(100, PL.health + dt * (KS.Battle && KS.Battle.on ? 0.3 : 2.5)); // in Battle mode medkits heal, not time
     for (const d of exDrivers) {
       if (d.t <= 0) continue; d.t -= dt;

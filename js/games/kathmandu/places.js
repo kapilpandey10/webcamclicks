@@ -175,17 +175,23 @@
   Pl.initHeli = (scene) => {
     const d = KS.dharahara; if (!d) return;
     const pad = (Heli.pad = { x: d.x + 24, z: d.z - 22 }), booth = (Heli.booth = { x: d.x + 13, z: d.z - 30 });
+    const pad2 = (Heli.pad2 = { x: d.x + 24, z: d.z - 2 }); // second pad, inside the plaza: the helicopter you can fly yourself
     const b = new KS.Builder();
     b.cyl(pad.x, 0.15, pad.z, 8, 0.12, 0x6e6e70, 28); b.cyl(pad.x, 0.27, pad.z, 7.2, 0.01, 0xf2c418, 28); b.cyl(pad.x, 0.28, pad.z, 6.8, 0.01, 0x6e6e70, 28);
     b.box(pad.x - 1.6, 0.29, pad.z, 0.5, 0.01, 5, 0xffffff); b.box(pad.x + 1.6, 0.29, pad.z, 0.5, 0.01, 5, 0xffffff); b.box(pad.x, 0.29, pad.z, 3.2, 0.01, 0.5, 0xffffff);
+    b.cyl(pad2.x, 0.15, pad2.z, 8, 0.12, 0x6e6e70, 28); b.cyl(pad2.x, 0.27, pad2.z, 7.2, 0.01, 0xf2c418, 28); b.cyl(pad2.x, 0.28, pad2.z, 6.8, 0.01, 0x6e6e70, 28);
+    b.box(pad2.x - 1.6, 0.29, pad2.z, 0.5, 0.01, 5, 0xffffff); b.box(pad2.x + 1.6, 0.29, pad2.z, 0.5, 0.01, 5, 0xffffff); b.box(pad2.x, 0.29, pad2.z, 3.2, 0.01, 0.5, 0xffffff);
     b.box(booth.x, 0.15, booth.z, 3.4, 2.6, 2.2, 0xf4f0e6); b.box(booth.x, 2.75, booth.z, 3.8, 0.2, 2.6, 0xc8102e); b.box(booth.x, 1.1, booth.z + 1.12, 2.4, 0.9, 0.05, 0x1a2a3a);
     b.cyl(booth.x + 2.6, 0.15, booth.z, 0.05, 4.5, 0x999999, 6); KS.addBox(booth.x, booth.z, 3.4, 2.2, 2.8);
     scene.add(KS.mesh(b));
     const board = new T.Mesh(new T.PlaneGeometry(3.6, 1.2), new T.MeshLambertMaterial({ side: T.DoubleSide, map: KS.tex(512, 170, (g, w, h) => { g.fillStyle = '#c8102e'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.textAlign = 'center'; g.font = '800 58px "Barlow Condensed", sans-serif'; g.fillText('🚁 SADBHAV AIR', w / 2, 66); g.font = `600 34px ${KS.FONT}`; g.fillText('सद्भाव एयर · City tour 2 min · रु 350', w / 2, 128, w - 24); }) }));
     board.position.set(booth.x, 3.6, booth.z + 1.15); scene.add(board);
     const wind = new T.Mesh(new T.ConeGeometry(0.3, 1.4, 8, 1, true).rotateZ(Math.PI / 2), new T.MeshLambertMaterial({ color: 0xff7a00, side: T.DoubleSide })); wind.position.set(booth.x + 3.2, 4.4, booth.z); scene.add(wind); Heli.sock = wind;
-    heli = buildHeli(); heli.position.set(pad.x, 0.3, pad.z); heli.rotation.y = Math.PI; scene.add(heli);
-    KS.landmarks.push({ minor: true, id: 'sadbhavair', name: 'Sadbhav Air helipad', np: 'सद्भाव एयर', x: pad.x, z: pad.z, r: 14, fact: 'Helicopter city tours from Dharahara: two minutes over the stupas, temples and palaces for रु 350.' });
+    const VM = KS.VehicleModels;
+    if (VM && VM.ready) { const h = VM.makeHeli(); if (h) { heli = h.root; rotor = h.rotor; tailRotor = h.tailRotor; } }
+    if (!heli) heli = buildHeli();
+    heli.position.set(pad.x, 0.3, pad.z); heli.rotation.y = Math.PI; scene.add(heli);
+    KS.landmarks.push({ minor: true, id: 'sadbhavair', name: 'Sadbhav Air helipad', np: 'सद्भाव एयर', x: pad.x, z: pad.z, r: 14, fact: 'Helicopter city tours from Dharahara: two minutes over the stupas, temples and palaces for रु 350. The second pad has a helicopter you can fly yourself.' });
   };
   Heli.nearBooth = (P) => Heli.booth && Math.hypot(P.x - Heli.booth.x, P.z - (Heli.booth.z + 2)) < 2.8;
   /** the tour: lift off, a loop over the best places, a circle round Dharahara, land */

@@ -25,10 +25,11 @@
     scooter: { name: 'Scooter', len: 1.8, wid: 0.7, speed: 13, accel: 9, turn: 2.8, r: 0.8, seats: 'bike' },
     policebike: { name: 'Police Bike', len: 2.0, wid: 0.8, speed: 19, accel: 12, turn: 2.6, r: 0.8, seats: 'bike' },
     bicycle: { name: 'Bicycle', len: 1.75, wid: 0.6, speed: 5.2, accel: 3.2, turn: 2.6, r: 0.7, seats: 'bike' },
+    helicopter: { name: 'Helicopter', len: 9, wid: 2.6, speed: 25, accel: 8, turn: 2.0, r: 3.5, seats: 'heli' },
   };
   const BIKES = { bike: 1, sport: 1, cruiser: 1, scooter: 1, policebike: 1, bicycle: 1 };
   /** licence category needed: A = motorcycle/scooter, B = car/jeep/van/pickup/tempo, G = bus/truck; null = none */
-  KS.licenseFor = (kind) => (kind === 'bicycle' ? null : ['bike', 'sport', 'cruiser', 'scooter', 'policebike'].includes(kind) ? 'A' : ['bus', 'minibus', 'truck'].includes(kind) ? 'G' : 'B');
+  KS.licenseFor = (kind) => (kind === 'bicycle' || kind === 'helicopter' ? null : ['bike', 'sport', 'cruiser', 'scooter', 'policebike'].includes(kind) ? 'A' : ['bus', 'minibus', 'truck'].includes(kind) ? 'G' : 'B');
   KS.isBike = (k) => !!BIKES[k];
 
   /* ---------- shared plates & boards ---------- */
@@ -366,9 +367,51 @@
     gGeo.setDrawRange(0, n); gGeo.attributes.position.needsUpdate = true; gGeo.attributes.color.needsUpdate = true;
   };
   KS.buildVehicle = (type, opt) => {
+    const VM = KS.VehicleModels;
+    if (VM && VM.ready && VM.has(type, opt || {})) {
+      const r = VM.build(type, opt || {});
+      if (r) {
+        KS.addVehicleDressing(r, type, opt || {});
+        // headlight pool on the road ahead — not for the helicopter, it would hang in the air
+        if (type !== 'helicopter') {
+          const VT = KS.VTYPES[type], L = VT.len;
+          KS.addBeam(r.root, 0, KS.isBike(type) ? 0.95 : 0.75, L / 2 + 0.05, false, { wid: KS.isBike(type) ? 0.5 : VT.wid, len: L });
+        }
+        return r;
+      }
+    }
     const r = build(type, opt), VT = KS.VTYPES[type], L = VT.len;
     KS.addBeam(r.root, 0, KS.isBike(type) ? 0.95 : 0.75, L / 2 + 0.05, false, { wid: KS.isBike(type) ? 0.5 : VT.wid, len: L });
     return r;
+  };
+  /** dress a GLB vehicle the Kathmandu way: Nepali number plate, route board,
+      taxi roof sign and a light bar the siren code can flash. The GLB itself
+      carries no markings, so these keep it looking like it belongs here. */
+  KS.addVehicleDressing = (r, type, opt) => {
+    const VT = KS.VTYPES[type], L = VT.len, W = VT.wid;
+    if (!KS.isBike(type) && type !== 'helicopter') {
+      const pl = new T.Mesh(new T.PlaneGeometry(0.6, 0.23), plateMat(type === 'taxi' ? 'black' : type === 'ev' ? 'green' : 'red'));
+      pl.position.set(0, 0.5, -L / 2 - 0.03); pl.rotation.y = Math.PI; r.root.add(pl);
+    }
+    if (type === 'bus' || type === 'micro' || type === 'minibus') {
+      const rb = new T.Mesh(new T.PlaneGeometry(W * 0.75, 0.3), routeMat());
+      rb.position.set(0, type === 'bus' ? 2.85 : type === 'minibus' ? 2.2 : 1.85, L / 2 + 0.03);
+      r.root.add(rb); r.root.userData.routeBoard = rb;
+    }
+    if (type === 'taxi') {
+      const s = new T.Mesh(new T.BoxGeometry(0.7, 0.22, 0.32), new T.MeshLambertMaterial({ color: 0xf2c418 }));
+      s.position.set(0, 1.56, -0.25); r.root.add(s);
+    }
+    if (type === 'police' || type === 'policebike' || type === 'ambulance') {
+      const bike = type === 'policebike', w = bike ? 0.18 : 0.45;
+      const y = (r.glbHeight || 1.7) + 0.06, z = type === 'ambulance' ? L / 2 - 0.9 : bike ? -0.6 : -0.25;
+      const r1 = new T.Mesh(new T.BoxGeometry(w, 0.16, 0.25), KS.sirenMats[0]);
+      r1.position.set(bike ? -0.12 : -0.27, y, z); r.root.add(r1);
+      const b1 = new T.Mesh(new T.BoxGeometry(w, 0.16, 0.25), KS.sirenMats[1]);
+      b1.position.set(bike ? 0.12 : 0.27, y, z); r.root.add(b1);
+      r.sirens.push(r1, b1);
+      if (type !== 'ambulance') { const off = new T.MeshBasicMaterial({ color: 0x333344 }); r1.userData.on = r1.material; b1.userData.on = b1.material; r1.material = b1.material = off; }
+    }
   };
   /** switch a police vehicle's light bar on or off */
   KS.setSiren = (v, on) => { if (!v.sirens) return; for (const m of v.sirens) if (m.userData.on) { if (on && !m.userData.offMat) m.userData.offMat = m.material; m.material = on ? m.userData.on : m.userData.offMat || m.material; } v.sirenOn = on; };

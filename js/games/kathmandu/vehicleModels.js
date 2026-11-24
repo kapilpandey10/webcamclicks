@@ -1,0 +1,170 @@
+/* Kathmandu Streets — realistic GLB vehicles.
+   Models by vinish.dev (https://vinish.dev/free-3d-models/), CC BY 4.0 — free for
+   commercial use with a credit line (see the title screen). One GLB per vehicle
+   type lives in models/vehicles/ next to this file.
+   Each model is normalised once (scaled to the game's length for its type, centred,
+   wheels on the ground) and then cloned for every vehicle that needs it, so the
+   files are only downloaded once. Anything that is not loaded yet — or has no
+   model — falls back to the code-built vehicle, so the game never breaks. */
+(function () {
+  'use strict';
+  const T = THREE, KS = window.KS;
+  const DIR = 'js/games/kathmandu/models/vehicles/';
+  /* game type -> GLB file. The minibus and the bus share the city bus model at
+     different sizes; the ambulance is the delivery van. The tempo has no model
+     and stays code-built. */
+  const MAP = {
+    car: 'hatchback-01.glb', sedan: 'sedan-01.glb', suv: 'suv-01.glb',
+    taxi: 'taxi-01.glb', police: 'police-car-01.glb', pickup: 'pickup-truck-01.glb',
+    truck: 'box-truck-01.glb', bus: 'city-bus-01.glb', micro: 'delivery-van-01.glb',
+    minibus: 'city-bus-01.glb', ambulance: 'delivery-van-01.glb', ev: 'sports-car-01.glb',
+    bicycle: 'bicycle.glb', helicopter: 'helicopter.glb',
+  };
+  /* the detailed bikes are heavy (57k–88k triangles), so they are only ever used
+     for the player's own bike — never for traffic. Traffic bikes stay code-built. */
+  const PLAYER_BIKES = {
+    scooter: 'scooter.glb', bike: 'street-motorcycle.glb', sport: 'street-motorcycle.glb',
+    cruiser: 'street-motorcycle.glb', policebike: 'street-motorcycle.glb',
+  };
+  const BOAT_FILE = 'rowboat.glb';
+  const VM = (KS.VehicleModels = { ready: false, models: {}, boat: null });
+
+  function normalise(wrap, targetLen) {
+    const box = new T.Box3().setFromObject(wrap);
+    const size = new T.Vector3(); box.getSize(size);
+    const s = targetLen / Math.max(0.1, size.z);
+    wrap.scale.setScalar(s);
+    const box2 = new T.Box3().setFromObject(wrap);
+    const c = new T.Vector3(); box2.getCenter(c);
+    wrap.position.x -= c.x; wrap.position.z -= c.z; wrap.position.y -= box2.min.y;
+    wrap.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    const box3 = new T.Box3().setFromObject(wrap);
+    const size3 = new T.Vector3(); box3.getSize(size3);
+    return size3.y; // height after scaling, for light bars and route boards
+  }
+  function collect(wrap) {
+    const wheels = [], oars = [];
+    let mainRotor = null, tailRotor = null, bodyColor = null;
+    wrap.traverse((o) => {
+      /* the wheel nodes are Groups (Wheel_FL, Wheel_Front, …); their child
+         meshes are named after the model, so only the pivot Groups spin. */
+      if (/^(Wheel(_FL|_FR|_RL|_RR|_F|_R|_Front|_Rear)?)$/.test(o.name) && o.type === 'Group') wheels.push(o.name);
+      if (o.name === 'Main_Rotor') mainRotor = o.name;
+      if (o.name === 'Tail_Rotor') tailRotor = o.name;
+      if (/^Oar_[LR]$/.test(o.name)) oars.push(o.name);
+      if (o.name === 'Body' && o.isMesh && o.material && o.material.color) bodyColor = o.material.color.getHex();
+    });
+    return { wheels, oars, mainRotor, tailRotor, bodyColor };
+  }
+  function cloneEntry(entry) {
+    const root = entry.wrap.clone(true);
+    const find = (name) => (name ? root.getObjectByName(name) : null);
+    return {
+      root,
+      wheels: entry.parts.wheels.map(find).filter(Boolean),
+      oars: entry.parts.oars.map(find).filter(Boolean),
+      mainRotor: find(entry.parts.mainRotor),
+      tailRotor: find(entry.parts.tailRotor),
+    };
+  }
+
+  /** load every mapped model. Resolves when all attempts finished; a model that
+      fails to load simply stays code-built. Safe to call twice. */
+  VM.load = () => {
+    if (VM._loading) return VM._loading;
+    VM._loading = new Promise((resolve) => {
+      if (typeof T.GLTFLoader !== 'function') { KS.log && KS.log('GLTFLoader missing — code vehicles only'); resolve(false); return; }
+      const loader = new T.GLTFLoader();
+      const jobs = [];
+      const seen = {};
+      const queue = (file, key, targetLen) => {
+        if (seen[file]) { jobs.push(seen[file].then((e) => { VM.models[key] = e; })); return; }
+        const p = new Promise((res) => {
+          loader.load(DIR + file, (gltf) => {
+            const wrap = new T.Group(); wrap.add(gltf.scene);
+            const height = normalise(wrap, targetLen);
+            res({ wrap, parts: collect(wrap), height, file, anims: gltf.animations || [] });
+          }, undefined, () => { KS.log && KS.log('vehicle model failed: ' + file); res(null); });
+        });
+        seen[file] = p;
+        jobs.push(p.then((e) => { if (e) VM.models[key] = e; }));
+      };
+      for (const type in MAP) queue(MAP[type], type, (KS.VTYPES[type] || { len: 4 }).len);
+      for (const type in PLAYER_BIKES) queue(PLAYER_BIKES[type], 'own:' + type, (KS.VTYPES[type] || { len: 2 }).len);
+      queue(BOAT_FILE, 'boat', 2.6);
+      Promise.all(jobs).then(() => {
+        VM.boat = VM.models.boat || null;
+        VM.ready = true;
+        resolve(true);
+      });
+    });
+    return VM._loading;
+  };
+
+  /** true when this vehicle should be built from its GLB. A custom paint colour
+      stays code-built, because a GLB cannot be repainted. The bicycle is cheap
+      (9k triangles) so it is always GLB; the heavy bikes are the player's only. */
+  VM.has = (type, opt = {}) => {
+    if (!VM.ready) return false;
+    if (opt.color != null) return false;
+    if (type === 'bicycle') return !!VM.models.bicycle;
+    if (KS.isBike(type)) return !!(opt.owned && VM.models['own:' + type]);
+    return !!VM.models[type];
+  };
+
+  /** a fresh clone of the model for `type`, in the shape buildVehicle's callers
+      expect: { root, body, rider, color, siren, sirens, glb, wheels, mainRotor, tailRotor }. */
+  VM.build = (type, opt = {}) => {
+    const key = type === 'bicycle' ? 'bicycle' : KS.isBike(type) ? 'own:' + type : type;
+    const entry = VM.models[key];
+    if (!entry) return null;
+    const c = cloneEntry(entry);
+    return {
+      root: c.root, body: null, rider: null,
+      color: entry.parts.bodyColor != null ? entry.parts.bodyColor : 0x888888,
+      siren: false, sirens: [], glb: true, glbHeight: entry.height,
+      wheels: c.wheels, mainRotor: c.mainRotor, tailRotor: c.tailRotor,
+    };
+  };
+
+  /** the tour helicopter at Dharahara: a clone with its rotor nodes exposed, so
+      places.js can spin them exactly like the code-built one. */
+  VM.makeHeli = () => {
+    const r = VM.build('helicopter', {});
+    if (!r) return null;
+    return { root: r.root, rotor: r.mainRotor, tailRotor: r.tailRotor };
+  };
+
+  /** swap the three Rani Pokhari rowing boats to the GLB rowboat, keeping the same
+      boat objects (and their oar interface) that player.js drives. */
+  VM.swapBoats = () => {
+    if (!VM.boat || !KS.pondBoats) return 0;
+    let n = 0;
+    for (const b of KS.pondBoats) {
+      const c = cloneEntry(VM.boat);
+      while (b.g.children.length) b.g.remove(b.g.children[0]);
+      b.g.add(c.root);
+      if (c.oars.length === 2) b.oars = c.oars;
+      n++;
+    }
+    return n;
+  };
+
+  /** spin the wheels of every GLB vehicle on the road, and the rotors of the
+      helicopter the player is flying. Called once a frame from game.js. */
+  VM.tick = (dt) => {
+    if (!VM.ready || !KS.Traffic) return;
+    const PL = KS.Player;
+    for (const v of KS.Traffic.list) {
+      if (!v.root || !v.root.parent) continue;
+      if (v.wheels && v.wheels.length && v.speed) {
+        const w = (v.speed * dt) / 0.35;
+        for (const n of v.wheels) n.rotation.x += w;
+      }
+      if (v.kind === 'helicopter' && v.mainRotor && PL && PL.vehicle === v) {
+        v.mainRotor.rotation.y += dt * 25;
+        if (v.tailRotor) v.tailRotor.rotation.x += dt * 60;
+      }
+    }
+  };
+})();

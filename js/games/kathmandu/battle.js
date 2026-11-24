@@ -284,7 +284,9 @@
   function holdGun(person, kind) {
     if (person.gunKind === kind) return; if (person.gun) { person.gun.parent && person.gun.parent.remove(person.gun); person.gun = null; }
     person.gunKind = kind; if (!kind) return;
-    const g = gunMesh(kind); g.position.set(0, -0.6, 0.07); g.scale.setScalar(1.3); person.armR.add(g); person.gun = g;
+    /* the real 3D model when it loaded, the code-built gun when it did not. */
+    const g = (KS.Weapons && KS.Weapons.battleGunMesh(kind)) || gunMesh(kind);
+    g.position.set(0, -0.6, 0.07); g.scale.setScalar(1.3); person.armR.add(g); person.gun = g;
   }
   B.holdGun = holdGun;
   function aimPose(person, k = 1) { person.busyArm = true; person.armR.rotation.set(-1.45 * k, 0, -0.12); person.armL.rotation.set(-1.3 * k, 0, 0.5 * k); }

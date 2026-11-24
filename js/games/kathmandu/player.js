@@ -700,6 +700,7 @@
     if (PL.mode === 'ride') return; // just got into a friend's vehicle (net.js moves you from the next frame)
     if (PL.mode === 'foot') footUpdate(dt); else if (PL.mode === 'boat') boatUpdate(dt); else if (PL.vehicle) { if (PL.vehicle.kind === 'helicopter') heliUpdate(dt); else driveUpdate(dt); }
     snowballUpdate(dt);
+    if (KS.Weapons) KS.Weapons.update(dt); // the held weapon: aim, fire, reload (not in Battle — Battle has its own)
     PL.health = Math.min(100, PL.health + dt * (KS.Battle && KS.Battle.on ? 0.3 : 2.5)); // in Battle mode medkits heal, not time
     for (const d of exDrivers) {
       if (d.t <= 0) continue; d.t -= dt;

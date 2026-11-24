@@ -210,6 +210,115 @@
     board(scene, 'वीर अस्पताल', 'BIR HOSPITAL · EMERGENCY', cx - 2, 5.2, cz + 13.6, 0, 8, 2, '#ffffff', '#c81e1e');
     KS.hospital = { x: cx - 2, z: R.z1 - 2 };
     KS.landmarks.push({ id: 'hospital', minor: true, name: 'Bir Hospital', np: 'वीर अस्पताल', x: cx, z: cz, r: 26, stop: { x: cx - 2, z: R.z1 + 2 }, fact: 'Nepal’s oldest hospital. Walk in — the reception, the ward and the doctors’ office are all inside.' });
+
+    /* ---------- Bir Hospital, round 9: a grander entrance, two helipads, a roof lift ----------
+       Entrance: a columned portico over the door, glass doors swung open, a big
+       lit red cross and an EMERGENCY sign. Ground helipad in the forecourt and
+       a rooftop helipad on the roof (the roof is a walkable slab; a glass lift
+       on the east wall takes you up and down). More doctors, a pharmacy counter
+       and a garden in front. */
+    {
+      const hb = new KS.Builder();
+      /* the portico: two columns and a canopy over the door (x 131..135, z -38). */
+      hb.cyl(129.5, 0, -35.5, 0.45, 3.6, 0xf2f0ea, 10); hb.cyl(136.5, 0, -35.5, 0.45, 3.6, 0xf2f0ea, 10);
+      hb.box(133, 3.6, -36.5, 10, 0.35, 4.5, 0xc81e1e); // red portico roof
+      hb.box(133, 3.9, -36.5, 10.2, 0.15, 4.7, 0x8a2a1a);
+      KS.addBox(129.5, -35.5, 0.9, 0.9, 3.6); KS.addBox(136.5, -35.5, 0.9, 0.9, 3.6); // the columns are solid
+      /* glass doors, swung open flat against the door frame so the doorway stays clear. */
+      hb.box(131.2, 0, -37.6, 0.06, 2.6, 1.1, 0x9ac8e0, Math.PI / 2.4);
+      hb.box(134.8, 0, -37.6, 0.06, 2.6, 1.1, 0x9ac8e0, -Math.PI / 2.4);
+      /* a big red cross above the entrance, and an EMERGENCY board on the portico. */
+      hb.box(133, 4.6, -37.7, 2.4, 0.7, 0.15, 0xffffff); hb.box(133, 4.6, -37.7, 0.7, 2.4, 0.15, 0xffffff);
+      hb.box(133, 4.6, -37.62, 2.0, 0.4, 0.1, 0xc81e1e); hb.box(133, 4.6, -37.62, 0.4, 2.0, 0.1, 0xc81e1e);
+      /* the forecourt: a red EMERGENCY bay in front of the door and a stretcher. */
+      hb.box(133, 0.03, -32, 8, 0.06, 5, 0xc81e1e);
+      hb.box(133, 0.05, -32, 7, 0.05, 4, 0x8a2a1a);
+      hb.box(140, 0.4, -33, 0.7, 0.15, 2, 0x3a5a8a); hb.box(140, 0.55, -33.8, 0.5, 0.1, 0.3, 0xffffff); // a stretcher by the bay
+      /* a pharmacy counter inside the lobby, with its own sign. */
+      hb.box(125, 0, -52, 2.6, 1, 0.8, 0x2a6a3a); hb.box(125, 1, -52, 2.8, 0.1, 1, 0x1a4a2a);
+      scene.add(KS.mesh(hb));
+      board(scene, 'EMERGENCY', 'आपतकालीन · 24 HOURS', 133, 5.6, -34.2, 0, 7, 1.6, '#c81e1e', '#ffffff');
+      board(scene, 'फार्मेसी', 'PHARMACY', 125, 2.4, -51.5, 0, 4, 1.2, '#2a6a3a', '#ffffff');
+      /* more staff: two extra doctors/nurses on the ward and in the lobby. */
+      KS.doctorSpots.push([155, -55, Math.PI, 'nurse'], [133, -49.3, Math.PI, 'doctor']);
+      /* the garden in front: benches and plants along the forecourt edges. */
+      const gb = new KS.Builder();
+      for (const gx of [121, 164]) { gb.box(gx, 0.45, -20, 2.2, 0.08, 0.7, 0x6a4a2a); gb.box(gx, 0.53, -20.3, 2.2, 0.5, 0.08, 0x6a4a2a); gb.cyl(gx - 2.5, 0, -20, 0.3, 0.5, 0x8a5a30, 8); gb.sphere(gx - 2.5, 0.8, -20, 0.55, 0x2a7a3a, 0.9, 8); }
+      scene.add(KS.mesh(gb, KS.M.vc, false));
+      /* ---------- the ground helipad, in the forecourt (143, -20) ---------- */
+      const gp = new KS.Builder();
+      gp.cyl(143, 0, -20, 6, 0.08, 0x3a3a3a, 24); // the pad
+      gp.cyl(143, 0.09, -20, 5.4, 0.05, 0xf2f2f2, 24); // white ring
+      gp.cyl(143, 0.1, -20, 4.9, 0.05, 0x3a3a3a, 24);
+      gp.box(143, 0.12, -20, 1.1, 0.05, 5.4, 0xf2f2f2); gp.box(141.4, 0.12, -20, 1.1, 0.05, 5.4, 0xf2f2f2); // the H
+      gp.box(143, 0.12, -20, 4.3, 0.05, 1.1, 0xf2f2f2);
+      for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; gp.box(143 + Math.cos(a) * 6.3, 0.1, -20 + Math.sin(a) * 6.3, 0.4, 0.18, 0.4, 0xffc81e); }
+      gp.cyl(150.5, 0, -13.5, 0.09, 4.2, 0x8a8a8a, 8); // windsock pole
+      gp.cyl(150.5, 4.2, -13.5, 0.28, 1.4, 0xff6a1a, 8, 0.35, 0, 0); // windsock cone
+      scene.add(KS.mesh(gp, KS.M.vc, false));
+      /* ---------- the rooftop helipad, on the roof (130, -49) ---------- */
+      KS.addBox(143, -49, 49, 23, 16.3, 15.7); // the roof is a walkable slab
+      const rp = new KS.Builder();
+      rp.cyl(130, 16.32, -49, 6, 0.08, 0x3a3a3a, 24);
+      rp.cyl(130, 16.41, -49, 5.4, 0.05, 0xf2f2f2, 24);
+      rp.cyl(130, 16.42, -49, 4.9, 0.05, 0x3a3a3a, 24);
+      rp.box(130, 16.44, -49, 1.1, 0.05, 5.4, 0xf2f2f2); rp.box(128.4, 16.44, -49, 1.1, 0.05, 5.4, 0xf2f2f2);
+      rp.box(130, 16.44, -49, 4.3, 0.05, 1.1, 0xf2f2f2);
+      for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; rp.box(130 + Math.cos(a) * 6.3, 16.4, -49 + Math.sin(a) * 6.3, 0.4, 0.18, 0.4, 0xffc81e); }
+      rp.cyl(160, 16.3, -55, 0.09, 4.2, 0x8a8a8a, 8); // roof windsock
+      rp.cyl(160, 20.5, -55, 0.28, 1.4, 0xff6a1a, 8, 0.35, 0, 0);
+      /* a rooftop garden on the east end, away from the pad and the lift. */
+      for (const [px, pz] of [[152, -56], [158, -44], [163, -54]]) { rp.box(px, 16.3, pz, 1.6, 0.5, 1.6, 0x8a5a30); rp.sphere(px, 17.1, pz, 0.7, 0x2a7a3a, 0.9, 8); }
+      scene.add(KS.mesh(rp, KS.M.vc, false));
+      /* the glass lift on the east wall: ground <-> roof helipad. */
+      const lb = new KS.Builder();
+      lb.box(169, 0, -49, 2.4, 16.3, 2.4, 0x9ac8e0);
+      lb.box(169, 16.3, -49, 2.8, 0.3, 2.8, 0x5a4632);
+      scene.add(KS.mesh(lb, KS.M.vc, false));
+      KS.addBox(169, -49, 2.4, 2.4, 16.3);
+      (KS.lifts = KS.lifts || []).push(
+        { x: 169, z: -46.4, y: 0.6, to: { x: 165, z: -49, y: 16.3 }, label: 'Take the lift to the roof helipad 🚁' },
+        { x: 165, z: -49, y: 16.3, to: { x: 169, z: -46.4, y: 0.6 }, label: 'Take the lift down' });
+      KS.hospitalHelipads = [{ x: 143, z: -20, y: 0, where: 'ground' }, { x: 130, z: -49, y: 16.3, where: 'roof' }];
+      KS.landmarks.push({ id: 'helipad-hospital', name: 'Bir Hospital Helipad', np: 'अस्पताल हेलिप्याड', x: 143, z: -20, r: 10, fact: 'Two helipads at Bir Hospital — one on the ground in front, one on the roof. Fly the helicopter in, or take the glass lift up to the roof.' });
+    }
+
+    /* ---------- the sky bridge (आकाशे पुल) over the road in front of Bir Hospital ----------
+       A walkable overpass at x 170, crossing the z = 0 road: stairs up both sides,
+       a deck at 5 m with railings, and a sign. The deck and every step are thin
+       solids, so the player walks up and across on the visible mesh (groundAt
+       stands on solid tops); vehicles pass underneath. Verified clear, round 9. */
+    {
+      const BX = 170, DECK = 5, STEP_RISE = DECK / 14, NSTEPS = 14;
+      const bb = new KS.Builder();
+      const stepTop = (i) => (i + 1) * STEP_RISE; // step i tops out at (i+1) * rise; the 14th is the deck
+      const zN = (i) => -11 - (NSTEPS - 1 - i) * 0.79; // north stair: z -22 .. -11
+      const zS = (i) => 11 + (NSTEPS - 1 - i) * 0.79; // south stair: z 11 .. 22
+      for (let i = 0; i < NSTEPS; i++) {
+        const tN = stepTop(i), tS = stepTop(i);
+        bb.box(BX, 0, zN(i), 3, tN, 0.79, 0x8d8676); // north step (a solid slab to its top)
+        bb.box(BX, 0, zS(i), 3, tS, 0.79, 0x8d8676); // south step
+        KS.addBox(BX, zN(i), 3, 0.79, tN); // full-height step: the visual is a solid staircase
+        KS.addBox(BX, zS(i), 3, 0.79, tS);
+        /* a handrail on each side of each step (visual; the deck railings are solid). */
+        bb.box(BX - 1.6, tN, zN(i), 0.12, 1, 0.79, 0x3a3a3a); bb.box(BX + 1.6, tN, zN(i), 0.12, 1, 0.79, 0x3a3a3a);
+        bb.box(BX - 1.6, tS, zS(i), 0.12, 1, 0.79, 0x3a3a3a); bb.box(BX + 1.6, tS, zS(i), 0.12, 1, 0.79, 0x3a3a3a);
+      }
+      bb.box(BX, DECK - 0.15, 0, 3, 0.3, 22, 0x8d8676); // the deck slab
+      KS.addBox(BX, 0, 3, 22, DECK, DECK - 0.3);
+      /* solid railings on the deck so nobody walks off the edge (1.2 m tall). */
+      bb.box(BX - 1.55, DECK, 0, 0.15, 1.2, 22, 0x3a3a3a); bb.box(BX + 1.55, DECK, 0, 0.15, 1.2, 22, 0x3a3a3a);
+      KS.addBox(BX - 1.55, 0, 0.15, 22, DECK + 1.2, DECK); KS.addBox(BX + 1.55, 0, 0.15, 22, DECK + 1.2, DECK);
+      /* support columns on the sidewalks, clear of the carriageway. */
+      bb.box(BX - 1.4, 0, -9.5, 0.5, DECK, 0.5, 0x6a6a6a); bb.box(BX + 1.4, 0, -9.5, 0.5, DECK, 0.5, 0x6a6a6a);
+      bb.box(BX - 1.4, 0, 9.5, 0.5, DECK, 0.5, 0x6a6a6a); bb.box(BX + 1.4, 0, 9.5, 0.5, DECK, 0.5, 0x6a6a6a);
+      KS.addBox(BX - 1.4, -9.5, 0.5, 0.5, DECK); KS.addBox(BX + 1.4, -9.5, 0.5, 0.5, DECK);
+      KS.addBox(BX - 1.4, 9.5, 0.5, 0.5, DECK); KS.addBox(BX + 1.4, 9.5, 0.5, 0.5, DECK);
+      scene.add(KS.mesh(bb));
+      board(scene, 'आकाशे पुल', 'SKY BRIDGE · USE THE STAIRS', BX, DECK + 2.2, -11.6, 0, 8, 1.8, '#1b5e20', '#ffffff');
+      KS.landmarks.push({ id: 'skybridge', name: 'Sky Bridge', np: 'आकाशे पुल', x: BX, z: 0, r: 14, fact: 'An akase pul over the road by Bir Hospital — walk up the stairs and cross above the traffic.' });
+      KS.skyBridge = { x: BX, deck: DECK, z0: -11, z1: 11 };
+    }
   }
 
   /* ---------- traffic lights, zebra crossings, speed-limit signs, speed cameras ---------- */

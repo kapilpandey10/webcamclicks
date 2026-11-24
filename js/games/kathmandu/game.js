@@ -190,6 +190,7 @@
       }
     }
     if (KS.trialGround && Math.hypot(PL.x - KS.trialGround.counter.x, PL.z - KS.trialGround.counter.z) < 3.5) { KS.Law.openCounter(); return; }
+    if (KS.Weapons && KS.Weapons.nearest(PL.x, PL.z, 3.5)) { KS.Weapons.openShop(KS.Weapons.nearest(PL.x, PL.z, 3.5)); return; }
     if (KS.agent && Math.hypot(PL.x - KS.agent.x, PL.z - KS.agent.z) < 2.6) { KS.Law.agentTalk(); return; }
     if (KS.Mansion.nearBooth(PL)) {
       KS.modal('🎟️ Sadbhav Thakuri Residence · सद्भाव ठकुरी निवास', `<p>"Namaste! A tour of the residence: the grand hall, the dining room, the lounge and library, the gardens with the fountain and gazebo, and the swimming pool (you may swim)."</p><p>Ticket: <b>रु ${KS.Mansion.price}</b>.</p>`,
@@ -923,6 +924,7 @@
       if (v) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ${v.owned ? 'Ride your' : v.ai ? 'Take the' : 'Ride the'} ${v.type.name.toLowerCase()}`;
       else if (KS.prayerWheels.some(([x, z]) => Math.hypot(x - PL.x, z - PL.z) < 2.4)) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> Spin the prayer wheel`;
       else if (KS.bells.some(([x, z]) => Math.hypot(x - PL.x, z - PL.z) < 9)) prompt = `<kbd>${coarse ? 'Ring' : 'E'}</kbd> Ring the temple bell 🔔`;
+      else if (KS.Weapons && KS.Weapons.nearest(PL.x, PL.z, 3.5)) prompt = `<kbd>${coarse ? 'Shop' : 'E'}</kbd> 🔫 ${KS.Weapons.nearest(PL.x, PL.z, 3.5).name} — buy a weapon`;
       else if (PL.swim) prompt = KS.waterLevel(PL.x, PL.z) != null ? '🏊 Swimming! Walk to the edge or the steps to climb out.' : 'Swimming in the Bagmati… head for the bank!';
       else if (Game.momoPending && Math.hypot(PL.x - MOMO.x, PL.z - MOMO.z) < 12) prompt = 'Step into the beam to collect the <b>momo order</b>';
       else if ((KS.lifts || []).some((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5)) prompt = `<kbd>${coarse ? 'Ride' : 'E'}</kbd> ${(KS.lifts.find((l) => Math.hypot(l.x - PL.x, l.z - PL.z) < 3.2 && Math.abs(l.y - PL.y) < 2.5)).label}`;

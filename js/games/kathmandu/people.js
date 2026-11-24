@@ -219,6 +219,8 @@
   };
   KS.animSit = (p) => { p.legL.rotation.x = p.legR.rotation.x = -1.45; p.armL.rotation.x = p.armR.rotation.x = -0.5; };
   KS.animPunch = (p, t) => { p.armR.rotation.x = -1.55 * Math.sin(Math.min(1, t) * Math.PI); p.armR.rotation.z = 0.2; };
+  KS.animKick = (p, t) => { p.legR.rotation.x = -1.9 * Math.sin(Math.min(1, t) * Math.PI); p.legL.rotation.x = 0.3; p.armL.rotation.x = -0.6; };
+  KS.animThrow = (p, t) => { p.armR.rotation.x = -2.4 * Math.sin(Math.min(1, t) * Math.PI); p.armR.rotation.z = -0.3; };
 
   /* ---------------- pedestrian system ---------------- */
   const Peds = (KS.Peds = { list: [], _nextId: 0, remote: false, ambientCount: 0 });
@@ -432,8 +434,47 @@
   }
 
   const tmp = { x: 0, z: 0, h: 0 };
+  /* ---------- thrown rocks: a fighting pedestrian lobs one at you ----------
+     A rock is a small dark sphere with gravity. It hurts (8%) when it lands
+     within a step of you, then breaks on the ground. Each fighter carries
+     three; when they are gone they have to come in close to punch and kick. */
+  Peds.rocks = [];
+  let _rockGeo = null, _rockMat = null;
+  function rockMesh() {
+    if (!_rockGeo) { _rockGeo = new T.SphereGeometry(0.16, 8, 6); _rockMat = new T.MeshLambertMaterial({ color: 0x5a5248 }); }
+    const m = new T.Mesh(_rockGeo, _rockMat); m.castShadow = true; return m;
+  }
+  Peds.throwRock = (ped, tx, tz) => {
+    if (!Peds.scene) return;
+    const dx = tx - ped.x, dz = tz - ped.z, d = Math.hypot(dx, dz) || 1;
+    const t = Math.min(1.6, Math.max(0.5, d / 14)); // flight time grows with range
+    const m = rockMesh(); m.position.set(ped.x, (ped.y || 0) + 1.3, ped.z); Peds.scene.add(m);
+    Peds.rocks.push({ x: ped.x, y: (ped.y || 0) + 1.3, z: ped.z, vx: (dx / d) * (d / t), vy: (4.5 * t) / 2 + 1, vz: (dz / d) * (d / t), mesh: m, t: 0 });
+    ped.rocks = (ped.rocks == null ? 3 : ped.rocks) - 1;
+  };
+  Peds.updateRocks = (dt) => {
+    const PL = KS.Player;
+    for (let i = Peds.rocks.length - 1; i >= 0; i--) {
+      const r = Peds.rocks[i]; r.t += dt;
+      r.vy -= 9.8 * dt; r.x += r.vx * dt; r.y += r.vy * dt; r.z += r.vz * dt;
+      r.mesh.position.set(r.x, r.y, r.z); r.mesh.rotation.x += dt * 6; r.mesh.rotation.z += dt * 4;
+      let done = false;
+      if (PL && !PL.vehicle && PL.mode === 'foot' && Math.hypot(r.x - PL.x, r.z - PL.z) < 0.9 && Math.abs(r.y - (PL.y + 1)) < 1.4) {
+        KS.Game && KS.Game.hurt(8); KS.Game && KS.Game.notify('🪨 A rock hit you! −8% health', 'bad');
+        if (KS.FX) KS.FX.burst(r.x, r.y, r.z, 0x5a5248, 5);
+        done = true;
+      }
+      if (!done && r.y <= KS.groundAt(r.x, r.z, r.y, 0.5)) {
+        if (KS.FX) KS.FX.burst(r.x, KS.groundAt(r.x, r.z, r.y, 0.5), r.z, 0x8a8178, 4);
+        done = true;
+      }
+      if (done || r.t > 4) { Peds.scene && Peds.scene.remove(r.mesh); Peds.rocks.splice(i, 1); }
+    }
+  };
+
   Peds.update = (dt, ctx) => {
     const { px, pz, cx, cz } = ctx;
+    Peds.updateRocks(dt);
     const ball = Peds.ball;
     if (ball) {
       ball.x += ball.vx * dt; ball.z += ball.vz * dt; ball.vx *= 0.985; ball.vz *= 0.985;
@@ -460,19 +501,23 @@
         if (ped.down <= 0 && ped.injured) { ped.injured = false; ped.p.inner.rotation.x = 0; ped.p.inner.position.y = 0; KS.say(pr, 'Thank you, doctor saab…', 2); }
         else if (ped.down <= 0) {
           ped.p.inner.rotation.x = 0; ped.p.inner.position.y = 0;
-          if (ped.kind !== 'grandma' && ped.kind !== 'kid' && ped.kind !== 'elder' && ped.kind !== 'monk' && KS.chance(0.4)) { ped.fight = 9; KS.say(pr, KS.pick(LINES.fight), 2, 'angry'); }
+          if (ped.kind !== 'grandma' && ped.kind !== 'kid' && ped.kind !== 'elder' && ped.kind !== 'monk' && KS.chance(0.6)) { ped.fight = 9; ped.rocks = 3; KS.say(pr, KS.pick(LINES.fight), 2, 'angry'); }
           else { ped.flee = 4; ped.fvx = (ped.x - px); ped.fvz = (ped.z - pz); const m = Math.hypot(ped.fvx, ped.fvz) || 1; ped.fvx *= 5 / m; ped.fvz *= 5 / m; KS.say(pr, KS.pick(LINES.flee), 2, 'angry'); }
         }
         pr.position.set(ped.x, ped.y || 0.06, ped.z); continue;
       }
-      if (ped.fight > 0) { // fight back
-        ped.fight -= dt; ped.punchT = (ped.punchT || 0) - dt;
+      if (ped.fight > 0) { // fight back: punch up close, kick at arm's length, rocks from a distance
+        ped.fight -= dt; ped.punchT = (ped.punchT || 0) - dt; ped.kickT = (ped.kickT || 0) - dt; ped.rockT = (ped.rockT || 0) - dt;
         const dx = px - ped.x, dz = pz - ped.z, d = Math.hypot(dx, dz);
         ped.h = Math.atan2(dx, dz);
         if (d > 18 || KS.Player.vehicle) ped.fight = 0;
+        else if (d > 1.1 && d <= 2.4 && ped.kickT <= 0) { ped.kickT = 1.6; ped.kickA = 0; KS.Game && KS.Game.hurt(KS.r(8, 14), ped); KS.audio && KS.audio.punch && KS.audio.punch(); }
+        else if (d > 4 && d <= 14 && ped.rockT <= 0 && (ped.rocks == null || ped.rocks > 0)) { ped.rockT = 2.4; ped.throwA = 0; Peds.throwRock(ped, px, pz); KS.say(ped.p.root, KS.pick(['Take this!', 'Hyaa!', 'Dhunga!']), 1.4, 'angry'); }
         else if (d > 1.1) { ped.x += (dx / d) * 3.2 * dt; ped.z += (dz / d) * 3.2 * dt; moving = 3.2; }
         else if (ped.punchT <= 0) { ped.punchT = 1.1; ped.punchA = 0; KS.Game && KS.Game.hurt(KS.r(6, 11), ped); }
         if (ped.punchA != null) { ped.punchA += dt * 4; ped.p.busyArm = true; KS.animPunch(ped.p, ped.punchA); if (ped.punchA >= 1) { ped.punchA = null; ped.p.busyArm = false; } }
+        if (ped.kickA != null) { ped.kickA += dt * 3; KS.animKick(ped.p, ped.kickA); if (ped.kickA >= 1) { ped.kickA = null; ped.p.legR.rotation.x = 0; ped.p.legL.rotation.x = 0; } }
+        if (ped.throwA != null) { ped.throwA += dt * 3; ped.p.busyArm = true; KS.animThrow(ped.p, ped.throwA); if (ped.throwA >= 1) { ped.throwA = null; ped.p.busyArm = false; } }
         const c = KS.collide(ped.x, ped.z, 0.35, ped.y || 0, 1.0); ped.x = c.x; ped.z = c.z;
         if (ped.fight <= 0) { ped.flee = 2; ped.fvx = -dx; ped.fvz = -dz; }
       } else if (ped.flee > 0) {

@@ -919,6 +919,7 @@
     if (KS.Places) { KS.Places.buildJharna(scene); KS.Places.buildMansion(scene); }
     if (KS.Mountains) KS.Mountains.build(scene); // the snow peak, the paragliding hill, the trekking path (before the flags are built, so its prayer flags render)
     if (KS.Fuel) KS.Fuel.build(scene); // petrol stations on street corners and the Ring Road
+    if (KS.Weapons) KS.Weapons.build(scene); // weapon shops near New Road, Thamel and Chabahil
     // Thamel: prayer flags & festival lights criss-crossing the streets.
     // Each string must span the WHOLE road (16 m) and anchor in the building
     // faces on both sides — a string that starts mid-road reads as flags

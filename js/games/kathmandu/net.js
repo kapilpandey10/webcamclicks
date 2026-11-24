@@ -80,7 +80,11 @@
       sys(`🌍 You opened public world ${n}. Other players who come online will appear here.`); N.render2(); publicHello();
     });
     peer.on('connection', (c) => { if (N.conns.size >= MAX - 1) { c.on('open', () => { c.send({ t: 'full' }); setTimeout(() => c.close(), 300); }); return; } wire(c); });
+    // a host that loses the signalling server reconnects; if someone else has taken the world meanwhile, join them instead
+    peer.on('disconnected', () => { if (N.peer === peer && N.public && !peer.destroyed) setTimeout(() => { try { if (N.peer === peer && !peer.destroyed) peer.reconnect(); } catch (x) { /* ignore */ } }, 1500); });
     common(peer, (e) => {
+      if (settled && e.type === 'unavailable-id') { sys('Another player is hosting this world now. Joining them…'); rejoinPublic(n, 500 + Math.random() * 1500); return true; }
+      if (settled && (e.type === 'network' || e.type === 'server-error' || e.type === 'socket-error')) return true; // keep playing with whoever is connected; reconnect is attempted
       if (settled) return false;
       if (e.type === 'unavailable-id') { settled = true; try { peer.destroy(); } catch (x) { /* ignore */ } joinPublicAsGuest(id, n); return true; } // someone hosts it: join them
       N.public = false; N.fail('Could not reach the online world (offline play continues).'); return true;
@@ -91,7 +95,7 @@
     const peer = (N.peer = new window.Peer(undefined, options()));
     peer.on('open', () => { N.me = peer.id; const c = peer.connect(id, { reliable: true }); wire(c); N.hostId = c.peer; });
     // the server can keep a vanished host's id for a while: if nobody answers, try again (and take over once it is free)
-    clearTimeout(N.joinT); N.joinT = setTimeout(() => { if (N.peer === peer && N.state === 'connecting' && N.public) rejoinPublic(n, 1000 + Math.random() * 3000); }, 25000);
+    clearTimeout(N.joinT); N.joinT = setTimeout(() => { if (N.peer === peer && N.state === 'connecting' && N.public) rejoinPublic(n, 1000 + Math.random() * 3000); }, 45000);
     common(peer, (e) => {
       if (e.type === 'peer-unavailable') { // the host has just gone: try to become the host of this world
         N.leave(true); setTimeout(() => N.joinPublic(n), 300 + Math.random() * 1500); return true;

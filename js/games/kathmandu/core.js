@@ -380,7 +380,12 @@
   KS.SCHOOLS.push({ village: true, name: 'Dhunibesi School', np: 'धुनिबेसी विद्यालय', x0: HW.village.x + 60, x1: HW.village.x + 165, z0: HW.z - 14, z1: HW.z + 90 });
   KS.schoolHours = () => KS.time >= 9 && KS.time < 16;
   KS.schoolZoneAt = (x, z) => { for (const s of KS.SCHOOLS) if (x > s.x0 && x < s.x1 && z > s.z0 && z < s.z1) return s; return null; };
-  KS.speedLimit = (x, z) => (KS.schoolHours() && KS.schoolZoneAt(x, z) ? 25 : null);
+  /* ROUND 17: the expressway — the loop deck and the cross-city flyover —
+     is an 80 km/h road. You are on it when you are up at deck height (y > 10)
+     and either near the loop or in the flyover corridor along z = 0. The
+     streets below stay at their normal (unposted) limit. */
+  KS.onExpressway = (x, z, y) => y > 10 && (KS.ringLoopDist(x, z) < 12 || (Math.abs(z) < 12 && x > -590 && x < 575));
+  KS.speedLimit = (x, z, y) => (KS.schoolHours() && KS.schoolZoneAt(x, z) ? 25 : (y !== undefined && KS.onExpressway(x, z, y) ? 80 : null));
 
   /* ---------- solids: boxes / circles with a top height, on a spatial hash ---------- */
   const CELL = 32;

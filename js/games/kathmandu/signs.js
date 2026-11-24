@@ -166,6 +166,95 @@
   KS.LOTS = [];
   function lots(scene, W) {
     const b = new KS.Builder(), paint = new KS.Builder();
+    /* ---------- Kalimati, done properly (round 16) ----------
+       The old ENTRY/EXIT boards stood on the road at the lot's north edge.
+       Now the lot has a real entrance and exit, inside the parking area: a
+       paved driveway in from the road, a gatehouse booth, and a striped boom
+       barrier that lifts when a vehicle approaches and lowers after it passes. */
+    const PARK = (KS.Parking = { gates: [] });
+    const stripeTex = tex(256, 32, (g, w, h) => {
+      for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#f4f4ee' : '#c81e1e'; g.fillRect((i * w) / 8, 0, w / 8, h); }
+    });
+    const stripeMat = new T.MeshLambertMaterial({ map: stripeTex });
+    function barrierGate(gateX, gateZ, text, sub, bg, dir) {
+      // dir +1: entry — booth and post on the west side, the arm swings east.
+      // dir -1: exit — booth and post on the east side, the arm swings west.
+      const px = gateX - dir * 3.2, bx = gateX - dir * 5.8;
+      // the gatehouse booth, with a window facing the driveway
+      b.box(bx, 0, gateZ, 2.4, 2.6, 2.4, 0x7fb2d9);
+      b.box(bx, 2.6, gateZ, 2.8, 0.2, 2.8, 0x1d4fb8);
+      b.box(bx + dir * 1.22, 1.3, gateZ, 0.06, 1.0, 1.6, 0x2a4a6a);
+      KS.addBox(bx, gateZ, 2.4, 2.4, 2.8);
+      // the pivot post the arm hangs from
+      b.box(px, 0, gateZ, 0.35, 1.2, 0.35, 0x3a3a3a);
+      b.box(px, 1.2, gateZ, 0.45, 0.15, 0.45, 0xffc81e);
+      KS.addBox(px, gateZ, 0.4, 0.4, 1.3);
+      // the striped boom arm, pivoting at the post
+      const armGeo = new T.BoxGeometry(6.4, 0.28, 0.12);
+      armGeo.translate(dir * 3.2, 0, 0);
+      const arm = new T.Group();
+      arm.add(new T.Mesh(armGeo, stripeMat));
+      arm.position.set(px, 1.05, gateZ);
+      scene.add(arm);
+      // the sign, on the booth facing the road — inside the lot, not on it
+      const st = tex(512, 160, (g, w, h) => { g.fillStyle = bg; g.fillRect(0, 0, w, h); g.strokeStyle = '#fff'; g.lineWidth = 5; g.strokeRect(8, 8, w - 16, h - 16); g.fillStyle = '#fff'; g.textAlign = 'center'; g.font = `700 54px ${KS.FONT}`; g.fillText(text, w / 2, 66); g.font = '700 34px "Barlow Condensed", sans-serif'; g.fillText(sub, w / 2, 122); });
+      const sm = new T.Mesh(new T.PlaneGeometry(2.2, 0.7), new T.MeshLambertMaterial({ map: st, side: T.DoubleSide }));
+      sm.position.set(bx, 1.9, gateZ - 1.22); sm.rotation.y = Math.PI; scene.add(sm);
+      // the bar across the driveway: solid while the arm is down, open when it lifts
+      const solid = KS.addBox(gateX, gateZ, 8, 0.4, 1.0, 0);
+      PARK.gates.push({ x: gateX, z: gateZ, arm, solid, dir, k: 0, target: 0, openT: 0 });
+    }
+    function kalimatiGates(ex, xx, gz, x0, x1, z0, z1) {
+      const gateZ = gz + 6; // inside the lot, not on the road
+      // paved driveways from the road to each gate
+      paint.box(ex, 0.11, 101, 6, 0.01, 22, 0x8a8a8a);
+      paint.box(xx, 0.11, 101, 6, 0.01, 22, 0x8a8a8a);
+      paint.box(ex - 3.1, 0.11, 101, 0.15, 0.01, 22, 0xf4f4ee);
+      paint.box(ex + 3.1, 0.11, 101, 0.15, 0.01, 22, 0xf4f4ee);
+      paint.box(xx - 3.1, 0.11, 101, 0.15, 0.01, 22, 0xf4f4ee);
+      paint.box(xx + 3.1, 0.11, 101, 0.15, 0.01, 22, 0xf4f4ee);
+      barrierGate(ex, gateZ, 'प्रवेश', 'ENTRY', '#1b7a2e', 1);
+      barrierGate(xx, gateZ, 'निकास', 'EXIT', '#c81e1e', -1);
+      // a big P sign by the entrance, facing the road so drivers see the lot
+      const pt = tex(256, 256, (g, w, h) => { g.fillStyle = '#1d4fb8'; g.fillRect(0, 0, w, h); g.strokeStyle = '#fff'; g.lineWidth = 10; g.strokeRect(10, 10, w - 20, h - 20); g.fillStyle = '#fff'; g.textAlign = 'center'; g.font = '700 170px "Barlow Condensed", sans-serif'; g.fillText('P', w / 2, 200); });
+      const pm = new T.Mesh(new T.PlaneGeometry(2, 2), new T.MeshLambertMaterial({ map: pt, side: T.DoubleSide }));
+      pm.position.set(ex - 6, 3.4, gz + 1); pm.rotation.y = Math.PI; scene.add(pm);
+      b.box(ex - 6, 0, gz + 1, 0.15, 3.4, 0.15, 0x666666);
+      // lamp posts by each gate, and planters along the south edge
+      const lampMat = new T.MeshBasicMaterial({ color: 0xffe9a8 });
+      for (const lx of [ex + 4.5, xx - 4.5]) {
+        b.cyl(lx, 0, gateZ, 0.12, 5, 0x3a3a3a, 8);
+        const lamp = new T.Mesh(new T.BoxGeometry(0.7, 0.25, 0.25), lampMat);
+        lamp.position.set(lx, 5, gateZ); scene.add(lamp);
+      }
+      for (let i = 0; i < 4; i++) {
+        const tx = x0 + 8 + i * ((x1 - x0 - 16) / 3);
+        b.box(tx, 0, z1 - 3, 1.6, 0.5, 1.6, 0x8d887e);
+        b.cyl(tx, 0.5, z1 - 3, 0.12, 1.2, 0x6a4a2a, 6);
+        b.cyl(tx, 1.7, z1 - 3, 1.1, 2.2, 0x2e7d32, 8, 0.55);
+      }
+      // a pedestrian walkway along the south edge
+      paint.box((x0 + x1) / 2, 0.11, z1 - 6, x1 - x0 - 8, 0.01, 2.4, 0x9a958c);
+    }
+    /* the barrier gates open for any vehicle that comes near, and close
+       behind it — the same trick as the mansion gate (a solid whose top
+       drops below the ground when the arm is up). */
+    PARK.update = (dt) => {
+      const PL = KS.Player, TR = KS.Traffic;
+      for (const g of PARK.gates) {
+        let near = false;
+        if (PL.vehicle && Math.hypot(PL.vehicle.x - g.x, PL.vehicle.z - g.z) < 10) near = true;
+        if (!near && TR && TR.list) for (const v of TR.list) {
+          if (Math.hypot(v.x - g.x, v.z - g.z) < 10) { near = true; break; }
+        }
+        if (near) { g.openT = 1.5; g.target = 1; }
+        else { g.openT -= dt; if (g.openT <= 0) g.target = 0; }
+        const rate = g.target === 1 ? 3 : 1.5;
+        g.k = KS.lerp(g.k, g.target, Math.min(1, dt * rate));
+        g.arm.rotation.z = g.dir * g.k * 1.4;
+        g.solid.top = g.k > 0.6 ? -1 : 1.0;
+      }
+    };
     const make = (c, r, name, np, bus, trucks) => {
       const R = W.blockRect(c, r), x0 = R.x0 + 4, x1 = R.x1 - 4, z0 = R.z0 + 4, z1 = R.z1 - 4;
       b.box((x0 + x1) / 2, 0, (z0 + z1) / 2, x1 - x0, 0.1, z1 - z0, 0x47474a);
@@ -178,7 +267,9 @@
         const gm = new T.Mesh(new T.PlaneGeometry(4.4, 1.4), new T.MeshLambertMaterial({ map: gt, side: T.DoubleSide })); gm.position.set(x, 3.1, gz + 0.4); gm.rotation.y = Math.PI; scene.add(gm);
         b.box(x - 2.3, 0, gz + 0.4, 0.14, 3.1, 0.14, 0x666666); b.box(x + 2.3, 0, gz + 0.4, 0.14, 3.1, 0.14, 0x666666);
       };
-      gate(gx0 + 3.5, 'प्रवेश', 'ENTRY', '#1b7a2e'); gate(gx1 - 3.5, 'निकास', 'EXIT', '#c81e1e');
+      const isKalimati = name === 'Kalimati Market Parking';
+      if (!isKalimati) gate(gx0 + 3.5, 'प्रवेश', 'ENTRY', '#1b7a2e'), gate(gx1 - 3.5, 'निकास', 'EXIT', '#c81e1e');
+      else kalimatiGates(gx0 + 3.5, gx1 - 3.5, gz, x0, x1, z0, z1);
       // painted arrows on the lot floor: in through the entry gate, out through the exit gate
       const arrow = (x, z, dir) => { // dir +1: into the lot (+z), -1: out of the lot (-z)
         paint.box(x, 0.11, z, 0.5, 0.01, 3, 0xf4f4ee);

@@ -149,7 +149,7 @@
       } else if (d < 8 && v && !tr.t.cls.includes(cls)) KS.Game.prompt('This job needs a ' + tr.t.cls.join(' or ') + ' vehicle');
     } else {
       // speeding discomfort
-      if (v) { const lim = KS.speedLimit(PL.x, PL.z), kmh = sp * 3.6, gentleLim = tr.t.gentle ? Math.min(lim, 35) : lim + 8; if (kmh > gentleLim) U.event('speed', dt * 2); }
+      if (v) { const lim = KS.speedLimit(PL.x, PL.z, PL.y), kmh = sp * 3.6, gentleLim = tr.t.gentle ? Math.min(lim, 35) : lim + 8; if (kmh > gentleLim) U.event('speed', dt * 2); }
       const d = Math.hypot(PL.x - tr.to.x, PL.z - tr.to.z);
       if (d < 9 && v && sp < 2.2) {
         const used = KS.clock - tr.t0, late = used / tr.eta;

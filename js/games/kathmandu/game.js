@@ -297,7 +297,7 @@
     for (const s2 of KS.signals) if (s2.camFlash) s2.camFlash.material.opacity = Math.max(0, s2.camFlash.material.opacity - dt * 3);
     const heli = v && v.kind === 'helicopter';
     if (v && KS.noDriveAt && KS.noDriveAt(PL.x, PL.z) && v.kind !== 'bicycle' && !(heli && (v.alt || 0) > 3)) Game.prompt('🚫 Pedestrian area: no vehicles beyond the bollards');
-    if (v && !heli && Game.limit !== (Game.limit = KS.speedLimit(PL.x, PL.z)) && Game.limit) Game.notify('🏫 School zone: 25 km/h until 16:00');
+    if (v && !heli && Game.limit !== (Game.limit = KS.speedLimit(PL.x, PL.z, PL.y)) && Game.limit) Game.notify(Game.limit === 80 ? '🛣️ Expressway: 80 km/h' : '🏫 School zone: 25 km/h until 16:00');
     if (!v || Law.trial || v.kind === 'bicycle' || v.kind === 'helicopter') { lastSig = null; return; } // no road rules in the sky, and no speed fines at all
     const kmh = Math.abs(v.speed) * 3.6;
     Game.kmh = kmh;
@@ -858,7 +858,7 @@
       }
       PL.update(dt);
     }
-    KS.Battle.update(dt); KS.Places.update(dt); if (KS.Mountains) KS.Mountains.update(dt);
+    KS.Battle.update(dt); KS.Places.update(dt); if (KS.Parking) KS.Parking.update(dt); if (KS.Mountains) KS.Mountains.update(dt);
     if (KS.Damage) KS.Damage.update(dt);
     if (KS.Fuel) KS.Fuel.update(dt); // the fuel-delivery timer
     if (KS.Story) KS.Story.update(dt); // story-mode chapters
@@ -971,7 +971,7 @@
     const temp = KS.temperatureAt ? KS.temperatureAt(PL.x, PL.z) : 18, te = $('temp'); if (te) { te.textContent = `🌡️ ${temp}°C`; te.classList.toggle('cold', temp <= 0); }
     if (PL.vehicle) {
       const heli = PL.vehicle.kind === 'helicopter';
-      const kmh = Math.round(Math.abs(PL.vehicle.speed) * 3.6), lim = heli ? null : KS.speedLimit(PL.x, PL.z);
+      const kmh = Math.round(Math.abs(PL.vehicle.speed) * 3.6), lim = heli ? null : KS.speedLimit(PL.x, PL.z, PL.y);
       $('kmh').textContent = kmh;
       if (heli) { // a helicopter has no road speed limit: the badge shows altitude instead
         $('limit').hidden = false; $('limit').textContent = Math.round(PL.vehicle.alt || 0); $('limit').classList.remove('over'); $('limit').classList.add('alt'); $('limit').title = 'Altitude (m)';

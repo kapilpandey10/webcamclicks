@@ -350,6 +350,59 @@
     scene.add(KS.mesh(b, KS.M.vc, false));
   }
 
+  /* ================= lane markings =================
+     Crisp painted lines on every road, so the lanes the traffic already
+     follows are visible: a yellow dashed centre line and white edge lines
+     on the grid streets, a white stop line at every signal, dashed lane
+     lines on the Ring Road, and centre dashes on the highway, the ring
+     connectors, the Swayambhu climb and the airport road. All of it is one
+     merged mesh, painted just above the asphalt. */
+  function laneMarkings(scene) {
+    const m = new KS.Builder(), YEL = 0xf2c418, WHT = 0xf4f4ee;
+    let nBoxes = 0, nStops = 0, nRing = 0;
+    const box = (...a) => { m.box(...a); nBoxes++; };
+    const blocked = (kind, line, from) => (KS.noRoad || []).some((n) => n[0] === kind && n[1] === line && n[2] === from);
+    for (let i = 0; i <= G.N; i++) for (let axis = 0; axis < 2; axis++) for (let s = 0; s < G.N; s++) {
+      if (axis === 0 ? blocked('v', i, s) : blocked('h', s, i)) continue;
+      const a = G.line(s) + 12, b = G.line(s + 1) - 12, mid = (a + b) / 2; // leave the junction mouths clear
+      for (let d = a; d < b - 3; d += 6) { // yellow centre dashes, 3 m on, 3 m off
+        if (axis === 0) box(G.line(i), 0.08, d + 1.5, 0.5, 0.015, 3, YEL);
+        else box(d + 1.5, 0.08, G.line(i), 3, 0.015, 0.5, YEL);
+      }
+      for (const e of [-1, 1]) { // white edge lines, just inside the kerb
+        if (axis === 0) box(G.line(i) + e * 7.2, 0.08, mid, 0.15, 0.015, b - a, WHT);
+        else box(mid, 0.08, G.line(i) + e * 7.2, b - a, 0.015, 0.15, WHT);
+      }
+    }
+    for (const s of KS.signals || []) { // white stop lines, one per approach, in the left lane
+      for (const [dx, dz] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+        if (dx === 0 && (dz > 0 ? s.j < 1 || blocked('v', s.i, s.j - 1) : s.j >= G.N || blocked('v', s.i, s.j))) continue;
+        if (dz === 0 && (dx > 0 ? s.i < 1 || blocked('h', s.j, s.i - 1) : s.i >= G.N || blocked('h', s.j, s.i))) continue;
+        const cx = s.x - dx * 10 + dz * 3.5, cz = s.z - dz * 10 - dx * 3.5;
+        box(cx, 0.08, cz, dx === 0 ? 3.4 : 0.6, 0.015, dx === 0 ? 0.6 : 3.4, WHT); nStops++;
+      }
+    }
+    const P = KS.ringLoopPts || []; // Ring Road: dashed lane lines either side of the median
+    for (let k = 0; k < P.length; k++) {
+      const a = P[k], b = P[(k + 1) % P.length], dx = b.x - a.x, dz = b.z - a.z, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L;
+      const lx = uz, lz = -ux, ry = Math.atan2(ux, uz), y = KS.heightAt(a.x, a.z) + 0.07;
+      for (const off of [5.3, -5.3]) { box(a.x + lx * off, y, a.z + lz * off, 0.15, 0.015, 3, WHT, ry); nRing++; }
+    }
+    for (let x = KS.HW.x0; x > KS.HW.x1; x -= 6) { // Nagdhunga highway centre dashes (not inside the tunnel)
+      if (x < KS.HW.pE && x > KS.HW.pW) continue;
+      box(x, KS.roadH(x) + 0.09, KS.HW.z, 3, 0.015, 0.5, YEL);
+    }
+    for (const c of KS.ringConnectors || []) { // short roads from the Ring Road into the city
+      const dx = c.x2 - c.x1, dz = c.z2 - c.z1, L = Math.hypot(dx, dz), ry = Math.atan2(dx, dz);
+      for (let d = 3; d < L - 3; d += 6) { const t = d / L, x = c.x1 + dx * t, z = c.z1 + dz * t; box(x, KS.heightAt(x, z) + 0.07, z, 0.5, 0.015, 3, YEL, ry); }
+    }
+    const sw = KS.SWAYAMBHU; // Swayambhu climb and the airport road
+    for (let x = -540; x > sw.x + 22; x -= 6) box(x, KS.heightAt(x, sw.z) + 0.07, sw.z, 3, 0.015, 0.5, YEL);
+    for (let x = 584; x < 656; x += 6) box(x, 0.08, 0, 3, 0.015, 0.5, YEL);
+    KS.laneMarkings = { boxes: nBoxes, stopLines: nStops, ringDashes: nRing };
+    scene.add(KS.mesh(m, new T.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }), false));
+  }
+
   /* ================= speed breakers ================= */
   function speedBreakers(scene) {
     /* a raised, striped bump across the road in front of every school and the
@@ -943,6 +996,7 @@
       }
     }
     mountains(scene);
+    laneMarkings(scene);
     W.flushChunks(scene);
   };
 })();

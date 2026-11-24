@@ -787,8 +787,7 @@
       if (Math.abs(((along - G.O) % G.B) - 45) > 30) { i--; continue; }
       const { c, r } = G.blockOf(x, z); if (KS.blockType(c, r) === 'river') { i--; continue; }
       const cow = quad({ color: KS.pick([0xf2ede4, 0xe8e0d0, 0x8a6a4a, 0x3a3028, 0xd8c8b0]), len: 1.9, wid: 0.75, h: 0.95, leg: 0.06, hump: true, horns: true, garland: KS.chance(0.5), bell: KS.chance(0.6) });
-      Object.assign(cow, { x, z, h: vertical ? (KS.chance(0.5) ? 0 : Math.PI) : (KS.chance(0.5) ? Math.PI / 2 : -Math.PI / 2), vertical, line: G.line(li), t: KS.r(0, 10), mode: KS.pick(['lie', 'stand', 'walk', 'walk', 'walk']), modeT: KS.r(10, 50), ph: 0, dirSign: KS.chance(0.5) ? 1 : -1, sp: KS.r(0.6, 0.95) });
-      if (cow.mode === 'lie') { cow.legs.forEach((l) => (l.visible = false)); cow.body.position.y = -0.62; }
+      Object.assign(cow, { x, z, h: vertical ? (KS.chance(0.5) ? 0 : Math.PI) : (KS.chance(0.5) ? Math.PI / 2 : -Math.PI / 2), vertical, line: G.line(li), t: KS.r(0, 10), mode: KS.pick(['walk', 'walk', 'walk', 'stand']), modeT: KS.r(25, 70), ph: 0, dirSign: KS.chance(0.5) ? 1 : -1, sp: KS.r(0.6, 0.95) });
       cow.g.position.set(x, 0.05, z); cow.g.rotation.y = cow.h; scene.add(cow.g); Animals.cows.push(cow);
     }
     for (let i = 0; i < 30; i++) {
@@ -824,19 +823,19 @@
     for (const cow of Animals.cows) {
       cow.t += dt;
       const d = Math.hypot(cow.x - px, cow.z - pz);
-      if (honk && d < 16 && !cow.moving) { cow.moving = 3; A && A.moo(1 - d / 20); KS.say(cow.g, 'Mooo…', 1.8); if (cow.mode === 'lie') { cow.mode = 'stand'; cow.legs.forEach((l) => (l.visible = true)); cow.body.position.y = 0; } }
+      if (honk && d < 16 && !cow.moving) { cow.moving = 3; A && A.moo(1 - d / 20); KS.say(cow.g, 'Mooo…', 1.8); }
       if (cow.moving > 0) {
         cow.moving -= dt; const side = cow.vertical ? Math.sign(cow.x - cow.line || 1) : Math.sign(cow.z - cow.line || 1);
         if (cow.vertical) cow.x += side * dt * 0.9; else cow.z += side * dt * 0.9;
         const lim = cow.line + side * 6.2; if (cow.vertical) cow.x = side > 0 ? Math.min(cow.x, lim) : Math.max(cow.x, lim); else cow.z = side > 0 ? Math.min(cow.z, lim) : Math.max(cow.z, lim);
         cow.ph += dt * 5; walkLegs(cow, cow.ph, 0.35);
       } else {
-        // a cow's day: amble along the road, stop to graze or chew, lie down for a while, get up again
+        // a cow's day: it ambles along the road almost all the time, pausing
+        // only briefly to graze — it never lies down in the middle of the road
         cow.modeT -= dt;
         if (cow.modeT <= 0) {
-          const next = cow.mode === 'walk' ? KS.pick(['stand', 'stand', 'lie', 'walk']) : cow.mode === 'lie' ? 'stand' : KS.pick(['walk', 'walk', 'lie']);
-          if (next === 'lie') { cow.legs.forEach((l) => (l.visible = false)); cow.body.position.y = -0.62; } else if (cow.mode === 'lie') { cow.legs.forEach((l) => (l.visible = true)); cow.body.position.y = 0; }
-          cow.mode = next; cow.modeT = next === 'walk' ? KS.r(25, 70) : next === 'lie' ? KS.r(20, 45) : KS.r(6, 16);
+          const next = KS.pick(['walk', 'walk', 'walk', 'walk', 'stand']);
+          cow.mode = next; cow.modeT = next === 'walk' ? KS.r(25, 70) : KS.r(3, 6);
           if (next === 'walk' && KS.chance(0.3)) cow.dirSign = -cow.dirSign;
         }
         if (cow.mode === 'walk') {

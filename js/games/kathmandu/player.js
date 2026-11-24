@@ -674,7 +674,19 @@
       }
     }
     v.x = nx; v.z = nz;
-    v.y = KS.groundAt(v.x, v.z, v.y, 0.5) + v.alt;
+    /* the ground under the helicopter must never jump: reading groundAt
+       directly snaps the machine up and down by a whole building every time
+       it crosses a roofline, which is the judder you feel while flying. So
+       the reference is the highest surface below the helicopter — roofs
+       included, which is what makes landing on the hospital roof work —
+       and it glides to its new value instead of teleporting. */
+    const gTarget = KS.groundAt(v.x, v.z, v.y + 60, 0.5);
+    /* first frame: start from the ground the helicopter is already sitting
+       on (its height minus its altitude), never from the target — starting
+       from the target would teleport it up by a whole building if it
+       happened to be over a roof. */
+    v.groundY = v.groundY == null ? v.y - v.alt : v.groundY + (gTarget - v.groundY) * Math.min(1, dt * 3.5);
+    v.y = v.groundY + v.alt;
     const fwd = v.vx * fx + v.vz * fz;
     v.pitch = v.pitch || 0; v.roll = v.roll || 0;
     v.pitch += (KS.clamp(-fwd * 0.006, -0.12, 0.08) - v.pitch) * Math.min(1, dt * 4);

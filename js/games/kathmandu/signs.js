@@ -169,7 +169,23 @@
     const make = (c, r, name, np, bus, trucks) => {
       const R = W.blockRect(c, r), x0 = R.x0 + 4, x1 = R.x1 - 4, z0 = R.z0 + 4, z1 = R.z1 - 4;
       b.box((x0 + x1) / 2, 0, (z0 + z1) / 2, x1 - x0, 0.1, z1 - z0, 0x47474a);
-      const lot = { name, np, node: KS.Traffic.lotNode(c, r), bus, trucks, bays: [] };
+      const lot = { name, np, node: KS.Traffic.lotNode(c, r), entry: KS.Traffic.lotNode(c, r), exit: KS.Traffic.lotNode(c + 1, r), bus, trucks, bays: [] };
+      // separate gates: in at the west corner, out at the east corner, so
+      // cars never have to cross each other at a single driveway
+      const gx0 = G.line(c), gx1 = G.line(c + 1), gz = R.z0;
+      const gate = (x, text, sub, bg) => {
+        const gt = tex(512, 160, (g, w, h) => { g.fillStyle = bg; g.fillRect(0, 0, w, h); g.strokeStyle = '#fff'; g.lineWidth = 5; g.strokeRect(8, 8, w - 16, h - 16); g.fillStyle = '#fff'; g.textAlign = 'center'; g.font = `700 54px ${KS.FONT}`; g.fillText(text, w / 2, 66); g.font = '700 34px "Barlow Condensed", sans-serif'; g.fillText(sub, w / 2, 122); });
+        const gm = new T.Mesh(new T.PlaneGeometry(4.4, 1.4), new T.MeshLambertMaterial({ map: gt, side: T.DoubleSide })); gm.position.set(x, 3.1, gz + 0.4); gm.rotation.y = Math.PI; scene.add(gm);
+        b.box(x - 2.3, 0, gz + 0.4, 0.14, 3.1, 0.14, 0x666666); b.box(x + 2.3, 0, gz + 0.4, 0.14, 3.1, 0.14, 0x666666);
+      };
+      gate(gx0 + 3.5, 'प्रवेश', 'ENTRY', '#1b7a2e'); gate(gx1 - 3.5, 'निकास', 'EXIT', '#c81e1e');
+      // painted arrows on the lot floor: in through the entry gate, out through the exit gate
+      const arrow = (x, z, dir) => { // dir +1: into the lot (+z), -1: out of the lot (-z)
+        paint.box(x, 0.11, z, 0.5, 0.01, 3, 0xf4f4ee);
+        const rot = dir > 0 ? 0 : Math.PI; // the head is the same chevron, turned around for the exit
+        for (const s of [-1, 1]) paint.box(x + s * 0.55, 0.11, z + dir * 1.5, 0.5, 0.01, 1.3, 0xf4f4ee, s * 0.7 + rot);
+      };
+      arrow(gx0 + 3.5, gz + 7, 1); arrow(gx1 - 3.5, gz + 7, -1);
       if (bus) {
         for (let row = 0; row < 3; row++) for (let k = 0; k < 13; k++) { const x = x0 + 6 + k * 4.4, z = z0 + 16 + row * 22; lot.bays.push({ x, z, h: 0, bus: true }); paint.box(x - 2.2, 0.11, z, 0.12, 0.01, 11, 0xf4f4ee); }
         for (let k = 0; k < 4; k++) { const z = z0 + 6 + k * 22; b.box((x0 + x1) / 2, 0.1, z, x1 - x0 - 8, 0.25, 2.2, 0xb9b2a4); b.box((x0 + x1) / 2, 2.8, z, x1 - x0 - 8, 0.12, 3, 0x1d4fb8); for (let q = 0; q < 6; q++) b.box(x0 + 8 + q * 11, 0.35, z, 0.12, 2.45, 0.12, 0x777777); }

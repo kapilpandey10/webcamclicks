@@ -179,7 +179,10 @@
       const d = ahead - v.type.len / 2 - extA;
       if (d < look && d < best) { best = d; who = o; }
     };
-    for (const o of others) if (o !== v && !o.lot) test(o.x, o.z, o.type.len, o.type.wid, o, o.h);
+    /* a dormant vehicle is parked out of sight by the balance pass (its mesh
+       is hidden and it never moves) — it must not block the road for
+       everyone behind it, or cars stop at nothing in the middle of nowhere. */
+    for (const o of others) if (o !== v && !o.lot && !o.dormant) test(o.x, o.z, o.type.len, o.type.wid, o, o.h);
     if (ctx.player) test(ctx.player.x, ctx.player.z, ctx.player.len, ctx.player.wid, 'player', KS.Player.vehicle ? KS.Player.vehicle.h : null);
     KS.Peds.forEachNear(v.x, v.z, look + 4, (p) => { if (!p.down) test(p.x, p.z, 0.5, 0.6, 'ped'); });
     KS.Animals.obstacles((x, z) => test(x, z, 1.8, 1.2, 'cow'));
@@ -332,10 +335,10 @@
     if (lt.stage === 'park') {
       lt.t -= dt; if (v.rider) v.rider.visible = false;
       if (lt.t <= 0 && TR.over) lt.t = KS.r(15, 40);
-      if (lt.t <= 0) { // leave: back out of the bay to a road leaving the lot junction
-        const L = v.home, n = nodes[L.node], b = KS.pick(n.nb), lane = laneOf(v, L.node, b, {});
+      if (lt.t <= 0) { // leave: back out of the bay to a road leaving the lot junction — out through the EXIT gate, never back through the entry
+        const L = v.home, en = L.exit != null ? L.exit : L.node, n = nodes[en], b = KS.pick(n.nb), lane = laneOf(v, en, b, {});
         if (TR.nearCount(lane.sx, lane.sz, 8) > 0) { lt.t = 2; return; }
-        v.lot = { stage: 'out', u: 0, p0: [v.x, v.z], p1: [n.x + (v.x - n.x) * 0.2, n.z + (v.z - n.z) * 0.2], p2: [lane.sx, lane.sz], len: Math.hypot(lane.sx - v.x, lane.sz - v.z) + 4, a: L.node, b };
+        v.lot = { stage: 'out', u: 0, p0: [v.x, v.z], p1: [n.x + (v.x - n.x) * 0.2, n.z + (v.z - n.z) * 0.2], p2: [lane.sx, lane.sz], len: Math.hypot(lane.sx - v.x, lane.sz - v.z) + 4, a: en, b };
         if (v.rider) v.rider.visible = true;
       }
       if (v.root.visible) place(v);
@@ -430,14 +433,14 @@
       }
       const P = KS.Player;
       if (P.vehicle && Math.abs(P.x - s.x) < 28 && Math.abs(P.z - s.z) < 28 && Math.abs(P.vehicle.speed) < 1.5) queued++;
-      if (!s.cop && queued >= 4) {
+      if (!s.cop && queued >= 3) {
         const ped = KS.Peds.addTrafficCop(s.x + G.roadHalf(s.i) + 2.2, s.z + G.roadHalf(s.j) + 2.2);
-        if (ped) { s.cop = { ped, dir: 'ns', t: 8 }; KS.Game && KS.Game.notify('👮 A traffic police officer is directing the jam at the junction — follow their hand.', 'good'); }
+        if (ped) { s.cop = { ped, dir: 'ns', t: 6 }; KS.Game && KS.Game.notify('👮 A traffic police officer is directing the jam at the junction — follow their hand.', 'good'); }
       } else if (s.cop && queued < 2) {
         KS.Peds.removeTrafficCop(s.cop.ped); s.cop = null;
       } else if (s.cop) {
         s.cop.t -= 0.5;
-        if (s.cop.t <= 0) { s.cop.t = 8; s.cop.dir = s.cop.dir === 'ns' ? 'ew' : 'ns'; }
+        if (s.cop.t <= 0) { s.cop.t = 6; s.cop.dir = s.cop.dir === 'ns' ? 'ew' : 'ns'; }
       }
     }
   }
@@ -555,11 +558,16 @@
         if (v.speed < 0.6) {
           v.stuck += dt;
           if (v.stuck > 0.8 && v.honkT <= 0) { v.honkT = KS.r(1.5, 4); if (dCam < 90) KS.audio && KS.audio.horn(v.kind, Math.max(0.08, 1 - dCam / 90)); }
-          const still = ob.who === 'cow' || ob.who === 'player' ? !(KS.Player.vehicle && Math.abs(KS.Player.vehicle.speed) > 0.5) || ob.who === 'cow' : ob.who !== 'ped' && (ob.who.parked || !ob.who.ai || ob.who.speed < 0.3);
-          if (still && v.stuck > 2.5 && v.mode === 'lane' && !(v.over > 0) && v.lane.len - v.t > 12) { v.over = 9; v.clearT = 0; v.stuck = 0; }
+          const still = ob.who === 'cow' || ob.who === 'player' ? !(KS.Player.vehicle && Math.abs(KS.Player.vehicle.speed) > 0.5) || ob.who === 'cow' : ob.who === 'ped' ? v.stuck > 6 : (ob.who.parked || !ob.who.ai || ob.who.speed < 0.3);
+          if (still && v.stuck > 2.5 && v.mode === 'lane' && !(v.over > 0) && (v.lane.len - v.t > 4 || v.stuck > 8)) { v.over = 9; v.clearT = 0; v.stuck = 0; }
         }
-        if (v.slowT > 3 && v.mode === 'lane' && !(v.over > 0) && v.lane.len - v.t > 12) { v.over = 9; v.clearT = 0; v.slowT = 0; }
+        if (v.slowT > 3 && v.mode === 'lane' && !(v.over > 0) && (v.lane.len - v.t > 4 || v.slowT > 8)) { v.over = 9; v.clearT = 0; v.slowT = 0; }
       } else { v.stuck = 0; v.slowT = 0; }
+      // last resort against a jam nobody can explain: a vehicle that has sat
+      // dead in the road for 25 s (not at a bus stop — those clear on their
+      // own, and a red light is 12 s at most) is quietly moved to a free
+      // stretch of road out of sight, so the street never stays blocked
+      if (v.speed < 0.5 && !v.atStop) { v.jamT = (v.jamT || 0) + dt; if (v.jamT > 25) { v.jamT = 0; v.stuck = 0; v.over = 0; v.path = null; placeOnRandomEdge(v, px, pz, 0, 1100, true); } } else v.jamT = 0;
       // going home: head for the home lot now and then
       v.roamT -= dt;
       if (v.roamT <= 0 && v.home && !v.path && !v.route && v.mode === 'lane' && !v.uthao) { v.roamT = KS.r(80, 260); v.path = TR.pathNodes(v.b, v.home.node); v.pi = 0; }
@@ -575,11 +583,16 @@
         else { v.x = L.sx + L.dx * v.t + L.lx * v.side; v.z = L.sz + L.dz * v.t + L.lz * v.side; v.h = Math.atan2(L.dx, L.dz); }
       }
       if (v.mode === 'turn') {
-        const tr = v.turn, u = Math.min(1, v.t / tr.len), iu = 1 - u;
-        v.x = iu * iu * tr.p0x + 2 * iu * u * tr.p1x + u * u * tr.p2x; v.z = iu * iu * tr.p0z + 2 * iu * u * tr.p1z + u * u * tr.p2z;
-        const tx = 2 * iu * (tr.p1x - tr.p0x) + 2 * u * (tr.p2x - tr.p1x), tz = 2 * iu * (tr.p1z - tr.p0z) + 2 * u * (tr.p2z - tr.p1z);
-        if (tx * tx + tz * tz > 1e-6) v.h = Math.atan2(tx, tz);
-        if (u >= 1) { v.t -= tr.len; v.a = v.b; v.b = tr.next; v.lane = tr.nxt; v.mode = 'lane'; }
+        const tr = v.turn;
+        if (v.stuck > 4) { // blocked mid-junction by something that never moves: finish the turn instead of sitting in the crossing forever
+          v.t = 0; v.a = v.b; v.b = tr.next; v.lane = tr.nxt; v.mode = 'lane'; v.stuck = 0;
+        } else {
+          const u = Math.min(1, v.t / tr.len), iu = 1 - u;
+          v.x = iu * iu * tr.p0x + 2 * iu * u * tr.p1x + u * u * tr.p2x; v.z = iu * iu * tr.p0z + 2 * iu * u * tr.p1z + u * u * tr.p2z;
+          const tx = 2 * iu * (tr.p1x - tr.p0x) + 2 * u * (tr.p2x - tr.p1x), tz = 2 * iu * (tr.p1z - tr.p0z) + 2 * u * (tr.p2z - tr.p1z);
+          if (tx * tx + tz * tz > 1e-6) v.h = Math.atan2(tx, tz);
+          if (u >= 1) { v.t -= tr.len; v.a = v.b; v.b = tr.next; v.lane = tr.nxt; v.mode = 'lane'; }
+        }
       }
       v.y = v.lane.hill ? KS.heightAt(v.x, v.z) + 0.06 : 0.06;
       if (v.root.visible) {

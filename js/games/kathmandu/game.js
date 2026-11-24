@@ -449,12 +449,17 @@
     await step('Loading realistic vehicles…');
     if (KS.VehicleModels) { try { await KS.VehicleModels.load(); } catch (e) { /* code-built vehicles stay */ } if (KS.VehicleModels.ready) KS.VehicleModels.swapBoats(); }
     if (KS.VehicleModels) { // say plainly whether the realistic models made it in, so a silent fallback is never a mystery
-      const want = ['car', 'sedan', 'suv', 'taxi', 'police', 'pickup', 'truck', 'bus', 'micro', 'minibus', 'ambulance', 'ev', 'bicycle', 'helicopter'];
+      const want = ['car', 'sedan', 'suv', 'taxi', 'police', 'pickup', 'truck', 'bus', 'micro', 'minibus', 'ambulance', 'ev', 'tempo', 'bicycle', 'helicopter'];
       const n = want.filter((t) => KS.VehicleModels.models[t]).length;
+      KS.modelsLoaded = n; KS.modelsWanted = want.length;
       if (n === 0) {
         const why = location.protocol === 'file:' ? 'the game was opened as a downloaded file — open it from the website instead, so the models can download' : 'the model files could not be downloaded — check the connection and reload';
         KS.log && KS.log('No realistic vehicle models loaded: ' + why);
-        setTimeout(() => Game.notify('⚠️ Realistic vehicles did not load (' + why + '). The game still works with the built-in vehicles.', 'bad'), 1500);
+        /* a passing toast is easy to miss, and with no code-built vehicles left
+           an empty street would look like a bug: say it once, properly. */
+        setTimeout(() => KS.modal && KS.modal('⚠️ Realistic vehicles did not load',
+          `<p>The 3D cars, bikes, buses and tempo could not be downloaded (${why}).</p><p>There are no blocky stand-in vehicles any more, so the streets will look empty until the models load. Play from the live site and reload the page.</p><p><a href="https://kapilpandey10.github.io/webcamclicks/kathmandu-streets.html" target="_blank" rel="noopener">Open the live site</a></p>`,
+          [['Got it — let me reload', () => location.reload()], ['Keep playing without vehicles', () => KS.modalClose()]]), 1500);
       } else if (n < want.length) setTimeout(() => Game.notify(`🚗 Realistic vehicles: ${n}/${want.length} models loaded.`), 1500);
     }
     KS.Player.init(scene); KS.Battle.init(scene); KS.Places.initHeli(scene);
@@ -463,9 +468,9 @@
     KS.reseed(4); KS.Peds.init(scene, KS.quality.peds, KS.Player.x, KS.Player.z);
     await step('Starting the traffic lights (and the honking)…');
     KS.reseed(5); KS.Traffic.init(scene, KS.quality.cars, KS.Player.x, KS.Player.z);
-    KS.Traffic.park('bicycle', -131, -263.2, Math.PI / 2, { owned: true }).ownedId = 'cycle';
-    const sc = KS.Traffic.park('scooter', -124, -263.4, Math.PI / 2, { owned: true }); sc.ownedId = 'sathi';
-    const sg = D.garage.find((g) => g.id === 'sathi'); KS.Shop.delivered = sc; if (sg) { sc.up = sg.up; sc.horn = sg.horn; }
+    const cyc = KS.Traffic.park('bicycle', -131, -263.2, Math.PI / 2, { owned: true }); if (cyc) cyc.ownedId = 'cycle';
+    const sc = KS.Traffic.park('scooter', -124, -263.4, Math.PI / 2, { owned: true }); if (sc) { sc.ownedId = 'sathi'; }
+    const sg = D.garage.find((g) => g.id === 'sathi'); KS.Shop.delivered = sc; if (sg && sc) { sc.up = sg.up; sc.horn = sg.horn; }
     KS.Law.data();
     KS.Traffic.park('taxi', 6.6, -36, Math.PI); KS.Traffic.park('tempo', -88.6, 60, 0); KS.Traffic.park('pickup', -528, 104, 0);
     if (KS.Heli && KS.Heli.pad2) KS.Traffic.park('helicopter', KS.Heli.pad2.x, KS.Heli.pad2.z, Math.PI); // the helicopter you can fly yourself

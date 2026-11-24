@@ -429,7 +429,7 @@
       if (PL.mode === 'boat') PL.leaveBoat();
       else if (PL.mode === 'drive' && PL.vehicle && PL.vehicle.kind === 'helicopter' && (PL.vehicle.alt || 0) > 1) KS.Game && KS.Game.notify('🚁 Land first — hold <b>C</b> to come down, then press <b>E</b>.', 'bad');
       else if (PL.mode === 'drive') PL.exit();
-      else if (!(KS.Net && KS.Net.tryBoard && KS.Net.tryBoard())) { const v = KS.Traffic.nearest(PL.x, PL.z, 3.6); if (v) PL.enter(v); else KS.Game && KS.Game.interact(); }
+      else if (!(KS.Net && KS.Net.tryBoard && KS.Net.tryBoard())) { const v = KS.Traffic.nearest(PL.x, PL.z, 3.6); if (v) { if (!PL.enter(v)) KS.Game && KS.Game.notify('That one is moving too fast to get in — wait for it to stop.', 'bad'); } else KS.Game && KS.Game.interact(); }
     }
     if (PL.mode === 'ride') return; // just got into a friend's vehicle (net.js moves you from the next frame)
     if (PL.mode === 'foot') footUpdate(dt); else if (PL.mode === 'boat') boatUpdate(dt); else if (PL.vehicle) { if (PL.vehicle.kind === 'helicopter') heliUpdate(dt); else driveUpdate(dt); }

@@ -758,11 +758,16 @@
     if (KS.Extras) KS.Extras.build(scene, W);
     if (KS.Signs) KS.Signs.build(scene, W);
     if (KS.Places) { KS.Places.buildJharna(scene); KS.Places.buildMansion(scene); }
-    // Thamel: prayer flags & festival lights criss-crossing the streets
+    // Thamel: prayer flags & festival lights criss-crossing the streets.
+    // Each string must span the WHOLE road (16 m) and anchor in the building
+    // faces on both sides — a string that starts mid-road reads as flags
+    // hanging in thin air. The road along a block edge runs from
+    // R.z0 - G.ROAD to R.z0, so the far end sits half a metre past the far
+    // edge and the near end half a metre inside the near block.
     for (const [c, r] of [[4, 2], [4, 3], [5, 3], [3, 3]]) {
       const R = W.blockRect(c, r);
-      for (let s = R.x0 + 10; s < R.x1 - 5; s += 14) W.flags([s, 9 + KS.r(0, 3), R.z0 - G.ROAD / 2 - 1], [s + KS.r(-4, 4), 9 + KS.r(0, 3), R.z0 + 1], 1.0, 0.8);
-      for (let s = R.z0 + 10; s < R.z1 - 5; s += 14) W.flags([R.x0 - G.ROAD / 2 - 1, 9 + KS.r(0, 3), s], [R.x0 + 1, 9 + KS.r(0, 3), s + KS.r(-4, 4)], 1.0, 0.8);
+      for (let s = R.x0 + 10; s < R.x1 - 5; s += 14) W.flags([s, 9 + KS.r(0, 3), R.z0 - G.ROAD - 0.5], [s + KS.r(-4, 4), 9 + KS.r(0, 3), R.z0 + 0.5], 1.0, 0.8);
+      for (let s = R.z0 + 10; s < R.z1 - 5; s += 14) W.flags([R.x0 - G.ROAD - 0.5, 9 + KS.r(0, 3), s], [R.x0 + 0.5, 9 + KS.r(0, 3), s + KS.r(-4, 4)], 1.0, 0.8);
     }
     buildInstanced(scene);
     buildTrees(scene);

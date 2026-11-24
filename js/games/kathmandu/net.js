@@ -257,9 +257,10 @@
       const [, drv] = kind.split(':'); if (drv === N.me) KS.Game.notify(`🙋 ${esc(p.name)} got in with you.`);
       p.person.root.position.set(0, 0, 0); return;
     }
-    if (kind && KS.VTYPES[kind]) { p.veh = KS.buildVehicle(kind, { rider: false, conductor: false }); p.root.add(p.veh.root); }
+    if (kind && KS.VTYPES[kind]) { p.veh = KS.buildVehicle(kind, { rider: false, conductor: false }); if (p.veh) p.root.add(p.veh.root); }
     const bike = kind && KS.isBike(kind);
     p.person.root.visible = !kind || bike;
+    if (kind && !bike && !p.veh) p.person.root.visible = false; // their car did not load here: hide them rather than floating them on the road
     if (bike) { p.person.root.position.set(0, 0.18, -0.32); KS.animSit(p.person); p.person.armL.rotation.x = p.person.armR.rotation.x = -1.2; }
     else { p.person.root.position.set(0, 0, 0); p.person.legL.rotation.x = p.person.legR.rotation.x = 0; }
   }

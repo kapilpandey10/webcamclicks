@@ -63,6 +63,7 @@
     const uthao = type === 'uthao';
     const kind = uthao ? KS.pick(['bike', 'scooter']) : type;
     const vt = KS.VTYPES[kind], vis = KS.buildVehicle(kind, { uthao, pillion: uthao ? KS.chance(0.6) : undefined, parcel: uthao && KS.chance(0.4) });
+    if (!vis) return null; // model not loaded: no vehicle, never a blocky stand-in
     const v = { id: ++TR._nextId, kind, type: vt, ...vis, uthao, lane: {}, ai: true, speed: 0, t: 0, x: 0, z: 0, y: 0.06, h: 0, stuck: 0, ignore: 0, honkT: KS.r(2, 12), lat: 0, side: 0, outer: KS.chance(0.4), maxSpeed: vt.speed * KS.r(0.8, 1.1), stopT: 0, callT: KS.r(3, 9) };
     if (KS.isBike(kind)) v.lat = KS.r(-0.6, 1.4);
     if (kind === 'ambulance') v.maxSpeed = vt.speed * 1.15;
@@ -112,6 +113,7 @@
   /** a parked vehicle the player can take */
   TR.park = (type, x, z, h, opt = {}) => {
     const vt = KS.VTYPES[type], vis = KS.buildVehicle(type, { rider: false, conductor: false, ...opt });
+    if (!vis) return null; // model not loaded: nothing to park
     const v = { id: ++TR._nextId, kind: type, type: vt, ...vis, lane: {}, ai: false, parked: true, speed: 0, x, z, y: KS.groundAt(x, z, 50, 60) + 0.06, h, lat: 0, side: 0, maxSpeed: vt.speed, owned: opt.owned };
     if (v.rider) v.rider.visible = false;
     v.root.position.set(x, v.y, z); v.root.rotation.y = h; TR.list.push(v); TR.scene.add(v.root); return v;
@@ -225,6 +227,7 @@
       if (!v) {
         if (!KS.VTYPES[kind]) continue;
         const vis = KS.buildVehicle(kind, {});
+        if (!vis) continue; // model not loaded on this client: skip the mirror
         v = { id: ++TR._nextId, netId: id, kind, type: KS.VTYPES[kind], ...vis, lane: {}, ai: true, remote: true, speed: 0, x, z, y: 0.06, h, stuck: 0, lat: 0, side: 0, maxSpeed: KS.VTYPES[kind].speed, roamT: 1e9 };
         TR.list.push(v); TR.scene.add(v.root);
       }
@@ -248,7 +251,7 @@
   }
   TR.startChase = (v) => { if (v.remote) return; /* mirrored chases belong to the host */ v.chase = true; v.ai = true; v.parked = false; v.idlePolice = false; v.stuck = 0; v.rev = 0; KS.setSiren(v, true); if (v.rider) v.rider.visible = true; };
   TR.endChase = (v) => { if (v.remote) return; v.chase = false; KS.setSiren(v, false); v.ai = false; v.parked = true; v.idlePolice = true; v.speed = 0; };
-  TR.spawnPolice = (px, pz) => { const v = TR.spawn(KS.chance(0.45) ? 'policebike' : 'police', px, pz, 330, 520); TR.startChase(v); return v; };
+  TR.spawnPolice = (px, pz) => { const v = TR.spawn(KS.chance(0.45) ? 'policebike' : 'police', px, pz, 330, 520); if (!v) return null; TR.startChase(v); return v; };
   TR.chasers = () => TR.list.filter((v) => v.chase && (v.remote ? v.netTargetId === (KS.Net && KS.Net.me) : !v.netTarget));
   function chaseUpdate(v, dt, ctx) {
     const P = v.netTarget || KS.Player, pv = v.netTarget ? null : P.vehicle, heat = v.netTarget ? v.netTarget.heat || 1 : KS.Law ? KS.Law.heat : 1; // netTarget: a friend the police are after

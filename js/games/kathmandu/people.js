@@ -495,7 +495,19 @@
             const sig = KS.Traffic && KS.Traffic.signalAt((ped.fromX + ped.toX) / 2, (ped.fromZ + ped.toZ) / 2);
             if ((KS.Traffic && KS.Traffic.nearCount(ped.x, ped.z, 13) > 0) || (sig && sig.state[Math.abs(ped.toX - ped.fromX) > 1 ? 'ns' : 'ew'] === 'g')) { ped.h = Math.atan2(ped.toX - ped.fromX, ped.toZ - ped.fromZ); break; }
           }
-          ped.ct += (ped.speed * 1.15 * dt) / Math.max(1, ped.cLen); moving = ped.speed * 1.2;
+          /* never walk through a vehicle: if the next step lands inside a bus
+             or a car, wait at the kerb for a gap instead of marching through
+             it (the old code advanced the crossing clock regardless, so the
+             walker popped out of the far side of a stopped bus). */
+          const step = (ped.speed * 1.15 * dt) / Math.max(1, ped.cLen), nt = Math.min(1, ped.ct + step);
+          const nx = ped.fromX + (ped.toX - ped.fromX) * nt, nz = ped.fromZ + (ped.toZ - ped.fromZ) * nt;
+          if (KS.Traffic && KS.Traffic.pushOut && KS.Traffic.pushOut(nx, nz, 0.4).hit) {
+            ped.crossWait = (ped.crossWait || 0) + dt; ped.h = Math.atan2(ped.toX - ped.fromX, ped.toZ - ped.fromZ);
+            if (ped.crossWait > 8) { ped.mode = 'walk'; ped.dir = KS.chance(0.5) ? 1 : -1; ped.crossWait = 0; } // give up: something is parked on the crossing
+            break;
+          }
+          ped.crossWait = 0;
+          ped.ct += step; moving = ped.speed * 1.2;
           const t = Math.min(1, ped.ct);
           ped.x = ped.fromX + (ped.toX - ped.fromX) * t; ped.z = ped.fromZ + (ped.toZ - ped.fromZ) * t;
           ped.h = Math.atan2(ped.toX - ped.fromX, ped.toZ - ped.fromZ);

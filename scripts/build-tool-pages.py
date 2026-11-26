@@ -133,7 +133,7 @@ TOOLS = [
   ('/instagram-photo-border', 'Instagram photo border', 'image', 'frame', 'White borders for 1:1, 4:5 and 9:16.', False),
   ('/filters', 'Photo filters gallery', 'image', 'palette', 'Browse every live effect and film look.', False),
   ('/pdf-editor', 'PDF editor', 'pdf', 'edit', 'Add text, signatures, highlights and white-out.', False),
-  ('/form-builder', 'Form builder', 'pdf', 'form', 'Make any PDF fillable — text, checkboxes, dropdowns, signatures.', True),
+  ('/form-builder', 'PDF maker', 'pdf', 'form', 'Build PDFs from a blank page or any PDF background — text, images, shapes, forms.', True),
   ('/pdf-to-jpg', 'PDF to JPG', 'pdf', 'image', 'Turn PDF pages into JPG or PNG images.', False),
   ('/jpg-to-pdf', 'JPG to PDF', 'pdf', 'pdf', 'Turn photos and scans into one PDF.', False),
   ('/lock-pdf', 'Lock PDF (password)', 'pdf', 'lock', 'Protect a PDF with AES-256 encryption.', False),

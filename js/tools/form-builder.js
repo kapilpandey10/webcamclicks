@@ -1,8 +1,11 @@
-/* WebcamClicks — Form Builder (Adobe "Prepare Form" style).
- * Open a PDF, drop form fields on it (text, checkbox, radio, dropdown,
- * date, signature, button), tune them in the properties panel, preview
- * the fillable form, then save — real AcroForm fields, written with
- * pdf-lib. Existing AcroForm fields are read back and shown as fields.
+/* WebcamClicks — PDF Maker (raw PDF maker + Adobe "Prepare Form" style form builder).
+ * Start from a blank page or open any PDF as the background, then build on
+ * it: static text, images, rectangles, ellipses, lines, highlights and
+ * freehand drawing, plus real AcroForm fields (text, checkbox, radio,
+ * dropdown, date, signature, button). Add, duplicate and delete pages,
+ * align and layer elements, preview the fillable form, then save — content
+ * is drawn into the PDF and fields are written as real AcroForm fields
+ * with pdf-lib. Existing AcroForm fields are read back and shown as fields.
  * Everything runs in the browser; the file never leaves the device. */
 
 import { $, setupDropzone, splitName, downloadBlob, setStatus, loadLib, loadPdfjs, formatBytes } from './common.js';
@@ -10,9 +13,12 @@ import { $, setupDropzone, splitName, downloadBlob, setStatus, loadLib, loadPdfj
 const els = {
   input: $('#fb-input'), drop: $('#fb-drop'), status: $('#fb-status'),
   editor: $('#fb-editor'), pages: $('#fb-pages'), toolbar: $('#fb-toolbar'),
-  palette: $('#fb-palette'), props: $('#fb-props'), propsEmpty: $('#fb-props-empty'),
+  palette: $('#fb-palette'), paletteEl: $('#fb-palette-el'), props: $('#fb-props'), propsEmpty: $('#fb-props-empty'),
   undo: $('#fb-undo'), redo: $('#fb-redo'), save: $('#fb-save'),
   previewBtn: $('#fb-preview'), clear: $('#fb-clear'),
+  imgInput: $('#fb-img-input'), blankA4: $('#fb-blank-a4'), blankLetter: $('#fb-blank-letter'),
+  addPage: $('#fb-add-page'), dupPage: $('#fb-dup-page'), delPage: $('#fb-del-page'),
+  zoom: $('#fb-zoom'),
 };
 
 /* ---------------- field types ---------------- */
@@ -28,28 +34,45 @@ const FIELD_TYPES = {
 };
 const DATE_FORMATS = { 'mm/dd/yyyy': 'MM/DD/YYYY', 'dd/mm/yyyy': 'DD/MM/YYYY', 'yyyy-mm-dd': 'YYYY-MM-DD' };
 
+/* ---------------- content element types (drawn into the PDF) ---------------- */
+const ELEMENT_TYPES = {
+  text:      { label: 'Text',      ico: 'T',   defW: 0.32, defH: 0.06 },
+  image:     { label: 'Image',     ico: '🖼',  defW: 0.25, defH: null },
+  rect:      { label: 'Rectangle', ico: '▭',   defW: 0.2,  defH: 0.12 },
+  ellipse:   { label: 'Ellipse',   ico: '○',   defW: 0.2,  defH: 0.12 },
+  line:      { label: 'Line',      ico: '╱',   defW: 0.2,  defH: 0.012 },
+  highlight: { label: 'Highlight', ico: '🖍',  defW: 0.3,  defH: 0.032 },
+  draw:      { label: 'Draw',      ico: '✎',   defW: 0.2,  defH: 0.12 },
+};
+const FONT_FAMILIES = { sans: 'Helvetica, Arial, sans-serif', serif: 'Georgia, "Times New Roman", serif', mono: '"Courier New", monospace' };
+const PAGE_SIZES = { a4: { label: 'A4', w: 595.28, h: 841.89 }, letter: { label: 'Letter', w: 612, h: 792 } };
+
 /* ---------------- state ---------------- */
 let pdfBytes = null, pdf = null, file = null;
-let pages = [];            // {n, wPt, hPt, rot, dispW, dispH, el, sheet, layer, canvas}
-let fields = [];           // field model objects
+let pages = [];            // {n, wPt, hPt, rot, dispW, dispH, el, sheet, layer, canvas, pdfPage}
+let fields = [];           // field model objects (AcroForm)
+let elements = [];         // content element model objects (drawn into the PDF)
 let deletedExisting = [];  // origNames of existing fields removed by the user
-let sel = null;            // selected field object
+let sel = null;            // selected field OR element object
 let history = [], redoStack = [];
-let fid = 0;
-let placeType = null;      // palette type being placed, or null
+let fid = 0, elid = 0;
+let placeType = null;      // {src:'field'|'el', type} being placed, or null
 let mode = 'edit';         // 'edit' | 'preview'
-let drag = null;           // {kind:'place'|'move'|'resize', f, sx, sy, ox, oy, ow, oh}
+let drag = null;           // {kind:'place'|'move'|'resize'|'draw', item, sx, sy, ox, oy, ow, oh}
 let counts = {};           // per-type counter for auto names
 let existingCount = 0;     // fields read from the PDF
+let zoom = 1;              // page display zoom (0.5–1.5)
+let clipboard = null;      // copied item (field or element)
+let pendingImage = null;   // {dataUrl, type, w, h} chosen for the Image tool
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 /* ---------------- history ---------------- */
-function getState() { return JSON.stringify({ fields, deletedExisting }); }
+function getState() { return JSON.stringify({ fields, elements, deletedExisting }); }
 function applyState(s) {
   const o = JSON.parse(s);
-  fields = o.fields; deletedExisting = o.deletedExisting || [];
-  sel = fields.find(f => sel && f.id === sel.id) || null;
+  fields = o.fields; elements = o.elements || []; deletedExisting = o.deletedExisting || [];
+  sel = [...fields, ...elements].find(g => sel && g.id === sel.id) || null;
   drawAll(); renderProps();
 }
 function snapshot() { history.push(getState()); if (history.length > 80) history.shift(); redoStack = []; syncUndo(); }
@@ -71,31 +94,52 @@ function syncUndo() {
 }
 
 /* ---------------- PDF loading ---------------- */
-async function openPdf(f) {
-  file = f.name;
-  pdfBytes = new Uint8Array(await f.arrayBuffer());
-  const pdfjs = await loadPdfjs();
-  try { pdf = await pdfjs.getDocument({ data: pdfBytes.slice() }).promise; } catch (e) { setStatus(els.status, 'Could not open that PDF.'); return; }
-  pages = []; fields = []; deletedExisting = []; sel = null;
-  history = []; redoStack = []; fid = 0; counts = {}; existingCount = 0;
-  mode = 'edit'; placeType = null; syncMode();
-  els.pages.innerHTML = ''; els.editor.hidden = false; syncUndo();
+async function buildPages() {
+  els.pages.innerHTML = '';
+  pages = [];
   for (let n = 1; n <= pdf.numPages; n++) {
     const page = await pdf.getPage(n);
     const vp = page.getViewport({ scale: 1 });
-    const pg = { n, wPt: vp.width, hPt: vp.height, rot: page.rotate || 0, dispW: vp.width, dispH: vp.height };
+    const pg = { n, wPt: vp.width, hPt: vp.height, rot: page.rotate || 0, dispW: vp.width, dispH: vp.height, pdfPage: page };
     pg.el = document.createElement('div');
     pg.el.className = 'pe-page';
     pg.el.dataset.page = n;
-    pg.el.innerHTML = `<div class="pe-pagebar"><span>Page ${n}</span></div>
+    pg.el.innerHTML = `<div class="pe-pagebar"><span>Page ${n}</span><span class="fb-pageops"><button type="button" data-pageop="dup" data-page="${n}" title="Duplicate this page">⧉</button><button type="button" data-pageop="del" data-page="${n}" title="Delete this page">✕</button></span></div>
       <div class="pe-sheet" style="aspect-ratio:${pg.dispW}/${pg.dispH}"><canvas></canvas><div class="pe-layer fb-layer"></div></div>`;
     pg.sheet = pg.el.querySelector('.pe-sheet');
     pg.layer = pg.el.querySelector('.pe-layer');
     pg.canvas = pg.el.querySelector('canvas');
     els.pages.appendChild(pg.el);
-    await renderPage(pg, page);
+    await renderPage(pg);
     pages.push(pg);
   }
+  applyZoom();
+}
+/* Re-open the working bytes after a page operation, keeping the model
+   items (fields + elements) and remapping their page numbers. */
+async function reopenKeepingItems(newBytes, remap) {
+  pdfBytes = newBytes;
+  const pdfjs = await loadPdfjs();
+  pdf = await pdfjs.getDocument({ data: pdfBytes.slice() }).promise;
+  const keepFields = fields.filter(f => remap(f.page) != null);
+  const keepEls = elements.filter(g => remap(g.page) != null);
+  for (const f of keepFields) f.page = remap(f.page);
+  for (const g of keepEls) g.page = remap(g.page);
+  fields = keepFields; elements = keepEls;
+  if (sel && !fields.includes(sel) && !elements.includes(sel)) sel = null;
+  await buildPages();
+  drawAll(); renderProps();
+}
+async function openPdf(f) {
+  file = f.name;
+  pdfBytes = new Uint8Array(await f.arrayBuffer());
+  const pdfjs = await loadPdfjs();
+  try { pdf = await pdfjs.getDocument({ data: pdfBytes.slice() }).promise; } catch (e) { setStatus(els.status, 'Could not open that PDF.'); return; }
+  pages = []; fields = []; elements = []; deletedExisting = []; sel = null;
+  history = []; redoStack = []; fid = 0; elid = 0; counts = {}; existingCount = 0;
+  mode = 'edit'; placeType = null; zoom = 1; els.zoom.value = '100'; syncMode();
+  els.editor.hidden = false; syncUndo();
+  await buildPages();
   existingCount = await loadExistingFields();
   drawAll(); renderProps(); syncUndo();
   const msg = existingCount
@@ -104,10 +148,69 @@ async function openPdf(f) {
   setStatus(els.status, msg);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-async function renderPage(pg, page) {
-  const scale = 2, vp = page.getViewport({ scale });
+async function renderPage(pg, scale = 2 * zoom) {
+  const vp = pg.pdfPage.getViewport({ scale });
   pg.canvas.width = Math.round(vp.width); pg.canvas.height = Math.round(vp.height);
-  await page.render({ canvasContext: pg.canvas.getContext('2d'), viewport: vp }).promise;
+  await pg.pdfPage.render({ canvasContext: pg.canvas.getContext('2d'), viewport: vp }).promise;
+}
+function applyZoom() {
+  for (const pg of pages) pg.el.style.width = zoom === 1 ? '' : (zoom * 100) + '%';
+}
+async function setZoom(z) {
+  zoom = z;
+  applyZoom();
+  for (const pg of pages) await renderPage(pg);
+}
+/* Start a brand-new blank PDF — the "raw maker" starting point. */
+async function startBlank(sizeKey) {
+  const R = await loadLib('pdflib');
+  const s = PAGE_SIZES[sizeKey] || PAGE_SIZES.a4;
+  const doc = await R.PDFDocument.create();
+  doc.addPage([s.w, s.h]);
+  const bytes = await doc.save();
+  file = `blank-${sizeKey}.pdf`;
+  pdfBytes = bytes;
+  const pdfjs = await loadPdfjs();
+  pdf = await pdfjs.getDocument({ data: pdfBytes.slice() }).promise;
+  pages = []; fields = []; elements = []; deletedExisting = []; sel = null;
+  history = []; redoStack = []; fid = 0; elid = 0; counts = {}; existingCount = 0;
+  mode = 'edit'; placeType = null; zoom = 1; els.zoom.value = '100'; syncMode();
+  els.editor.hidden = false; syncUndo();
+  await buildPages();
+  drawAll(); renderProps();
+  setStatus(els.status, `Blank ${s.label} page ready — add text, images, shapes and form fields, then Save PDF. Or drop a PDF above to use it as the background instead.`);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+/* ---------------- page operations ---------------- */
+async function pageOp(kind, pageNum) {
+  if (!pdf) return;
+  const R = await loadLib('pdflib');
+  const doc = await R.PDFDocument.load(pdfBytes, { updateMetadata: false });
+  const total = doc.getPageCount();
+  if (kind === 'add') {
+    const s = doc.getPage(0).getSize();
+    doc.addPage([s.width, s.height]);
+    const bytes = await doc.save();
+    await reopenKeepingItems(bytes, p => p);
+    setStatus(els.status, `Added a blank page — now ${total + 1} pages.`);
+  } else if (kind === 'del') {
+    if (total <= 1) { setStatus(els.status, 'A PDF needs at least one page.', 'err'); return; }
+    doc.removePage(pageNum - 1);
+    const bytes = await doc.save();
+    await reopenKeepingItems(bytes, p => (p === pageNum ? null : (p > pageNum ? p - 1 : p)));
+    setStatus(els.status, `Deleted page ${pageNum} — now ${total - 1} pages.`);
+  } else if (kind === 'dup') {
+    const [cp] = await doc.copyPages(doc, [pageNum - 1]);
+    doc.insertPage(pageNum, cp);
+    const bytes = await doc.save();
+    // duplicate the model items on that page onto the new page (content
+    // elements only — the copied page already carries the form widgets)
+    const newEls = elements.filter(g => g.page === pageNum).map(g => ({ ...g, points: g.points ? g.points.map(pt => [...pt]) : undefined, id: `e${++elid}`, page: pageNum + 1 }));
+    await reopenKeepingItems(bytes, p => (p > pageNum ? p + 1 : p));
+    elements = [...elements, ...newEls];
+    drawAll();
+    setStatus(els.status, `Duplicated page ${pageNum} — now ${total + 1} pages.`);
+  }
 }
 
 /* ---------------- coordinates ----------------
@@ -170,12 +273,41 @@ function newField(type, page, x, y, w, h) {
   if (type === 'button') { f.label = t.label; }
   return f;
 }
+function newElement(kind, page, x, y, w, h) {
+  const el = {
+    id: `e${++elid}`, kind, page, x, y, w, h,
+    text: 'Double-click to edit', family: 'sans', size: 16, color: '#111111',
+    bold: false, italic: false, align: 'left',
+    imgData: '', imgType: 'png',
+    fill: '#ffffff', stroke: '#111111', strokeWidth: 2, opacity: 1,
+    flip: false, points: [],
+  };
+  if (kind === 'text') { el.text = 'Type your text here'; }
+  if (kind === 'highlight') { el.fill = '#ffeb3b'; el.stroke = '#ffeb3b'; el.strokeWidth = 0; el.opacity = 0.4; }
+  if (kind === 'line') { el.fill = 'none'; }
+  if (kind === 'image' && pendingImage) {
+    el.imgData = pendingImage.dataUrl; el.imgType = pendingImage.type;
+    const pg = pages[page - 1];
+    const aspect = pendingImage.h / pendingImage.w;
+    el.h = w * aspect * (pg.dispW / pg.dispH);
+  }
+  return el;
+}
+function isField(item) { return item && (item.id[0] === 'f'); }
 function deleteField(f) {
   if (!f) return;
   snapshot();
   if (f.existing && f.origName) deletedExisting.push({ origName: f.origName, type: f.type });
   fields = fields.filter(g => g !== f);
   if (sel === f) sel = null;
+  drawAll(); renderProps();
+}
+function deleteItem(item) {
+  if (!item) return;
+  if (isField(item)) { deleteField(item); return; }
+  snapshot();
+  elements = elements.filter(g => g !== item);
+  if (sel === item) sel = null;
   drawAll(); renderProps();
 }
 
@@ -221,9 +353,53 @@ function previewControl(f) {
     default: return '';
   }
 }
+function elInner(el) {
+  const style = [];
+  if (el.kind === 'text') {
+    style.push(`font-family:${FONT_FAMILIES[el.family] || FONT_FAMILIES.sans}`);
+    style.push(`font-size:${Math.max(6, el.size * 2)}px`);
+    style.push(`color:${el.color}`);
+    style.push(`font-weight:${el.bold ? 700 : 400}`);
+    style.push(`font-style:${el.italic ? 'italic' : 'normal'}`);
+    style.push(`text-align:${el.align}`);
+    return `<span class="fb-el-text" style="${style.join(';')}">${esc(el.text).replace(/\n/g, '<br>')}</span>`;
+  }
+  if (el.kind === 'image') {
+    return el.imgData ? `<img class="fb-el-img" src="${el.imgData}" alt="">` : '<span class="fb-el-empty">image</span>';
+  }
+  if (el.kind === 'rect' || el.kind === 'ellipse' || el.kind === 'highlight') {
+    const r = el.kind === 'ellipse' ? 'border-radius:50%;' : '';
+    style.push(`background:${el.fill === 'none' ? 'transparent' : el.fill}`);
+    style.push(`border:${Math.max(0, el.strokeWidth)}px solid ${el.stroke}`);
+    style.push(`opacity:${el.opacity}`);
+    return `<span class="fb-el-shape" style="${style.join(';')}${r}"></span>`;
+  }
+  if (el.kind === 'line') {
+    const x2 = el.flip ? 0 : 100, y2 = el.flip ? 100 : 100;
+    const x1 = el.flip ? 100 : 0, y1 = 0;
+    return `<svg class="fb-el-line" viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${el.stroke}" stroke-width="${Math.max(1, el.strokeWidth * 4)}" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>`;
+  }
+  if (el.kind === 'draw') {
+    if (!el.points.length) return '';
+    const pts = el.points.map(([u, v]) => `${((u - el.x) / el.w * 100).toFixed(1)},${((v - el.y) / el.h * 100).toFixed(1)}`).join(' ');
+    return `<svg class="fb-el-draw" viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${el.stroke}" stroke-width="${Math.max(1, el.strokeWidth * 4)}" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
+  }
+  return '';
+}
 function drawAll() {
   for (const pg of pages) {
     pg.layer.innerHTML = '';
+    for (const el of elements.filter(g => g.page === pg.n)) {
+      const d = document.createElement('div');
+      d.className = `fb-el fb-el-${el.kind}${el === sel ? ' sel' : ''}`;
+      d.dataset.id = el.id;
+      Object.assign(d.style, { left: (el.x * 100) + '%', top: (el.y * 100) + '%', width: (el.w * 100) + '%', height: (el.h * 100) + '%' });
+      d.innerHTML = elInner(el);
+      if (mode === 'edit' && el === sel) {
+        d.insertAdjacentHTML('beforeend', '<span class="pe-handle" data-h="se"></span><button class="pe-x" data-x aria-label="Delete element">✕</button>');
+      }
+      pg.layer.appendChild(d);
+    }
     for (const f of fields.filter(g => g.page === pg.n)) {
       const d = document.createElement('div');
       d.className = `fb-field fb-${f.type}${f === sel ? ' sel' : ''}${f.required ? ' req' : ''}${mode === 'preview' ? ' pv' : ''}`;
@@ -248,7 +424,13 @@ function pageFromEvent(e) {
   const r = sheet.getBoundingClientRect();
   return { pg, u: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), v: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) };
 }
-function defaultSize(pg, type) {
+function defaultSize(pg, type, src = 'field') {
+  if (src === 'el') {
+    const t = ELEMENT_TYPES[type];
+    const w = t.defW;
+    const h = t.defH ?? (t.defW * pg.dispW / pg.dispH);
+    return { w, h };
+  }
   const t = FIELD_TYPES[type];
   const w = t.defW;
   const h = t.defH ?? (t.defW * pg.dispW / pg.dispH);
@@ -256,13 +438,36 @@ function defaultSize(pg, type) {
 }
 function startPlace(e, hit) {
   snapshot();
-  const t = FIELD_TYPES[placeType];
-  const f = newField(placeType, hit.pg.n, hit.u, hit.v, 0.001, 0.001);
+  if (placeType.src === 'el' && placeType.type === 'draw') {
+    const el = newElement('draw', hit.pg.n, hit.u, hit.v, 0.001, 0.001);
+    el.points = [[hit.u, hit.v]];
+    elements.push(el);
+    sel = el;
+    drag = { kind: 'draw', item: el, sx: hit.u, sy: hit.v };
+    drawAll(); renderProps();
+    setStatus(els.status, 'Drawing — drag to draw, release to finish. Press Esc when done.');
+    return;
+  }
+  if (placeType.src === 'el') {
+    const t = ELEMENT_TYPES[placeType.type];
+    const el = newElement(placeType.type, hit.pg.n, hit.u, hit.v, 0.001, 0.001);
+    elements.push(el);
+    sel = el;
+    drag = { kind: 'place', item: el, sx: hit.u, sy: hit.v };
+    drawAll(); renderProps();
+    setStatus(els.status, `${t.label} — drag to size it, or just click for a standard size. Press Esc when done.`);
+    return;
+  }
+  const t = FIELD_TYPES[placeType.type];
+  const f = newField(placeType.type, hit.pg.n, hit.u, hit.v, 0.001, 0.001);
   fields.push(f);
   sel = f;
-  drag = { kind: 'place', f, sx: hit.u, sy: hit.v };
+  drag = { kind: 'place', item: f, sx: hit.u, sy: hit.v };
   drawAll(); renderProps();
   setStatus(els.status, `${t.label} — drag to size it, or just click for a standard size. Press Esc when done.`);
+}
+function findItem(id) {
+  return fields.find(g => g.id === id) || elements.find(g => g.id === id) || null;
 }
 function onPointerDown(e) {
   if (!pdf) return;
@@ -271,15 +476,15 @@ function onPointerDown(e) {
   if (mode === 'preview') return; // controls handle themselves
   if (e.button !== 0) return;
   if (placeType) { startPlace(e, hit); return; }
-  const fd = e.target.closest('.fb-field');
-  if (e.target.closest('[data-x]')) { const f = fields.find(g => g.id === fd.dataset.id); deleteField(f); return; }
+  const fd = e.target.closest('.fb-field, .fb-el');
+  if (e.target.closest('[data-x]')) { const item = fd && findItem(fd.dataset.id); deleteItem(item); return; }
   if (fd) {
-    const f = fields.find(g => g.id === fd.dataset.id);
-    if (!f) return;
-    if (sel !== f) { sel = f; renderProps(); drawAll(); }
+    const item = findItem(fd.dataset.id);
+    if (!item) return;
+    if (sel !== item) { sel = item; renderProps(); drawAll(); }
     snapshot();
     const h = e.target.closest('[data-h]');
-    drag = { kind: h ? 'resize' : 'move', f, sx: hit.u, sy: hit.v, ox: f.x, oy: f.y, ow: f.w, oh: f.h };
+    drag = { kind: h ? 'resize' : 'move', item, sx: hit.u, sy: hit.v, ox: item.x, oy: item.y, ow: item.w, oh: item.h };
     e.preventDefault();
     return;
   }
@@ -288,39 +493,124 @@ function onPointerDown(e) {
 function onPointerMove(e) {
   if (!drag) return;
   const hit = pageFromEvent(e);
-  if (!hit || hit.pg.n !== drag.f.page) return;
-  const { f } = drag;
+  if (!hit || hit.pg.n !== drag.item.page) return;
+  const item = drag.item;
+  if (drag.kind === 'draw') {
+    item.points.push([hit.u, hit.v]);
+    const xs = item.points.map(p => p[0]), ys = item.points.map(p => p[1]);
+    item.x = Math.min(...xs); item.y = Math.min(...ys);
+    item.w = Math.max(0.004, Math.max(...xs) - item.x);
+    item.h = Math.max(0.004, Math.max(...ys) - item.y);
+    drawAll();
+    return;
+  }
   if (drag.kind === 'place') {
-    f.x = Math.min(drag.sx, hit.u); f.y = Math.min(drag.sy, hit.v);
-    f.w = Math.max(0.008, Math.abs(hit.u - drag.sx));
-    f.h = Math.max(0.008, Math.abs(hit.v - drag.sy));
+    item.x = Math.min(drag.sx, hit.u); item.y = Math.min(drag.sy, hit.v);
+    item.w = Math.max(0.008, Math.abs(hit.u - drag.sx));
+    item.h = Math.max(0.008, Math.abs(hit.v - drag.sy));
   } else if (drag.kind === 'move') {
-    f.x = Math.min(1 - f.w, Math.max(0, drag.ox + (hit.u - drag.sx)));
-    f.y = Math.min(1 - f.h, Math.max(0, drag.oy + (hit.v - drag.sy)));
+    item.x = Math.min(1 - item.w, Math.max(0, drag.ox + (hit.u - drag.sx)));
+    item.y = Math.min(1 - item.h, Math.max(0, drag.oy + (hit.v - drag.sy)));
   } else {
-    f.w = Math.max(0.008, Math.min(1 - f.x, drag.ow + (hit.u - drag.sx)));
-    f.h = Math.max(0.008, Math.min(1 - f.y, drag.oh + (hit.v - drag.sy)));
+    item.w = Math.max(0.008, Math.min(1 - item.x, drag.ow + (hit.u - drag.sx)));
+    item.h = Math.max(0.008, Math.min(1 - item.y, drag.oh + (hit.v - drag.sy)));
   }
   drawAll();
 }
 function onPointerUp(e) {
   if (!drag) return;
-  const { f, kind } = drag; drag = null;
-  if (kind === 'place') {
-    if (f.w < 0.01 || f.h < 0.01) {
-      const pg = pages[f.page - 1];
-      const { w, h } = defaultSize(pg, f.type);
-      f.w = w; f.h = h;
-      f.x = Math.min(1 - w, Math.max(0, f.x)); f.y = Math.min(1 - h, Math.max(0, f.y));
+  const { item, kind } = drag; drag = null;
+  if (kind === 'draw') {
+    if (item.points.length < 3 || (item.w < 0.01 && item.h < 0.01)) {
+      elements = elements.filter(g => g !== item);
+      if (sel === item) sel = null;
     }
     drawAll(); renderProps();
-    setStatus(els.status, `${FIELD_TYPES[f.type].label} “${f.name}” placed — edit it in the properties panel, or place another.`);
+    return;
+  }
+  if (kind === 'place') {
+    if (item.w < 0.01 || item.h < 0.01) {
+      const pg = pages[item.page - 1];
+      if (isField(item)) {
+        const { w, h } = defaultSize(pg, item.type, 'field');
+        item.w = w; item.h = h;
+      } else {
+        const { w, h } = defaultSize(pg, item.kind, 'el');
+        item.w = w; item.h = h;
+        if (item.kind === 'image' && pendingImage) {
+          item.h = w * (pendingImage.h / pendingImage.w) * (pg.dispW / pg.dispH);
+        }
+      }
+      item.x = Math.min(1 - item.w, Math.max(0, item.x)); item.y = Math.min(1 - item.h, Math.max(0, item.y));
+    }
+    drawAll(); renderProps();
+    const label = isField(item) ? FIELD_TYPES[item.type].label : ELEMENT_TYPES[item.kind].label;
+    const nm = isField(item) ? ` “${item.name}”` : '';
+    setStatus(els.status, `${label}${nm} placed — edit it in the properties panel, or place another.`);
   } else if (kind === 'move' || kind === 'resize') {
     drawAll();
   }
 }
 
 /* ---------------- properties panel ---------------- */
+function itemOpsHtml(item) {
+  return `<div class="fb-ops">
+    <button type="button" data-op="dup" title="Duplicate (Ctrl+D)">⧉ Duplicate</button>
+    <button type="button" data-op="align-l" title="Align to the left edge">⇤ Left</button>
+    <button type="button" data-op="align-c" title="Centre on the page">↔ Centre</button>
+    <button type="button" data-op="align-r" title="Align to the right edge">⇥ Right</button>
+    <button type="button" data-op="fwd" title="Bring forward">↑ Forward</button>
+    <button type="button" data-op="back" title="Send backward">↓ Backward</button>
+  </div>`;
+}
+function renderElementProps(el) {
+  const panel = els.props;
+  let per = '';
+  if (el.kind === 'text') {
+    per = `<label class="fb-prop">Text<textarea data-prop="text" rows="4">${esc(el.text)}</textarea></label>
+      <label class="fb-prop">Font<select data-prop="family">
+        <option value="sans"${el.family === 'sans' ? ' selected' : ''}>Sans</option>
+        <option value="serif"${el.family === 'serif' ? ' selected' : ''}>Serif</option>
+        <option value="mono"${el.family === 'mono' ? ' selected' : ''}>Mono</option>
+      </select></label>
+      <label class="fb-prop">Font size (pt)<input type="number" data-prop="size" value="${el.size}" min="6" max="120" step="1"></label>
+      <label class="fb-prop">Colour<input type="color" data-prop="color" value="${el.color}"></label>
+      <label class="fb-check"><input type="checkbox" data-prop="bold" ${el.bold ? 'checked' : ''}> Bold</label>
+      <label class="fb-check"><input type="checkbox" data-prop="italic" ${el.italic ? 'checked' : ''}> Italic</label>
+      <label class="fb-prop">Align<select data-prop="align">
+        <option value="left"${el.align === 'left' ? ' selected' : ''}>Left</option>
+        <option value="center"${el.align === 'center' ? ' selected' : ''}>Centre</option>
+        <option value="right"${el.align === 'right' ? ' selected' : ''}>Right</option>
+      </select></label>`;
+  } else if (el.kind === 'image') {
+    per = `<button class="t-btn sm" type="button" data-act="replace-img">↻ Replace image…</button>
+      <p class="fb-meta">PNG or JPG, placed at its own aspect ratio. Drag the corner to resize.</p>`;
+  } else if (el.kind === 'rect' || el.kind === 'ellipse' || el.kind === 'highlight') {
+    per = `<label class="fb-prop">Fill colour<input type="color" data-prop="fill" value="${el.fill === 'none' ? '#ffffff' : el.fill}"></label>
+      <label class="fb-check"><input type="checkbox" data-prop="noFill" ${el.fill === 'none' ? 'checked' : ''}> No fill (outline only)</label>
+      <label class="fb-prop">Outline colour<input type="color" data-prop="stroke" value="${el.stroke}"></label>
+      <label class="fb-prop">Outline width (pt)<input type="number" data-prop="strokeWidth" value="${el.strokeWidth}" min="0" max="20" step="0.5"></label>
+      <label class="fb-prop">Opacity<input type="range" data-prop="opacity" value="${el.opacity}" min="0.1" max="1" step="0.05"></label>`;
+  } else if (el.kind === 'line') {
+    per = `<label class="fb-prop">Colour<input type="color" data-prop="stroke" value="${el.stroke}"></label>
+      <label class="fb-prop">Width (pt)<input type="number" data-prop="strokeWidth" value="${el.strokeWidth}" min="0.5" max="20" step="0.5"></label>
+      <label class="fb-check"><input type="checkbox" data-prop="flip" ${el.flip ? 'checked' : ''}> Diagonal the other way</label>`;
+  } else if (el.kind === 'draw') {
+    per = `<label class="fb-prop">Colour<input type="color" data-prop="stroke" value="${el.stroke}"></label>
+      <label class="fb-prop">Width (pt)<input type="number" data-prop="strokeWidth" value="${el.strokeWidth}" min="0.5" max="20" step="0.5"></label>`;
+  }
+  panel.innerHTML = `
+    <h3>${ELEMENT_TYPES[el.kind].label}</h3>
+    ${per}
+    ${itemOpsHtml(el)}
+    <p class="fb-meta">Page ${el.page} · Added content (drawn into the PDF on save)</p>
+    <button class="btn btn-danger" data-del>Delete</button>`;
+  panel.querySelectorAll('[data-prop]').forEach(c => c.addEventListener('change', onPropChange));
+  panel.querySelectorAll('[data-op]').forEach(b => b.addEventListener('click', () => itemOp(b.dataset.op)));
+  panel.querySelector('[data-del]').addEventListener('click', () => deleteItem(el));
+  const rep = panel.querySelector('[data-act="replace-img"]');
+  if (rep) rep.addEventListener('click', () => { els.imgInput.dataset.replace = '1'; els.imgInput.click(); });
+}
 function renderProps() {
   const panel = els.props;
   if (!sel) {
@@ -329,6 +619,7 @@ function renderProps() {
     return;
   }
   els.propsEmpty.classList.add('hidden');
+  if (!isField(sel)) { renderElementProps(sel); return; }
   const f = sel;
   const t = FIELD_TYPES[f.type];
   let per = '';
@@ -372,9 +663,11 @@ function renderProps() {
     ${font}
     <label class="fb-check"><input type="checkbox" data-prop="required" ${f.required ? 'checked' : ''}> Required field</label>
     <label class="fb-check"><input type="checkbox" data-prop="readonly" ${f.readonly ? 'checked' : ''}> Read-only</label>
+    ${itemOpsHtml(f)}
     <p class="fb-meta">Page ${f.page} · ${f.existing ? 'Existing field' : 'New field'}${f.existing && f.origName !== f.name ? ' · renamed' : ''}</p>
     <button class="btn btn-danger" data-del>Delete field</button>`;
   panel.querySelectorAll('[data-prop]').forEach(c => c.addEventListener('change', onPropChange));
+  panel.querySelectorAll('[data-op]').forEach(b => b.addEventListener('click', () => itemOp(b.dataset.op)));
   panel.querySelector('[data-del]').addEventListener('click', () => deleteField(f));
 }
 function uniqueName(v, exclude) {
@@ -384,9 +677,24 @@ function uniqueName(v, exclude) {
   return name;
 }
 function onPropChange(e) {
-  const f = sel; if (!f) return;
+  const item = sel; if (!item) return;
   const c = e.target, k = c.dataset.prop;
-  snapshot();
+  if (!isField(item)) {
+    // content element props
+    snapshot();
+    if (k === 'text') item.text = c.value;
+    else if (k === 'family') item.family = c.value;
+    else if (k === 'size') item.size = Math.min(120, Math.max(6, Number(c.value) || 16));
+    else if (k === 'color' || k === 'fill' || k === 'stroke') item[k] = c.value;
+    else if (k === 'noFill') item.fill = c.checked ? 'none' : '#ffffff';
+    else if (k === 'strokeWidth') item.strokeWidth = Math.min(20, Math.max(0, Number(c.value) || 0));
+    else if (k === 'opacity') item.opacity = Number(c.value);
+    else if (k === 'align') item.align = c.value;
+    else if (k === 'bold' || k === 'italic' || k === 'flip') item[k] = c.checked;
+    drawAll();
+    return;
+  }
+  const f = item;
   if (k === 'name') {
     const v = (c.value.trim() || f.name);
     if (f.type === 'radio') {
@@ -423,21 +731,82 @@ function onPropChange(e) {
   drawAll();
 }
 
+/* ---------------- item operations: duplicate, copy/paste, align, layer ---------------- */
+function cloneItem(item) {
+  if (isField(item)) {
+    const c = { ...item, id: `f${++fid}`, existing: false, origName: '', origRect: null };
+    if (item.type === 'radio') { c.name = uniqueName(item.name, [item]); c.group = c.name; }
+    else c.name = uniqueName(item.name, [item]);
+    return c;
+  }
+  return { ...item, id: `e${++elid}`, points: item.points ? item.points.map(p => [...p]) : undefined };
+}
+function duplicateItem(item) {
+  if (!item) return;
+  snapshot();
+  const c = cloneItem(item);
+  c.x = Math.min(1 - c.w, c.x + 0.02); c.y = Math.min(1 - c.h, c.y + 0.02);
+  if (isField(c)) fields.push(c); else elements.push(c);
+  sel = c;
+  drawAll(); renderProps();
+}
+function copyItem(item) {
+  if (!item) return;
+  clipboard = JSON.parse(JSON.stringify(item));
+  setStatus(els.status, 'Copied — paste with Ctrl+V.');
+}
+function pasteItem() {
+  if (!clipboard || !pdf) return;
+  snapshot();
+  const c = cloneItem(clipboard);
+  c.page = sel ? sel.page : (pages.length ? pages[pages.length - 1].n : 1);
+  c.x = Math.min(1 - c.w, c.x + 0.03); c.y = Math.min(1 - c.h, c.y + 0.03);
+  if (isField(c)) fields.push(c); else elements.push(c);
+  sel = c;
+  drawAll(); renderProps();
+}
+function itemOp(op) {
+  const item = sel; if (!item) return;
+  if (op === 'dup') { duplicateItem(item); return; }
+  snapshot();
+  const arr = isField(item) ? fields : elements;
+  if (op === 'align-l') item.x = 0;
+  else if (op === 'align-c') item.x = Math.max(0, (1 - item.w) / 2);
+  else if (op === 'align-r') item.x = Math.max(0, 1 - item.w);
+  else if (op === 'fwd') {
+    const i = arr.indexOf(item);
+    if (i >= 0 && i < arr.length - 1) { arr.splice(i, 1); arr.splice(i + 1, 0, item); }
+  } else if (op === 'back') {
+    const i = arr.indexOf(item);
+    if (i > 0) { arr.splice(i, 1); arr.splice(i - 1, 0, item); }
+  }
+  drawAll();
+}
+
 /* ---------------- palette & mode ---------------- */
-function setPlaceType(type) {
-  placeType = type;
+function setPlaceType(pt) {
+  placeType = pt;
   els.palette.querySelectorAll('button').forEach(b => {
-    const on = b.dataset.field === type;
+    const on = pt && pt.src === 'field' && b.dataset.field === pt.type;
     b.classList.toggle('active', on);
     b.setAttribute('aria-pressed', on ? 'true' : 'false');
   });
-  els.pages.dataset.placing = type || '';
-  if (type) setStatus(els.status, `${FIELD_TYPES[type].label} — drag a box on a page to place it. Esc to stop.`);
+  els.paletteEl.querySelectorAll('button').forEach(b => {
+    const on = pt && pt.src === 'el' && b.dataset.el === pt.type;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+  els.pages.dataset.placing = pt ? pt.type : '';
+  if (pt) {
+    const label = pt.src === 'el' ? ELEMENT_TYPES[pt.type].label : FIELD_TYPES[pt.type].label;
+    setStatus(els.status, `${label} — drag a box on a page to place it. Esc to stop.`);
+  }
 }
 function syncMode() {
   els.previewBtn.textContent = mode === 'preview' ? '✎ Edit fields' : '▶ Preview form';
   els.previewBtn.setAttribute('aria-pressed', mode === 'preview' ? 'true' : 'false');
   els.palette.querySelectorAll('button').forEach(b => b.disabled = mode === 'preview');
+  els.paletteEl.querySelectorAll('button').forEach(b => b.disabled = mode === 'preview');
   els.clear.classList.toggle('hidden', mode !== 'preview');
   els.pages.dataset.mode = mode;
 }
@@ -670,6 +1039,142 @@ function updateExistingField(R, doc, orig, f, docPages, helv) {
     if (w) w.setRectangle(r);
   }
 }
+/* ---------------- saving: content elements ---------------- */
+function hexToRgb(R, hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return R.rgb(0, 0, 0);
+  const n = parseInt(m[1], 16);
+  return R.rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
+}
+function wrapLines(text, font, size, maxW) {
+  const out = [];
+  for (const para of String(text).split('\n')) {
+    let line = '';
+    for (const word of para.split(/(\s+)/)) {
+      if (!word) continue;
+      const test = line ? line + word : word;
+      if (font.widthOfTextAtSize(test, size) <= maxW || !line) line = test;
+      else { out.push(line.trimEnd()); line = word.trimStart(); }
+    }
+    out.push(line);
+  }
+  return out;
+}
+const LATIN_OK = /^[\u0020-\u007E\u00A0-\u00FF\u2013\u2014\u2018\u2019\u201C\u201D\u2026\u20AC]*$/;
+function rasterText(el, boxWpt, boxHpt) {
+  // render text to a canvas (any script, any style) and return a PNG data URL
+  const scale = 3;
+  const c = document.createElement('canvas'), g = c.getContext('2d');
+  const css = FONT_FAMILIES[el.family] || FONT_FAMILIES.sans;
+  const font = `${el.italic ? 'italic ' : ''}${el.bold ? 700 : 400} ${el.size * scale}px ${css}`;
+  const lh = el.size * scale * 1.25;
+  // wrap by measuring
+  g.font = font;
+  const maxW = boxWpt * scale;
+  const lines = [];
+  for (const para of String(el.text).split('\n')) {
+    let line = '';
+    for (const word of para.split(/(\s+)/)) {
+      if (!word) continue;
+      const test = line ? line + word : word;
+      if (g.measureText(test).width <= maxW || !line) line = test;
+      else { lines.push(line.trimEnd()); line = word.trimStart(); }
+    }
+    lines.push(line);
+  }
+  c.width = Math.max(2, Math.ceil(boxWpt * scale));
+  c.height = Math.max(2, Math.ceil(Math.min(lines.length * lh, boxHpt * scale)));
+  g.font = font; g.fillStyle = el.color; g.textBaseline = 'top';
+  lines.forEach((l, i) => {
+    if (i * lh >= c.height) return;
+    let x = 0;
+    const w = g.measureText(l).width;
+    if (el.align === 'center') x = (c.width - w) / 2;
+    else if (el.align === 'right') x = c.width - w;
+    g.fillText(l, x, i * lh);
+  });
+  return { url: c.toDataURL('image/png'), wPt: c.width / scale, hPt: c.height / scale };
+}
+function dataUrlBytes(url) {
+  const b64 = url.split(',')[1] || '';
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+async function drawElements(R, doc, helv) {
+  const STD = {
+    sans: [R.StandardFonts.Helvetica, R.StandardFonts.HelveticaBold, R.StandardFonts.HelveticaOblique, R.StandardFonts.HelveticaBoldOblique],
+    serif: [R.StandardFonts.TimesRoman, R.StandardFonts.TimesRomanBold, R.StandardFonts.TimesRomanItalic, R.StandardFonts.TimesRomanBoldItalic],
+    mono: [R.StandardFonts.Courier, R.StandardFonts.CourierBold, R.StandardFonts.CourierOblique, R.StandardFonts.CourierBoldOblique],
+  };
+  const docPages = doc.getPages();
+  for (const el of elements) {
+    const P = docPages[el.page - 1];
+    if (!P) continue;
+    const pg = pages[el.page - 1];
+    const r = boxToPdf(pg, el);
+    try {
+      if (el.kind === 'text') {
+        const fam = STD[el.family] || STD.sans;
+        const fontName = fam[(el.bold ? 1 : 0) + (el.italic ? 2 : 0)];
+        if (LATIN_OK.test(el.text)) {
+          const font = await doc.embedFont(fontName);
+          const color = hexToRgb(R, el.color);
+          const lines = wrapLines(el.text, font, el.size, r.width);
+          const lh = el.size * 1.25;
+          lines.forEach((line, i) => {
+            const w = font.widthOfTextAtSize(line, el.size);
+            let x = r.x;
+            if (el.align === 'center') x = r.x + (r.width - w) / 2;
+            else if (el.align === 'right') x = r.x + r.width - w;
+            P.drawText(line, { x, y: r.y + r.height - el.size - i * lh, size: el.size, font, color });
+          });
+        } else {
+          const im = rasterText(el, r.width, r.height);
+          const img = await doc.embedPng(dataUrlBytes(im.url));
+          P.drawImage(img, { x: r.x, y: r.y + r.height - im.hPt, width: im.wPt, height: im.hPt });
+        }
+      } else if (el.kind === 'image' && el.imgData) {
+        const img = el.imgType === 'jpg' ? await doc.embedJpg(dataUrlBytes(el.imgData)) : await doc.embedPng(dataUrlBytes(el.imgData));
+        P.drawImage(img, { x: r.x, y: r.y, width: r.width, height: r.height });
+      } else if (el.kind === 'rect' || el.kind === 'highlight') {
+        P.drawRectangle({
+          x: r.x, y: r.y, width: r.width, height: r.height,
+          color: el.fill === 'none' ? undefined : hexToRgb(R, el.fill),
+          borderColor: el.strokeWidth > 0 ? hexToRgb(R, el.stroke) : undefined,
+          borderWidth: el.strokeWidth, opacity: el.opacity,
+        });
+      } else if (el.kind === 'ellipse') {
+        P.drawEllipse({
+          x: r.x + r.width / 2, y: r.y + r.height / 2, xScale: r.width / 2, yScale: r.height / 2,
+          color: el.fill === 'none' ? undefined : hexToRgb(R, el.fill),
+          borderColor: el.strokeWidth > 0 ? hexToRgb(R, el.stroke) : undefined,
+          borderWidth: el.strokeWidth, opacity: el.opacity,
+        });
+      } else if (el.kind === 'line') {
+        const x1 = el.flip ? r.x + r.width : r.x, y1 = el.flip ? r.y : r.y + r.height;
+        const x2 = el.flip ? r.x : r.x + r.width, y2 = el.flip ? r.y + r.height : r.y;
+        P.drawLine({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 }, thickness: el.strokeWidth, color: hexToRgb(R, el.stroke), opacity: el.opacity });
+      } else if (el.kind === 'draw' && el.points.length > 1) {
+        const scale = 3;
+        const c = document.createElement('canvas'), g = c.getContext('2d');
+        c.width = Math.max(2, Math.ceil(r.width * scale));
+        c.height = Math.max(2, Math.ceil(r.height * scale));
+        g.strokeStyle = el.stroke; g.lineWidth = Math.max(1, el.strokeWidth * scale);
+        g.lineCap = 'round'; g.lineJoin = 'round';
+        g.beginPath();
+        el.points.forEach(([u, v], i) => {
+          const x = (u - el.x) / el.w * c.width, y = (v - el.y) / el.h * c.height;
+          if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+        });
+        g.stroke();
+        const img = await doc.embedPng(dataUrlBytes(c.toDataURL('image/png')));
+        P.drawImage(img, { x: r.x, y: r.y, width: r.width, height: r.height });
+      }
+    } catch (e) { console.warn('draw element failed', el.kind, e); }
+  }
+}
 async function buildFormPdf() {
   const R = await loadLib('pdflib');
   const doc = await R.PDFDocument.load(pdfBytes, { updateMetadata: false });
@@ -677,6 +1182,9 @@ async function buildFormPdf() {
   const helv = await doc.embedFont(R.StandardFonts.Helvetica);
   const docPages = doc.getPages();
   const removedGroups = new Set(), removedSingles = new Set();
+
+  // 0. content elements are drawn into the page content first (under fields)
+  await drawElements(R, doc, helv);
 
   // 1. fields the user deleted
   for (const d of deletedExisting) {
@@ -728,13 +1236,16 @@ async function savePdf() {
     const bytes = await buildFormPdf();
     const base = splitName(file)[0];
     downloadBlob(new Blob([bytes], { type: 'application/pdf' }), base + '-form.pdf');
-    // the saved file is now the working copy — later saves build on it
-    pdfBytes = bytes;
+    const nEl = elements.length;
+    const n = fields.length;
+    // content elements are now baked into the pages — clear them so a
+    // second save does not draw them twice, then re-render from the bytes
+    elements = [];
+    await reopenKeepingItems(bytes, p => p);
     for (const f of fields) { f.existing = true; f.origName = f.name; f.origRect = boxToPdf(pages[f.page - 1], f); }
     deletedExisting = [];
     history = []; redoStack = []; syncUndo();
-    const n = fields.length;
-    setStatus(els.status, `Saved ${base}-form.pdf — ${n} field${n === 1 ? '' : 's'} in the form. Keep editing the same file, or open another PDF.`);
+    setStatus(els.status, `Saved ${base}-form.pdf — ${n} field${n === 1 ? '' : 's'}${nEl ? ` and ${nEl} added element${nEl === 1 ? '' : 's'} baked in` : ''}. Keep editing the same file, or open another PDF.`);
     drawAll(); renderProps();
   } catch (e) {
     console.error(e);
@@ -749,21 +1260,95 @@ window.addEventListener('pointermove', onPointerMove);
 window.addEventListener('pointerup', onPointerUp);
 els.palette.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
   if (mode === 'preview') return;
-  setPlaceType(placeType === b.dataset.field ? null : b.dataset.field);
+  const pt = { src: 'field', type: b.dataset.field };
+  setPlaceType(placeType && placeType.src === 'field' && placeType.type === pt.type ? null : pt);
 }));
+els.paletteEl.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  if (mode === 'preview') return;
+  const type = b.dataset.el;
+  if (type === 'image') { els.imgInput.dataset.replace = ''; els.imgInput.click(); return; }
+  const pt = { src: 'el', type };
+  setPlaceType(placeType && placeType.src === 'el' && placeType.type === type ? null : pt);
+}));
+els.imgInput.addEventListener('change', async () => {
+  const f = els.imgInput.files && els.imgInput.files[0];
+  els.imgInput.value = '';
+  if (!f) { els.imgInput.dataset.replace = ''; setPlaceType(null); return; }
+  try {
+    const dataUrl = await readImageFile(f);
+    const replace = els.imgInput.dataset.replace === '1';
+    els.imgInput.dataset.replace = '';
+    if (replace && sel && !isField(sel) && sel.kind === 'image') {
+      snapshot();
+      sel.imgData = dataUrl.url; sel.imgType = dataUrl.type;
+      drawAll();
+      setStatus(els.status, 'Image replaced.');
+      return;
+    }
+    pendingImage = dataUrl;
+    setPlaceType({ src: 'el', type: 'image' });
+    setStatus(els.status, 'Image ready — drag a box on a page to place it. Esc to stop.');
+  } catch (e) {
+    setStatus(els.status, 'Could not read that image.', 'err');
+  }
+});
+/* read an image file, downscaling to at most 2000px on a side */
+function readImageFile(f) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(f);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const max = 2000, k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+        const w = Math.max(1, Math.round(img.naturalWidth * k)), h = Math.max(1, Math.round(img.naturalHeight * k));
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        const isPng = /png$/i.test(f.type) || /\.png$/i.test(f.name);
+        resolve({ dataUrl: c.toDataURL(isPng ? 'image/png' : 'image/jpeg', 0.92), type: isPng ? 'png' : 'jpg', w, h });
+      } catch (e) { reject(e); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad image')); };
+    img.src = url;
+  });
+}
+els.blankA4.addEventListener('click', () => startBlank('a4'));
+els.blankLetter.addEventListener('click', () => startBlank('letter'));
+els.addPage.addEventListener('click', () => pageOp('add'));
+els.dupPage.addEventListener('click', () => pageOp('dup', sel ? sel.page : pages.length));
+els.delPage.addEventListener('click', () => pageOp('del', sel ? sel.page : pages.length));
+els.zoom.addEventListener('change', () => setZoom(Number(els.zoom.value) / 100));
+els.pages.addEventListener('click', (e) => {
+  const op = e.target.closest('[data-pageop]');
+  if (op) { e.stopPropagation(); pageOp(op.dataset.pageop, Number(op.dataset.page)); }
+});
 els.undo.addEventListener('click', undo);
 els.redo.addEventListener('click', redo);
 els.save.addEventListener('click', savePdf);
 els.previewBtn.addEventListener('click', togglePreview);
 els.clear.addEventListener('click', clearPreview);
 window.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && placeType) { setPlaceType(null); return; }
+  if (e.key === 'Escape' && placeType) { setPlaceType(null); pendingImage = null; return; }
   if (!pdf || mode === 'preview') return;
   const t = e.target;
   if (t.matches('input, textarea, select')) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
   if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
-  if ((e.key === 'Delete' || e.key === 'Backspace') && sel) { e.preventDefault(); deleteField(sel); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd' && sel) { e.preventDefault(); duplicateItem(sel); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && sel) { e.preventDefault(); copyItem(sel); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') { e.preventDefault(); pasteItem(); return; }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && sel) { e.preventDefault(); deleteItem(sel); return; }
+  if (sel && e.key.startsWith('Arrow')) {
+    e.preventDefault();
+    snapshot();
+    const step = e.shiftKey ? 0.02 : 0.004;
+    if (e.key === 'ArrowLeft') sel.x = Math.max(0, sel.x - step);
+    if (e.key === 'ArrowRight') sel.x = Math.min(1 - sel.w, sel.x + step);
+    if (e.key === 'ArrowUp') sel.y = Math.max(0, sel.y - step);
+    if (e.key === 'ArrowDown') sel.y = Math.min(1 - sel.h, sel.y + step);
+    drawAll();
+  }
 });
 els.pages.addEventListener('click', e => {
   const btn = e.target.closest('[data-fb-action]');
@@ -775,5 +1360,5 @@ els.pages.addEventListener('click', e => {
 });
 
 /* test hooks */
-window.__fbTest = { get fields() { return fields; }, get pages() { return pages; }, get mode() { return mode; } };
+window.__fbTest = { get fields() { return fields; }, get elements() { return elements; }, get pages() { return pages; }, get mode() { return mode; }, get zoom() { return zoom; } };
 window.__fbLast = { saved: 0 };

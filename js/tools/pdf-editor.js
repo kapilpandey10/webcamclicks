@@ -4,11 +4,11 @@
    other scripts are embedded as sharp images so every language works without font files. */
 
 import { $, setupDropzone, splitName, downloadBlob, setStatus, loadLib, loadPdfjs, formatBytes } from './common.js';
-import { extractLines, sampleColors, removeShowText, pageContent, setPageContent } from './pdf-text-edit.js';
+import { extractLines, sampleColors, removeShowText, removeImages, pageContent, setPageContent } from './pdf-text-edit.js';
 
 const els = {
   drop: $('#t-drop'), input: $('#t-input'), status: $('#t-status'), pages: $('#pe-pages'), tools: $('#pe-tools'), color: $('#pe-color'),
-  size: $('#pe-size'), width: $('#pe-width'), save: $('#pe-save'), undo: $('#pe-undo'), redo: $('#pe-redo'), imgInput: $('#pe-img'), sigModal: $('#pe-sig'),
+  size: $('#pe-size'), width: $('#pe-width'), font: $('#pe-font'), boldBtn: $('#pe-bold'), italicBtn: $('#pe-italic'), save: $('#pe-save'), undo: $('#pe-undo'), redo: $('#pe-redo'), imgInput: $('#pe-img'), sigModal: $('#pe-sig'),
   sigPad: $('#pe-sigpad'), sigType: $('#pe-sigtext'), sigUse: $('#pe-sig-use'), sigClear: $('#pe-sig-clear'), sigCancel: $('#pe-sig-cancel'),
   info: $('#pe-info'), editor: $('#pe-editor'), zoomOut: $('#pe-zoom-out'), zoomIn: $('#pe-zoom-in'), zoomLabel: $('#pe-zoom-label'),
   fit: $('#pe-fit'), findToggle: $('#pe-find-toggle'), find: $('#pe-find'), findInput: $('#pe-find-input'), findPrev: $('#pe-find-prev'),
@@ -19,8 +19,39 @@ const els = {
 let pdfBytes = null, pdf = null, file = null;
 let pages = [];          // { n, wPt, hPt, rot, el, layer, svg, deleted, addRot }
 let anns = [];           // annotations (coordinates are fractions of the displayed page)
-let tool = 'select', sel = null, history = [], redoStack = [], aid = 0, hasText = false;
+let tool = 'select', sel = null, history = [], redoStack = [], aid = 0, hasText = false, hasImages = false;
 let zoom = 1, activePage = 1, findHits = [], findCur = -1, findQuery = '', findToken = 0, pageObs = null;
+
+/** Embedded raster images on a page, as display fractions (from the operator list). */
+async function detectImages(pg) {
+  pg.images = [];
+  if (pg.rot !== 0) return;
+  try {
+    const pdfjs = await loadPdfjs();
+    const OPS = pdfjs.OPS;
+    const list = await pg.page.getOperatorList();
+    const vp = pg.page.getViewport({ scale: 1 });
+    let ctm = [1, 0, 0, 1, 0, 0]; const stack = [];
+    const mul6 = (m, n) => [m[0] * n[0] + m[1] * n[2], m[0] * n[1] + m[1] * n[3], m[2] * n[0] + m[3] * n[2], m[2] * n[1] + m[3] * n[3], m[4] * n[0] + m[5] * n[2] + n[4], m[4] * n[1] + m[5] * n[3] + n[5]];
+    const corner = (x, y) => vp.convertToViewportPoint(x * ctm[0] + y * ctm[2] + ctm[4], x * ctm[1] + y * ctm[3] + ctm[5]);
+    const push = () => {
+      const ps = [corner(0, 0), corner(1, 0), corner(0, 1), corner(1, 1)];
+      const us = ps.map((p) => p[0] / vp.width), vs = ps.map((p) => p[1] / vp.height);
+      const u = Math.min(...us), v = Math.min(...vs), w = Math.max(...us) - u, h = Math.max(...vs) - v;
+      if (w < 0.005 || h < 0.005) return;   // ignore hairline / degenerate draws
+      pg.images.push({ u, v, w, h });
+    };
+    for (let i = 0; i < list.fnArray.length; i++) {
+      const fn = list.fnArray[i], a = list.argsArray[i];
+      if (fn === OPS.transform) ctm = mul6(a, ctm);   // cm left-multiplies the CTM (PDF spec), like removeShowText
+      else if (fn === OPS.save) stack.push(ctm.slice());
+      else if (fn === OPS.restore) ctm = stack.pop() || [1, 0, 0, 1, 0, 0];
+      else if (fn === OPS.paintImageXObject || fn === OPS.paintInlineImageXObject) push();
+    }
+    // de-duplicate identical boxes (the same image drawn twice at the same spot)
+    pg.images = pg.images.filter((im, i) => !pg.images.slice(0, i).some((o) => Math.abs(o.u - im.u) < 0.002 && Math.abs(o.v - im.v) < 0.002 && Math.abs(o.w - im.w) < 0.002 && Math.abs(o.h - im.h) < 0.002));
+  } catch (e) { console.warn('image detection skipped on page', pg.n, e); pg.images = []; }
+}
 
 /** Display box (fractions of the page) for a text line in PDF user space. */
 function lineBox(pg, l) {
@@ -48,7 +79,7 @@ async function openPdf(f) {
     const page = await pdf.getPage(i);
     const vp1 = page.getViewport({ scale: 1 });
     const [x0, y0, x1, y1] = page.view;
-    const pg = { n: i, wPt: x1 - x0, hPt: y1 - y0, vx0: x0, vy1: y1, rot: page.rotate % 360, dispW: vp1.width, dispH: vp1.height, deleted: false, addRot: 0, lines: [] };
+    const pg = { n: i, wPt: x1 - x0, hPt: y1 - y0, vx0: x0, vy1: y1, rot: page.rotate % 360, dispW: vp1.width, dispH: vp1.height, deleted: false, addRot: 0, lines: [], images: [] };
     const wrap = document.createElement('div');
     wrap.className = 'pe-page'; wrap.dataset.page = i;
     wrap.innerHTML = `<div class="pe-pagebar"><span>Page ${i}</span><button type="button" data-pa="rot" title="Rotate page">⟳ Rotate</button><button type="button" data-pa="del" title="Delete page">🗑 Delete</button></div>
@@ -63,13 +94,15 @@ async function openPdf(f) {
   for (const pg of pages) {
     if (pg.rot !== 0) continue;
     try { pg.lines = (await extractLines(pg.page)).map((l) => lineBox(pg, l)); editable += pg.lines.length; } catch (e) { console.warn(e); }
+    await detectImages(pg);
   }
   hasText = editable > 0;
+  hasImages = pages.some((p) => p.images.length > 0);
   setZoom(1, true);
   clearFind(true);
   activePage = 1; updatePageInd(); observePages(); buildThumbs();
   drawAll();
-  setStatus(els.status, hasText ? 'Pick a tool above. “Edit text” lets you change the existing text: click any line.' : 'Pick a tool above, then click or drag on a page.');
+  setStatus(els.status, hasText ? `Pick a tool above. “Edit text” lets you change the existing text${hasImages ? ' and remove pictures' : ''}: click any line${hasImages ? ' or image' : ''}.` : hasImages ? 'Pick a tool above. “Edit text” lets you remove pictures: click any image.' : 'Pick a tool above, then click or drag on a page.');
   els.save.disabled = false;
 }
 
@@ -127,10 +160,11 @@ function drawAll() {
     if (a.type === 'text') {
       d.contentEditable = a === sel ? 'true' : 'false';
       d.textContent = a.text;
-      Object.assign(d.style, { fontSize: `${a.size * pxPerPt(pg)}px`, color: a.color, fontWeight: a.bold ? '700' : '400' });
+      Object.assign(d.style, { fontSize: `${a.size * pxPerPt(pg)}px`, color: a.color, fontWeight: a.bold ? '700' : '400', fontFamily: CSS_FAMILY[a.family] || CSS_FAMILY.sans, fontStyle: a.italic ? 'italic' : 'normal' });
       d.addEventListener('input', () => { a.text = d.innerText; });
       d.addEventListener('blur', () => { if (!a.text.trim()) { anns = anns.filter((x) => x !== a); drawAll(); } });
     } else if (a.type === 'image') d.innerHTML = `<img src="${a.src}" alt="" draggable="false">`;
+    else if (a.type === 'whiteout') d.style.background = a.color || '#ffffff';
     else if (a.type === 'highlight') d.style.background = a.color + '66';
     else if (a.type === 'rect') d.style.borderColor = a.color;
     if (a === sel) d.insertAdjacentHTML('beforeend', '<span class="pe-handle" data-h="se"></span><button type="button" class="pe-x" data-x aria-label="Delete">✕</button>');
@@ -156,6 +190,13 @@ function drawAll() {
         Object.assign(t.style, { left: `${l.u * 100}%`, top: `${l.v * 100}%`, width: `${l.w * 100}%`, height: `${l.h * 100}%` });
         pg.layer.appendChild(t);
       });
+      (pg.images || []).forEach((im, i) => {
+        if (anns.some((a) => a.type === 'whiteout' && a.img && a.page === pg.n && Math.abs(a.x - im.u) < 0.005 && Math.abs(a.y - im.v) < 0.005)) return;   // already removed
+        const t = document.createElement('div');
+        t.className = 'pe-timg'; t.dataset.img = i; t.title = 'Click to remove this image';
+        Object.assign(t.style, { left: `${im.u * 100}%`, top: `${im.v * 100}%`, width: `${im.w * 100}%`, height: `${im.h * 100}%` });
+        pg.layer.appendChild(t);
+      });
     }
   }
   syncThumbs();
@@ -171,7 +212,7 @@ function startEdit(pg, line, ev) {
     size: +line.size.toFixed(2), color, bg, uniform, family: line.family, bold: line.bold, italic: line.italic,
     base: { x0: line.x0, x1: line.x1, y: line.y, size: line.size, asc: line.asc, desc: line.desc } };
   anns.push(a); sel = a; drawAll();
-  els.size.value = Math.round(a.size); els.color.value = a.color;
+  syncProps(a);
   const el = pg.layer.querySelector(`[data-id="${a.id}"]`);
   if (!el) return;
   el.contentEditable = 'true'; el.focus();
@@ -180,6 +221,26 @@ function startEdit(pg, line, ev) {
   const s = document.getSelection();
   if (r && el.contains(r.startContainer)) { s.removeAllRanges(); s.addRange(r); } else { s.selectAllChildren(el); s.collapseToEnd(); }
   setStatus(els.status, 'Type to change the text. Font, size and colour are matched to the original. Click another line to edit it.');
+}
+
+/** Cover an embedded image with its background colour; saving takes the picture out of the page content when it can. */
+function removeImageAt(pg, im) {
+  if (!im) return;
+  snapshot();
+  const c = pg.sheet.querySelector('canvas');
+  const { bg } = sampleColors(c, { x: im.u * c.width, y: im.v * c.height, w: im.w * c.width, h: im.h * c.height });
+  anns.push({ id: `a${++aid}`, type: 'whiteout', img: true, page: pg.n, x: im.u, y: im.v, w: im.w, h: im.h, color: bg });
+  drawAll();
+  setStatus(els.status, 'Image removed. It disappears from the saved PDF — the picture itself is taken out where possible, otherwise it is covered with the page colour. Undo brings it back.');
+}
+
+/** Show the selected text's font, size and colour in the toolbar controls. */
+function syncProps(a) {
+  if (!a || (a.type !== 'text' && a.type !== 'edit')) return;
+  els.size.value = Math.round(a.size); els.color.value = a.color;
+  els.font.value = a.family || 'sans';
+  els.boldBtn.setAttribute('aria-pressed', String(!!a.bold));
+  els.italicBtn.setAttribute('aria-pressed', String(!!a.italic));
 }
 
 function getState() { return { anns, pages: pages.map((p) => [p.deleted, p.addRot]) }; }
@@ -371,12 +432,15 @@ els.pages.addEventListener('pointerdown', (e) => {
   const hit = pageFromEvent(e); if (!hit) return;
   const tl = e.target.closest('.pe-tline');
   if (tl && tool === 'edittext') { e.preventDefault(); startEdit(hit.pg, hit.pg.lines[+tl.dataset.line], e); return; }
+  const ti = e.target.closest('.pe-timg');
+  if (ti && tool === 'edittext') { e.preventDefault(); removeImageAt(hit.pg, (hit.pg.images || [])[+ti.dataset.img]); return; }
   const annEl = e.target.closest('.pe-ann, path[data-id]');
   if (tool === 'edittext' && !annEl) { sel = null; drawAll(); return; }
   if (tool === 'select' || (annEl && tool !== 'draw')) {
     if (!annEl) { sel = null; drawAll(); return; }
     const a = anns.find((x) => x.id === annEl.dataset.id); if (!a) return;
     if (sel !== a) { sel = a; drawAll(); }
+    syncProps(a);
     if (a.type === 'text' && e.detail >= 2) { const el = hit.pg.layer.querySelector(`[data-id="${a.id}"]`); el && el.focus(); return; }
     if (a.type === 'edit') { const el = hit.pg.layer.querySelector(`[data-id="${a.id}"]`); if (el) { el.contentEditable = 'true'; setTimeout(() => el.focus(), 0); } return; }
     if (a.type === 'ink') return;
@@ -390,8 +454,8 @@ els.pages.addEventListener('pointerdown', (e) => {
   snapshot();
   const color = els.color.value, pg = hit.pg;
   if (tool === 'text') {
-    const a = { id: `a${++aid}`, type: 'text', page: pg.n, x: hit.u, y: hit.v - 0.01, w: 0.4, h: 0.04, text: 'Type here', size: +els.size.value, color, bold: false };
-    anns.push(a); sel = a; drawAll(); setTool('select');
+    const a = { id: `a${++aid}`, type: 'text', page: pg.n, x: hit.u, y: hit.v - 0.01, w: 0.4, h: 0.04, text: 'Type here', size: +els.size.value, color, family: els.font.value, bold: els.boldBtn.getAttribute('aria-pressed') === 'true', italic: els.italicBtn.getAttribute('aria-pressed') === 'true' };
+    anns.push(a); sel = a; drawAll(); setTool('select'); syncProps(a);
     const el = pg.layer.querySelector(`[data-id="${a.id}"]`); if (el) { el.contentEditable = 'true'; el.focus(); document.getSelection().selectAllChildren(el); }
     return;
   }
@@ -444,7 +508,7 @@ function setTool(t) {
   tool = t;
   els.tools.querySelectorAll('[data-tool]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === t)));
   els.pages.dataset.tool = t;
-  if (t === 'edittext' && pdf && !hasText) setStatus(els.status, 'This PDF has no editable text layer (it is probably a scan). Use Image to text (OCR) to make it searchable first, or add new text with the Text tool.', 'err');
+  if (t === 'edittext' && pdf && !hasText && !hasImages) setStatus(els.status, 'This PDF has no editable text layer (it is probably a scan). Use Image to text (OCR) to make it searchable first, or add new text with the Text tool.', 'err');
   if (pages.length) drawAll();
 }
 els.tools.addEventListener('click', (e) => {
@@ -474,6 +538,18 @@ document.addEventListener('keydown', (e) => {
   if (c === els.width && sel.type === 'ink') sel.width = +els.width.value;
   drawAll();
 }));
+els.font.addEventListener('change', () => {
+  if (!sel || (sel.type !== 'text' && sel.type !== 'edit')) return;
+  sel.family = els.font.value; drawAll();
+});
+function toggleStyle(k) {
+  const b = k === 'bold' ? els.boldBtn : els.italicBtn;
+  const on = b.getAttribute('aria-pressed') !== 'true';
+  b.setAttribute('aria-pressed', String(on));
+  if (sel && (sel.type === 'text' || sel.type === 'edit')) { sel[k] = on; drawAll(); }
+}
+els.boldBtn.addEventListener('click', () => toggleStyle('bold'));
+els.italicBtn.addEventListener('click', () => toggleStyle('italic'));
 
 /* place an image or signature in the middle of the first visible page */
 function visiblePage() {
@@ -563,12 +639,34 @@ function textAsImage(a, pg) {
 
 const STD = { sans: ['Helvetica', 'HelveticaBold', 'HelveticaOblique', 'HelveticaBoldOblique'], serif: ['TimesRoman', 'TimesRomanBold', 'TimesRomanItalic', 'TimesRomanBoldItalic'], mono: ['Courier', 'CourierBold', 'CourierOblique', 'CourierBoldOblique'] };
 
+/** Names ('/Im1') of the page's image XObjects, from its Resources dictionary. */
+function imageXObjectNames(R, doc, page) {
+  const names = new Set();
+  try {
+    const res = page.node.Resources();
+    if (!res) return names;
+    const xo = res.get(R.PDFName.of('XObject'));
+    if (!xo) return names;
+    const dict = xo instanceof R.PDFRef ? doc.context.lookup(xo) : xo;
+    if (!dict || typeof dict.keys !== 'function') return names;
+    for (const key of dict.keys()) {
+      const val = dict.get(key);
+      const obj = val instanceof R.PDFRef ? doc.context.lookup(val) : val;
+      const d = obj && obj.dict ? obj.dict : (obj && typeof obj.get === 'function' ? obj : null);
+      if (d && d.get(R.PDFName.of('Subtype')) === R.PDFName.of('Image')) {
+        const k = typeof key.decodeText === 'function' ? key.decodeText() : String(key).replace(/^\/+/, '');
+        names.add('/' + k);
+      }
+    }
+  } catch (e) { console.warn('could not read image XObjects', e); }
+  return names;
+}
+
 /** Write all edits into a copy of the PDF. Replaced text is removed from the page content, except for edits in `coverOnly` (covered instead). */
 async function buildPdf(R, coverOnly) {
   const doc = await R.PDFDocument.load(pdfBytes, { updateMetadata: false });
   const fonts = new Map();
   const font = async (name) => { if (!fonts.has(name)) fonts.set(name, await doc.embedFont(R.StandardFonts[name])); return fonts.get(name); };
-  const helv = await font('Helvetica'), helvB = await font('HelveticaBold');
   const docPages = doc.getPages();
   const embedCache = new Map();
   const embed = async (url) => {
@@ -577,6 +675,20 @@ async function buildPdf(R, coverOnly) {
     const img = url.startsWith('data:image/png') ? await doc.embedPng(bytes) : await doc.embedJpg(bytes);
     embedCache.set(url, img); return img;
   };
+
+  // 1b. removed images: take the picture out of the page content where possible (cover rect as fallback)
+  const imgRemoved = new Set();   // ann ids whose image was really removed (no cover rect needed)
+  const imgAnns = anns.filter((a) => a.type === 'whiteout' && a.img && !pages[a.page - 1].deleted);
+  for (const n of new Set(imgAnns.map((a) => a.page))) {
+    const mine = imgAnns.filter((a) => a.page === n);
+    try {
+      const P = docPages[n - 1];
+      const names = imageXObjectNames(R, doc, P);
+      const boxes = mine.map((a) => { const b = boxToPdf(pages[n - 1], a); return { x0: b.x - 2, y0: b.y - 2, x1: b.x + b.width + 2, y1: b.y + b.height + 2 }; });
+      const { bytes, hits } = removeImages(pageContent(R, doc, P), boxes, names);
+      if (hits.some((h) => h)) { setPageContent(R, doc, P, bytes); mine.forEach((a, i) => hits[i] && imgRemoved.add(a.id)); }
+    } catch (e) { console.warn('image removal skipped on page', n, e); }
+  }
 
   // 1. edited existing text: take the old text out of the page content first (before anything is drawn)
   const edits = anns.filter((a) => a.type === 'edit' && a.text !== a.orig && !pages[a.page - 1].deleted);
@@ -615,7 +727,9 @@ async function buildPdf(R, coverOnly) {
       const pts = a.pts.map(([u, v]) => toPdf(pg, u, v));
       for (let i = 1; i < pts.length; i++) P.drawLine({ start: { x: pts[i - 1][0], y: pts[i - 1][1] }, end: { x: pts[i][0], y: pts[i][1] }, thickness: a.width, color: hexToRgb(a.color, R), lineCap: R.LineCapStyle.Round });
     } else if (a.type === 'whiteout' || a.type === 'highlight') {
-      P.drawRectangle({ ...boxToPdf(pg, a), color: hexToRgb(a.color, R), opacity: a.type === 'highlight' ? 0.4 : 1, blendMode: a.type === 'highlight' ? R.BlendMode.Multiply : undefined });
+      if (!(a.type === 'whiteout' && a.img && imgRemoved.has(a.id))) {   // image already taken out — nothing to cover
+        P.drawRectangle({ ...boxToPdf(pg, a), color: hexToRgb(a.color, R), opacity: a.type === 'highlight' ? 0.4 : 1, blendMode: a.type === 'highlight' ? R.BlendMode.Multiply : undefined });
+      }
     } else if (a.type === 'rect') {
       P.drawRectangle({ ...boxToPdf(pg, a), borderColor: hexToRgb(a.color, R), borderWidth: 2 });
     } else if (a.type === 'image') {
@@ -626,13 +740,14 @@ async function buildPdf(R, coverOnly) {
     } else if (a.type === 'text' && a.text.trim()) {
       const latin = /^[ -~ -ÿ\n]*$/.test(a.text);
       if (latin) {
+        const f = await font(STD[a.family || 'sans'][(a.bold ? 1 : 0) + (a.italic ? 2 : 0)]);
         a.text.split('\n').forEach((line, i) => {
           const v = a.y + ((i * a.size * 1.25 + a.size * 0.95) / pg.dispH);
           const [x, y] = toPdf(pg, a.x, v);
-          P.drawText(line, { x, y, size: a.size, font: a.bold ? helvB : helv, color: hexToRgb(a.color, R), rotate: rotD });
+          P.drawText(line, { x, y, size: a.size, font: f, color: hexToRgb(a.color, R), rotate: rotD });
         });
       } else {
-        const im = textAsImage(a, pg), img = await embed(im.url);
+        const im = textAsImage({ ...a, css: CSS_FAMILY[a.family] || CSS_FAMILY.sans }, pg), img = await embed(im.url);
         const [x, y] = toPdf(pg, a.x, a.y + im.hPt / pg.dispH);
         P.drawImage(img, { x, y, width: im.wPt, height: im.hPt, rotate: rotD });
       }
@@ -640,7 +755,7 @@ async function buildPdf(R, coverOnly) {
   }
   pages.forEach((pg, i) => { if (pg.addRot) docPages[i].setRotation(R.degrees((pg.rot + pg.addRot) % 360)); });
   for (let i = pages.length - 1; i >= 0; i--) if (pages[i].deleted) doc.removePage(i);
-  return { bytes: await doc.save(), removed };
+  return { bytes: await doc.save(), removed, imgRemoved };
 }
 
 /** After removing text, re-read the saved pages: every untouched line must still be there and the old text gone.
@@ -681,19 +796,21 @@ els.save.addEventListener('click', async () => {
     const R = await loadLib('pdflib');
     // remove old text where it is safe; any edit whose removal touched other text is covered instead (always safe)
     const coverOnly = new Set();
-    let { bytes, removed } = await buildPdf(R, coverOnly);
+    let { bytes, removed, imgRemoved } = await buildPdf(R, coverOnly);
     for (let round = 0; round < 3; round++) {
       const bad = await verifyRemoval(bytes, removed);
       if (!bad.size) break;
       bad.forEach((id) => coverOnly.add(id));
-      ({ bytes, removed } = await buildPdf(R, coverOnly));
+      ({ bytes, removed, imgRemoved } = await buildPdf(R, coverOnly));
     }
     downloadBlob(new Blob([bytes], { type: 'application/pdf' }), `${splitName(file.name)[0]}-edited.pdf`);
     const nEdits = anns.filter((a) => a.type === 'edit' && a.text !== a.orig).length;
+    const nImgs = anns.filter((a) => a.type === 'whiteout' && a.img).length;
+    const imgNote = nImgs ? ` ${nImgs} image${nImgs > 1 ? 's' : ''} removed${imgRemoved.size === nImgs ? '' : ` (${imgRemoved.size} taken out, ${nImgs - imgRemoved.size} covered with the page colour)`}.` : '';
     setStatus(els.status, nEdits
-      ? `Saved with ${nEdits} text change${nEdits > 1 ? 's' : ''}${removed.size === nEdits ? ': the old text was replaced, so copying and searching find the new wording' : removed.size ? ` (${removed.size} replaced in the text layer, ${nEdits - removed.size} covered with the page colour)` : ': the old text is covered with the page colour'}. Your PDF is downloading.`
-      : 'Saved. Your edited PDF is downloading.', 'ok');
-    window.__peLast = { removed: removed.size, covered: [...coverOnly].length };
+      ? `Saved with ${nEdits} text change${nEdits > 1 ? 's' : ''}${removed.size === nEdits ? ': the old text was replaced, so copying and searching find the new wording' : removed.size ? ` (${removed.size} replaced in the text layer, ${nEdits - removed.size} covered with the page colour)` : ': the old text is covered with the page colour'}.${imgNote} Your PDF is downloading.`
+      : `Saved.${imgNote} Your edited PDF is downloading.`, 'ok');
+    window.__peLast = { removed: removed.size, covered: [...coverOnly].length, imgRemoved: imgRemoved.size };
   } catch (e) {
     console.warn(e);
     setStatus(els.status, /encrypt/i.test(e.message) ? 'This PDF is encrypted. Unlock it first, then edit.' : `Could not save: ${e.message}`, 'err');

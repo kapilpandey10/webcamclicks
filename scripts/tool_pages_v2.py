@@ -390,61 +390,102 @@ PAGES['pdf-editor'] = dict(
   desc='Edit the existing text in a PDF, matched to its font, size and colour. Also add text, sign, highlight, white-out, insert images, rotate or delete pages. Free, no upload.',
   lead='Change the words already in your PDF: click a line and type, and the new text matches the original font, size and colour. Fill in forms, sign, highlight, add images and rotate or delete pages too. Everything happens on your device.',
   ui=f'''{DROP("application/pdf,.pdf", "Drop a PDF to edit", "Nothing is uploaded · works offline once loaded", multiple=False)}
-  <p class="t-status" id="t-status" role="status"></p>
-  <div id="pe-editor" class="pe-editor" hidden>
-    <div class="pe-toolbar">
-      <div class="pe-tools" id="pe-tools" role="toolbar" aria-label="PDF tools">
-        <button type="button" data-tool="select" aria-pressed="true">↖ Select</button>
-        <button type="button" data-tool="edittext" aria-pressed="false" class="pe-hot">Aa Edit text</button>
-        <button type="button" data-tool="text" aria-pressed="false">T Add text</button>
-        <button type="button" data-tool="sign" aria-pressed="false">✍ Sign</button>
-        <button type="button" data-tool="draw" aria-pressed="false">✎ Draw</button>
-        <button type="button" data-tool="highlight" aria-pressed="false">▮ Highlight</button>
-        <button type="button" data-tool="whiteout" aria-pressed="false">▭ White-out</button>
-        <button type="button" data-tool="rect" aria-pressed="false">□ Box</button>
-        <button type="button" data-tool="image" aria-pressed="false">🖼 Image</button>
+  <p class=\"t-status\" id=\"t-status\" role=\"status\"></p>
+  <div id=\"pe-editor\" class=\"pe-editor\" hidden>
+    <div class=\"pe-toolbar\">
+      <div class=\"pe-tools\" id=\"pe-tools\" role=\"toolbar\" aria-label=\"PDF tools\">
+        <button type=\"button\" id=\"pe-side-toggle\" class=\"pe-side-toggle\" aria-label=\"Show pages\" aria-expanded=\"false\">☰ Pages</button>
+        <button type=\"button\" data-tool=\"select\" aria-pressed=\"true\">↖ Select</button>
+        <button type=\"button\" data-tool=\"edittext\" aria-pressed=\"false\" class=\"pe-hot\">Aa Edit text</button>
+        <button type=\"button\" data-tool=\"text\" aria-pressed=\"false\">T Add text</button>
+        <button type=\"button\" data-tool=\"sign\" aria-pressed=\"false\">✍ Sign</button>
+        <button type=\"button\" data-tool=\"draw\" aria-pressed=\"false\">✎ Draw</button>
+        <button type=\"button\" data-tool=\"highlight\" aria-pressed=\"false\">▮ Highlight</button>
+        <button type=\"button\" data-tool=\"whiteout\" aria-pressed=\"false\">▭ White-out</button>
+        <button type=\"button\" data-tool=\"rect\" aria-pressed=\"false\">□ Box</button>
+        <button type=\"button\" data-tool=\"image\" aria-pressed=\"false\">🖼 Image</button>
       </div>
-      <div class="pe-props">
-        <label>Colour <input type="color" id="pe-color" value="#0e0e12"></label>
-        <label>Text <input type="number" id="pe-size" min="6" max="72" value="12"> pt</label>
-        <label>Line <input type="number" id="pe-width" min="1" max="12" value="2"> pt</label>
-        <button class="t-btn sm" id="pe-undo" type="button" disabled>↶ Undo</button>
-        <button class="t-btn primary sm" id="pe-save" type="button" disabled>⬇ Save PDF</button>
+      <div class=\"pe-props\">
+        <label>Colour <input type=\"color\" id=\"pe-color\" value=\"#0e0e12\"></label>
+        <label>Text <input type=\"number\" id=\"pe-size\" min=\"6\" max=\"72\" value=\"12\"> pt</label>
+        <label>Font <select id=\"pe-font\" aria-label=\"Font\">
+          <option value=\"sans\" selected>Sans</option>
+          <option value=\"serif\">Serif</option>
+          <option value=\"mono\">Mono</option>
+        </select></label>
+        <span class=\"pe-fontstyle\" role=\"group\" aria-label=\"Text style\">
+          <button type=\"button\" id=\"pe-bold\" aria-pressed=\"false\" title=\"Bold\"><b>B</b></button>
+          <button type=\"button\" id=\"pe-italic\" aria-pressed=\"false\" title=\"Italic\"><i>I</i></button>
+        </span>
+        <label>Line <input type=\"number\" id=\"pe-width\" min=\"1\" max=\"12\" value=\"2\"> pt</label>
+        <span class=\"pe-zoom\" role=\"group\" aria-label=\"Zoom\">
+          <button type=\"button\" id=\"pe-zoom-out\" aria-label=\"Zoom out\">−</button>
+          <button type=\"button\" id=\"pe-zoom-label\" title=\"Reset to fit width\">100%</button>
+          <button type=\"button\" id=\"pe-zoom-in\" aria-label=\"Zoom in\">+</button>
+          <button type=\"button\" id=\"pe-fit\">Fit</button>
+        </span>
+        <button class=\"t-btn sm\" id=\"pe-undo\" type=\"button\" disabled>↶ Undo</button>
+        <button class=\"t-btn sm\" id=\"pe-redo\" type=\"button\" disabled>↷ Redo</button>
+        <button class=\"t-btn sm\" id=\"pe-find-toggle\" type=\"button\" aria-pressed=\"false\">🔍 Find</button>
+        <span class=\"pe-page-ind\" id=\"pe-page-ind\" aria-live=\"polite\"></span>
+        <button class=\"t-btn primary sm\" id=\"pe-save\" type=\"button\" disabled>⬇ Save PDF</button>
+      </div>
+      <div class=\"pe-find\" id=\"pe-find\" hidden>
+        <svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"M20 20l-3.5-3.5\"/></svg>
+        <input type=\"search\" id=\"pe-find-input\" placeholder=\"Search in this PDF…\" aria-label=\"Search in this PDF\" autocomplete=\"off\">
+        <span class=\"pe-find-count\" id=\"pe-find-count\" aria-live=\"polite\"></span>
+        <button type=\"button\" id=\"pe-find-prev\" aria-label=\"Previous match\">↑</button>
+        <button type=\"button\" id=\"pe-find-next\" aria-label=\"Next match\">↓</button>
+        <button type=\"button\" id=\"pe-find-close\" aria-label=\"Close search\">✕</button>
       </div>
     </div>
-    <p class="t-status" id="pe-info"></p>
-    <div class="pe-pages" id="pe-pages" data-tool="select"></div>
-    <input type="file" id="pe-img" accept="image/*" hidden>
+    <p class=\"t-status\" id=\"pe-info\"></p>
+    <div class=\"pe-work\">
+      <aside class=\"pe-side\" id=\"pe-side\" aria-label=\"Pages\">
+        <div class=\"pe-side-head\"><span>Pages</span><button type=\"button\" id=\"pe-side-close\" aria-label=\"Close pages\">✕</button></div>
+        <div class=\"pe-thumbs\" id=\"pe-thumbs\"></div>
+      </aside>
+      <div class=\"pe-main\">
+        <div class=\"pe-pages\" id=\"pe-pages\" data-tool=\"select\"></div>
+      </div>
+    </div>
+    <div class=\"pe-backdrop\" id=\"pe-backdrop\" hidden></div>
+    <input type=\"file\" id=\"pe-img\" accept=\"image/*\" hidden>
   </div>
-  <div class="pe-modal" id="pe-sig" hidden role="dialog" aria-label="Signature">
-    <div class="pe-modal-card">
+  <div class=\"pe-modal\" id=\"pe-sig\" hidden role=\"dialog\" aria-label=\"Signature\">
+    <div class=\"pe-modal-card\">
       <h2>Your signature</h2>
-      <p class="muted">Draw with your mouse, finger or stylus, or type your name.</p>
-      <canvas id="pe-sigpad" width="900" height="300"></canvas>
-      <label class="t-field" style="margin-top:10px">Or type it <input class="t-input" id="pe-sigtext" placeholder="Your name"></label>
-      <div class="t-actions"><button class="t-btn primary" id="pe-sig-use" type="button">Add signature</button><button class="t-btn" id="pe-sig-clear" type="button">Clear</button><button class="t-btn" id="pe-sig-cancel" type="button">Cancel</button></div>
+      <p class=\"muted\">Draw with your mouse, finger or stylus, or type your name.</p>
+      <canvas id=\"pe-sigpad\" width=\"900\" height=\"300\"></canvas>
+      <label class=\"t-field\" style=\"margin-top:10px\">Or type it <input class=\"t-input\" id=\"pe-sigtext\" placeholder=\"Your name\"></label>
+      <div class=\"t-actions\"><button class=\"t-btn primary\" id=\"pe-sig-use\" type=\"button\">Add signature</button><button class=\"t-btn\" id=\"pe-sig-clear\" type=\"button\">Clear</button><button class=\"t-btn\" id=\"pe-sig-cancel\" type=\"button\">Cancel</button></div>
     </div>
   </div>''',
   article='''<h2>What you can do</h2>
-<ul><li><strong>Edit existing text:</strong> choose <em>Edit text</em> and every line of text on the page becomes clickable. Click a line, put the cursor where you want and type. WebcamClicks detects the original font style (sans-serif, serif or monospace, bold, italic), the size and the text and background colours, and when you save, the old words are removed from the page and the new ones written in their place, so copying and searching the PDF find your new wording.</li>
-<li><strong>Fill in forms:</strong> choose <em>Text</em> and click where you want to type. Drag the box to line it up and set the size in points.</li>
+<ul><li><strong>Edit existing text:</strong> choose <em>Edit text</em> and every line of text on the page becomes clickable. Click a line, put the cursor where you want and type. WebcamClicks detects the original font style (sans-serif, serif or monospace, bold, italic), the size and the text and background colours, and when you save, the old words are removed from the page and the new ones written in their place, so copying and searching the PDF find your new wording. Pictures on the page are outlined too — click one to remove it.</li>
+<li><strong>Fill in forms:</strong> choose <em>Text</em> and click where you want to type. Drag the box to line it up, and pick the font (Sans, Serif or Mono), bold or italic, size and colour in the toolbar.</li>
 <li><strong>Sign documents:</strong> <em>Sign</em> lets you draw your signature or type your name; place it, then drag the corner to resize.</li>
 <li><strong>Highlight</strong> important passages and add <strong>boxes</strong> to draw attention.</li>
 <li><strong>White-out</strong> covers text or images with a white box. Note: it hides content visually; for confidential redaction, also remove the hidden text (see below).</li>
 <li><strong>Draw</strong> freehand notes, arrows and ticks.</li>
 <li><strong>Insert images</strong> such as a logo, stamp or photo.</li>
-<li><strong>Rotate or delete pages</strong> with the buttons above each page.</li></ul>
-<p>Shortcuts: <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo, <kbd>Delete</kbd> removes the selected item, <kbd>Esc</kbd> returns to Select.</p>
+<li><strong>Rotate or delete pages</strong> with the buttons above each page.</li>
+<li><strong>Find your way around:</strong> the thumbnail sidebar on the left jumps to any page and shows where you are, the zoom controls (or <kbd>Ctrl</kbd>+<kbd>+</kbd> / <kbd>Ctrl</kbd>+<kbd>−</kbd>) get you closer to the small print, and <em>Find</em> (<kbd>Ctrl</kbd>+<kbd>F</kbd>) searches the whole PDF and jumps between matches. On your phone, the pages list slides in from the left.</li></ul>
+<p>Shortcuts: <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo, <kbd>Ctrl</kbd>+<kbd>Y</kbd> redo, <kbd>Ctrl</kbd>+<kbd>F</kbd> find in the PDF, <kbd>Ctrl</kbd>+<kbd>+</kbd> / <kbd>Ctrl</kbd>+<kbd>−</kbd> zoom, <kbd>Ctrl</kbd>+<kbd>0</kbd> fit to width, <kbd>Delete</kbd> removes the selected item, <kbd>Esc</kbd> returns to Select.</p>
 <h2>Quality and compatibility</h2>
 <p>Your edits are written into the original PDF with pdf-lib, so the existing pages keep their original text, fonts and image quality. English and other Latin-alphabet text you add stays real, searchable PDF text; text in other scripts (Hindi, Nepali, Arabic, Chinese…) is embedded as a high-resolution image so it displays correctly everywhere without font files.</p>
 <h2>Important: white-out is not redaction</h2>
-<p>A white box covers what's underneath, but the original text is still inside the file and can be copied out. To truly remove sensitive text, white it out here, then use <a href="/pdf-to-jpg">PDF to JPG</a> and <a href="/jpg-to-pdf">JPG to PDF</a> to flatten the pages into images.</p>''' + PRIVACY,
+<p>A white box covers what's underneath, but the original text is still inside the file and can be copied out. To truly remove sensitive text, white it out here, then use <a href="/pdf-to-jpg">PDF to JPG</a> and <a href="/jpg-to-pdf">JPG to PDF</a> to flatten the pages into images.</p><p>Like every WebcamClicks tool, this runs entirely in your browser. Your files are never uploaded, so it is fast, private and free from upload limits.</p>
+''' + PRIVACY,
   faqs=[('Is this PDF editor free?', 'Yes, with no watermark, page limit or account.'),
         ('Can I edit the existing text in a PDF?', 'Yes. Choose Edit text and click any line. The replacement uses a matching standard font (Helvetica, Times or Courier in the right weight), size and colour. The exact original typeface is only reused if it is a standard one, so a custom brand font will look slightly different. Scanned PDFs have no text to edit: run them through Image to text (OCR) first.'),
         ('Is the old text really removed?', 'In most PDFs, yes: the old words are taken out of the page, and the editor re-checks the saved file to make sure nothing else changed. If a page is built in an unusual way, the old text is covered with the exact background colour instead, which looks identical on screen and in print.'),
+        ('Can I remove a picture from a PDF?', 'Yes. Choose Edit text: every picture on the page is outlined in blue. Click one and it is removed — the picture itself is taken out of the file where possible, otherwise it is covered with the exact page colour. Undo brings it back.'),
+        ('Can I choose the font when I add text?', 'Yes. Before you click to add text, pick a font (Sans, Serif or Mono), bold or italic, a size and a colour in the toolbar. The same controls restyle text you have already added: select it first, then change the font.'),
         ('Is it safe for contracts and IDs?', 'Yes. The file never leaves your device. Close the tab and nothing remains.'),
         ('Can I sign a PDF on my phone?', 'Yes. Tap Sign and draw with your finger, then place and resize the signature.'),
-        ('Why can\'t I open my PDF?', 'Encrypted PDFs need to be unlocked first. Damaged files may also fail to open.')])
+        ('Can I search inside a PDF?', 'Yes. Open Find in the toolbar (or press Ctrl+F) and type a word or phrase. Every match is highlighted on the page, and the arrows jump from one match to the next, across all pages.'),
+        ("Why can't I open my PDF?", 'Encrypted PDFs need to be unlocked first. Damaged files may also fail to open.')])
 
 # ------------------------------------------------------------------------------------------- lock PDF
 PAGES['lock-pdf'] = dict(

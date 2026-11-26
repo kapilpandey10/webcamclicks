@@ -192,6 +192,69 @@ export function removeShowText(bytes, boxes) {
   return { bytes: out, hits };
 }
 
+/**
+ * Remove image-drawing operators (Do for image XObjects, BI inline images) whose
+ * drawn box overlaps one of the boxes. boxes: [{x0, y0, x1, y1}] in PDF user
+ * space. imageNames: Set of XObject names ('/Im1') whose Subtype is /Image
+ * (Form XObjects are never cut). A match needs real overlap with a box of a
+ * similar size, so a full-page background image is not removed when a small
+ * picture on top of it is. Returns { bytes, hits: number[] } (hits per box).
+ */
+const ptIn = (m, x, y) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
+const boxOf = (ctm) => {
+  const ps = [ptIn(ctm, 0, 0), ptIn(ctm, 1, 0), ptIn(ctm, 0, 1), ptIn(ctm, 1, 1)];
+  const xs = ps.map((p) => p[0]), ys = ps.map((p) => p[1]);
+  return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+};
+const overlapHit = (b, t) => {
+  const iw = Math.max(0, Math.min(b.x1, t.x1) - Math.max(b.x0, t.x0)), ih = Math.max(0, Math.min(b.y1, t.y1) - Math.max(b.y0, t.y0));
+  if (iw <= 0 || ih <= 0) return false;
+  const inter = iw * ih, ba = (b.x1 - b.x0) * (b.y1 - b.y0), ta = (t.x1 - t.x0) * (t.y1 - t.y0);
+  if (ba <= 0 || ta <= 0) return false;
+  return inter / Math.min(ba, ta) > 0.6 && ba / ta < 4 && ta / ba < 4;
+};
+const readName = (bytes, s) => {
+  let i = s + 1; while (i < bytes.length && !WS.has(bytes[i]) && !DELIM.has(bytes[i])) i++;
+  return '/' + String.fromCharCode(...bytes.subarray(s + 1, i));
+};
+export function removeImages(bytes, boxes, imageNames) {
+  const ops = parseOps(bytes);
+  const hits = boxes.map(() => 0);
+  let ctm = [1, 0, 0, 1, 0, 0]; const stack = [];
+  const num = (a) => (a && a.t === 'num' ? a.v : 0);
+  const cut = [];
+  for (const o of ops) {
+    const a = o.args;
+    switch (o.op) {
+      case 'q': stack.push(ctm.slice()); break;
+      case 'Q': ctm = stack.pop() || [1, 0, 0, 1, 0, 0]; break;
+      case 'cm': if (a.length === 6) ctm = mul(a.map(num), ctm); break;
+      case 'Do': {
+        if (!a.length || a[0].t !== 'name' || !imageNames.has(readName(bytes, a[0].s))) break;
+        const b = boxOf(ctm);
+        const k = boxes.findIndex((t) => overlapHit(b, t));
+        if (k >= 0) { hits[k]++; cut.push([o.start, o.end, '']); }
+        break;
+      }
+      case 'BI': {
+        const b = boxOf(ctm);
+        const k = boxes.findIndex((t) => overlapHit(b, t));
+        if (k >= 0) { hits[k]++; cut.push([o.start, o.end, '']); }
+        break;
+      }
+      default: break;
+    }
+  }
+  if (!cut.length) return { bytes, hits };
+  const parts = []; let p = 0;
+  const enc = new TextEncoder();
+  for (const [s, e, rep] of cut) { parts.push(bytes.subarray(p, s), enc.encode(` ${rep} `)); p = e; }
+  parts.push(bytes.subarray(p));
+  const out = new Uint8Array(parts.reduce((t, x) => t + x.length, 0)); let o = 0;
+  for (const x of parts) { out.set(x, o); o += x.length; }
+  return { bytes: out, hits };
+}
+
 /** Read all of a page's content streams as one decoded byte array (pdf-lib objects). */
 export function pageContent(R, doc, page) {
   const c = page.node.Contents();

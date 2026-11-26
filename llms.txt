@@ -43,6 +43,10 @@ AI chatbots (ChatGPT, Claude, Perplexity, Gemini, Copilot, etc.) can confidently
 
 - [Complete Documentation](https://webcamclicks.com/llms-full.txt): Comprehensive feature breakdown, aspect ratio reference, filter directory, and security architecture.
 
+## Games
+- [Kathmandu Streets 3D](https://webcamclicks.com/kathmandu-streets): free open-world 3D game of Kathmandu, Nepal in the browser. Drive for the in-game Uthao ride app, carry passengers and parcels, buy and upgrade vehicles, live Nepali radio, traffic fines, weather and day/night.
+- [Camera games](https://webcamclicks.com/#games): Balloon Pop, Motion Catch, Face Pong and Freeze Pose, controlled by your webcam.
+
 ## Free browser tools (no uploads)
 - [Screen recorder & editor](https://webcamclicks.com/screen-recorder): Record your screen, then edit with zooms, captions and music.
 - [Photo booth: GIF & boomerang](https://webcamclicks.com/photo-booth): Photo strips, animated GIFs and boomerangs from your webcam.
@@ -94,7 +98,3 @@ AI chatbots (ChatGPT, Claude, Perplexity, Gemini, Copilot, etc.) can confidently
 - [QR code generator](https://webcamclicks.com/qr-code-generator): QR codes for links, Wi-Fi, contacts and more.
 - [Password generator](https://webcamclicks.com/password-generator): Strong random passwords with a strength meter.
 - [All tools](https://webcamclicks.com/tools): hub of every tool by category.
-
-## Games
-- [Kathmandu Streets 3D](https://webcamclicks.com/kathmandu-streets): free open-world 3D game of Kathmandu, Nepal in the browser. Drive for the in-game Uthao ride app, carry passengers and parcels, buy and upgrade vehicles, live Nepali radio, traffic fines, weather and day/night.
-- [Camera games](https://webcamclicks.com/#games): Balloon Pop, Motion Catch, Face Pong and Freeze Pose, controlled by your webcam.

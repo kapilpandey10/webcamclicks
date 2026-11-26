@@ -8,15 +8,19 @@ import { extractLines, sampleColors, removeShowText, pageContent, setPageContent
 
 const els = {
   drop: $('#t-drop'), input: $('#t-input'), status: $('#t-status'), pages: $('#pe-pages'), tools: $('#pe-tools'), color: $('#pe-color'),
-  size: $('#pe-size'), width: $('#pe-width'), save: $('#pe-save'), undo: $('#pe-undo'), imgInput: $('#pe-img'), sigModal: $('#pe-sig'),
+  size: $('#pe-size'), width: $('#pe-width'), save: $('#pe-save'), undo: $('#pe-undo'), redo: $('#pe-redo'), imgInput: $('#pe-img'), sigModal: $('#pe-sig'),
   sigPad: $('#pe-sigpad'), sigType: $('#pe-sigtext'), sigUse: $('#pe-sig-use'), sigClear: $('#pe-sig-clear'), sigCancel: $('#pe-sig-cancel'),
-  info: $('#pe-info'), editor: $('#pe-editor')
+  info: $('#pe-info'), editor: $('#pe-editor'), zoomOut: $('#pe-zoom-out'), zoomIn: $('#pe-zoom-in'), zoomLabel: $('#pe-zoom-label'),
+  fit: $('#pe-fit'), findToggle: $('#pe-find-toggle'), find: $('#pe-find'), findInput: $('#pe-find-input'), findPrev: $('#pe-find-prev'),
+  findNext: $('#pe-find-next'), findCount: $('#pe-find-count'), findClose: $('#pe-find-close'), side: $('#pe-side'),
+  thumbs: $('#pe-thumbs'), backdrop: $('#pe-backdrop'), sideToggle: $('#pe-side-toggle'), sideClose: $('#pe-side-close'), pageInd: $('#pe-page-ind')
 };
 
 let pdfBytes = null, pdf = null, file = null;
 let pages = [];          // { n, wPt, hPt, rot, el, layer, svg, deleted, addRot }
 let anns = [];           // annotations (coordinates are fractions of the displayed page)
-let tool = 'select', sel = null, history = [], aid = 0, hasText = false;
+let tool = 'select', sel = null, history = [], redoStack = [], aid = 0, hasText = false;
+let zoom = 1, activePage = 1, findHits = [], findCur = -1, findQuery = '', findToken = 0, pageObs = null;
 
 /** Display box (fractions of the page) for a text line in PDF user space. */
 function lineBox(pg, l) {
@@ -35,7 +39,8 @@ async function openPdf(f) {
   const pdfjs = await loadPdfjs();
   try { pdf = await pdfjs.getDocument({ data: pdfBytes.slice(), isEvalSupported: false, fontExtraProperties: true }).promise; }   // keeps real font names (bold / italic detection)
   catch (e) { setStatus(els.status, /password/i.test(e.message) ? 'This PDF is password-protected. Remove the password first, then edit it.' : 'This file could not be opened as a PDF.', 'err'); return; }
-  anns = []; history = []; sel = null; pages = [];
+  anns = []; history = []; redoStack = []; sel = null; pages = [];
+  updateHistoryButtons();
   els.pages.innerHTML = '';
   els.editor.hidden = false;
   els.info.textContent = `${f.name} · ${pdf.numPages} page${pdf.numPages > 1 ? 's' : ''} · ${formatBytes(f.size)}`;
@@ -60,6 +65,9 @@ async function openPdf(f) {
     try { pg.lines = (await extractLines(pg.page)).map((l) => lineBox(pg, l)); editable += pg.lines.length; } catch (e) { console.warn(e); }
   }
   hasText = editable > 0;
+  setZoom(1, true);
+  clearFind(true);
+  activePage = 1; updatePageInd(); observePages(); buildThumbs();
   drawAll();
   setStatus(els.status, hasText ? 'Pick a tool above. “Edit text” lets you change the existing text: click any line.' : 'Pick a tool above, then click or drag on a page.');
   els.save.disabled = false;
@@ -128,6 +136,15 @@ function drawAll() {
     if (a === sel) d.insertAdjacentHTML('beforeend', '<span class="pe-handle" data-h="se"></span><button type="button" class="pe-x" data-x aria-label="Delete">✕</button>');
     pg.layer.appendChild(d);
   }
+  if (findHits.length) {
+    for (let i = 0; i < findHits.length; i++) {
+      const h = findHits[i], pg = pages[h.page - 1]; if (!pg) continue;
+      const d = document.createElement('div');
+      d.className = `pe-find-hit${i === findCur ? ' cur' : ''}`;
+      Object.assign(d.style, { left: `${h.u * 100}%`, top: `${h.v * 100}%`, width: `${h.w * 100}%`, height: `${h.h * 100}%` });
+      pg.layer.appendChild(d);
+    }
+  }
   if (tool === 'edittext') {
     for (const pg of pages) {
       if (pg.deleted || pg.addRot) continue;
@@ -141,6 +158,7 @@ function drawAll() {
       });
     }
   }
+  syncThumbs();
 }
 
 /** Turn an existing line of PDF text into an editable box that matches its font, size and colours. */
@@ -164,12 +182,177 @@ function startEdit(pg, line, ev) {
   setStatus(els.status, 'Type to change the text. Font, size and colour are matched to the original. Click another line to edit it.');
 }
 
-function snapshot() { history.push(JSON.stringify({ anns, pages: pages.map((p) => [p.deleted, p.addRot]) })); if (history.length > 80) history.shift(); els.undo.disabled = false; }
+function getState() { return { anns, pages: pages.map((p) => [p.deleted, p.addRot]) }; }
+function applyState(o) {
+  anns = o.anns; o.pages.forEach(([d, r], i) => { pages[i].deleted = d; pages[i].addRot = r; });
+  sel = null; drawAll();
+}
+function updateHistoryButtons() { els.undo.disabled = !history.length; els.redo.disabled = !redoStack.length; }
+function snapshot() { history.push(JSON.stringify(getState())); if (history.length > 80) history.shift(); redoStack.length = 0; updateHistoryButtons(); }
 function undo() {
   const s = history.pop(); if (!s) return;
-  const o = JSON.parse(s); anns = o.anns; o.pages.forEach(([d, r], i) => { pages[i].deleted = d; pages[i].addRot = r; });
-  sel = null; drawAll(); els.undo.disabled = !history.length;
+  redoStack.push(JSON.stringify(getState()));
+  applyState(JSON.parse(s)); updateHistoryButtons();
 }
+function redo() {
+  const s = redoStack.pop(); if (!s) return;
+  history.push(JSON.stringify(getState()));
+  applyState(JSON.parse(s)); updateHistoryButtons();
+}
+
+/* ---------------------------------------------------------------- zoom */
+
+const ZOOMS = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3];
+function setZoom(z, silent) {
+  zoom = Math.min(3, Math.max(0.5, z));
+  els.pages.style.setProperty('--pe-zoom', zoom);
+  els.zoomLabel.textContent = `${Math.round(zoom * 100)}%`;
+  if (!silent) requestAnimationFrame(() => renderVisible());
+}
+function zoomStep(dir) {
+  const cur = ZOOMS.reduce((best, z) => Math.abs(z - zoom) < Math.abs(best - zoom) ? z : best, 1);
+  setZoom(ZOOMS[Math.min(ZOOMS.length - 1, Math.max(0, ZOOMS.indexOf(cur) + dir))]);
+}
+els.zoomOut.addEventListener('click', () => zoomStep(-1));
+els.zoomIn.addEventListener('click', () => zoomStep(1));
+els.zoomLabel.addEventListener('click', () => setZoom(1));
+els.fit.addEventListener('click', () => setZoom(1));
+
+/* ---------------------------------------------------------------- thumbnails + page indicator */
+
+function updatePageInd() { els.pageInd.textContent = pdf ? `Page ${activePage} of ${pages.length}` : ''; }
+function markActiveThumb() {
+  els.thumbs.querySelectorAll('.pe-thumb').forEach((t) => t.classList.toggle('active', +t.dataset.page === activePage));
+  const t = els.thumbs.querySelector(`.pe-thumb[data-page="${activePage}"]`);
+  if (t) {
+    const cr = els.side.getBoundingClientRect(), r = t.getBoundingClientRect();
+    if (r.top < cr.top || r.bottom > cr.bottom) els.side.scrollTop += r.top - cr.top - 8;
+  }
+}
+function syncThumbs() {
+  els.thumbs.querySelectorAll('.pe-thumb').forEach((t) => {
+    const pg = pages[+t.dataset.page - 1]; if (!pg) return;
+    t.classList.toggle('deleted', !!pg.deleted);
+    const img = t.querySelector('img');
+    if (img) img.style.transform = pg.addRot ? `rotate(${pg.addRot}deg)` : '';
+  });
+}
+function scrollToPage(n) {
+  const pg = pages[n - 1]; if (!pg) return;
+  activePage = n; updatePageInd(); markActiveThumb();
+  pg.el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+async function buildThumbs() {
+  els.thumbs.innerHTML = '';
+  for (const pg of pages) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'pe-thumb'; b.dataset.page = pg.n;
+    b.setAttribute('aria-label', `Go to page ${pg.n}`);
+    b.innerHTML = `<span class="pe-thumb-img"></span><span class="pe-thumb-num">Page ${pg.n}</span>`;
+    b.addEventListener('click', () => { scrollToPage(pg.n); closeSide(); });
+    els.thumbs.appendChild(b);
+    try {
+      const scale = 140 / pg.dispW, vp = pg.page.getViewport({ scale });
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.floor(vp.width)); c.height = Math.max(1, Math.floor(vp.height));
+      await pg.page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+      const img = document.createElement('img');
+      img.src = c.toDataURL('image/jpeg', 0.82); img.alt = `Page ${pg.n}`;
+      b.querySelector('.pe-thumb-img').appendChild(img);
+    } catch (e) { /* leave the placeholder */ }
+    await new Promise((r) => setTimeout(r, 0)); // keep the UI responsive on long PDFs
+  }
+  markActiveThumb();
+}
+function observePages() {
+  if (pageObs) pageObs.disconnect();
+  pageObs = new IntersectionObserver((entries) => {
+    for (const en of entries) {
+      if (en.isIntersecting) {
+        const n = +en.target.dataset.page;
+        if (n !== activePage) { activePage = n; updatePageInd(); markActiveThumb(); }
+      }
+    }
+  }, { rootMargin: '-35% 0px -55% 0px', threshold: 0 });
+  pages.forEach((p) => pageObs.observe(p.el));
+}
+
+/* sidebar drawer (mobile) */
+function openSide() { els.side.classList.add('open'); els.backdrop.hidden = false; els.sideToggle.setAttribute('aria-expanded', 'true'); }
+function closeSide() { els.side.classList.remove('open'); els.backdrop.hidden = true; els.sideToggle.setAttribute('aria-expanded', 'false'); }
+els.sideToggle.addEventListener('click', () => { els.side.classList.contains('open') ? closeSide() : openSide(); });
+els.sideClose.addEventListener('click', closeSide);
+els.backdrop.addEventListener('click', closeSide);
+
+/* ---------------------------------------------------------------- in-PDF search */
+
+async function getTextItems(pg) {
+  if (pg.textItems) return pg.textItems;
+  const tc = await pg.page.getTextContent();
+  pg.textItems = tc.items.filter((it) => it.str && it.str.trim());
+  return pg.textItems;
+}
+function updateFindCount() {
+  els.findCount.textContent = findHits.length ? `${findCur + 1} of ${findHits.length}` : (findQuery ? 'No results' : '');
+}
+function goToHit(i, scroll = true) {
+  if (!findHits.length) { findCur = -1; updateFindCount(); return; }
+  findCur = ((i % findHits.length) + findHits.length) % findHits.length;
+  if (scroll) { const pg = pages[findHits[findCur].page - 1]; pg && pg.el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  drawAll(); updateFindCount();
+}
+async function runFind(q) {
+  const token = ++findToken;
+  findQuery = q; findHits = []; findCur = -1;
+  if (!q.trim() || !pdf) { drawAll(); updateFindCount(); return; }
+  const needle = q.toLowerCase();
+  for (const pg of pages) {
+    if (token !== findToken) return; // a newer search started
+    if (pg.deleted) continue;
+    const items = await getTextItems(pg);
+    const vp = pg.page.getViewport({ scale: 1 });
+    for (const it of items) {
+      const hay = it.str.toLowerCase();
+      let idx = 0;
+      while ((idx = hay.indexOf(needle, idx)) !== -1) {
+        const [a, , , d, e, f] = it.transform;
+        const w = it.width || 0, h = Math.abs(d) || Math.abs(a) || 12;
+        const frac = it.str.length ? 1 / it.str.length : 0;
+        const x0 = e + w * idx * frac, x1 = e + w * (idx + needle.length) * frac;
+        const y0 = f - h * 0.25, y1 = f + h * 0.9;
+        const [vx0, vy0] = vp.convertToViewportPoint(x0, y1);
+        const [vx1, vy1] = vp.convertToViewportPoint(x1, y0);
+        findHits.push({ page: pg.n, u: Math.min(vx0, vx1) / vp.width, v: Math.min(vy0, vy1) / vp.height, w: Math.abs(vx1 - vx0) / vp.width, h: Math.abs(vy1 - vy0) / vp.height });
+        idx += Math.max(1, needle.length);
+      }
+    }
+  }
+  if (token !== findToken) return;
+  if (findHits.length) goToHit(0);
+  else { drawAll(); updateFindCount(); }
+}
+function clearFind(silent) {
+  findToken++; findHits = []; findCur = -1; findQuery = '';
+  els.findInput.value = ''; updateFindCount();
+  if (!silent) drawAll();
+}
+function toggleFind(open) {
+  const show = open !== undefined ? open : els.find.hidden;
+  els.find.hidden = !show;
+  els.findToggle.setAttribute('aria-pressed', String(show));
+  if (show) els.findInput.focus();
+  else clearFind();
+}
+let findT = 0;
+els.findToggle.addEventListener('click', () => toggleFind());
+els.findClose.addEventListener('click', () => toggleFind(false));
+els.findInput.addEventListener('input', () => { clearTimeout(findT); findT = setTimeout(() => runFind(els.findInput.value), 200); });
+els.findInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); goToHit(findCur + (e.shiftKey ? -1 : 1)); }
+  else if (e.key === 'Escape') { e.preventDefault(); toggleFind(false); }
+});
+els.findNext.addEventListener('click', () => goToHit(findCur + 1));
+els.findPrev.addEventListener('click', () => goToHit(findCur - 1));
 
 /* ---------------------------------------------------------------- interaction */
 
@@ -271,11 +454,18 @@ els.tools.addEventListener('click', (e) => {
   setTool(b.dataset.tool);
 });
 els.undo.addEventListener('click', undo);
+els.redo.addEventListener('click', redo);
 document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { closeSide(); if (!els.find.hidden) toggleFind(false); }
   if (!pdf || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.target.isContentEditable) return;
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
-  if ((e.key === 'Delete' || e.key === 'Backspace') && sel) { e.preventDefault(); snapshot(); anns = anns.filter((a) => a !== sel); sel = null; drawAll(); }
-  if (e.key === 'Escape') { sel = null; setTool('select'); drawAll(); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+  else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
+  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); toggleFind(true); }
+  else if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) { e.preventDefault(); zoomStep(1); }
+  else if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); zoomStep(-1); }
+  else if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); setZoom(1); }
+  else if ((e.key === 'Delete' || e.key === 'Backspace') && sel) { e.preventDefault(); snapshot(); anns = anns.filter((a) => a !== sel); sel = null; drawAll(); }
+  else if (e.key === 'Escape') { sel = null; setTool('select'); drawAll(); }
 });
 [els.color, els.size, els.width].forEach((c) => c.addEventListener('input', () => {
   if (!sel) return;

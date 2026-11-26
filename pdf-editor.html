@@ -64,7 +64,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
 <link rel="stylesheet" href="/styles/main.css?v=b3434beae0">
-<link rel="stylesheet" href="/styles/tools.css?v=a25a6483e0">
+<link rel="stylesheet" href="/styles/tools.css?v=1627b725a3">
 <script type="application/ld+json">
 {
  "@context": "https://schema.org",
@@ -163,6 +163,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   },
   {
    "@type": "Question",
+   "name": "Can I search inside a PDF?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "Yes. Open Find in the toolbar (or press Ctrl+F) and type a word or phrase. Every match is highlighted on the page, and the arrows jump from one match to the next, across all pages."
+   }
+  },
+  {
+   "@type": "Question",
    "name": "Why can't I open my PDF?",
    "acceptedAnswer": {
     "@type": "Answer",
@@ -211,6 +219,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <div id="pe-editor" class="pe-editor" hidden>
     <div class="pe-toolbar">
       <div class="pe-tools" id="pe-tools" role="toolbar" aria-label="PDF tools">
+        <button type="button" id="pe-side-toggle" class="pe-side-toggle" aria-label="Show pages" aria-expanded="false">☰ Pages</button>
         <button type="button" data-tool="select" aria-pressed="true">↖ Select</button>
         <button type="button" data-tool="edittext" aria-pressed="false" class="pe-hot">Aa Edit text</button>
         <button type="button" data-tool="text" aria-pressed="false">T Add text</button>
@@ -225,12 +234,38 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <label>Colour <input type="color" id="pe-color" value="#0e0e12"></label>
         <label>Text <input type="number" id="pe-size" min="6" max="72" value="12"> pt</label>
         <label>Line <input type="number" id="pe-width" min="1" max="12" value="2"> pt</label>
+        <span class="pe-zoom" role="group" aria-label="Zoom">
+          <button type="button" id="pe-zoom-out" aria-label="Zoom out">−</button>
+          <button type="button" id="pe-zoom-label" title="Reset to fit width">100%</button>
+          <button type="button" id="pe-zoom-in" aria-label="Zoom in">+</button>
+          <button type="button" id="pe-fit">Fit</button>
+        </span>
         <button class="t-btn sm" id="pe-undo" type="button" disabled>↶ Undo</button>
+        <button class="t-btn sm" id="pe-redo" type="button" disabled>↷ Redo</button>
+        <button class="t-btn sm" id="pe-find-toggle" type="button" aria-pressed="false">🔍 Find</button>
+        <span class="pe-page-ind" id="pe-page-ind" aria-live="polite"></span>
         <button class="t-btn primary sm" id="pe-save" type="button" disabled>⬇ Save PDF</button>
+      </div>
+      <div class="pe-find" id="pe-find" hidden>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input type="search" id="pe-find-input" placeholder="Search in this PDF…" aria-label="Search in this PDF" autocomplete="off">
+        <span class="pe-find-count" id="pe-find-count" aria-live="polite"></span>
+        <button type="button" id="pe-find-prev" aria-label="Previous match">↑</button>
+        <button type="button" id="pe-find-next" aria-label="Next match">↓</button>
+        <button type="button" id="pe-find-close" aria-label="Close search">✕</button>
       </div>
     </div>
     <p class="t-status" id="pe-info"></p>
-    <div class="pe-pages" id="pe-pages" data-tool="select"></div>
+    <div class="pe-work">
+      <aside class="pe-side" id="pe-side" aria-label="Pages">
+        <div class="pe-side-head"><span>Pages</span><button type="button" id="pe-side-close" aria-label="Close pages">✕</button></div>
+        <div class="pe-thumbs" id="pe-thumbs"></div>
+      </aside>
+      <div class="pe-main">
+        <div class="pe-pages" id="pe-pages" data-tool="select"></div>
+      </div>
+    </div>
+    <div class="pe-backdrop" id="pe-backdrop" hidden></div>
     <input type="file" id="pe-img" accept="image/*" hidden>
   </div>
   <div class="pe-modal" id="pe-sig" hidden role="dialog" aria-label="Signature">
@@ -252,14 +287,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <li><strong>White-out</strong> covers text or images with a white box. Note: it hides content visually; for confidential redaction, also remove the hidden text (see below).</li>
 <li><strong>Draw</strong> freehand notes, arrows and ticks.</li>
 <li><strong>Insert images</strong> such as a logo, stamp or photo.</li>
-<li><strong>Rotate or delete pages</strong> with the buttons above each page.</li></ul>
-<p>Shortcuts: <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo, <kbd>Delete</kbd> removes the selected item, <kbd>Esc</kbd> returns to Select.</p>
+<li><strong>Rotate or delete pages</strong> with the buttons above each page.</li>
+<li><strong>Find your way around:</strong> the thumbnail sidebar on the left jumps to any page and shows where you are, the zoom controls (or <kbd>Ctrl</kbd>+<kbd>+</kbd> / <kbd>Ctrl</kbd>+<kbd>−</kbd>) get you closer to the small print, and <em>Find</em> (<kbd>Ctrl</kbd>+<kbd>F</kbd>) searches the whole PDF and jumps between matches. On your phone, the pages list slides in from the left.</li></ul>
+<p>Shortcuts: <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo, <kbd>Ctrl</kbd>+<kbd>Y</kbd> redo, <kbd>Ctrl</kbd>+<kbd>F</kbd> find in the PDF, <kbd>Ctrl</kbd>+<kbd>+</kbd> / <kbd>Ctrl</kbd>+<kbd>−</kbd> zoom, <kbd>Ctrl</kbd>+<kbd>0</kbd> fit to width, <kbd>Delete</kbd> removes the selected item, <kbd>Esc</kbd> returns to Select.</p>
 <h2>Quality and compatibility</h2>
 <p>Your edits are written into the original PDF with pdf-lib, so the existing pages keep their original text, fonts and image quality. English and other Latin-alphabet text you add stays real, searchable PDF text; text in other scripts (Hindi, Nepali, Arabic, Chinese…) is embedded as a high-resolution image so it displays correctly everywhere without font files.</p>
 <h2>Important: white-out is not redaction</h2>
 <p>A white box covers what's underneath, but the original text is still inside the file and can be copied out. To truly remove sensitive text, white it out here, then use <a href="/pdf-to-jpg">PDF to JPG</a> and <a href="/jpg-to-pdf">JPG to PDF</a> to flatten the pages into images.</p><p>Like every WebcamClicks tool, this runs entirely in your browser. Your files are never uploaded, so it is fast, private and free from upload limits.</p>
   </article>
-  <section class="t-faq"><h2>Frequently asked questions</h2><details><summary>Is this PDF editor free?</summary><p>Yes, with no watermark, page limit or account.</p></details><details><summary>Can I edit the existing text in a PDF?</summary><p>Yes. Choose Edit text and click any line. The replacement uses a matching standard font (Helvetica, Times or Courier in the right weight), size and colour. The exact original typeface is only reused if it is a standard one, so a custom brand font will look slightly different. Scanned PDFs have no text to edit: run them through Image to text (OCR) first.</p></details><details><summary>Is the old text really removed?</summary><p>In most PDFs, yes: the old words are taken out of the page, and the editor re-checks the saved file to make sure nothing else changed. If a page is built in an unusual way, the old text is covered with the exact background colour instead, which looks identical on screen and in print.</p></details><details><summary>Is it safe for contracts and IDs?</summary><p>Yes. The file never leaves your device. Close the tab and nothing remains.</p></details><details><summary>Can I sign a PDF on my phone?</summary><p>Yes. Tap Sign and draw with your finger, then place and resize the signature.</p></details><details><summary>Why can&#x27;t I open my PDF?</summary><p>Encrypted PDFs need to be unlocked first. Damaged files may also fail to open.</p></details></section>
+  <section class="t-faq"><h2>Frequently asked questions</h2><details><summary>Is this PDF editor free?</summary><p>Yes, with no watermark, page limit or account.</p></details><details><summary>Can I edit the existing text in a PDF?</summary><p>Yes. Choose Edit text and click any line. The replacement uses a matching standard font (Helvetica, Times or Courier in the right weight), size and colour. The exact original typeface is only reused if it is a standard one, so a custom brand font will look slightly different. Scanned PDFs have no text to edit: run them through Image to text (OCR) first.</p></details><details><summary>Is the old text really removed?</summary><p>In most PDFs, yes: the old words are taken out of the page, and the editor re-checks the saved file to make sure nothing else changed. If a page is built in an unusual way, the old text is covered with the exact background colour instead, which looks identical on screen and in print.</p></details><details><summary>Is it safe for contracts and IDs?</summary><p>Yes. The file never leaves your device. Close the tab and nothing remains.</p></details><details><summary>Can I sign a PDF on my phone?</summary><p>Yes. Tap Sign and draw with your finger, then place and resize the signature.</p></details><details><summary>Can I search inside a PDF?</summary><p>Yes. Open Find in the toolbar (or press Ctrl+F) and type a word or phrase. Every match is highlighted on the page, and the arrows jump from one match to the next, across all pages.</p></details><details><summary>Why can&#x27;t I open my PDF?</summary><p>Encrypted PDFs need to be unlocked first. Damaged files may also fail to open.</p></details></section>
   <section class="t-related"><h2>More free tools</h2><div class="t-related-grid"><a class="tool-card" href="/pdf-to-jpg"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="m21 16-5-5-8 9"/></svg></span><span><strong>PDF to JPG</strong><span class="d">Turn PDF pages into JPG or PNG images.</span></span></a><a class="tool-card" href="/jpg-to-pdf"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 13h6M9 17h4"/></svg></span><span><strong>JPG to PDF</strong><span class="d">Turn photos and scans into one PDF.</span></span></a><a class="tool-card" href="/lock-pdf"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3M12 15v2"/></svg></span><span><strong>Lock PDF (password)</strong><span class="d">Protect a PDF with AES-256 encryption.</span></span></a><a class="tool-card" href="/redact-pdf"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><rect x="8.5" y="9" width="8" height="2.4" fill="currentColor"/><rect x="8.5" y="13.5" width="5" height="2.4" fill="currentColor"/></svg></span><span><strong>Redact PDF</strong><span class="d">Permanently black out names, numbers and any text.</span></span></a><a class="tool-card" href="/compress-pdf"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 11v6M9.5 14.5 12 17l2.5-2.5"/></svg></span><span><strong>Compress PDF <span class="new">New</span></strong><span class="d">Shrink PDFs for email and uploads; text stays sharp.</span></span></a><a class="tool-card" href="/organize-pdf"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="9" rx="1"/><rect x="13.5" y="3.5" width="7" height="9" rx="1"/><path d="M7 16v4M4.5 18H9.5" opacity=".6"/><rect x="13.5" y="15" width="7" height="5.5" rx="1"/></svg></span><span><strong>Organize PDF pages</strong><span class="d">Drag to reorder, rotate, delete and add pages, then save.</span></span></a><a class="tool-card" href="/merge-pdf"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v5a4 4 0 0 0 4 4h4a4 4 0 0 1 4 4v3M18 4v5M6 20v-3"/><path d="m15 7 3-3 3 3"/></svg></span><span><strong>Merge PDF</strong><span class="d">Combine PDFs in the order you choose.</span></span></a><a class="tool-card" href="/split-pdf"><span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v6M12 9l-6 6v6M12 9l6 6v6"/></svg></span><span><strong>Split PDF</strong><span class="d">Extract pages or split a PDF into parts.</span></span></a></div></section>
 </main>
 <footer class="site-footer">
@@ -298,6 +334,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </a>
 </nav>
 
-<script type="module" src="/js/tools/pdf-editor.js?v=a397533b22"></script>
+<script type="module" src="/js/tools/pdf-editor.js?v=d38988102e"></script>
 </body>
 </html>

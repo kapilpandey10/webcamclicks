@@ -34,6 +34,7 @@
       for (const [name, file] of Object.entries(MAP)) {
         jobs.push(new Promise((res) => {
           loader.load(DIR + file, (gltf) => {
+            { const lights = []; gltf.scene.traverse((o) => { if (o.isLight) lights.push(o); }); lights.forEach((o) => o.parent && o.parent.remove(o)); } // no lamps baked into model files
             const wrap = new T.Group(); wrap.add(gltf.scene);
             normalise(wrap);
             P.models[name] = wrap; res(true);

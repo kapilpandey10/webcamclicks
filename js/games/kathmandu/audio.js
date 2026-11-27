@@ -230,7 +230,7 @@
     city.g.gain.value = 0.03 + s.density * 0.05; crowd.g.gain.value = Math.min(0.06, s.crowd * 0.012);
     rainN.g.gain.value = s.rain * 0.055; // soft patter, not a roar windN.g.gain.value = Math.min(0.12, s.wind * 0.01 + s.speed * 0.002);
     siren.gain.value = s.siren * 0.06;
-    if (s.vehicle && s.vehicle.kind === 'bicycle') { // no engine: chain whirr while pedalling, freewheel ticks while coasting
+    if (s.vehicle && (s.vehicle.kind === 'bicycle' || s.vehicle.kind === 'skateboard')) { // no engine: chain whirr while pedalling, freewheel ticks while coasting
       eng.g.gain.value = 0;
       const sp = Math.abs(s.vehicle.speed);
       if (sp > 0.8) {

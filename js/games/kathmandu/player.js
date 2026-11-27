@@ -96,7 +96,9 @@
     (parent || PL.scene).add(p.root); PL.person = p;
     if (PL.vehicle && KS.isBike(PL.vehicle.kind)) seatOnBike();
   };
-  function seatOnBike() { const p = PL.person; p.root.position.set(0, 0.18, -0.32); p.root.rotation.set(0, 0, 0); KS.animSit(p); p.armL.rotation.x = p.armR.rotation.x = -1.2; p.legL.rotation.x = p.legR.rotation.x = -1.3; }
+  /* on a skateboard you stand sideways on the deck, knees soft, arms out for balance */
+  function standOnSkate() { const p = PL.person; p.root.position.set(0, 0.11, 0); p.root.rotation.set(0, Math.PI / 2, 0); p.legL.rotation.set(0, 0, 0.16); p.legR.rotation.set(0, 0, -0.16); p.armL.rotation.set(0, 0, 0.9); p.armR.rotation.set(0, 0, -0.9); p.torso.rotation.set(0, 0, 0); }
+  function seatOnBike() { if (PL.vehicle && PL.vehicle.kind === 'skateboard') return standOnSkate(); const p = PL.person; p.root.position.set(0, 0.18, -0.32); p.root.rotation.set(0, 0, 0); KS.animSit(p); p.armL.rotation.x = p.armR.rotation.x = -1.2; p.legL.rotation.x = p.legR.rotation.x = -1.3; }
   function ejectDriver(v) {
     const d = exDrivers.find((e) => e.t <= 0) || exDrivers[0];
     const sx = Math.cos(v.h), sz = -Math.sin(v.h);
@@ -128,6 +130,8 @@
     const c = KS.collide(x, z, 0.4, v.y, 1); x = c.x; z = c.z;
     if (PL.person.root.parent !== PL.scene) PL.scene.add(PL.person.root);
     PL.person.root.visible = true; PL.person.root.rotation.set(0, 0, 0); PL.person.legL.rotation.x = PL.person.legR.rotation.x = 0;
+    PL.person.legL.rotation.z = PL.person.legR.rotation.z = PL.person.armL.rotation.z = PL.person.armR.rotation.z = 0; // the skateboard stance leaves the limbs splayed
+    PL.person.torso.rotation.z = 0;
     PL.x = x; PL.z = z; PL.y = Math.max(v.y, KS.groundAt(x, z, v.y + 1, 1.2)); PL.h = v.h; PL.vy = 0;
     v.parked = true; v.speed = 0; v.vx = null; PL.vehicle = null; PL.mode = 'foot'; cam.want = 4;
     KS.Game && KS.Game.onExit(v);
@@ -498,7 +502,7 @@
   PL.onSidewalk = onSidewalk;
 
   /* ---------- vehicle physics: momentum, grip and sliding, weight, body roll & dive ---------- */
-  const MASS = { bicycle: 0.12, bike: 0.25, scooter: 0.22, sport: 0.27, cruiser: 0.3, policebike: 0.27, car: 1.1, taxi: 1.1, ev: 1.4, sportscar: 1.2, sedan: 1.3, suv: 1.8, police: 1.8, pickup: 1.8, micro: 1.9, ambulance: 2.1, tempo: 0.9, minibus: 3.5, bus: 6, truck: 7, helicopter: 3.5 };
+  const MASS = { skateboard: 0.08, bicycle: 0.12, bike: 0.25, scooter: 0.22, sport: 0.27, cruiser: 0.3, policebike: 0.27, car: 1.1, taxi: 1.1, ev: 1.4, sportscar: 1.2, sedan: 1.3, suv: 1.8, police: 1.8, pickup: 1.8, micro: 1.9, ambulance: 2.1, tempo: 0.9, minibus: 3.5, bus: 6, truck: 7, helicopter: 3.5 };
   KS.massOf = (k) => MASS[k] || 1;
   function driveUpdate(dt) {
     const v = PL.vehicle, t = v.type, a = axis(), up = v.up || { engine: 0, brakes: 0, handling: 0, nitro: 0 }, bike = KS.isBike(v.kind), m1 = KS.massOf(v.kind);
@@ -526,11 +530,45 @@
     // not in a wrecked vehicle (damage 100: it will not drive until repaired)
     const outOfFuel = KS.Fuel && KS.Fuel.needsFuel(v.kind) && (v.fuel == null ? 100 : v.fuel) <= 0;
     const wrecked = (v.damage || 0) >= 100;
+    const cycle = v.kind === 'bicycle';
+    if (cycle) {
+      /* ROUND 19: a bicycle is pedal-powered, not an engine. The push is
+         power-limited (a rider puts out ~250 W, ~600 W in a sprint with
+         Shift, which tires you), so it is strong from a standstill and fades
+         with speed; gravity pulls along the slope (hard climbs, fast
+         descents); a bike coasts a long way (low rolling and air drag);
+         the brakes bite hard. */
+      PL.cycleStamina = PL.cycleStamina == null ? 1 : PL.cycleStamina;
+      const sprint = (I.down('ShiftLeft') || I.down('ShiftRight') || I.down('KeySprint')) && PL.cycleStamina > 0.05 && a.y > 0.1;
+      PL.cycleStamina = KS.clamp(PL.cycleStamina + (sprint ? -0.12 : 0.06) * dt, 0, 1);
+      const power = (sprint ? 7.6 : 3.2) * (wet ? 0.95 : 1); // watts per kilogram of rider and bike
+      PL.cycleSprint = sprint;
+      if (a.y > 0.1 && !wrecked) vf += Math.min(sprint ? 3.6 : 2.4, power / Math.max(1.4, vf)) * a.y * dt;
+      else if (a.y < -0.1) vf += (vf > 0.3 ? -7.5 * brk : -1.2) * -a.y * dt;
+      vf -= 9.8 * grade * dt; // the hill
+      vf -= Math.sign(vf) * Math.min(Math.abs(vf), (0.06 + 0.0042 * vf * vf) * dt); // rolling resistance and air drag: a bike freewheels
+      if (hand) vf -= Math.sign(vf) * Math.min(Math.abs(vf), 8 * brk * dt);
+      vf = KS.clamp(vf, -2, 15.5);
+    } else if (v.kind === 'skateboard') {
+      /* ROUND 19: a skateboard has no drive at all — you kick. Hold W and
+         the back foot pushes every 0.75 s (Shift: harder, faster pushes),
+         S drags a foot to slow down, and between kicks the board rolls on:
+         little rolling resistance on smooth tarmac, gravity along the slope. */
+      PL.kickT = (PL.kickT || 0) - dt; PL.kickAnim = Math.max(0, (PL.kickAnim || 0) - dt);
+      const hard = I.down('ShiftLeft') || I.down('ShiftRight') || I.down('KeySprint');
+      if (a.y > 0.1 && PL.kickT <= 0 && vf < (hard ? 6.4 : 4.6)) { vf += hard ? 1.5 : 1.0; PL.kickT = hard ? 0.6 : 0.8; PL.kickAnim = 0.45; } // a push only helps below cruising speed (~17 km/h, ~23 with hard pushes)
+      else if (a.y < -0.1) vf -= Math.sign(vf) * Math.min(Math.abs(vf), 3.4 * -a.y * dt);
+      vf -= 9.8 * grade * dt;
+      vf -= Math.sign(vf) * Math.min(Math.abs(vf), (0.24 + 0.006 * vf * vf) * dt);
+      if (hand) vf -= Math.sign(vf) * Math.min(Math.abs(vf), 4 * dt);
+      vf = KS.clamp(vf, -1.5, 13);
+    } else {
     if (a.y > 0.1 && !outOfFuel && !wrecked) vf += (vf < 0 ? 16 * brk : t.accel * eng * boost * (1 - Math.max(0, vf) / top * 0.6)) * a.y * dt;
     else if (a.y < -0.1) { vf += (vf > 0.4 ? -16 * brk : -t.accel * 0.6) * -a.y * dt; if (vf0 > 9 && KS.Game) KS.Game.onHardBrake(); }
     else vf -= Math.sign(vf) * Math.min(Math.abs(vf), (1.6 + Math.abs(vf) * 0.22) * dt); // rolling resistance & air drag
     if (hand) vf -= Math.sign(vf) * Math.min(Math.abs(vf), (bike ? 9 : 6) * brk * dt);
     vf = KS.clamp(vf, -6, top);
+    }
     // speed breakers: crawl over them, with a thump if you hit one too fast
     if (KS.onBreaker && KS.onBreaker(v.x, v.z)) {
       if (Math.abs(vf) > 3.5) { if (Math.abs(vf) > 6 && !v._brk) { cam.shake = Math.max(cam.shake, 0.15); KS.audio && KS.audio.thump && KS.audio.thump(); } vf = Math.sign(vf) * 3.5; }
@@ -598,7 +636,12 @@
     // body motion: dive under braking, squat when accelerating, roll in corners (bikes lean in)
     const accel = (vf - vf0) / Math.max(dt, 1e-3), latG = vf * v.yaw;
     v.pitch += (KS.clamp(-accel * (bike ? 0.004 : 0.009), -0.07, 0.07) - v.pitch) * Math.min(1, dt * 6);
-    v.roll += ((bike ? KS.clamp(-latG * 0.045, -0.6, 0.6) : KS.clamp(latG * 0.008, -0.09, 0.09)) - v.roll) * Math.min(1, dt * 5);
+    // a bicycle leans like a real one (atan of the cornering force over g), and rocks side to side when the rider stands on the pedals
+    const standing = cycle && a.y > 0.1 && (PL.cycleSprint || grade > 0.045) && vf < 9;
+    const rock = standing ? Math.sin(PL.pedal || 0) * 0.07 : 0;
+    const skate = v.kind === 'skateboard';
+    const leanT = skate ? KS.clamp(-Math.atan(latG / 9.8) * 0.45, -0.3, 0.3) : cycle ? KS.clamp(-Math.atan(latG / 9.8), -0.75, 0.75) + rock : bike ? KS.clamp(-latG * 0.045, -0.6, 0.6) : KS.clamp(latG * 0.008, -0.09, 0.09);
+    v.roll += (leanT - v.roll) * Math.min(1, dt * (cycle ? 7 : 5));
     const ahead = KS.groundAt(v.x + Math.sin(v.h) * 1.5, v.z + Math.cos(v.h) * 1.5, v.y + 1, 0.6), behind = KS.groundAt(v.x - Math.sin(v.h) * 1.5, v.z - Math.cos(v.h) * 1.5, v.y + 1, 0.6);
     const bump = Math.abs(vf) > 1 ? Math.sin(KS.clock * 23 + v.x) * 0.004 * Math.min(1, Math.abs(vf) / 10) : 0;
     v.root.position.set(v.x, v.y + 0.02 + bump, v.z); v.root.rotation.set(-Math.atan2(ahead - behind, 3) * 0.8 + v.pitch, v.h, v.roll, 'YXZ');
@@ -620,7 +663,19 @@
       if (v.smokePuff <= 0) { v.smokePuff = 1; KS.FX.burst(v.x + Math.sin(v.h) * 1.2, v.y + 1.1, v.z + Math.cos(v.h) * 1.2, 0x666666, 6, 0.5, 0.8); }
     }
     if (bike) {
-      if (v.kind === 'bicycle') { PL.pedal = (PL.pedal || 0) + vf * dt * 2.2; PL.person.legL.rotation.x = -1.05 + Math.sin(PL.pedal) * 0.55; PL.person.legR.rotation.x = -1.05 - Math.sin(PL.pedal) * 0.55; }
+      if (v.kind === 'skateboard') {
+        // the back foot swings off the board and pushes along the ground, then comes back
+        const k = PL.kickAnim > 0 ? Math.sin((1 - PL.kickAnim / 0.45) * Math.PI) : 0;
+        PL.person.legR.rotation.z = -0.16 - k * 0.75; PL.person.legL.rotation.z = 0.16 + k * 0.1; PL.person.legL.rotation.x = PL.person.legR.rotation.x = 0;
+        PL.person.torso.rotation.z = -latG * 0.02 + k * 0.08; // lean into the carve, bob with the push
+      } else if (v.kind === 'bicycle') {
+        // the cranks turn with the back wheel only while you pedal (0.34 m wheel, 2.6:1 gearing); freewheeling, the feet rest level
+        if (a.y > 0.1) PL.pedal = (PL.pedal || 0) + Math.max(1.2, vf) / (0.34 * 2.6) * dt;
+        else PL.pedal = KS.lerp(PL.pedal || 0, Math.round((PL.pedal || 0) / Math.PI) * Math.PI, Math.min(1, dt * 4));
+        const lift = standing ? 0.35 : 0;
+        PL.person.legL.rotation.x = -1.05 + lift + Math.sin(PL.pedal) * 0.55; PL.person.legR.rotation.x = -1.05 + lift - Math.sin(PL.pedal) * 0.55;
+        PL.person.torso.rotation.x = standing ? 0.38 : 0.16; // lean over the bars, more when out of the saddle (walking resets it)
+      }
       else PL.person.legL.rotation.x = PL.person.legR.rotation.x = -1.3;
     }
     PL.x = v.x; PL.z = v.z; PL.y = v.y; PL.h = v.h; PL.speed = vf;
@@ -703,10 +758,13 @@
     if (PL.mode === 'flight') { if (KS.Flight) KS.Flight.update(dt); PL.len = 0.5; PL.wid = 0.6; PL.torch.intensity = 0; PL.headlight.intensity = 0; return; } // riding the aeroplane as a passenger
     if (PL.mode === 'dead') { PL.speed = 0; return; }
     if (PL.mode === 'ride') { KS.Net && KS.Net.rideUpdate(dt); return; } // a passenger in a friend's vehicle
+    if (PL.mode === 'tram') { KS.Tram.rideUpdate(dt, I); PL.len = 0.5; PL.wid = 0.6; return; } // riding the city tram
+    if (PL.mode === 'foot' && KS.Homes && KS.Homes.footHook(dt, I)) { PL.len = 0.5; PL.wid = 0.6; return; } // sitting on a sofa, chair or bed (E sits, E stands)
     if (I.hit('KeyE') || I.hit('KeyEnter')) {
       if (PL.mode === 'boat') PL.leaveBoat();
       else if (PL.mode === 'drive' && PL.vehicle && PL.vehicle.kind === 'helicopter' && (PL.vehicle.alt || 0) > 1) KS.Game && KS.Game.notify('🚁 Land first — hold <b>C</b> to come down, then press <b>E</b>.', 'bad');
       else if (PL.mode === 'drive') PL.exit();
+      else if (KS.Tram && KS.Tram.tryBoard()) { /* boarded the tram */ }
       else if (!(KS.Net && KS.Net.tryBoard && KS.Net.tryBoard())) { const v = KS.Traffic.nearest(PL.x, PL.z, 3.6); if (v) { if (!PL.enter(v)) KS.Game && KS.Game.notify('That one is moving too fast to get in — wait for it to stop.', 'bad'); } else KS.Game && KS.Game.interact(); }
     }
     if (PL.mode === 'ride') return; // just got into a friend's vehicle (net.js moves you from the next frame)

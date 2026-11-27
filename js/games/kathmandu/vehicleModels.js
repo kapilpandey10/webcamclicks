@@ -25,6 +25,7 @@
     minibus: 'city-bus-01.glb', ambulance: 'delivery-van-01.glb', ev: 'sports-car-01.glb', sportscar: 'sportscar.glb',
     tempo: 'auto-rickshaw.glb',
     bicycle: 'bicycle.glb', helicopter: 'helicopter.glb',
+    skateboard: 'skateboard.glb', // CC0, 3D Assets (Skate Park and Street Sports)
   };
   /* the detailed bikes are heavy (57k–88k triangles), so they are only ever used
      for the player's own bike — never for traffic. Traffic bikes use light
@@ -96,6 +97,7 @@
         if (seen[file]) { jobs.push(seen[file].then((e) => { VM.models[key] = e; })); return; }
         const p = new Promise((res) => {
           loader.load(DIR + file, (gltf) => {
+            { const lights = []; gltf.scene.traverse((o) => { if (o.isLight) lights.push(o); }); lights.forEach((o) => o.parent && o.parent.remove(o)); } // no lamps baked into model files
             const wrap = new T.Group(); wrap.add(gltf.scene);
             const height = normalise(wrap, targetLen);
             res({ wrap, parts: collect(wrap), height, file, anims: gltf.animations || [] });
@@ -128,7 +130,7 @@
       the light model for traffic. */
   VM.has = (type, opt = {}) => {
     if (!VM.ready) return false;
-    if (type === 'bicycle') return !!VM.models.bicycle;
+    if (type === 'bicycle' || type === 'skateboard') return !!VM.models[type];
     if (KS.isBike(type)) return !!VM.models[(opt.owned ? 'own:' : 'traf:') + type];
     return !!VM.models[type];
   };
@@ -151,7 +153,7 @@
   /** a fresh clone of the model for `type`, in the shape buildVehicle's callers
       expect: { root, body, rider, color, siren, sirens, glb, wheels, mainRotor, tailRotor }. */
   VM.build = (type, opt = {}) => {
-    const key = type === 'bicycle' ? 'bicycle' : KS.isBike(type) ? ((opt.owned ? 'own:' : 'traf:') + type) : type;
+    const key = type === 'bicycle' || type === 'skateboard' ? type : KS.isBike(type) ? ((opt.owned ? 'own:' : 'traf:') + type) : type;
     const entry = VM.models[key];
     if (!entry) return null;
     const c = cloneEntry(entry);

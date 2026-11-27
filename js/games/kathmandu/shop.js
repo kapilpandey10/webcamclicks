@@ -9,6 +9,7 @@
 
   S.VEHICLES = [
     { id: 'cycle', model: 'bicycle', name: 'City Bicycle', price: 0, cls: 'cycle', blurb: 'No licence needed. Parcel jobs, and your ride while suspended.' },
+    { id: 'skate', model: 'skateboard', name: 'Street Skateboard', price: 0, cls: 'cycle', blurb: 'Kick, push, carve. Hold W to keep pushing, S to drag your foot, Shift for a hard push.' },
     { id: 'sathi', model: 'scooter', name: 'Sathi 110 Scooter', price: 0, cls: 'moto', blurb: 'Your first ride. Nimble in Thamel traffic.' },
     { id: 'chitwan', model: 'bike', name: 'Chitwan 150 Commuter', price: 6000, cls: 'moto', blurb: 'The bike every rider in Nepal knows: cheap, tough, quick.' },
     { id: 'rapti', model: 'sport', name: 'Rapti 220 Sport', price: 16000, cls: 'moto', blurb: 'Fairing, clip-ons and serious acceleration.' },
@@ -83,6 +84,7 @@
   }, saved));
   S.save = () => store.set('ks-save2', D);
   if (!D.garage.some((g) => g.id === 'cycle')) D.garage.unshift({ id: 'cycle', up: { engine: 0, brakes: 0, handling: 0, nitro: 0 }, horn: 'standard', paint: null });
+  if (!D.garage.some((g) => g.id === 'skate')) D.garage.splice(1, 0, { id: 'skate', up: { engine: 0, brakes: 0, handling: 0, nitro: 0 }, horn: 'standard', paint: null }); // round 19: everyone owns a skateboard
 
   /** pick the main character's gender on the front page; the body rebuilds at once */
   S.setGender = (g) => {

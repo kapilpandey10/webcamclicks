@@ -435,16 +435,63 @@
   KS.SCHOOLS.push({ village: true, name: 'Dhunibesi School', np: 'धुनिबेसी विद्यालय', x0: HW.village.x + 60, x1: HW.village.x + 165, z0: HW.z - 14, z1: HW.z + 90 });
   KS.schoolHours = () => KS.time >= 9 && KS.time < 16;
   KS.schoolZoneAt = (x, z) => { for (const s of KS.SCHOOLS) if (x > s.x0 && x < s.x1 && z > s.z0 && z < s.z1) return s; return null; };
-  /* ROUND 17: the expressway — the loop deck and the cross-city flyover —
-     is an 80 km/h road. You are on it when you are up at deck height (y > 10)
-     and either near the loop or in the flyover corridor along z = 0. The
-     streets below stay at their normal (unposted) limit. */
-  KS.onExpressway = (x, z, y) => {
-    if (!(y > 10)) return false;
-    if (KS.ringLoopDist(x, z) < 12) return true;
-    const F = KS.expressway && KS.expressway.flyover;
-    return !!F && Math.abs(z - F.z) < 12 && x > F.x0 && x < F.x1;
+  /* ---------- the elevated toll expressway (round 19) ----------
+     Not on top of the Ring Road any more: a "+" of elevated road over the
+     rooftops through the middle of the city, 22 m up, like the urban
+     expressways of Bangkok or Delhi. The north-south line runs over the
+     middle of the blocks at x = -225 (Balaju -> Thamel -> the old town ->
+     Kalimati), the east-west line over the middle of the blocks at z = 225
+     (Kalimati -> Teku -> Baneshwor). Each end comes down a 200 m ramp onto
+     the city's edge street, with a toll plaza at the foot. The lines avoid
+     every tall landmark (Durbar Square, Dharahara, the palace, Rani
+     Pokhari, the stadium). The houses under the deck are kept below it, and
+     none stands where a pier goes (world.js asks KS.tollUnder). */
+  const TOLL = (KS.TOLL = { H: 22, DW: 14, RAMP: 200, lines: [
+    { id: 'ns', axis: 'z', c: -225, a: -532, b: 442, flatA: -332, flatB: 250, names: [['Balaju', 'बालाजु'], ['Teku', 'टेकु']] },
+    { id: 'ew', axis: 'x', c: 225, a: -532, b: 532, flatA: -332, flatB: 332, names: [['Kalimati', 'कालीमाटी'], ['Baneshwor', 'बानेश्वर']] },
+  ] });
+  /** deck height of a line at position t along it (ramps fall linearly to the street at both ends) */
+  TOLL.yAt = (L, t) => (t < L.a || t > L.b ? null : t < L.flatA ? TOLL.H * (t - L.a) / (L.flatA - L.a) : t > L.flatB ? TOLL.H * (L.b - t) / (L.b - L.flatB) : TOLL.H);
+  /** the deck surface height over a point, or null when the point is not under the expressway */
+  KS.tollY = (x, z, pad = 0) => {
+    let best = null;
+    for (const L of TOLL.lines) {
+      const t = L.axis === 'z' ? z : x, u = L.axis === 'z' ? x - L.c : z - L.c;
+      if (Math.abs(u) > TOLL.DW / 2 + pad) continue;
+      const y = TOLL.yAt(L, t); if (y === null) continue;
+      if (best === null || y > best) best = y;
+    }
+    return best;
   };
+  /* piers: in the middle of each street the line crosses (never in a
+     junction: the lines cross the streets mid-way between junctions) and in
+     the middle of each block, wherever the deck is more than 5 m up */
+  TOLL.piers = [];
+  for (const L of TOLL.lines) {
+    for (let i = 0; i <= G.N; i++) for (const t of [G.line(i), G.line(i) + G.B / 2]) {
+      if (t <= L.a + 40 || t >= L.b - 30) continue;
+      if (t > KS.RIVER.z0 - 6 && t < KS.RIVER.z1 + 6 && L.axis === 'z') continue; // no pier in the Bagmati
+      const y = TOLL.yAt(L, t); if (y === null || y < 5) continue;
+      const px = L.axis === 'z' ? L.c : t, pz = L.axis === 'z' ? t : L.c;
+      if (Math.hypot(px - TOLL.lines[0].c, pz - TOLL.lines[1].c) < 10) continue; // the crossing of the two lines: one shared slab, no pier in the middle
+      TOLL.piers.push({ x: px, z: pz, y, line: L.id });
+    }
+  }
+  /** for a building footprint (centre, half extents): the lowest deck above it (null if none) and whether a pier stands in it */
+  KS.tollUnder = (cx, cz, hw, hd) => {
+    let minY = null;
+    for (const L of TOLL.lines) {
+      const tc = L.axis === 'z' ? cz : cx, uc = L.axis === 'z' ? cx : cz, ht = L.axis === 'z' ? hd : hw, hu = L.axis === 'z' ? hw : hd;
+      if (Math.abs(uc - L.c) > TOLL.DW / 2 + 1 + hu) continue;
+      for (const t of [tc - ht, tc, tc + ht]) { const y = TOLL.yAt(L, t); if (y !== null && (minY === null || y < minY)) minY = y; }
+      if (tc + ht >= L.a && tc - ht <= L.a) minY = 0; // the ramp lands here
+      if (tc + ht >= L.b && tc - ht <= L.b) minY = 0;
+    }
+    const pier = TOLL.piers.some((p) => Math.abs(p.x - cx) < hw + 2 && Math.abs(p.z - cz) < hd + 2);
+    return { minY, pier };
+  };
+  /* the toll expressway is an 80 km/h road: you are on it when you are up on its deck or ramps */
+  KS.onExpressway = (x, z, y) => { if (!(y > 1.5)) return false; const d = KS.tollY(x, z); return d !== null && y > d - 1.2 && y < d + 4; };
   KS.speedLimit = (x, z, y) => (KS.schoolHours() && KS.schoolZoneAt(x, z) ? 25 : (y !== undefined && KS.onExpressway(x, z, y) ? 80 : null));
 
   /* ---------- solids: boxes / circles with a top height, on a spatial hash ---------- */

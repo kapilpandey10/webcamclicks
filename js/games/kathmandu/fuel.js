@@ -35,7 +35,7 @@ F.priceFor = (kind) => {
   return F.PRICE.car;
 };
 /* bicycles and the helicopter do not use fuel */
-F.needsFuel = (kind) => kind !== 'bicycle' && kind !== 'helicopter';
+F.needsFuel = (kind) => kind !== 'bicycle' && kind !== 'skateboard' && kind !== 'helicopter';
 /* the fuel of the player's current vehicle (0-100), or null when it does not
    use fuel / the player is on foot */
 F.of = (v) => {

@@ -35,11 +35,14 @@
     scooter: { name: 'Scooter', len: 1.8, wid: 0.7, speed: 12.5, accel: 9, turn: 2.8, r: 0.8, seats: 'bike' },
     policebike: { name: 'Police Bike', len: 2.0, wid: 0.8, speed: 19, accel: 12, turn: 2.6, r: 0.8, seats: 'bike' },
     bicycle: { name: 'Bicycle', len: 1.75, wid: 0.6, speed: 5.2, accel: 3.2, turn: 2.6, r: 0.7, seats: 'bike' },
+    skateboard: { name: 'Skateboard', len: 0.82, wid: 0.24, speed: 6.5, accel: 2.4, turn: 2.3, r: 0.45, seats: 'bike' }, // round 19: kick-push, no engine
     helicopter: { name: 'Helicopter', len: 9, wid: 2.6, speed: 25, accel: 8, turn: 2.0, r: 3.5, seats: 'heli' },
   };
-  const BIKES = { bike: 1, sport: 1, cruiser: 1, scooter: 1, policebike: 1, bicycle: 1 };
+  const BIKES = { bike: 1, sport: 1, cruiser: 1, scooter: 1, policebike: 1, bicycle: 1, skateboard: 1 };
+  /** pushed by the rider, no engine: no licence, no fuel, no road fines */
+  KS.isPedal = (k) => k === 'bicycle' || k === 'skateboard';
   /** licence category needed: A = motorcycle/scooter, B = car/jeep/van/pickup/tempo, G = bus/truck; null = none */
-  KS.licenseFor = (kind) => (kind === 'bicycle' || kind === 'helicopter' ? null : ['bike', 'sport', 'cruiser', 'scooter', 'policebike'].includes(kind) ? 'A' : ['bus', 'minibus', 'truck'].includes(kind) ? 'G' : 'B');
+  KS.licenseFor = (kind) => (kind === 'bicycle' || kind === 'skateboard' || kind === 'helicopter' ? null : ['bike', 'sport', 'cruiser', 'scooter', 'policebike'].includes(kind) ? 'A' : ['bus', 'minibus', 'truck'].includes(kind) ? 'G' : 'B');
   KS.isBike = (k) => !!BIKES[k];
 
   /* ---------- shared plates & boards ---------- */
@@ -172,7 +175,7 @@
     // headlight pool on the road ahead — not for the helicopter, it would hang in the air
     if (type !== 'helicopter') {
       const VT = KS.VTYPES[type], L = VT.len;
-      KS.addBeam(r.root, 0, KS.isBike(type) ? 0.95 : 0.75, L / 2 + 0.05, false, { wid: KS.isBike(type) ? 0.5 : VT.wid, len: L });
+      if (type !== 'skateboard') KS.addBeam(r.root, 0, KS.isBike(type) ? 0.95 : 0.75, L / 2 + 0.05, false, { wid: KS.isBike(type) ? 0.5 : VT.wid, len: L });
     }
     return r;
   };

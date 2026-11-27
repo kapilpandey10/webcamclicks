@@ -149,7 +149,7 @@
     const mats = ADS.map((a) => { const t = adTex(a); return new T.MeshLambertMaterial({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0 }); });
     mats.forEach((m) => { m.userData.nightScale = 0.55; KS.nightMats.push(m); });
     const frame = new KS.Builder();
-    const tall = (KS.World.tall || []).filter((_, k) => k % 2 === 0).slice(0, 60);
+    const tall = (KS.World.tall || []).filter((t) => KS.tollY(t.cx, t.cz, Math.max(t.w, t.d)) === null).filter((_, k) => k % 2 === 0).slice(0, 60); // never a rooftop billboard under the expressway
     tall.forEach((t, k) => {
       const fx = Math.sin(t.ry), fz = Math.cos(t.ry), rx = Math.cos(t.ry), rz = -Math.sin(t.ry);
       const x = t.cx + fx * (t.d / 2 - 1.2), z = t.cz + fz * (t.d / 2 - 1.2), y = t.H, w = Math.min(10, t.w * 0.9);

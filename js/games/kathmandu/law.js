@@ -14,7 +14,7 @@
 
   const MAXFINE = (KS.MAXFINE = 500); // no single fine is ever more than रु 500
   /** riding a bicycle: no fines and no demerit points */
-  const onCycle = () => { const v = KS.Player && KS.Player.vehicle; return !!v && v.kind === 'bicycle'; };
+  const onCycle = () => { const v = KS.Player && KS.Player.vehicle; return !!v && (v.kind === 'bicycle' || v.kind === 'skateboard'); };
   /** a Nepali-style smart licence card (in-game) */
   L.cardHTML = (d) => {
     const P = KS.Shop.data, name = (P.netName || 'Rider').toUpperCase(), issue = new Date(d.issued || Date.now()), exp = new Date(issue); exp.setFullYear(exp.getFullYear() + 5);

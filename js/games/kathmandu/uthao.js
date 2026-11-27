@@ -29,7 +29,7 @@
     furniture: { icon: '🛋️', name: 'Furniture', cls: ['cargo'], mult: 1.8, fragile: 1.5, wants: 'Big load: pickup only' },
     veg: { icon: '🥬', name: 'Village vegetables', cls: ['cargo'], mult: 1.6, fromVillage: true, wants: 'From Dhunibesi farms to Kalimati market' },
   };
-  const clsOf = (v) => { if (!v) return null; if (v.kind === 'bicycle') return 'cycle'; if (v.kind === 'policebike' || v.trialVehicle) return null; if (KS.isBike(v.kind)) return 'moto'; if (['pickup', 'tempo', 'truck', 'micro'].includes(v.kind)) return 'cargo'; if (['bus', 'minibus', 'ambulance', 'police'].includes(v.kind)) return null; return 'car'; };
+  const clsOf = (v) => { if (!v) return null; if (v.kind === 'bicycle') return 'cycle'; if (v.kind === 'skateboard') return null; if (v.kind === 'policebike' || v.trialVehicle) return null; if (KS.isBike(v.kind)) return 'moto'; if (['pickup', 'tempo', 'truck', 'micro'].includes(v.kind)) return 'cargo'; if (['bus', 'minibus', 'ambulance', 'police'].includes(v.kind)) return null; return 'car'; };
   U.clsOf = clsOf;
   const KALIMATI = { x: -312, z: 95, name: 'Kalimati Market' };
 

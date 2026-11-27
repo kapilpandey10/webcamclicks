@@ -159,15 +159,18 @@
       }
     }
     scene.add(KS.mesh(f));
-    // snowfall over the peak: a thick, drifting snowstorm you can ride through
-    const N = 1400, pos = new Float32Array(N * 3); snowVel = new Float32Array(N); snowSway = new Float32Array(N);
-    for (let i = 0; i < N; i++) {
-      pos[i * 3] = P.x + KS.r(-320, 320); pos[i * 3 + 1] = KS.heightAt(P.x, P.z) + KS.r(0, 150); pos[i * 3 + 2] = P.z + KS.r(-320, 320);
-      snowVel[i] = KS.r(1.2, 3.8); snowSway[i] = KS.r(0, Math.PI * 2);
-    }
+    /* ROUND 19: snowfall that follows you. 7000 soft round flakes in a box
+       around the camera, each with its own size, fall speed and flutter; the
+       wind carries them sideways. How much of it you see depends on where
+       you are: a blizzard near the summit, a steady fall above the snow
+       line, light flurries in the hills, nothing down in the city. */
+    const N = 7000, pos = new Float32Array(N * 3); snowVel = new Float32Array(N); snowSway = new Float32Array(N);
+    for (let i = 0; i < N; i++) { pos[i * 3] = KS.r(-70, 70); pos[i * 3 + 1] = KS.r(-20, 45); pos[i * 3 + 2] = KS.r(-70, 70); snowVel[i] = KS.r(0.9, 2.6); snowSway[i] = KS.r(0, Math.PI * 2); }
     const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(pos, 3));
-    snowPts = new T.Points(g, new T.PointsMaterial({ color: 0xffffff, size: 0.7, transparent: true, opacity: 0.95 }));
+    const flake = KS.tex(64, 64, (c, w, h) => { const gr = c.createRadialGradient(32, 32, 0, 32, 32, 30); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.45, 'rgba(255,255,255,0.85)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = gr; c.fillRect(0, 0, w, h); });
+    snowPts = new T.Points(g, new T.PointsMaterial({ map: flake, color: 0xffffff, size: 0.32, sizeAttenuation: true, transparent: true, opacity: 0.95, depthWrite: false }));
     snowPts.frustumCulled = false; scene.add(snowPts);
+    M.snowOrigin = new T.Vector3();
     // snow drifts piled against the hut, the guardrails and the roadside
     const dr = new KS.Builder();
     for (let k = 0; k < 26; k++) {
@@ -305,17 +308,34 @@
     if (M.paraSock) M.paraSock.rotation.y = Math.sin(KS.clock * 0.3) * 0.6;
     if (M.campFire) { const s = 1 + Math.sin(KS.clock * 7) * 0.12; M.campFire.scale.set(s, 1 + Math.sin(KS.clock * 9) * 0.15, s); }
     if (M.campLight) M.campLight.intensity = (KS.time < 6 || KS.time > 18) ? 1.4 + Math.sin(KS.clock * 7) * 0.3 : 0;
-    if (snowPts) {
-      const pos = snowPts.geometry.attributes.position, P = KS.SNOWPEAK, t = KS.clock;
-      for (let i = 0; i < pos.count; i++) {
-        let y = pos.getY(i) - snowVel[i] * dt;
-        // the wind pushes the flakes sideways as they fall, so the snow drifts
-        const sw = Math.sin(t * 0.7 + snowSway[i]) * 1.1 * dt;
-        pos.setX(i, pos.getX(i) + sw); pos.setZ(i, pos.getZ(i) + Math.cos(t * 0.5 + snowSway[i]) * 0.6 * dt);
-        if (y < KS.heightAt(pos.getX(i), pos.getZ(i))) { y = KS.heightAt(P.x, P.z) + KS.r(0, 150); pos.setX(i, P.x + KS.r(-320, 320)); pos.setZ(i, P.z + KS.r(-320, 320)); }
-        pos.setY(i, y);
+    if (snowPts && KS.camera) {
+      /* how hard it snows here: by height above the snow line, and nearness to the summit */
+      const cam = KS.camera.position, P = KS.SNOWPEAK, ground = KS.heightAt(cam.x, cam.z);
+      const alt = Math.max(ground, cam.y - 30), dPeak = Math.hypot(cam.x - P.x, cam.z - P.z);
+      let amt = KS.smooth(KS.SNOWLINE - 120, KS.SNOWLINE + 20, alt) * 0.75 + KS.smooth(700, 200, dPeak) * 0.5;
+      if (KS.Weather && (KS.Weather.type === 'cloudy' || KS.Weather.type === 'storm')) amt *= 1.35;
+      amt = KS.clamp(amt, 0, 1); M.snowAmount = amt;
+      const pos = snowPts.geometry.attributes.position, t = KS.clock, n = Math.floor(pos.count * amt);
+      snowPts.visible = n > 20; snowPts.geometry.setDrawRange(0, n);
+      if (snowPts.visible) {
+        if (!M.snowSeeded || M.snowOrigin.distanceTo(cam) > 150) { // first fall, or a long jump (teleport, flight): scatter the flakes around you
+          for (let i = 0; i < pos.count; i++) pos.setXYZ(i, cam.x + KS.r(-70, 70), cam.y + KS.r(-20, 45), cam.z + KS.r(-70, 70));
+          M.snowSeeded = true;
+        }
+        M.snowOrigin.copy(cam);
+        const wind = (KS.Weather && KS.Weather.cur ? KS.Weather.cur.wind : 2) * 0.35 + amt * 2;
+        for (let i = 0; i < n; i++) {
+          let x = pos.getX(i), y = pos.getY(i) - snowVel[i] * dt, z = pos.getZ(i);
+          x += (Math.sin(t * 1.3 + snowSway[i]) * 0.6 + wind) * dt; z += Math.cos(t * 0.9 + snowSway[i] * 1.7) * 0.5 * dt;
+          // keep each flake in a 140 m box around the camera: wrap it round when it leaves
+          if (x - cam.x > 70) x -= 140; else if (x - cam.x < -70) x += 140;
+          if (z - cam.z > 70) z -= 140; else if (z - cam.z < -70) z += 140;
+          if (y < cam.y - 25 || y < KS.heightAt(x, z) - 0.2) y = cam.y + KS.r(20, 45);
+          else if (y > cam.y + 45) y = cam.y - 20 + KS.r(0, 10);
+          pos.setXYZ(i, x, y, z);
+        }
+        pos.needsUpdate = true;
       }
-      pos.needsUpdate = true;
     }
   };
 })();

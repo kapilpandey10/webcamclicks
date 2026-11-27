@@ -505,6 +505,7 @@ body.battle #navBox { top: 50px; }
       <div class="tset-row"><span>🎨 Graphics</span><button type="button" class="chip" id="tQualityToggle">High</button></div>
       <div class="tset-row"><span>🗺️ Minimap</span><button type="button" class="chip" id="tMinimapToggle">On</button></div>
     </div>
+    <p class="small" style="color:#b9c2cc">Tram, skateboard, double bed, dining table and TV by 3D Assets (CC0); “Glam Velvet Sofa” and “Chair Damask Purplegold” by Wayfair, from the Khronos glTF sample assets (CC BY 4.0).</p>
     <p class="small" style="color:#b9c2cc">Vehicle models by vinish.dev — “Sedan 01”, “Street Motorcycle”, “Bicycle”, “Helicopter”, “Rowboat” and the low-poly car pack — CC BY 4.0. Auto-rickshaw and commuter scooter by 3D Assets (CC0), touring motorcycle by Polyfork (royalty-free), found through the 3D Asset Server (3d.shep.bot). The sky-drop aeroplane is the “Turboprop Commuter” by vinish.dev, CC BY 4.0. Park bench by Polyfork (royalty-free); consultation chair, potted plant, monitor and ward bed by 3D Assets (CC0).</p>
   </div>
 </section>
@@ -721,34 +722,36 @@ body.battle #navBox { top: 50px; }
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="js/games/kathmandu/lib/GLTFLoader.js?v=20261127a"></script>
-<script src="js/games/kathmandu/core.js?v=20261127a"></script>
-<script src="js/games/kathmandu/world.js?v=20261127a"></script>
-<script src="js/games/kathmandu/landmarks.js?v=20261127a"></script>
-<script src="js/games/kathmandu/extras.js?v=20261127a"></script>
-<script src="js/games/kathmandu/nature.js?v=20261127a"></script>
-<script src="js/games/kathmandu/signs.js?v=20261127a"></script>
-<script src="js/games/kathmandu/places.js?v=20261127a"></script>
-<script src="js/games/kathmandu/mountains.js?v=20261127a"></script>
-<script src="js/games/kathmandu/people.js?v=20261127a"></script>
-<script src="js/games/kathmandu/damage.js?v=20261127a"></script>
-<script src="js/games/kathmandu/vehicles.js?v=20261127a"></script>
-<script src="js/games/kathmandu/vehicleModels.js?v=20261127a"></script>
-<script src="js/games/kathmandu/props.js?v=20261127a"></script>
-<script src="js/games/kathmandu/traffic.js?v=20261127a"></script>
-<script src="js/games/kathmandu/weather.js?v=20261127a"></script>
-<script src="js/games/kathmandu/audio.js?v=20261127a"></script>
-<script src="js/games/kathmandu/shop.js?v=20261127a"></script>
-<script src="js/games/kathmandu/fuel.js?v=20261127a"></script>
-<script src="js/games/kathmandu/story.js?v=20261127a"></script>
-<script src="js/games/kathmandu/weapons.js?v=20261127a"></script>
-<script src="js/games/kathmandu/player.js?v=20261127a"></script>
-<script src="js/games/kathmandu/uthao.js?v=20261127a"></script>
-<script src="js/games/kathmandu/law.js?v=20261127a"></script>
-<script src="js/games/kathmandu/ui.js?v=20261127a"></script>
-<script src="js/games/kathmandu/net.js?v=20261127a"></script>
-<script src="js/games/kathmandu/battle.js?v=20261127a"></script>
-<script src="js/games/kathmandu/game.js?v=20261127a"></script>
+<script src="js/games/kathmandu/lib/GLTFLoader.js?v=20261127b"></script>
+<script src="js/games/kathmandu/core.js?v=20261127b"></script>
+<script src="js/games/kathmandu/world.js?v=20261127b"></script>
+<script src="js/games/kathmandu/landmarks.js?v=20261127b"></script>
+<script src="js/games/kathmandu/extras.js?v=20261127b"></script>
+<script src="js/games/kathmandu/nature.js?v=20261127b"></script>
+<script src="js/games/kathmandu/signs.js?v=20261127b"></script>
+<script src="js/games/kathmandu/places.js?v=20261127b"></script>
+<script src="js/games/kathmandu/homes.js?v=20261127b"></script>
+<script src="js/games/kathmandu/tram.js?v=20261127b"></script>
+<script src="js/games/kathmandu/mountains.js?v=20261127b"></script>
+<script src="js/games/kathmandu/people.js?v=20261127b"></script>
+<script src="js/games/kathmandu/damage.js?v=20261127b"></script>
+<script src="js/games/kathmandu/vehicles.js?v=20261127b"></script>
+<script src="js/games/kathmandu/vehicleModels.js?v=20261127b"></script>
+<script src="js/games/kathmandu/props.js?v=20261127b"></script>
+<script src="js/games/kathmandu/traffic.js?v=20261127b"></script>
+<script src="js/games/kathmandu/weather.js?v=20261127b"></script>
+<script src="js/games/kathmandu/audio.js?v=20261127b"></script>
+<script src="js/games/kathmandu/shop.js?v=20261127b"></script>
+<script src="js/games/kathmandu/fuel.js?v=20261127b"></script>
+<script src="js/games/kathmandu/story.js?v=20261127b"></script>
+<script src="js/games/kathmandu/weapons.js?v=20261127b"></script>
+<script src="js/games/kathmandu/player.js?v=20261127b"></script>
+<script src="js/games/kathmandu/uthao.js?v=20261127b"></script>
+<script src="js/games/kathmandu/law.js?v=20261127b"></script>
+<script src="js/games/kathmandu/ui.js?v=20261127b"></script>
+<script src="js/games/kathmandu/net.js?v=20261127b"></script>
+<script src="js/games/kathmandu/battle.js?v=20261127b"></script>
+<script src="js/games/kathmandu/game.js?v=20261127b"></script>
 <script>if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('is-touch');</script>
 </body>
 </html>

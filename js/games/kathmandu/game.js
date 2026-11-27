@@ -296,9 +296,9 @@
     for (const c of KS.speedCams) { c.cool = Math.max(0, c.cool - dt); c.flash.material.opacity = Math.max(0, c.flash.material.opacity - dt * 3); }
     for (const s2 of KS.signals) if (s2.camFlash) s2.camFlash.material.opacity = Math.max(0, s2.camFlash.material.opacity - dt * 3);
     const heli = v && v.kind === 'helicopter';
-    if (v && KS.noDriveAt && KS.noDriveAt(PL.x, PL.z) && v.kind !== 'bicycle' && !(heli && (v.alt || 0) > 3)) Game.prompt('🚫 Pedestrian area: no vehicles beyond the bollards');
+    if (v && KS.noDriveAt && KS.noDriveAt(PL.x, PL.z) && !KS.isPedal(v.kind) && !(heli && (v.alt || 0) > 3)) Game.prompt('🚫 Pedestrian area: no vehicles beyond the bollards');
     if (v && !heli && Game.limit !== (Game.limit = KS.speedLimit(PL.x, PL.z, PL.y)) && Game.limit) Game.notify(Game.limit === 80 ? '🛣️ Expressway: 80 km/h' : '🏫 School zone: 25 km/h until 16:00');
-    if (!v || Law.trial || v.kind === 'bicycle' || v.kind === 'helicopter') { lastSig = null; return; } // no road rules in the sky, and no speed fines at all
+    if (!v || Law.trial || KS.isPedal(v.kind) || v.kind === 'helicopter') { lastSig = null; return; } // no road rules in the sky, and no speed fines at all
     const kmh = Math.abs(v.speed) * 3.6;
     Game.kmh = kmh;
     // red-light cameras at every signal
@@ -566,6 +566,8 @@
     setLoad(5, 'Laying the Ring Road and the lanes of Thamel…');
     if (KS.Props) { try { await KS.Props.load(); } catch (e) { /* code-built props stay */ } }
     KS.reseed(1); KS.World.build(scene);
+    if (KS.Homes) KS.Homes.build(scene); // walk-in houses with real furniture
+    if (KS.Tram) KS.Tram.build(scene); // the city tram loop
     setLoad(20, 'Digging the Nagdhunga tunnel, planting rice terraces…');
     KS.reseed(2); KS.Nature.build(scene);
     KS.Weather.init(scene, renderer);
@@ -858,7 +860,7 @@
       }
       PL.update(dt);
     }
-    KS.Battle.update(dt); KS.Places.update(dt); if (KS.Parking) KS.Parking.update(dt); if (KS.Mountains) KS.Mountains.update(dt);
+    KS.Battle.update(dt); KS.Places.update(dt); if (KS.Parking) KS.Parking.update(dt); if (KS.Mountains) KS.Mountains.update(dt); if (KS.Tram) KS.Tram.update(dt);
     if (KS.Damage) KS.Damage.update(dt);
     if (KS.Fuel) KS.Fuel.update(dt); // the fuel-delivery timer
     if (KS.Story) KS.Story.update(dt); // story-mode chapters

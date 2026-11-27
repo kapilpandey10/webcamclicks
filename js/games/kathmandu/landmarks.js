@@ -12,7 +12,22 @@
   /** a temple bell you can see and ring: two wooden posts, a crossbeam and a
       brass bell with a clapper, on a stone base. Press E within 9 m to ring
       it (game.js). y is the ground height under the bell. */
-  function bellAt(b, x, z, y = 0) {
+  /* ROUND 23: the temple bells are a real model — a brass bell hanging in a
+     timber frame on a stone base — and the bell swings when it is rung. The
+     code-built bell stays only as the fallback when the model did not load. */
+  const bellModels = []; KS.bellNodes = [];
+  KS.ringBell = (x, z, amp = 0.5) => { let best = null, bd = 12; for (const n of KS.bellNodes) { const d = Math.hypot(n.x - x, n.z - z); if (d < bd) { bd = d; best = n; } } if (best) best.amp = Math.max(best.amp, amp); };
+  KS.updateBells = (dt) => { for (const n of KS.bellNodes) { if (n.amp < 0.002 || !n.pivot) continue; n.t += dt; n.pivot.rotation.x = Math.sin(n.t * 6.5) * n.amp; n.amp *= Math.exp(-0.9 * dt); if (n.amp < 0.002) n.pivot.rotation.x = 0; } };
+  function bellAt(b, x, z, y = 0, scale = 1) {
+    const m = KS.Props && KS.Props.build && KS.Props.build('templebell');
+    if (m) {
+      m.scale.setScalar(scale); m.position.set(x, y, z); m.rotation.y = Math.atan2(-x, -z) + Math.PI / 2; // turned side-on to the path
+      let pivot = null; m.traverse((o) => { if (o.name === 'bell') pivot = o; });
+      bellModels.push(m); KS.bellNodes.push({ x, z, pivot, amp: 0, t: 0 });
+      KS.addBox(x, z, 1.3 * scale, 1.3 * scale, y + 3.0 * scale);
+      KS.bells.push([x, z]);
+      return;
+    }
     b.box(x, y, z, 1.6, 0.3, 1.6, 0x8f887a); // stone base
     b.box(x - 0.55, y + 0.15, z, 0.18, 2.4, 0.18, 0x6a4a2a);
     b.box(x + 0.55, y + 0.15, z, 0.18, 2.4, 0.18, 0x6a4a2a);
@@ -206,8 +221,7 @@
     }
     // little shrines & bell
     W.smallShrine(b, -165, 60, false); W.smallShrine(b, -132, 40, true);
-    b.box(-126.5, 0, 22, 0.4, 5, 0.4, 0x222222); b.box(-129.5, 0, 22, 0.4, 5, 0.4, 0x222222); b.box(-128, 5, 22, 3.6, 0.4, 0.5, 0x222222); b.cyl(-128, 3.2, 22, 0.8, 1.7, 0x6b5a2a, 10, 0.6);
-    KS.addBox(-128, 22, 3.6, 0.6, 5.4); KS.bells.push([-128, 22]);
+    bellAt(b, -128, 22, 0, 1.7); // the great bell of Basantapur, twice the size of the temple bells
     scene.add(KS.mesh(b));
     KS.pigeonSpots.push([-140, 20, 40], [-130, 130, 26], [-150, 70, 22]);
     for (let i = 0; i < 8; i++) KS.sitSpots.push([-112 + KS.r(-9, 9), 26 + 11 - i * 0.2, 0.9 * KS.ri(1, 5)]);
@@ -589,5 +603,6 @@
     add({ id: 'ason', name: 'Asan Tole', np: 'असन टोल', x: -45, z: -135, r: 32, fact: 'The oldest bazaar in town, selling spices, rice and festival goods for centuries.' });
     add({ minor: true, id: 'newroad', name: 'New Road', np: 'न्युरोड', x: -45, z: 90, r: 40, fact: 'The shopping street rebuilt after the great 1934 earthquake.' });
     add({ id: 'bagmati', name: 'Bagmati River', np: 'बागमती नदी', x: -200, z: 495, r: 40, fact: 'The holy river of the valley. Bridges join Kathmandu to Patan on the far bank.' });
+    for (const m of bellModels) scene.add(m); // the real bell models
   };
 })();

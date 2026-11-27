@@ -239,7 +239,7 @@
         return;
       }
     }
-    for (const [x, z] of KS.bells) if (Math.hypot(x - PL.x, z - PL.z) < 9) { A.bell(0.8); KS.say(PL.person.root, '🔔 Dong…', 1.5, 'calm'); return; }
+    for (const [x, z] of KS.bells) if (Math.hypot(x - PL.x, z - PL.z) < 9) { A.bell(0.8); KS.ringBell && KS.ringBell(x, z, 0.55); KS.say(PL.person.root, '🔔 Dong…', 1.5, 'calm'); return; }
     let best = null, bd = 5;
     KS.Peds.forEachNear(PL.x, PL.z, 5, (p) => { const d = Math.hypot(p.x - PL.x, p.z - PL.z); if (d < bd && !p.down) { bd = d; best = p; } });
     if (best) { KS.say(PL.person.root, 'Namaste! 🙏', 1.6, 'calm'); setTimeout(() => KS.say(best.p.root, KS.pick(KS.LINES[best.kind] || KS.LINES.greet), 2.4), 600); }
@@ -869,7 +869,7 @@
       }
       PL.update(dt);
     }
-    KS.Battle.update(dt); KS.Places.update(dt); if (KS.Parking) KS.Parking.update(dt); if (KS.Mountains) KS.Mountains.update(dt); if (KS.Tram) KS.Tram.update(dt); if (KS.Express) KS.Express.update(dt); if (KS.Challenges) KS.Challenges.update(dt);
+    KS.Battle.update(dt); KS.Places.update(dt); if (KS.Parking) KS.Parking.update(dt); if (KS.Mountains) KS.Mountains.update(dt); if (KS.Tram) KS.Tram.update(dt); if (KS.updateBells) KS.updateBells(dt); if (KS.Express) KS.Express.update(dt); if (KS.Challenges) KS.Challenges.update(dt);
     if (KS.Damage) KS.Damage.update(dt);
     if (KS.Fuel) KS.Fuel.update(dt); // the fuel-delivery timer
     if (KS.Story) KS.Story.update(dt); // story-mode chapters
@@ -928,7 +928,7 @@
           Game.found.add(l.id); showCard(l); Game.pay(500, 'Discovered ' + l.name); Game.giveTokens(1, 'New place'); Game.karma(+1, 'Visited ' + l.name);
           if (Game.found.size === KS.landmarks.length) Game.notify('🏆 You have seen every corner of the valley!', 'good');
         }
-        for (const [x, z] of KS.bells) { const d = Math.hypot(x - PL.x, z - PL.z); if (d < 30 && KS.chance(0.03)) A.bell(0.4 * (1 - d / 30)); }
+        for (const [x, z] of KS.bells) { const d = Math.hypot(x - PL.x, z - PL.z); if (d < 30 && KS.chance(0.03)) { A.bell(0.4 * (1 - d / 30)); KS.ringBell && KS.ringBell(x, z, 0.3); } } // a passer-by rings it: it swings
       }
       // GPS route refresh
       Game.routeT = (Game.routeT || 0) - dt;

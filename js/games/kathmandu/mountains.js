@@ -314,7 +314,7 @@
       const alt = Math.max(ground, cam.y - 30), dPeak = Math.hypot(cam.x - P.x, cam.z - P.z);
       let amt = KS.smooth(KS.SNOWLINE - 120, KS.SNOWLINE + 20, alt) * 0.75 + KS.smooth(700, 200, dPeak) * 0.5;
       if (KS.Weather && (KS.Weather.type === 'cloudy' || KS.Weather.type === 'storm')) amt *= 1.35;
-      amt = KS.clamp(amt, 0, 1); M.snowAmount = amt;
+      amt = KS.clamp(amt, 0, 1); if (KS.noSnow) amt = 0; M.snowAmount = amt;
       const pos = snowPts.geometry.attributes.position, t = KS.clock, n = Math.floor(pos.count * amt);
       snowPts.visible = n > 20; snowPts.geometry.setDrawRange(0, n);
       if (snowPts.visible) {

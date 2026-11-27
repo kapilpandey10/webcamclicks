@@ -21,6 +21,8 @@
     { id: 'ring', ev: 'ring_m', n: 4000, unit: 'm', title: 'Drive 4 km on the Ring Road', np: 'चक्रपथमा ४ कि.मि.', cash: 500, xp: 60, icon: '⭕' },
     { id: 'uthao', ev: 'uthao', n: 3, title: 'Finish 3 Uthao rides', np: '३ उठाओ यात्रा', cash: 600, xp: 70, icon: '📱' },
     { id: 'fuel', ev: 'fuel', n: 1, title: 'Fill up at a petrol pump', np: 'पेट्रोल भर्नुहोस्', cash: 150, xp: 20, icon: '⛽' },
+    { id: 'race', ev: 'race', n: 1, title: 'Finish a Ring Road Race', np: 'चक्रपथ दौड पूरा गर्नुहोस्', cash: 500, xp: 60, icon: '🏁' },
+    { id: 'boost', ev: 'boost', n: 5, title: 'Hit 5 speed boosters in races', np: '५ बुस्टर', cash: 300, xp: 40, icon: '🔥' },
     { id: 'peak', ev: 'peak', n: 1, title: 'Reach the snowy summit', np: 'हिउँ चुचुरोमा पुग्नुहोस्', cash: 500, xp: 60, icon: '🏔️' },
   ];
   const WEEKLY = [
@@ -28,6 +30,7 @@
     { id: 'w_uthao', ev: 'uthao', n: 20, title: 'Finish 20 Uthao rides', np: '२० उठाओ यात्रा', cash: 3000, xp: 300, icon: '📱' },
     { id: 'w_cycle', ev: 'cycle_m', n: 10000, unit: 'm', title: 'Cycle 10 km this week', np: '१० कि.मि. साइकल', cash: 2000, xp: 200, icon: '🚲' },
     { id: 'w_tram', ev: 'tram', n: 5, title: 'Ride the tram 5 times', np: '५ पटक ट्राम', cash: 1500, xp: 150, icon: '🚋' },
+    { id: 'w_race', ev: 'race_win', n: 3, title: 'Win 3 Ring Road Races', np: '३ दौड जित्नुहोस्', cash: 3000, xp: 300, icon: '🏆' },
     { id: 'w_express', ev: 'express_m', n: 15000, unit: 'm', title: 'Drive 15 km on the expressway', np: '१५ कि.मि. एक्सप्रेसवे', cash: 2500, xp: 250, icon: '🌉' },
   ];
   const RANKS = [[1, 'Naya Driver', 'नयाँ चालक'], [3, 'Galli Expert', 'गल्ली विज्ञ'], [5, 'Tempo Pro', 'टेम्पो प्रो'], [8, 'Ring Road Raja', 'चक्रपथ राजा'], [12, 'Valley Legend', 'उपत्यका किंवदन्ती']];

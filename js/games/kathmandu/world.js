@@ -300,7 +300,7 @@
     for (let i = 0; i < P.length; i++) { // bridge decks over the Bagmati
       const p = P[i];
       if (p.z < KS.RIVER.z0 - 4 || p.z > KS.RIVER.z1 + 4) continue;
-      b.box(p.x, -0.7, p.z, 26, 1.45, 26, 0x8d887e);
+      b.box(p.x, -1.42, p.z, 26, 1.45, 26, 0x8d887e); // the deck top sits level with the road (0.03), not 0.7 m above it
       b.box(p.x, -3, p.z, 24, 1.8, 2.2, 0x7d786e);
       KS.addBox(p.x, p.z, 26, 26, 0.06, -3);
     }
@@ -666,7 +666,7 @@
     const P = KS.ringLoopPts || []; // Ring Road: dashed lane lines either side of the median
     for (let k = 0; k < P.length; k++) {
       const a = P[k], b = P[(k + 1) % P.length], dx = b.x - a.x, dz = b.z - a.z, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L;
-      const lx = uz, lz = -ux, ry = Math.atan2(ux, uz), y = KS.heightAt(a.x, a.z) + 0.07;
+      const lx = uz, lz = -ux, ry = Math.atan2(ux, uz), y = Math.max(0, KS.heightAt(a.x, a.z)) + 0.07; // level over the Bagmati bridge too
       for (const off of [5.3, -5.3]) { box(a.x + lx * off, y, a.z + lz * off, 0.15, 0.015, 3, WHT, ry); nRing++; }
     }
     for (let x = KS.HW.x0; x > KS.HW.x1; x -= 6) { // Nagdhunga highway centre dashes (not inside the tunnel)

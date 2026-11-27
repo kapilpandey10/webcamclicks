@@ -292,6 +292,7 @@
   let lastSig = null, honks = [];
   function violations(dt) {
     if (KS.Battle && KS.Battle.on) return; // no police, cameras or fines in Battle mode
+    if (KS.Race && KS.Race.racing()) return; // the Ring Road is closed for the race: no speed limit
     const PL = KS.Player, v = PL.vehicle, Law = KS.Law;
     for (const c of KS.speedCams) { c.cool = Math.max(0, c.cool - dt); c.flash.material.opacity = Math.max(0, c.flash.material.opacity - dt * 3); }
     for (const s2 of KS.signals) if (s2.camFlash) s2.camFlash.material.opacity = Math.max(0, s2.camFlash.material.opacity - dt * 3);
@@ -632,6 +633,7 @@
     setLoad(95, 'Starting the traffic lights (and the honking)…');
     KS.reseed(5); KS.Traffic.init(scene, KS.quality.cars, KS.Player.x, KS.Player.z);
     if (KS.Express) KS.Express.init(scene); // traffic on the City Expressway
+    if (KS.Race) KS.Race.init(scene); // the Ring Road Race: HQ, gantry, and the event dressing
     const cyc = KS.Traffic.park('bicycle', -131, -263.2, Math.PI / 2, { owned: true }); if (cyc) cyc.ownedId = 'cycle';
     const sc = KS.Traffic.park('scooter', -124, -263.4, Math.PI / 2, { owned: true }); if (sc) { sc.ownedId = 'sathi'; }
     const sg = D.garage.find((g) => g.id === 'sathi'); KS.Shop.delivered = sc; if (sg && sc) { sc.up = sg.up; sc.horn = sg.horn; }
@@ -876,7 +878,7 @@
       if ((I.hit('Escape') && performance.now() - (I.unlockedAt || 0) > 500) || I.hit('KeyP')) pause(true); // the Esc that freed the mouse does not also pause
       if (I.hit('KeyM') || I.hit('KeyMap')) { const b = $('bigwrap'); if (b.hidden) Game.openMap(); else b.hidden = true; }
       if (I.hit('KeyT')) { KS.Weather.auto = false; KS.Weather.next(); Game.notify(`Weather: <b>${KS.Weather.TYPES[KS.Weather.type].name}</b> · press T again to change, Menu → World → Auto to let it change by itself`); }
-      if ((I.hit('KeyR') && !KS.Battle.on) || I.hit('KeyRadio')) { A.init(); const st = KS.Radio.next(I.down('ShiftLeft') ? -1 : 1); Game.notify(st ? `📻 <b>${st.name}</b>${PL.vehicle || KS.Radio.onFoot ? '' : ' <span>(plays in vehicles, or turn on earphones in Phone → Radio)</span>'}` : '📻 Radio off'); if (KS.Phone.app === 'radio') KS.Phone.refresh(); }
+      if ((I.hit('KeyR') && !KS.Battle.on && !(KS.Race && KS.Race.racing())) || I.hit('KeyRadio')) { A.init(); const st = KS.Radio.next(I.down('ShiftLeft') ? -1 : 1); Game.notify(st ? `📻 <b>${st.name}</b>${PL.vehicle || KS.Radio.onFoot ? '' : ' <span>(plays in vehicles, or turn on earphones in Phone → Radio)</span>'}` : '📻 Radio off'); if (KS.Phone.app === 'radio') KS.Phone.refresh(); }
       if (I.hit('KeyU')) KS.Uthao.toggle();
       if (I.hit('KeyQ') || I.hit('KeyPhone')) KS.Phone.toggle();
       if (I.hit('Backspace') && KS.Phone.open) KS.Phone.home();
@@ -894,7 +896,7 @@
       }
       PL.update(dt);
     }
-    KS.Battle.update(dt); KS.Places.update(dt); if (KS.Parking) KS.Parking.update(dt); if (KS.Mountains) KS.Mountains.update(dt); if (KS.Tram) KS.Tram.update(dt); if (KS.updateBells) KS.updateBells(dt); if (KS.Express) KS.Express.update(dt); if (KS.Challenges) KS.Challenges.update(dt);
+    KS.Battle.update(dt); KS.Places.update(dt); if (KS.Parking) KS.Parking.update(dt); if (KS.Mountains) KS.Mountains.update(dt); if (KS.Tram) KS.Tram.update(dt); if (KS.updateBells) KS.updateBells(dt); if (KS.Express) KS.Express.update(dt); if (KS.Race) KS.Race.update(dt); if (KS.Challenges) KS.Challenges.update(dt);
     if (KS.Damage) KS.Damage.update(dt);
     if (KS.Fuel) KS.Fuel.update(dt); // the fuel-delivery timer
     if (KS.Story) KS.Story.update(dt); // story-mode chapters

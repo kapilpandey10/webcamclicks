@@ -511,7 +511,7 @@
     PL.nitroCool = Math.max(0, PL.nitroCool - dt);
     if ((I.hit('KeyB') || I.hit('KeyNitro')) && up.nitro && PL.nitroCool <= 0) { PL.nitro = 3; PL.nitroCool = 18; KS.Game && KS.Game.notify('🔥 Nitro!'); KS.audio && KS.audio.nitro(); }
     PL.nitro = Math.max(0, PL.nitro - dt);
-    const boost = PL.nitro > 0 ? 1.45 : 1, wet = KS.Weather.wet > 0.3;
+    const boost = (PL.nitro > 0 ? 1.45 : 1) * (KS.Race && KS.Race.boostT > 0 && v.raceCar ? 1.4 : 1), wet = KS.Weather.wet > 0.3;
     let top = t.speed * 1.55 * eng * boost * (wet ? 0.9 : 1);
     // a damaged vehicle is slower: up to 30% off the top speed when wrecked
     if (v.damage > 0) top *= 1 - (v.damage / 100) * 0.3;
@@ -600,6 +600,7 @@
       }
     }
     v.x = c.x; v.z = c.z;
+    if (v.raceCar && KS.Race) KS.Race.drive(v, dt); // the race: walls, boosters, potholes, puddles, stones
     // other vehicles: push by weight (a bus barely notices a scooter)
     for (const o of KS.Traffic.list) {
       if (o === v || !o.root.visible) continue;
@@ -763,7 +764,9 @@
     if (PL.mode === 'tram') { KS.Tram.rideUpdate(dt, I); PL.len = 0.5; PL.wid = 0.6; return; } // riding the city tram
     if (PL.mode === 'foot' && KS.Homes && KS.Homes.footHook(dt, I)) { PL.len = 0.5; PL.wid = 0.6; return; } // sitting on a sofa, chair or bed (E sits, E stands)
     if (I.hit('KeyE') || I.hit('KeyEnter')) {
-      if (PL.mode === 'boat') PL.leaveBoat();
+      if (KS.Race && KS.Race.tryE()) { /* joined or left the Ring Road Race at the Race HQ */ }
+      else if (KS.Race && KS.Race.frozen()) KS.Game && KS.Game.notify('🏁 Stay in the car — the lights are about to go out!', 'bad');
+      else if (PL.mode === 'boat') PL.leaveBoat();
       else if (PL.mode === 'drive' && PL.vehicle && PL.vehicle.kind === 'helicopter' && (PL.vehicle.alt || 0) > 1) KS.Game && KS.Game.notify('🚁 Land first — hold <b>C</b> to come down, then press <b>E</b>.', 'bad');
       else if (PL.mode === 'drive') PL.exit();
       else if (KS.Tram && KS.Tram.tryBoard()) { /* boarded the tram */ }

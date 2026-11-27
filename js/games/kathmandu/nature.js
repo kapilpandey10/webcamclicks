@@ -77,6 +77,7 @@
         const x = KS.r(R.x0, R.x1), z = KS.r(R.z0, R.z1);
         if (R.skip && R.skip(x, z)) continue;
         if (KS.HW && x < -540 && Math.abs(z - KS.HW.z) < 26) continue;
+        if (KS.ringLoopDist && KS.ringLoopDist(x, z) < 13) continue; // never on the Ring Road
         const y = R.y != null ? R.y : KS.heightAt(x, z);
         if (y < -0.4) continue;
         const s = KS.r(0.7, 1.5);

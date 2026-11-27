@@ -144,6 +144,7 @@
         KS.Battle && KS.Battle.onNet(m); break;
       case 's': if (from === N.me) break; upsert(from, m); if (N.host) broadcast({ ...m, id: c.peer }, c.peer); break;
       case 'c': { if (from === N.me) break; const p = N.players.get(from), name = p ? p.name : clean(m.name, 16); addChat(name, clean(m.text, 200), from); if (N.host) broadcast({ t: 'c', id: c.peer, name, text: clean(m.text, 200) }, c.peer); break; }
+      case 'race': if (N.host) broadcast(m, c.peer); KS.Race && KS.Race.onNet(m); break; // the Ring Road Race (race.js): the host passes it on
       case 'bye': dropPlayer(m.id); N.render2(); break;
     }
   }

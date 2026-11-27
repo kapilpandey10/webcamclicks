@@ -376,7 +376,7 @@ body.is-touch #raceSide{top:200px;width:140px}body.is-touch #raceMap{width:140px
   RC.drive = (v, dt) => {
     if (v !== car || !me) return;
     if (RC.state === 'grid') { const q = me.grid; v.x = q.x; v.z = q.z; v.vx = 0; v.vz = 0; v.h = q.h; v.yaw = 0; return; }
-    if ((v.damage || 0) > 55) v.damage = 55; // a race car takes dents and loses some speed, but is never wrecked mid-race
+    v.damage = 0; v.fuel = 100; // race cars take no damage and never run dry
     const p = proj(v.x, v.z, hint); hint = p.i;
     // the walls: the median barrier on one side, the armco on the other
     for (const [lim, sgn] of [[U_IN, 1], [U_OUT, -1]]) {
@@ -406,7 +406,7 @@ body.is-touch #raceSide{top:200px;width:140px}body.is-touch #raceMap{width:140px
       if (q.kind === 'stone') { // a solid: bounce off it
         const nx = (v.x - q.x) / (d || 1), nz = (v.z - q.z) / (d || 1), vn = v.vx * nx + v.vz * nz;
         v.x = q.x + nx * reach; v.z = q.z + nz * reach;
-        if (vn < 0) { v.vx -= 1.4 * vn * nx; v.vz -= 1.4 * vn * nz; v.vx *= 0.55; v.vz *= 0.55; if (now() - q.cool > 600) { q.cool = now(); A().crash && A().crash(Math.min(1, -vn / 16)); KS.Cam.shake = Math.min(0.5, 0.15 - vn / 30); KS.FX && KS.FX.burst(q.x, v.y + 0.4, q.z, 0x9a9184, 12, 0.14, 0.6); KS.Game && KS.Game.onCrash && KS.Game.onCrash(-vn * 0.6); } }
+        if (vn < 0) { v.vx -= 1.4 * vn * nx; v.vz -= 1.4 * vn * nz; v.vx *= 0.55; v.vz *= 0.55; if (now() - q.cool > 600) { q.cool = now(); A().crash && A().crash(Math.min(1, -vn / 16)); KS.Cam.shake = Math.min(0.5, 0.15 - vn / 30); KS.FX && KS.FX.burst(q.x, v.y + 0.4, q.z, 0x9a9184, 12, 0.14, 0.6); } }
         continue;
       }
       if (now() - q.cool < 1200) continue; q.cool = now();

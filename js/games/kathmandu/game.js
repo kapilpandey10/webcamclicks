@@ -104,6 +104,7 @@
     if (speed > 6) KS.Uthao.event('crash');
     const v = KS.Player.vehicle, PL = KS.Player;
     if (!v) return;
+    if (v.raceCar) return; // race cars take no damage, and racers are not hurt
     if (KS.clock - (PL.crashCool || 0) > 1) {
       PL.crashCool = KS.clock;
       const bike = KS.isBike(v.kind);

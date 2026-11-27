@@ -246,6 +246,7 @@
     if (m.look && !p.person) p.look = m.look;
     if (m.x != null) { p.tx = m.x; p.ty = m.y; p.tz = m.z; p.th = m.h; p.seen = KS.clock; if (!p.placed) { p.x = m.x; p.y = m.y; p.z = m.z; p.h = m.h; p.placed = true; } }
     if (m.look) p.look = m.look;
+    if (m.sit != null) p.sit = !!m.sit; // riding the tram or sitting in a home: show them seated
     if (!p.person) buildAvatar(p);
     if (m.v != null && m.v !== p.v) setVehicle(p, m.v);
     p.speaking = !!m.talk;
@@ -436,7 +437,7 @@
     N.sendT -= dt;
     if (N.sendT <= 0) {
       N.sendT = 0.1;
-      const m = { t: 's', id: N.me, name: N.name(), x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), h: +(P.vehicle ? P.vehicle.h : P.h).toFixed(3), v: P.vehicle ? P.vehicle.kind : P.mode === 'ride' && P.ride ? `pass:${P.ride.id}:${P.ride.seat}` : '', talk: N.micOn && N.talking, w: KS.Law ? KS.Law.heat : 0, wp: KS.Battle && KS.Battle.armed() ? (KS.Battle.slot === 1 ? KS.Battle.inv.primary.kind : 'pistol') : '', al: KS.Battle && KS.Battle.on && KS.Battle.match && !KS.Battle.match.over ? KS.Battle.alive : undefined, look: KS.clock % 3 < 0.1 ? look() : undefined };
+      const m = { t: 's', id: N.me, name: N.name(), x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), h: +(P.vehicle ? P.vehicle.h : P.h).toFixed(3), v: P.vehicle ? P.vehicle.kind : P.mode === 'ride' && P.ride ? `pass:${P.ride.id}:${P.ride.seat}` : '', talk: N.micOn && N.talking, sit: P.mode === 'tram' || !!(KS.Homes && KS.Homes.seat) ? 1 : 0, w: KS.Law ? KS.Law.heat : 0, wp: KS.Battle && KS.Battle.armed() ? (KS.Battle.slot === 1 ? KS.Battle.inv.primary.kind : 'pistol') : '', al: KS.Battle && KS.Battle.on && KS.Battle.match && !KS.Battle.match.over ? KS.Battle.alive : undefined, look: KS.clock % 3 < 0.1 ? look() : undefined };
       if (N.host) broadcast(m); else { const c = N.conns.get(N.hostId); c && c.open && c.send(m); }
     }
     for (const p of N.players.values()) {
@@ -449,7 +450,9 @@
       p.x += (p.tx - p.x) * k; p.y += (p.ty - p.y) * k; p.z += (p.tz - p.z) * k; p.h = KS.angLerp(p.h, p.th, k);
       const mv = Math.hypot(p.tx - p.x, p.tz - p.z);
       p.root.position.set(p.x, p.y + (p.v ? 0.02 : 0), p.z); p.root.rotation.y = p.h;
-      if (!p.v && p.person) {
+      if (!p.v && p.person && p.sit) { KS.animSit(p.person); KS.sitBent(p.person, true); p.person.root.position.set(0, 0.3, 0); }
+      else if (!p.v && p.person) {
+        if (p.person.root.position.y) p.person.root.position.set(0, 0, 0);
         KS.animWalk(p.person, dt, mv > 0.05 ? Math.min(8, mv * 10) : 0);
         if (KS.Battle) { KS.Battle.holdGun(p.person, p.wp || null); if (p.wp) { p.person.busyArm = true; p.person.armR.rotation.set(-1.5, 0, 0.05); p.person.armL.rotation.set(-1.35, 0, 0.45); } else p.person.busyArm = false; }
         p.person.inner.rotation.x = p.al === false ? -1.45 : 0; p.person.inner.position.y = p.al === false ? 0.2 : 0;

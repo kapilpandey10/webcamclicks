@@ -163,7 +163,7 @@
       const p = PL.person;
       PL.x = s.x; PL.z = s.z; PL.y = s.y - 0.46; PL.h = s.h; PL.speed = 0;
       p.root.position.set(s.x - Math.sin(s.h) * 0.12, s.y - 0.92 + 0.05, s.z - Math.cos(s.h) * 0.12); p.root.rotation.set(0, s.h, 0);
-      KS.animSit(p); p.legL.rotation.x = p.legR.rotation.x = -1.2; p.armL.rotation.x = p.armR.rotation.x = -0.75; // thighs forward, feet down towards the floor p.torso.rotation.x = s.name === 'bed' ? 0.05 : -0.05;
+      KS.animSit(p); if (s.name !== 'bed') KS.sitBent(p, true); else p.legL.rotation.x = p.legR.rotation.x = -1.2; p.armL.rotation.x = p.armR.rotation.x = -0.75; // thighs forward, feet down towards the floor p.torso.rotation.x = s.name === 'bed' ? 0.05 : -0.05;
       if (KS.Game && KS.Game.prompt) KS.Game.prompt('🪑 Sitting — press <b>E</b> or walk to stand up');
       return true;
     }
@@ -178,6 +178,6 @@
   HM.stand = () => {
     const s = HM.seat, PL = KS.Player; HM.seat = null; if (!s) return;
     PL.x = s.x + Math.sin(s.h) * 0.75; PL.z = s.z + Math.cos(s.h) * 0.75; PL.y = s.y - 0.46;
-    const p = PL.person; p.torso.rotation.x = 0; p.legL.rotation.x = p.legR.rotation.x = 0; p.armL.rotation.x = p.armR.rotation.x = 0;
+    const p = PL.person; KS.sitBent(p, false); p.torso.rotation.x = 0; p.legL.rotation.x = p.legR.rotation.x = 0; p.armL.rotation.x = p.armR.rotation.x = 0;
   };
 })();

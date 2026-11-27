@@ -424,6 +424,31 @@
     if (KS.policeStation) { g.fillStyle = '#1d3a8a'; g.fillRect(mx(KS.policeStation.x) - 4, mz(KS.policeStation.z) - 4, 8, 8); }
     for (const s of KS.signals) { g.fillStyle = '#c8102e'; g.beginPath(); g.arc(mx(s.x), mz(s.z), 2.5, 0, 7); g.fill(); }
     for (const c3 of KS.speedCams) { g.fillStyle = '#1d4fb8'; g.fillRect(mx(c3.x) - 2.5, mz(c3.z) - 2.5, 5, 5); }
+    /* ROUND 24: a more detailed map — every building's footprint (darker the taller it is), the tram line
+       and its numbered stops, the toll plazas, petrol pumps, temple bells, the walk-in homes, and the
+       names of the districts and of the Ring Road junctions. */
+    for (const [bx, bz, bw, bd, ry, fl] of (KS.World.footprints || [])) {
+      g.save(); g.translate(mx(bx), mz(bz)); g.rotate(-ry); g.fillStyle = `rgba(${150 - fl * 8},${120 - fl * 7},${96 - fl * 6},0.55)`;
+      g.fillRect((-bw / 2) * MAP.px, (-bd / 2) * MAP.px, bw * MAP.px, bd * MAP.px); g.restore();
+    }
+    const TRm = KS.Tram;
+    if (TRm && TRm.route.length) {
+      g.strokeStyle = '#1d4fb8'; g.lineWidth = 3; g.setLineDash([]); g.beginPath(); TRm.route.forEach((q, i) => (i ? g.lineTo(mx(q.x), mz(q.z)) : g.moveTo(mx(q.x), mz(q.z)))); g.closePath(); g.stroke();
+      g.font = '700 9px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      for (const st of TRm.stops) { g.fillStyle = '#ffffff'; g.beginPath(); g.arc(mx(st.x), mz(st.z), 5.5, 0, 7); g.fill(); g.strokeStyle = '#1d4fb8'; g.lineWidth = 2; g.stroke(); g.fillStyle = '#1d4fb8'; g.fillText(String(st.k + 1), mx(st.x), mz(st.z) + 0.5); }
+    }
+    for (const tg of KS.tollGantries || []) { g.fillStyle = '#e8752a'; g.fillRect(mx(tg.x) - 5, mz(tg.z) - 5, 10, 10); g.fillStyle = '#fff'; g.font = '700 8px sans-serif'; g.textAlign = 'center'; g.fillText('₹', mx(tg.x), mz(tg.z) + 0.5); }
+    for (const st of (KS.Fuel && KS.Fuel.stations) || []) { g.fillStyle = '#c8102e'; g.beginPath(); g.arc(mx(st.x), mz(st.z), 4, 0, 7); g.fill(); g.fillStyle = '#fff'; g.fillRect(mx(st.x) - 1.5, mz(st.z) - 2, 3, 4); }
+    for (const [bx, bz] of KS.bells || []) { g.fillStyle = '#d9a52b'; g.beginPath(); g.arc(mx(bx), mz(bz), 2.5, 0, 7); g.fill(); }
+    for (const hm of (KS.Homes && KS.Homes.list) || []) { g.fillStyle = '#8a3b2a'; g.beginPath(); g.moveTo(mx(hm.x), mz(hm.z) - 5); g.lineTo(mx(hm.x) + 4.5, mz(hm.z)); g.lineTo(mx(hm.x) - 4.5, mz(hm.z)); g.closePath(); g.fill(); g.fillRect(mx(hm.x) - 3, mz(hm.z), 6, 4); }
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (const d of KS.districts) { // district names, set in small caps over the middle of each district
+      if (d.x1 - d.x0 > 1500 || d.name === 'Ring Road' || d.name === 'Bagmati River') continue;
+      const w2 = (d.x1 - d.x0) * MAP.px; g.font = `700 ${KS.clamp(w2 / 9, 7, 12)}px "Barlow Condensed", sans-serif`;
+      g.fillStyle = 'rgba(40,30,20,0.55)'; g.fillText(d.name.toUpperCase(), mx((d.x0 + d.x1) / 2), mz((d.z0 + d.z1) / 2));
+    }
+    g.font = '700 9px "Barlow Condensed", sans-serif';
+    for (const j of KS.RING_LOOP || []) { g.fillStyle = '#7a5a12'; g.beginPath(); g.arc(mx(j.x), mz(j.z), 2.5, 0, 7); g.fill(); g.fillStyle = 'rgba(60,40,10,0.85)'; g.fillText(j.name, mx(j.x), mz(j.z) - 8); }
     return c;
   }
   let mapC, mini, miniG, big, bigG;

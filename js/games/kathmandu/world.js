@@ -475,7 +475,7 @@
       for (const side of [1, -1]) {
         let run = [];
         const flush = () => { if (run.length > 1) extrude(run, barrier(DW / 2, side), false); run = []; };
-        for (const q of path) { if (inCross(L, q.t, 0.5)) { flush(); continue; } run.push(q); }
+        for (const q of path) { if (inCross(L, q.t, 0.5) || q.y < 0.6) { flush(); continue; } run.push(q); }
         flush();
       }
       /* --- physics: 2 m slabs (steps on the ramps), barriers both sides --- */
@@ -483,8 +483,9 @@
         const tm = t + 1, y = TL.yAt(L, tm), c = pt(L, tm);
         // (round 22: no slab or step solids — the deck surface is KS.tollY, smooth all the way)
         if (inCross(L, tm, 0.5)) continue;
+        if (y < 0.7) continue; // round 24: an open, flared mouth — no barrier until the ramp is off the ground (cars scraped the barrier ends turning in)
         for (const side of [1, -1]) {
-          const e = pt(L, tm, side * (DW / 2 - 0.2));
+          const e = pt(L, tm, side * (DW / 2 + 0.15)); // at the outer face of the parapet: half a metre more room for wide cars
           KS.addBox(e.x, e.z, L.axis === 'z' ? 0.4 : 2.1, L.axis === 'z' ? 2.1 : 0.4, y + 1.0, y - 0.6);
         }
       }
@@ -513,13 +514,13 @@
         for (const u of [-3.4, 3.4]) glow.box(c.x + ux * u - fx * 5.2, y + 5.6, c.z + uz * u - fz * 5.2, 0.7, 0.5, 0.12, 0x6cff7a, hUp);
         ext.box(c.x, y + 5.75, c.z, DW, 0.12, 0.5, 0x333333, hUp);
         ext.box(c.x, y + 5.25, c.z, 0.8, 0.45, 0.4, 0xffc81e, hUp); // the tag reader
-        // booths on a raised island at each side, on the ramp deck itself
+        // the booths stand in the barrier line at each side, outside the driving lanes (round 24: they stood 6 m out,
+        // inside the kerb-side lane, and cars hit them right at the ramp entrance)
         for (const s of [-1, 1]) {
-          const bx = c.x + ux * s * (DW / 2 - 1.0), bz = c.z + uz * s * (DW / 2 - 1.0);
-          ext.box(bx, y, bz, 1.4, 2.4, 2.6, 0xf2f2f2, hUp);
-          ext.box(bx, y + 2.4, bz, 1.7, 0.16, 3.0, 0xc8102e, hUp);
-          ext.box(bx - ux * s * 0.72, y + 1.0, bz - uz * s * 0.72, 0.04, 1.0, 2.0, 0x335a6e, hUp);
-          KS.addBox(bx, bz, L.axis === 'z' ? 1.4 : 2.6, L.axis === 'z' ? 2.6 : 1.4, y + 2.4, y - 0.3);
+          const bx = c.x + ux * s * (DW / 2 + 0.35), bz = c.z + uz * s * (DW / 2 + 0.35);
+          ext.box(bx, y, bz, 1.1, 2.4, 2.6, 0xf2f2f2, hUp);
+          ext.box(bx, y + 2.4, bz, 1.4, 0.16, 3.0, 0xc8102e, hUp);
+          ext.box(bx - ux * s * 0.56, y + 1.0, bz - uz * s * 0.56, 0.04, 1.0, 2.0, 0x335a6e, hUp);
         }
         KS.tollGantries.push({ name: nm, np, x: c.x, z: c.z });
         const top = pt(L, end ? L.flatB : L.flatA);
@@ -780,6 +781,7 @@
     const k = style + ':' + floors; (inst[k] = inst[k] || []).push({ m: dummy.matrix.clone(), color, off: [KS.ri(0, 3) * 0.25, KS.ri(0, 15) / 16] });
     KS.addBox(cx, cz, w, d, H, -50, ry);
     if (floors >= 6) (W.tall = W.tall || []).push({ cx, cz, w, d, H, ry });
+    (W.footprints = W.footprints || []).push([cx, cz, w, d, ry, floors]); // for the map
     const fx = Math.sin(ry), fz = Math.cos(ry), rx = Math.cos(ry), rz = -Math.sin(ry);
     const front = (o, y, along = 0) => [cx + fx * (d / 2 + o) + rx * along, y, cz + fz * (d / 2 + o) + rz * along];
     // ground floor shop
@@ -964,6 +966,7 @@
         // skip spans crossing the river or plazas
         if (bt === 'river' || (Math.abs(((s - G.O) % G.B)) < 12)) { prev = null; continue; }
         const px = axis === 0 ? L - off : s, pz = axis === 0 ? s : L - off;
+        { const ty = KS.tollY(px, pz, 1.5); if (ty !== null && ty < 9) { prev = null; continue; } } // no pole (or wire) through the low end of an expressway ramp
         poles.push([px, pz]);
         const dense = bt === 'thamel' || bt === 'old' || bt === 'ason' || bt === 'newroad';
         if (prev) {

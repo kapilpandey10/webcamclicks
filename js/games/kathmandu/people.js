@@ -206,6 +206,7 @@
     return { root, inner, torso, legL: lL, legR: lR, armL: aL, armR: aR, kind, phase: KS.r(0, 6), skirt, cfg: o };
   };
   KS.animWalk = (p, dt, speed) => {
+    if (p.bentOn) KS.sitBent(p, false);
     // walk and run cycles: longer strides, bent swinging arms, a forward lean and more bounce when running; breathing when still
     const run = KS.smooth(3.5, 7.5, speed), moving = speed > 0.05;
     p.phase += dt * (2.2 + speed * (2.2 - run * 0.55));
@@ -216,6 +217,23 @@
     p.torso.rotation.y = Math.sin(p.phase) * (0.05 + run * 0.05) * (moving ? 1 : 0);
     const lean = moving ? 0.03 + run * 0.14 : 0;
     p.inner.rotation.x += (lean - p.inner.rotation.x) * Math.min(1, dt * 6);
+  };
+  /* sitting on a seat with the knees bent: the person's legs are single pieces (no knee), so a seated pair is
+     built once per person (thigh along the seat, shin down to the floor) and swapped in while they sit */
+  KS.sitBent = (p, on) => {
+    if (!on && !p.bentOn) return;
+    if (on && !p.bent) {
+      const o = p.cfg || {}, bare = p.skirt || o.bottomStyle === 'shorts', skin = o.skin || 0xc68e63;
+      p.bent = [-0.085, 0.085].map((x) => {
+        const b = new KS.Builder();
+        b.box(0, -0.065, 0.2, 0.12, 0.125, 0.46, p.skirt ? o.bottom : o.bottom || 0x333333); // thigh
+        b.cyl(0, -0.46, 0.4, 0.052, 0.46, bare ? skin : o.bottom || 0x333333, 8, 1.15); // shin
+        b.ell(0, -0.47, 0.45, 0.055, 0.04, 0.13, o.shoes || 0x222222, 8); // shoe
+        const m = new T.Mesh(b.build(), KS.M.vc); m.position.set(x, 0.92, 0); m.castShadow = true; m.visible = false; p.inner.add(m); return m;
+      });
+    }
+    p.bentOn = !!on; p.legL.visible = p.legR.visible = !on;
+    if (p.bent) for (const m of p.bent) m.visible = !!on;
   };
   KS.animSit = (p) => { p.legL.rotation.x = p.legR.rotation.x = -1.45; p.armL.rotation.x = p.armR.rotation.x = -0.5; };
   KS.animPunch = (p, t) => { p.armR.rotation.x = -1.55 * Math.sin(Math.min(1, t) * Math.PI); p.armR.rotation.z = 0.2; };

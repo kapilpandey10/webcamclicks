@@ -792,7 +792,7 @@
     FEE: 15, lastPaid: 0, lastOnDeck: 0, onDeck: false,
     update(dt) {
       const PL = KS.Player; if (!PL || !KS.tollGantries || !KS.tollGantries.length) return;
-      const onDeck = (PL.y || 0) > 10 && KS.ringLoopDist && KS.ringLoopDist(PL.x, PL.z) < 12;
+      const onDeck = KS.onExpressway ? KS.onExpressway(PL.x, PL.z, PL.y || 0) : false; // the loop deck or the cross-city flyover
       if (onDeck) KS.Toll.lastOnDeck = Date.now();
       KS.Toll.onDeck = onDeck;
       const th = typeof document !== 'undefined' && document.getElementById ? document.getElementById('tollHud') : null;

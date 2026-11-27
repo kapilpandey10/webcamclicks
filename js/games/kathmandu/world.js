@@ -291,30 +291,177 @@
     scene.add(KS.mesh(b, KS.M.vc, false));
   }
 
-  /* ================= the elevated toll expressway (round 15, fixed round 16) =================
-     A second Ring Road stacked 12 m above the first, like the multi-level
-     flyovers in China: a fast way across the city, no lights, no junctions,
-     no traffic jams. Four ramps climb from the Ring Road to the deck, each
-     with a toll gantry at the foot — drive under it and the tag reader beeps
-     ("tit") and takes Rs 15. Round 16: the deck slabs follow the local loop
-     spacing so no gap opens on the long straight sections, the deck edge is
-     one continuous parapet with a fascia below it (so the road reads from
-     the ground, not just its poles), and the ramps are smooth roads — fine
-     steps under a sloped skin, with solid curbs so you cannot fall off. */
+  /* ================= the elevated toll expressway (round 15, rebuilt round 18) =================
+     A second Ring Road stacked 12 m above the first — fast, no lights, no
+     junctions — with four toll ramps and a cross-city flyover along z = 0.
+     ROUND 18: real 3D structures instead of a flat ribbon on poles:
+       - a precast box-girder deck: edge beams, sloped webs and a soffit you
+         can see from the street below, with expansion joints over the piers;
+       - hammerhead piers in the Ring Road median: footing, hazard band,
+         column, a two-tier pier cap and bearing pads, with a drain pipe;
+       - New Jersey concrete barriers along both edges with a galvanised
+         steel rail on top;
+       - lamp posts on both parapets that light up at night;
+       - green overhead sign gantries before each exit;
+       - each ramp is a girder on its own piers, with a level merge lane
+         beside the deck (the deck barrier opens there, so you can actually
+         drive from the ramp onto the deck), and a toll plaza with a
+         canopy and a booth at its foot;
+       - deck and ramp barriers are chains of small circles, so they hold on
+         the curved and diagonal parts of the traced Ring Road (a rotated box
+         becomes its axis-aligned bounds, which closed the deck on diagonals). */
   function expressway(scene, mR) {
     const P = KS.ringLoopPts, n = P.length, H = 12, DW = 14;
+    const CONC = 0xbdb8ad, FASCIA = 0xd9d4c9, SOFFIT = 0xb0aba2, WEB = 0xc2bdb3, STEEL = 0x8e949a, DARK = 0x2e2e30; // precast concrete: the underside is lit only by the sky, so it is mixed light
+    const ext = new KS.Builder(), glow = new KS.Builder();
+    const lampMat = new T.MeshBasicMaterial({ color: 0x555544 }); KS.lampMats.push(lampMat);
+    const loopS = (a, b) => { const d = Math.abs(a - b) % KS.ringLoopLen; return Math.min(d, KS.ringLoopLen - d); };
+
+    /* extrude a cross-section along a path. path: [{x, y, z, h}], h = heading
+       (the left of travel is (cos h, -sin h)). edges: [[u0, y0, u1, y1, color]]
+       in (lateral offset to the left, height above the path). Every edge is
+       its own strip, so the corners of the section stay crisp. */
+    const strips = { pos: [], col: [], idx: [] };
+    const _c = new T.Color();
+    function extrude(path, edges, closed) {
+      const m = path.length, segs = closed ? m : m - 1;
+      if (m < 2) return;
+      for (const [u0, y0, u1, y1, color] of edges) {
+        _c.set(color);
+        const base = strips.pos.length / 3;
+        for (let i = 0; i < m; i++) {
+          const p = path[i], nx = Math.cos(p.h), nz = -Math.sin(p.h);
+          strips.pos.push(p.x + nx * u0, p.y + y0, p.z + nz * u0, p.x + nx * u1, p.y + y1, p.z + nz * u1);
+          strips.col.push(_c.r, _c.g, _c.b, _c.r, _c.g, _c.b);
+        }
+        for (let i = 0; i < segs; i++) {
+          const a = base + i * 2, b = base + ((i + 1) % m) * 2;
+          strips.idx.push(a, a + 1, b, a + 1, b + 1, b);
+        }
+      }
+    }
+    /* the girder under a deck of half-width w: edge beams, cantilevers,
+       sloped webs and the soffit. */
+    const girder = (w, depth) => {
+      const bw = Math.max(1.6, w * 0.5);
+      return [
+        [-w, 0.06, -w, -0.6, FASCIA], [-w, -0.6, -bw - 0.7, -0.95, SOFFIT], [-bw - 0.7, -0.95, -bw, -depth, WEB], [-bw, -depth, bw, -depth, SOFFIT],
+        [bw, -depth, bw + 0.7, -0.95, WEB], [bw + 0.7, -0.95, w, -0.6, SOFFIT], [w, -0.6, w, 0.06, FASCIA],
+      ];
+    };
+    /* a New Jersey barrier on side s (+1 left, -1 right) of a deck of half-width w, with a steel rail on top */
+    const barrier = (w, s) => [
+      [s * (w - 0.45), 0.06, s * (w - 0.6), 0.34, CONC], [s * (w - 0.6), 0.34, s * (w - 0.78), 0.95, CONC], [s * (w - 0.78), 0.95, s * (w - 0.78), 1.05, FASCIA],
+      [s * (w - 0.78), 1.05, s * w, 1.05, FASCIA], [s * w, 1.05, s * w, 0.06, FASCIA],
+      [s * (w - 0.42), 1.32, s * (w - 0.3), 1.32, STEEL], [s * (w - 0.3), 1.32, s * (w - 0.3), 1.44, STEEL], [s * (w - 0.3), 1.44, s * (w - 0.42), 1.44, STEEL], [s * (w - 0.42), 1.44, s * (w - 0.42), 1.32, STEEL],
+    ];
+    /* a solid barrier from a to b: small circles 1.1 m apart (holds on curves and diagonals) */
+    const wallLine = (ax, az, bx, bz, top, base) => {
+      const L = Math.hypot(bx - ax, bz - az), k = Math.max(1, Math.ceil(L / 1.1));
+      for (let i = 0; i <= k; i++) KS.addCircle(ax + ((bx - ax) * i) / k, az + ((bz - az) * i) / k, 0.42, top, base);
+    };
+    /* a hammerhead pier: footing, hazard band, column, two-tier cap, bearings, drain pipe */
+    const pier = (x, z, h, ground, top, capW, along, depth = 2.4) => {
+      const capB = top - depth - 0.1;
+      ext.box(x, ground - 0.3, z, Math.min(2.3, capW * 0.36), 0.75, along + 1.4, 0xa9a498, h);
+      ext.ecyl(x, ground + 0.45, z, 0.92, along / 2 + 0.05, 0.55, 0xe2b21c, 12, 1, 0, h);
+      ext.ecyl(x, ground + 1.0, z, 0.92, along / 2 + 0.05, 0.35, 0x1f1f1f, 12, 1, 0, h);
+      ext.ecyl(x, ground + 0.45, z, 0.85, along / 2, capB - 1.6 - ground - 0.45, 0xa7a297, 12, 1, 0, h);
+      ext.box(x, capB - 1.6, z, capW * 0.55, 0.8, along + 0.3, 0xb3aea2, h);
+      ext.box(x, capB - 0.8, z, capW, 0.8, along + 0.1, 0xbcb7ab, h);
+      const nx = Math.cos(h), nz = -Math.sin(h);
+      for (const s of [-1, 1]) ext.box(x + nx * s * capW * 0.28, capB, z + nz * s * capW * 0.28, 0.8, 0.12, 0.8, DARK, h);
+      ext.cyl(x + nx * 0.95, ground, z + nz * 0.95, 0.08, capB - ground, 0x4a4a4a, 6);
+      KS.addCircle(x, z, 1.05, capB, ground - 5);
+    };
+    /* a lamp post standing on a parapet at lateral offset u (sign = side), arm leaning over the road */
+    const lamp = (x, y, z, h, u) => {
+      const nx = Math.cos(h), nz = -Math.sin(h), s = Math.sign(u);
+      const px = x + nx * u, pz = z + nz * u;
+      ext.cyl(px, y + 1.05, pz, 0.13, 8.4, STEEL, 8, 0.6);
+      const ax = px - nx * s * 1.25, az = pz - nz * s * 1.25;
+      ext.box(ax, y + 9.25, az, 2.6, 0.12, 0.14, STEEL, h);
+      glow.box(px - nx * s * 2.45, y + 9.05, pz - nz * s * 2.45, 0.95, 0.2, 0.42, 0xffffff, h);
+    };
+    /* a green overhead sign gantry spanning a deck of half-width w */
+    const signMats = {};
+    const signTex = (top, bottom, arrow) => {
+      const k = top + '|' + bottom + '|' + arrow;
+      if (signMats[k]) return signMats[k];
+      const tx = KS.tex(512, 192, (g, w, hh) => {
+        g.fillStyle = '#17643a'; g.fillRect(0, 0, w, hh);
+        g.strokeStyle = '#ffffff'; g.lineWidth = 6; g.strokeRect(9, 9, w - 18, hh - 18);
+        g.fillStyle = '#ffffff'; g.textAlign = 'left'; g.textBaseline = 'middle';
+        let fs = 62; g.font = `700 ${fs}px "Barlow Condensed", Impact, sans-serif`;
+        while (g.measureText(top).width > w - 150 && fs > 30) { fs -= 4; g.font = `700 ${fs}px "Barlow Condensed", Impact, sans-serif`; }
+        g.fillText(top, 32, 66);
+        g.font = `600 44px ${KS.FONT}`; g.fillText(bottom, 32, 138);
+        g.font = '700 96px sans-serif'; g.textAlign = 'right'; g.fillText(arrow, w - 26, 100);
+      });
+      return (signMats[k] = new T.MeshLambertMaterial({ map: tx }));
+    };
+    const gantry = (x, y, z, h, w, boards) => {
+      const nx = Math.cos(h), nz = -Math.sin(h);
+      for (const s of [-1, 1]) {
+        ext.box(x + nx * s * (w - 0.35), y + 1.05, z + nz * s * (w - 0.35), 0.38, 6.8, 0.38, STEEL, h);
+      }
+      for (const yy of [6.2, 7.45]) ext.box(x, y + yy, z, w * 2, 0.22, 0.22, STEEL, h);
+      for (let u = -w + 0.6; u <= w - 0.6; u += 1.4) ext.box(x + nx * u, y + 6.2, z + nz * u, 0.08, 1.25, 0.08, STEEL, h);
+      for (const b of boards) { // { u, face: +1 faces travel along h, -1 against, top, bottom, arrow }
+        const m = new T.Mesh(new T.PlaneGeometry(5.6, 2.1), signTex(b.top, b.bottom, b.arrow));
+        m.position.set(x + nx * b.u, y + 5.05, z + nz * b.u);
+        m.rotation.y = b.face > 0 ? h + Math.PI : h; // the board faces the drivers coming towards it
+        scene.add(m);
+        ext.box(x + nx * b.u + Math.sin(h) * b.face * 0.08, y + 3.95, z + nz * b.u + Math.cos(h) * b.face * 0.08, 5.7, 2.25, 0.08, 0x1f1f1f, h); // the backing plate, behind the board (away from its drivers)
+      }
+    };
+
+    /* the centroid of the loop, for the outward side of each ramp */
+    let cx = 0, cz = 0;
+    for (const p of P) { cx += p.x; cz += p.z; }
+    cx /= n; cz /= n;
+
     /* ROUND 17: the cross-city flyover meets the loop deck where the loop
-       crosses z = 0 — the loop point nearest z = 0 on each side. The flyover
-       joins the deck there, so the loop barrier opens at those two spots
-       (only where the flyover actually is — |z| < 8 — so nobody can drive
-       off the deck beside the junction). */
+       crosses z = 0 — the loop point nearest z = 0 on each side. The loop
+       barrier opens there (only where the flyover actually is, |z| < 8). */
     let WJ = null, EJ = null;
     for (const p of P) {
       if (p.x < 0 && (!WJ || Math.abs(p.z) < Math.abs(WJ.z))) WJ = p;
       if (p.x > 0 && (!EJ || Math.abs(p.z) < Math.abs(EJ.z))) EJ = p;
     }
     const atJunction = (x, z) => (Math.hypot(x - WJ.x, z - WJ.z) < 15 && Math.abs(z) < 8) || (Math.hypot(x - EJ.x, z - EJ.z) < 15 && Math.abs(z) < 8);
-    /* the deck ribbon, 12 m up, same road texture as the Ring Road. */
+
+    /* the four toll ramps. Each runs along a straight stretch of the traced
+       Ring Road, on the outer side, descending away from its junction
+       ('back' = against the loop order, 'fwd' = with it). */
+    const RAMP_AT = [
+      { name: 'Kalanki', down: 'fwd' }, // south, along the straight towards Balkhu (north of Kalanki the loop eases out around Swayambhu)
+      { name: 'Balaju', down: 'fwd' },
+      { name: 'Chabahil', down: 'back' },
+      { name: 'Koteshwor', down: 'fwd' },
+    ];
+    const RL = 120, RW = 10, RU = 17, MERGE = 22; // ramp length, width, lateral offset from the loop centre (the ramp lands beside the 22 m Ring Road, not on it), level merge lane
+    const ramps = RAMP_AT.map((r) => {
+      const w = KS.RING_LOOP.find((j) => j.name === r.name);
+      const p = P[w.i], h = p.h, nx = Math.cos(h), nz = -Math.sin(h);
+      const out = nx * (p.x - cx) + nz * (p.z - cz) > 0 ? 1 : -1; // which side (left = +1) faces away from the centre
+      const dir = r.down === 'back' ? -1 : 1; // along the loop, the way the ramp descends
+      return { ...r, np: w.np, p, h, out, dir, s: p.s };
+    });
+    /* the deck barrier opens on the outer side where a ramp's merge lane joins */
+    const rampGap = (s, side) => ramps.some((r) => {
+      if (side !== r.out) return false;
+      const ds = ((s - r.s) * r.dir + KS.ringLoopLen * 1.5) % KS.ringLoopLen - KS.ringLoopLen / 2; // + = down the ramp
+      return ds > -MERGE && ds < 4;
+    });
+    /* where a road crosses the loop at grade (junction mouths, the Nagdhunga
+       highway, the Swayambhu and airport spurs, the hill roads): no pier in
+       the median there, or the crossing traffic would hit it */
+    const nearestS = (x, z) => { let b = Infinity, s = 0; for (const p of P) { const d = (p.x - x) ** 2 + (p.z - z) ** 2; if (d < b) { b = d; s = p.s; } } return s; };
+    const crossS = [nearestS(-600, KS.SWAYAMBHU.z), nearestS(-600, KS.HW.z), nearestS(-600, 150), nearestS(-90, -660), nearestS(620, 0), nearestS(-620, 0)];
+    const nearJunction = (s) => KS.RING_LOOP.some((j) => loopS(s, P[j.i].s) < 24) || crossS.some((c) => loopS(s, c) < 20);
+
+    /* ---- the loop deck ---- */
     {
       const pos = [], uv = [], idx = [];
       let s = 0;
@@ -325,10 +472,7 @@
         uv.push(0, s / 32, 1, s / 32);
         s += Math.hypot(q.x - p.x, q.z - p.z);
       }
-      for (let i = 0; i < n; i++) {
-        const a = i * 2, b = ((i + 1) % n) * 2;
-        idx.push(a, a + 1, b, a + 1, b + 1, b);
-      }
+      for (let i = 0; i < n; i++) { const a = i * 2, b = ((i + 1) % n) * 2; idx.push(a, a + 1, b, a + 1, b + 1, b); }
       const geo = new T.BufferGeometry();
       geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
       geo.setAttribute('uv', new T.Float32BufferAttribute(uv, 2));
@@ -336,99 +480,125 @@
       geo.computeVertexNormals();
       const m = new T.Mesh(geo, mR); m.receiveShadow = true; scene.add(m);
     }
-    const b = new KS.Builder();
-    /* deck slabs (one per loop sample), pillars in the median, edge barriers.
-       ROUND 16: the slab length follows the local point spacing — the loop is
-       a Catmull-Rom spline, so on the long straight sections the samples are
-       up to ~19 m apart and the old fixed 11.5 m slabs left gaps you could
-       fall through. The edge barrier is continuous now too: the old one was
-       a solid every 4th point with 33 m gaps, so you could drive off the deck. */
+    /* the deck path with smooth headings (the mean of the segments either side), for the girder and barriers */
+    const deck = P.map((p, i) => {
+      const a = P[(i - 1 + n) % n], b = P[(i + 1) % n];
+      return { x: p.x, y: H, z: p.z, h: Math.atan2(b.x - a.x, b.z - a.z), s: p.s };
+    });
+    extrude(deck, girder(DW / 2, 2.4), true);
+    /* barriers: runs of the deck path between the openings, per side */
+    for (const side of [1, -1]) {
+      let run = [];
+      const flush = () => { if (run.length > 1) extrude(run, barrier(DW / 2, side), false); run = []; };
+      for (let i = 0; i <= n; i++) {
+        const d = deck[i % n];
+        const open = atJunction(d.x, d.z) || rampGap(d.s, side);
+        if (open) { flush(); continue; }
+        run.push(d);
+      }
+      flush();
+    }
     for (let i = 0; i < n; i++) {
       const p = P[i], q = P[(i + 1) % n];
-      const sp = Math.hypot(q.x - p.x, q.z - p.z); // spacing to the next sample
+      const sp = Math.hypot(q.x - p.x, q.z - p.z);
       KS.addBox(p.x, p.z, DW, sp + 1, H, H - 0.3, p.h); // the thin deck slab, overlapping its neighbour
-      if (i % 4 === 0) { // a pillar in the median every ~44 m
-        b.cyl(p.x, 0, p.z, 0.7, H, 0x8d887e, 8);
-        KS.addBox(p.x, p.z, 1.4, 1.4, H, 0);
-      }
-      if (i % 2 === 0 && !atJunction((p.x + P[(i + 2) % n].x) / 2, (p.z + P[(i + 2) % n].z) / 2)) { // a solid barrier along both deck edges, overlapping the next one — except where the flyover joins (round 17), so you can turn onto it
-        const p2 = P[(i + 2) % n];
-        const len = Math.hypot(p2.x - p.x, p2.z - p.z) + 1;
-        const mx = (p.x + p2.x) / 2, mz = (p.z + p2.z) / 2;
-        const mh = Math.atan2(p2.x - p.x, p2.z - p.z);
-        const mnx = Math.cos(mh), mnz = -Math.sin(mh);
-        KS.addBox(mx + mnx * (DW / 2 - 0.3), mz + mnz * (DW / 2 - 0.3), 0.3, len, H + 0.9, H, mh);
-        KS.addBox(mx - mnx * (DW / 2 - 0.3), mz - mnz * (DW / 2 - 0.3), 0.3, len, H + 0.9, H, mh);
+      for (const side of [1, -1]) { // the barrier: circles from this sample to the next
+        if (atJunction(p.x, p.z) || atJunction(q.x, q.z) || rampGap(p.s, side) || rampGap(p.s + sp, side)) continue;
+        const u = side * (DW / 2 - 0.2), anx = Math.cos(p.h), anz = -Math.sin(p.h), bnx = Math.cos(q.h), bnz = -Math.sin(q.h);
+        wallLine(p.x + anx * u, p.z + anz * u, q.x + bnx * u, q.z + bnz * u, H + 1.0, H - 0.3);
       }
     }
-    /* the deck edge, as one continuous wall: a concrete parapet 0.9 m above
-       the deck, and a fascia hanging 1.2 m below it, so from the ground the
-       deck reads as a road on a beam — not just a row of poles. */
+    /* piers every ~40 m in the median (never in a junction mouth, where
+       traffic turns across the median), expansion joints over them, and
+       lamp posts on both parapets, staggered. */
     {
-      const pos = [], idx = [];
-      const addWall = (side) => {
-        const base = pos.length / 3;
-        for (let i = 0; i < n; i++) {
-          const p = P[i];
-          const nx = Math.cos(p.h), nz = -Math.sin(p.h);
-          const ex = p.x + side * nx * (DW / 2 - 0.3), ez = p.z + side * nz * (DW / 2 - 0.3);
-          pos.push(ex, 10.8, ez, ex, 12.9, ez);
+      let nextPier = 0, nextLamp = 0, lampSide = 1;
+      for (let i = 0; i < n; i++) {
+        const d = deck[i];
+        if (d.s >= nextPier && !nearJunction(d.s) && !atJunction(d.x, d.z)) {
+          const g = Math.min(KS.heightAt(d.x, d.z), 0);
+          pier(d.x, d.z, d.h, g, H, 9.2, 2.0);
+          ext.box(d.x, H + 0.075, d.z, DW - 1.6, 0.012, 0.35, 0x2a2a2a, d.h); // expansion joint
+          nextPier = d.s + 40;
         }
-        for (let i = 0; i < n; i++) {
-          const a = base + i * 2, c = base + ((i + 1) % n) * 2;
-          if (atJunction(P[i].x, P[i].z) || atJunction(P[(i + 1) % n].x, P[(i + 1) % n].z)) continue; // the wall opens where the flyover joins (round 17)
-          idx.push(a, a + 1, c, a + 1, c + 1, c);
+        if (d.s >= nextLamp) {
+          const u = lampSide * (DW / 2 - 0.2);
+          if (!atJunction(d.x, d.z) && !rampGap(d.s, lampSide)) lamp(d.x, H, d.z, d.h, u);
+          lampSide = -lampSide; nextLamp = d.s + 24;
         }
-      };
-      addWall(1); addWall(-1);
-      const geo = new T.BufferGeometry();
-      geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
-      geo.setIndex(idx);
-      geo.computeVertexNormals();
-      const wall = new T.Mesh(geo, new T.MeshLambertMaterial({ color: 0x9a958c, side: T.DoubleSide }));
-      wall.receiveShadow = true; scene.add(wall);
+      }
     }
-    /* the centroid of the loop, for the outward normal of each ramp. */
-    let cx = 0, cz = 0;
-    for (const p of P) { cx += p.x; cz += p.z; }
-    cx /= n; cz /= n;
-    const RAMPS = [
-      { name: 'Kalanki', np: 'कलंकी', x: -560, z: 120 },
-      { name: 'Balaju', np: 'बालाजु', x: -560, z: -260 },
-      { name: 'Chabahil', np: 'चाबहिल', x: 380, z: -480 },
-      { name: 'Koteshwor', np: 'कोटेश्वर', x: 540, z: 300 },
-    ];
+
+    /* ---- the ramps ---- */
     KS.tollGantries = [];
     KS.expressway = { height: H, ramps: [] };
-    for (const r of RAMPS) {
-      /* the loop point nearest this place. */
-      let bi = 0, bd = Infinity;
-      for (let i = 0; i < n; i++) { const d = (P[i].x - r.x) * (P[i].x - r.x) + (P[i].z - r.z) * (P[i].z - r.z); if (d < bd) { bd = d; bi = i; } }
-      const p = P[bi], h = p.h;
-      let ox = p.x - cx, oz = p.z - cz; const ol = Math.hypot(ox, oz) || 1; ox /= ol; oz /= ol; // outward
-      const bx = -Math.sin(h), bz = -Math.cos(h); // backward along the loop
-      const rh = Math.atan2(bx, bz); // heading of the ramp
-      const sx = p.x + ox * 10, sz = p.z + oz * 10; // ramp top, at deck height beside the deck
-      /* ROUND 16: the ramp is a smooth road now, not a staircase. Sixty fine
-         steps (0.2 m rise each) carry the driving surface, a sloped ribbon in
-         the road texture lies over them as the surface you see, concrete
-         skirts hide the step sides, and solid curbs stop you falling off. */
-      const RW = 10, NSTEPS = 60, RISE = H / NSTEPS; // 0.2 m per 2 m step
-      for (let k = 0; k < NSTEPS; k++) {
-        const d = k * 2 + 1, top = H - k * RISE;
-        const x = sx + bx * d, z = sz + bz * d;
-        b.box(x, top - 0.2, z, RW, 0.2, 2.1, 0x4a4a4a, rh); // dark, so any sliver under the skin blends in
-        KS.addBox(x, z, RW, 2.1, top, top - 0.2, rh);
+    const plazaTex = KS.tex(512, 96, (g, w, hh) => {
+      g.fillStyle = '#c8102e'; g.fillRect(0, 0, w, hh);
+      g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `700 50px ${KS.FONT}`;
+      g.fillText('TOLL PLAZA · टोल प्लाजा · रु 15', w / 2, hh / 2 + 2);
+    });
+    const plazaMat = new T.MeshLambertMaterial({ map: plazaTex, side: T.DoubleSide });
+    for (const r of ramps) {
+      const { p, out, dir } = r;
+      const h = p.h, nx = Math.cos(h), nz = -Math.sin(h), fx = Math.sin(h), fz = Math.cos(h);
+      const ux = nx * out, uz = nz * out; // outward
+      const dx = fx * dir, dz = fz * dir; // down the ramp
+      const rh = Math.atan2(dx, dz); // heading of a car driving down
+      /* the ramp's centre line follows the Ring Road itself, RU metres out
+         from its centre line, so it stays beside the road where the traced
+         loop wiggles a few metres (a straight ramp drifted onto the road). */
+      const onLoop = (sAbs) => {
+        const LL = KS.ringLoopLen, sv = ((sAbs % LL) + LL) % LL;
+        let lo = 0, hi = n - 1;
+        while (lo < hi) { const m = (lo + hi + 1) >> 1; if (P[m].s <= sv) lo = m; else hi = m - 1; }
+        const A = P[lo], B = P[(lo + 1) % n], seg = (lo + 1 < n ? B.s : LL) - A.s, t = seg > 0 ? (sv - A.s) / seg : 0;
+        return { x: A.x + (B.x - A.x) * t, z: A.z + (B.z - A.z) * t, h: Math.atan2(B.x - A.x, B.z - A.z) };
+      };
+      const at = (d) => { const q = onLoop(r.s + dir * d), qx = Math.cos(q.h) * out, qz = -Math.sin(q.h) * out; return { x: q.x + qx * RU, z: q.z + qz * RU }; };
+      const yAt = (d) => (d <= 0 ? H : Math.max(0, H - (d / RL) * H));
+      /* physics: the level merge lane (it overlaps the deck edge, the barrier is open there), then 60 fine steps */
+      for (let d = -MERGE; d < 0; d += 2) {
+        const c = at(d + 1), MW = RU + RW / 2 - 4; // the merge lane: from 4 m off the loop centre (on the deck) out to the ramp's outer edge
+        const ccx = c.x - ux * RU + ux * (4 + MW / 2), ccz = c.z - uz * RU + uz * (4 + MW / 2);
+        KS.addBox(ccx, ccz, Math.abs(ux) > 0.5 ? MW : 2.1, Math.abs(ux) > 0.5 ? 2.1 : MW, H, H - 0.3);
       }
-      /* the smooth road surface over the steps: a sloped ribbon in the road texture. */
+      const NSTEPS = 60, RISE = H / NSTEPS;
+      for (let k = 0; k < NSTEPS; k++) {
+        const c = at(k * 2 + 1), top = H - k * RISE;
+        KS.addBox(c.x, c.z, RW, 2.1, top, top - 0.2, rh);
+      }
+      /* solid curbs: the outer edge all the way, the inner edge only below the merge lane */
+      for (const s of [1, -1]) {
+        const e = s * (RW / 2 - 0.25), sx = ux * e, sz = uz * e;
+        if (s > 0) { const a = at(-MERGE), b = at(0); wallLine(a.x + sx, a.z + sz, b.x + sx, b.z + sz, H + 1.0, H - 0.3); }
+        for (let k = s > 0 ? 0 : 4; k < NSTEPS; k += 1) {
+          const a = at(k * 2), b = at(k * 2 + 2), top = H - k * RISE;
+          if (top < 0.4) break;
+          wallLine(a.x + sx, a.z + sz, b.x + sx, b.z + sz, top + 1.0, top - 0.6);
+        }
+      }
+      /* visuals: a girder path from the end of the merge lane down to the ground */
+      const path = [];
+      for (let d = -MERGE; d <= RL; d += 4) { const c = at(d); path.push({ x: c.x, y: yAt(d), z: c.z, h: rh }); }
+      extrude(path, girder(RW / 2, 1.6).map((e) => e.slice()), false);
+      extrude(path.filter((q) => q.y > 0.5), barrier(RW / 2, out * dir > 0 ? 1 : -1), false); // the outer barrier, all the way down
+      const innerPath = path.filter((q, i) => { const d = -MERGE + i * 4; return d >= 6 && q.y > 0.5; });
+      extrude(innerPath, barrier(RW / 2, out * dir > 0 ? -1 : 1), false); // the inner barrier, from just below the merge lane
+      /* the merge-lane deck (between the ramp and the loop deck) */
+      {
+        const a = at(-MERGE), b = at(0), L = Math.hypot(b.x - a.x, b.z - a.z);
+        const MW = RU + RW / 2 - DW / 2; // from the deck edge out to the ramp's outer edge
+        const mx = (a.x + b.x) / 2 - ux * RU + ux * (DW / 2 + MW / 2), mz = (a.z + b.z) / 2 - uz * RU + uz * (DW / 2 + MW / 2);
+        const geo = new T.PlaneGeometry(MW, L).rotateX(-Math.PI / 2);
+        const uvA = geo.attributes.uv; for (let k = 0; k < uvA.count; k++) uvA.setY(k, uvA.getY(k) * L / 32);
+        const m = new T.Mesh(geo, mR); m.position.set(mx, H + 0.08, mz); m.rotation.y = rh; m.receiveShadow = true; scene.add(m);
+      }
+      /* the sloped road surface */
       {
         const pos = [], uv = [], idx = [], NSEG = 30;
         for (let i = 0; i <= NSEG; i++) {
-          const d = (i / NSEG) * 120;
-          const y = H - (d / 120) * H + 0.1; // rides just above the step tops
-          const x = sx + bx * d, z = sz + bz * d;
-          const nx = Math.cos(rh), nz = -Math.sin(rh);
-          pos.push(x + nx * RW / 2, y, z + nz * RW / 2, x - nx * RW / 2, y, z - nz * RW / 2);
+          const d = (i / NSEG) * RL, c = at(d), y = yAt(d) + 0.1;
+          pos.push(c.x + ux * RW / 2, y, c.z + uz * RW / 2, c.x - ux * RW / 2, y, c.z - uz * RW / 2);
           uv.push(0, d / 32, 1, d / 32);
         }
         for (let i = 0; i < NSEG; i++) { const a = i * 2, c = (i + 1) * 2; idx.push(a, a + 1, c, a + 1, c + 1, c); }
@@ -437,73 +607,61 @@
         geo.setAttribute('uv', new T.Float32BufferAttribute(uv, 2));
         geo.setIndex(idx);
         geo.computeVertexNormals();
-        const skin = new T.Mesh(geo, mR); skin.receiveShadow = true; scene.add(skin);
+        const skin = new T.Mesh(geo, new T.MeshLambertMaterial({ map: mR.map, side: T.DoubleSide, polygonOffset: true, polygonOffsetFactor: -3 }));
+        skin.receiveShadow = true; scene.add(skin);
       }
-      /* side skirts: sloped concrete bands along both ramp edges — a parapet
-         0.9 m above the surface, and a fascia hiding the steps below it. */
-      {
-        const pos = [], idx = [], NSEG = 30;
-        const addSkirt = (side) => {
-          const base = pos.length / 3;
-          for (let i = 0; i <= NSEG; i++) {
-            const d = (i / NSEG) * 120;
-            const y = H - (d / 120) * H + 0.1;
-            const x = sx + bx * d, z = sz + bz * d;
-            const nx = Math.cos(rh), nz = -Math.sin(rh);
-            const ex = x + side * nx * (RW / 2 - 0.15), ez = z + side * nz * (RW / 2 - 0.15);
-            pos.push(ex, y - 0.6, ez, ex, y + 0.9, ez);
-          }
-          for (let i = 0; i < NSEG; i++) { const a = base + i * 2, c = base + (i + 1) * 2; idx.push(a, a + 1, c, a + 1, c + 1, c); }
-        };
-        addSkirt(1); addSkirt(-1);
-        const geo = new T.BufferGeometry();
-        geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
-        geo.setIndex(idx);
-        geo.computeVertexNormals();
-        const skirt = new T.Mesh(geo, new T.MeshLambertMaterial({ color: 0x9a958c, side: T.DoubleSide }));
-        skirt.receiveShadow = true; scene.add(skirt);
+      /* ramp piers while the girder is high enough to need them; lamps on the outer barrier */
+      for (let d = 8; d < RL - 30; d += 26) { const c = at(d), y = yAt(d); if (y > 4.5) pier(c.x, c.z, rh, 0, y, 6.2, 1.6, 1.6); }
+      for (let d = -MERGE + 4; d < RL - 24; d += 30) { const c = at(d); lamp(c.x, yAt(d), c.z, rh, (out * dir > 0 ? 1 : -1) * (RW / 2 - 0.2)); }
+      /* the toll plaza at the foot: a canopy cantilevered from the outer
+         side (the inner side is over the Ring Road), a booth, lane lights */
+      const gd = RL - 8, g0 = at(gd), gx = g0.x, gz = g0.z;
+      const cxo = gx + ux * (RW / 2 + 2.2), czo = gz + uz * (RW / 2 + 2.2);
+      for (const a of [-4, 4]) ext.box(cxo + dx * a, 0, czo + dz * a, 0.5, 6.6, 0.5, STEEL, rh);
+      for (const a of [-4, 4]) KS.addCircle(cxo + dx * a, czo + dz * a, 0.35, 6.6);
+      ext.box(gx + ux * 1.6, 6.3, gz + uz * 1.6, RW + 5.8, 0.45, 11, 0xe8e8e8, rh); // canopy roof
+      ext.box(gx + ux * 1.6, 6.75, gz + uz * 1.6, RW + 5.9, 0.12, 11.1, 0x9aa0a6, rh);
+      for (const f of [1, -1]) { // the red fascia band on both faces of the canopy, readable from both ways
+        const band = new T.Mesh(new T.PlaneGeometry(RW + 5.8, 0.9), plazaMat);
+        band.position.set(gx + ux * 1.6 + dx * 5.56 * f, 6.1, gz + uz * 1.6 + dz * 5.56 * f); band.rotation.y = f > 0 ? rh : rh + Math.PI; scene.add(band);
       }
-      /* solid curbs along both ramp edges, so you cannot fall off the side. */
-      for (let k = 0; k < NSTEPS; k += 2) {
-        const d = k * 2 + 1, top = H - k * RISE;
-        const x = sx + bx * d, z = sz + bz * d;
-        const nx = Math.cos(rh), nz = -Math.sin(rh);
-        KS.addBox(x + nx * (RW / 2 - 0.2), z + nz * (RW / 2 - 0.2), 0.3, 2.1, top + 0.9, top, rh);
-        KS.addBox(x - nx * (RW / 2 - 0.2), z - nz * (RW / 2 - 0.2), 0.3, 2.1, top + 0.9, top, rh);
+      for (const u of [-2.5, 2.5]) { // lane lights under the canopy, facing the cars coming up from the foot
+        glow.box(gx + ux * u + dx * 5.2, 5.6, gz + uz * u + dz * 5.2, 0.7, 0.5, 0.12, 0x6cff7a, rh);
       }
-      /* the toll gantry at the foot of the ramp: two posts, a crossbeam, and a
-         TOLL sign. The tag reader is the small box on the beam. */
-      const gx = sx + bx * 114, gz = sz + bz * 114;
-      const gnx = Math.cos(rh), gnz = -Math.sin(rh);
-      b.cyl(gx + gnx * 5.2, 0, gz + gnz * 5.2, 0.35, 6, 0x3a3a3a, 8);
-      b.cyl(gx - gnx * 5.2, 0, gz - gnz * 5.2, 0.35, 6, 0x3a3a3a, 8);
-      b.box(gx, 5.6, gz, 11.4, 0.5, 0.5, 0x3a3a3a, rh);
-      b.box(gx, 5.2, gz, 0.8, 0.6, 0.4, 0xffc81e, rh); // the tag reader
-      KS.addBox(gx + gnx * 5.2, gz + gnz * 5.2, 0.7, 0.7, 6);
-      KS.addBox(gx - gnx * 5.2, gz - gnz * 5.2, 0.7, 0.7, 6);
-      const signTex = KS.tex(512, 128, (g, w, hh) => {
-        g.fillStyle = '#1a1a1a'; g.fillRect(0, 0, w, hh);
-        g.strokeStyle = '#ffc81e'; g.lineWidth = 6; g.strokeRect(8, 8, w - 16, hh - 16);
-        g.fillStyle = '#ffc81e'; g.textAlign = 'center'; g.font = '700 56px ' + KS.FONT;
-        g.fillText('🛣️ TOLL · रु 15', w / 2, 82);
-      });
-      const sign = new T.Mesh(new T.PlaneGeometry(8, 2), new T.MeshLambertMaterial({ map: signTex, side: T.DoubleSide }));
-      sign.position.set(gx, 6.8, gz); sign.rotation.y = rh; scene.add(sign);
+      ext.box(gx, 5.75, gz, RW, 0.12, 0.5, 0x333333, rh);
+      ext.box(gx, 5.25, gz, 0.8, 0.45, 0.4, 0xffc81e, rh); // the tag reader
+      // the booth, on the outer side under the canopy
+      const bx = gx + ux * (RW / 2 + 1.5), bz = gz + uz * (RW / 2 + 1.5);
+      ext.box(bx, 0, bz, 2.0, 0.35, 3.4, 0xc8c2b4, rh);
+      ext.box(bx, 0.35, bz, 1.8, 2.3, 3.0, 0xf2f2f2, rh);
+      ext.box(bx - ux * 0.92, 1.25, bz - uz * 0.92, 0.04, 1.1, 2.4, 0x335a6e, rh); // window
+      ext.box(bx, 2.65, bz, 2.2, 0.18, 3.4, 0xc8102e, rh);
+      KS.addCircle(bx, bz, 1.0, 2.8);
       KS.tollGantries.push({ name: r.name, np: r.np, x: gx, z: gz });
-      KS.expressway.ramps.push({ name: r.name, np: r.np, topX: sx, topZ: sz, botX: sx + bx * 120, botZ: sz + bz * 120, h: rh });
+      const top = at(0), foot = at(RL);
+      KS.expressway.ramps.push({ name: r.name, np: r.np, topX: top.x, topZ: top.z, botX: foot.x, botZ: foot.z, h: rh });
+      /* the exit sign on the deck, 130 m before the merge lane, for drivers heading down this ramp */
+      let gi = r.p, best = Infinity;
+      const want = r.s - dir * (MERGE + 130);
+      for (const q of P) { const dd = loopS(q.s, want); if (dd < best) { best = dd; gi = q; } }
+      const gh = Math.atan2(P[(P.indexOf(gi) + 1) % n].x - gi.x, P[(P.indexOf(gi) + 1) % n].z - gi.z);
+      // Nepal drives on the left: drivers going `dir` along the loop use the dir-side half of the deck
+      gantry(gi.x, H, gi.z, gh, DW / 2, [
+        { u: dir * 3.4, face: dir, top: `EXIT ${r.name.toUpperCase()}`, bottom: `${r.np} निकास · रु 15`, arrow: out === dir ? '↖' : '↗' },
+        { u: -dir * 3.4, face: -dir, top: 'CHAKRAPATH EXPRESSWAY', bottom: 'चक्रपथ एक्सप्रेसवे · 80', arrow: '↑' },
+      ]);
     }
-    /* ROUND 17: the cross-city flyover — the overhead bridge now runs across
-       the city, not just on top of the Ring Road. A straight elevated road at
-       deck height along z = 0, from the west side of the loop to the east
-       side, joining the loop deck at both ends, so you can cross the whole
-       city without a single traffic light. Continuous parapet on both edges
-       (it only opens where it meets the loop deck, so you can turn), central
-       pillars in the road below, and an 80 km/h speed limit. */
+    KS.nearRamp = (x, z, pad = 0) => (KS.expressway.ramps || []).some((rp) => {
+      const vx = rp.botX - rp.topX, vz = rp.botZ - rp.topZ, L2 = vx * vx + vz * vz;
+      const t = KS.clamp(((x - rp.topX) * vx + (z - rp.topZ) * vz) / L2, -MERGE / RL, 1.06);
+      return Math.hypot(rp.topX + vx * t - x, rp.topZ + vz * t - z) < RW / 2 + 3 + pad;
+    });
+
+    /* ---- ROUND 17: the cross-city flyover, along z = 0 from loop to loop ---- */
     {
-      const FX0 = WJ.x - 8, FX1 = EJ.x + 8; // the flyover ends 8 m past each loop centreline, so the decks overlap and there is no gap to fall through
-      const FW = 14; // flyover width, same as the loop deck
-      const inGap = (x) => (x > WJ.x - 8 && x < WJ.x + 8) || (x > EJ.x - 8 && x < EJ.x + 8); // where the flyover meets the loop deck: the barrier opens so you can turn
-      // the deck ribbon, same road texture as the Ring Road
+      const FX0 = WJ.x - 8, FX1 = EJ.x + 8; // the decks overlap at both ends, no gap to fall through
+      const FW = 14;
+      const inGap = (x) => (x > WJ.x - 8 && x < WJ.x + 8) || (x > EJ.x - 8 && x < EJ.x + 8);
       {
         const pos = [], uv = [], idx = [];
         const NSEG = Math.ceil((FX1 - FX0) / 11);
@@ -520,76 +678,69 @@
         geo.computeVertexNormals();
         const m = new T.Mesh(geo, mR); m.receiveShadow = true; scene.add(m);
       }
-      // the deck slabs (solids), the edge barriers (solids), and the pillars
+      const fpath = (a, b) => { const out = []; for (let x = a; x <= b + 0.01; x += 5) out.push({ x: Math.min(x, b), y: H, z: 0, h: Math.PI / 2 }); return out; };
+      extrude(fpath(WJ.x + 7, EJ.x - 7), girder(FW / 2, 2.4), false); // inside the loop decks, which carry their own girder
+      for (const side of [1, -1]) extrude(fpath(WJ.x + 8, EJ.x - 8), barrier(FW / 2, side), false);
       let pi = 0;
       for (let x = FX0; x < FX1; x += 11) {
-        const cx = x + 5.5;
-        KS.addBox(cx, 0, 11.5, FW, H, H - 0.3, 0); // the thin deck slab, overlapping its neighbour
-        if (!inGap(cx)) { // the barrier opens where the flyover meets the loop deck
-          KS.addBox(cx, FW / 2 - 0.3, 11.5, 0.3, H + 0.9, H, 0);
-          KS.addBox(cx, -(FW / 2 - 0.3), 11.5, 0.3, H + 0.9, H, 0);
-        }
-        if (pi % 4 === 0 && !inGap(cx)) { // a pillar in the road below, every ~44 m
-          b.cyl(cx, 0, 0, 0.7, H, 0x8d887e, 8);
-          KS.addBox(cx, 0, 1.4, 1.4, H, 0);
-        }
+        const c = x + 5.5;
+        KS.addBox(c, 0, 11.5, FW, H, H - 0.3, 0); // the thin deck slab, overlapping its neighbour
         pi++;
       }
-      /* the flyover edge, as one continuous wall — a parapet above the deck
-         and a fascia below it, like the loop deck, opening only where it
-         meets the loop. */
-      {
-        const pos = [], idx = [];
-        const addWall = (side) => {
-          const base = pos.length / 3;
-          const NSEG = Math.ceil((FX1 - FX0) / 5.5);
-          const xs = [];
-          for (let i = 0; i <= NSEG; i++) {
-            const x = FX0 + (i / NSEG) * (FX1 - FX0);
-            xs.push(x);
-            pos.push(x, 10.8, side * (FW / 2 - 0.3), x, 12.9, side * (FW / 2 - 0.3));
-          }
-          for (let i = 0; i < NSEG; i++) {
-            const mx = (xs[i] + xs[i + 1]) / 2;
-            if (inGap(mx)) continue; // the wall opens where the flyover meets the loop deck
-            const a = base + i * 2, c = base + (i + 1) * 2;
-            idx.push(a, a + 1, c, a + 1, c + 1, c);
-          }
-        };
-        addWall(1); addWall(-1);
-        const geo = new T.BufferGeometry();
-        geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
-        geo.setIndex(idx);
-        geo.computeVertexNormals();
-        const wall = new T.Mesh(geo, new T.MeshLambertMaterial({ color: 0x9a958c, side: T.DoubleSide }));
-        wall.receiveShadow = true; scene.add(wall);
+      /* the flyover barriers run between the inner edges of the two loop decks, never onto them */
+      for (const side of [1, -1]) wallLine(WJ.x + 7.6, side * (FW / 2 - 0.3), EJ.x - 7.6, side * (FW / 2 - 0.3), H + 1.0, H - 0.3);
+      /* piers every ~40 m, but never in a cross street: the flyover runs
+         above the z = 0 street, and the grid streets cross it every 90 m */
+      for (let x = WJ.x + 40; x < EJ.x - 30; x += 40) {
+        let px = x;
+        for (let i = 0; i <= G.N; i++) if (Math.abs(px - G.line(i)) < 16) px = G.line(i) + (px < G.line(i) ? -16 : 16);
+        const g = Math.min(KS.heightAt(px, 0), 0);
+        pier(px, 0, Math.PI / 2, g, H, 9.2, 2.0);
+        ext.box(px, H + 0.075, 0, DW - 1.6, 0.012, 0.35, 0x2a2a2a, Math.PI / 2);
       }
-      /* a wall across each end of the flyover, so you cannot drive off the
-         dead end where it meets the loop deck. */
+      for (let x = WJ.x + 30, s = 1; x < EJ.x - 20; x += 26, s = -s) lamp(x, H, 0, Math.PI / 2, s * (FW / 2 - 0.2));
       for (const ex of [FX0, FX1]) {
-        b.box(ex, H, 0, 0.3, 0.9, FW, 0x9a958c);
+        ext.box(ex, H, 0, 0.3, 0.9, FW, 0x9a958c);
         KS.addBox(ex, 0, 0.3, FW, H + 0.9, H, 0);
       }
-      /* the 80 km/h signs where you join the flyover, on posts rising from
-         the deck so a driver up there can actually see them. */
-      const signTex = KS.tex(256, 256, (g, w, hh) => {
+      /* the 80 km/h signs and a flyover gantry at each end */
+      const sTex = KS.tex(256, 256, (g) => {
         g.fillStyle = '#ffffff'; g.beginPath(); g.arc(128, 128, 120, 0, Math.PI * 2); g.fill();
         g.strokeStyle = '#c81e1e'; g.lineWidth = 18; g.beginPath(); g.arc(128, 128, 108, 0, Math.PI * 2); g.stroke();
         g.fillStyle = '#111111'; g.textAlign = 'center'; g.font = '700 110px ' + KS.FONT;
         g.fillText('80', 128, 168);
       });
       const mkSign = (x, z, ry) => {
-        b.cyl(x, H, z, 0.09, 2.2, 0x3a3a3a, 6);
-        const s = new T.Mesh(new T.PlaneGeometry(1.6, 1.6), new T.MeshLambertMaterial({ map: signTex, side: T.DoubleSide }));
-        s.position.set(x, H + 2, z); s.rotation.y = ry; scene.add(s);
+        ext.cyl(x, H + 1.05, z, 0.09, 1.4, 0x3a3a3a, 6);
+        const s = new T.Mesh(new T.PlaneGeometry(1.6, 1.6), new T.MeshLambertMaterial({ map: sTex, side: T.DoubleSide }));
+        s.position.set(x, H + 2.6, z); s.rotation.y = ry; scene.add(s);
       };
-      mkSign(WJ.x + 20, FW / 2 - 0.3, -Math.PI / 2); // eastbound drivers, entering the flyover from the west
-      mkSign(EJ.x - 20, -(FW / 2 - 0.3), Math.PI / 2); // westbound drivers, entering from the east
+      mkSign(WJ.x + 20, FW / 2 - 0.3, -Math.PI / 2);
+      mkSign(EJ.x - 20, -(FW / 2 - 0.3), Math.PI / 2);
+      gantry(WJ.x + 60, H, 0, Math.PI / 2, FW / 2, [
+        { u: -3.4, face: -1, top: 'CITY FLYOVER', bottom: 'सिनामंगल ⇢ कलंकी', arrow: '→' },
+        { u: 3.4, face: 1, top: 'KALANKI · RING ROAD', bottom: 'कलंकी · चक्रपथ', arrow: '←' },
+      ]);
+      gantry(EJ.x - 60, H, 0, Math.PI / 2, FW / 2, [
+        { u: -3.4, face: -1, top: 'SINAMANGAL · AIRPORT', bottom: 'सिनामंगल · विमानस्थल', arrow: '→' },
+        { u: 3.4, face: 1, top: 'CITY FLYOVER', bottom: 'कलंकी ⇠ सिनामंगल', arrow: '←' },
+      ]);
       KS.expressway.flyover = { x0: FX0, x1: FX1, z: 0, west: { x: WJ.x, z: WJ.z }, east: { x: EJ.x, z: EJ.z } };
     }
-    scene.add(KS.mesh(b, KS.M.vc, false));
-    if (KS.landmarks) KS.landmarks.push({ id: 'expressway', name: 'Ring Road Expressway 🛣️', np: 'एक्सप्रेसवे', x: 0, z: 0, r: 600, fact: 'The elevated toll expressway above the Ring Road — Rs 15 a ride, no lights, no jams. Take a ramp up at Kalanki, Balaju, Chabahil or Koteshwor. The cross-city flyover runs straight across town at 80 km/h.' });
-    if (KS.landmarks) KS.landmarks.push({ id: 'flyover', name: 'Cross-City Flyover 🌉', np: 'फ्लाइओभर', x: 0, z: 0, r: 600, fact: 'The overhead bridge across the city, from one side to the other — 80 km/h, no traffic lights. Join it from the Ring Road expressway at either end.' });
+
+    /* everything concrete and steel in two meshes, the lamp heads in one */
+    {
+      const geo = new T.BufferGeometry();
+      geo.setAttribute('position', new T.Float32BufferAttribute(strips.pos, 3));
+      geo.setAttribute('color', new T.Float32BufferAttribute(strips.col, 3));
+      geo.setIndex(strips.idx);
+      geo.computeVertexNormals();
+      const m = new T.Mesh(geo, KS.M.vcDouble); m.receiveShadow = true; m.castShadow = KS.quality ? !!KS.quality.shadows : false; scene.add(m);
+    }
+    scene.add(KS.mesh(ext, KS.M.vc, !!(KS.quality && KS.quality.shadows)));
+    const gm = new T.Mesh(glow.build(), lampMat); scene.add(gm);
+    if (KS.landmarks) KS.landmarks.push({ id: 'expressway', name: 'Ring Road Expressway 🛣️', np: 'एक्सप्रेसवे', x: 0, z: 0, r: 600, fact: 'The elevated toll expressway above the Ring Road — Rs 15 a ride, no lights, no jams. Box-girder deck on hammerhead piers, 12 m up. Take a ramp up at Kalanki, Balaju, Chabahil or Koteshwor. The cross-city flyover runs straight across town at 80 km/h.' });
+    if (KS.landmarks) KS.landmarks.push({ id: 'flyover', name: 'Cross-City Flyover 🌉', np: 'फ्लाइओभर', x: 0, z: 0, r: 600, fact: 'The overhead bridge across the city, from Kalanki to Sinamangal — 80 km/h, no traffic lights. Join it from the Ring Road expressway at either end.' });
   }
 
   /* ================= roads, sidewalks, bridges ================= */
@@ -931,7 +1082,7 @@
 
   /* ================= trees ================= */
   const trees = [];
-  W.tree = (x, z, h = 6, kind) => { if (KS.nearRingRoad(x, z, 13)) return; trees.push({ x, z, h, kind: kind || (KS.chance(0.2) ? 'pine' : 'broad') }); };
+  W.tree = (x, z, h = 6, kind) => { if (KS.nearRingRoad(x, z, 13) || (KS.nearRamp && KS.nearRamp(x, z, 2))) return; trees.push({ x, z, h, kind: kind || (KS.chance(0.2) ? 'pine' : 'broad') }); };
   function buildTrees(scene) {
     const trunkG = new T.CylinderGeometry(0.22, 0.35, 1, 6).translate(0, 0.5, 0);
     const leafG = new T.IcosahedronGeometry(1, 1);
@@ -1250,6 +1401,7 @@
       if (z > KS.RIVER.z0 - 20 && z < KS.RIVER.z1 + 20) continue;
       if (x > 540 && x < 860 && Math.abs(z) < 440) continue;
       if (Math.hypot(x - sw.x, z - sw.z) < 160) continue;
+      if (KS.nearRamp && KS.nearRamp(x, z, 7)) continue; // nor on an expressway ramp
       if (KS.nearRingRoad(x, z, 22)) continue; // the Ring Road cuts through the outskirts: no house on the road (11 m road half-width + the house's own half-diagonal + air)
       const y = KS.heightAt(x, z), b = W.chunk(x, z), h = KS.ri(2, 4) * FLOOR, w = KS.r(7, 11), d = KS.r(7, 10), ry = KS.r(0, 3);
       b.box(x, y - 1, z, w, h + 1, d, KS.pick(P.walls), ry);

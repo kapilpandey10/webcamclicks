@@ -49,9 +49,14 @@
   /* ---------- "चक्रपथ · <place>" boards at every Ring Road place ---------- */
   function ringBoards(scene) {
     const poleB = new KS.Builder();
+    /* the outward side of the loop at a junction (the loop sample's normal, pointing away from the loop's middle) */
+    const P = KS.ringLoopPts; let lcx = 0, lcz = 0; for (const p of P) { lcx += p.x; lcz += p.z; } lcx /= P.length; lcz /= P.length;
+    KS.ringOutward = (w) => { const p = P[w.i], nx = Math.cos(p.h), nz = -Math.sin(p.h), s = nx * (p.x - lcx) + nz * (p.z - lcz) > 0 ? 1 : -1; return [nx * s, nz * s]; };
     for (const w of KS.RING_LOOP) {
       const { x, z, name } = w;
-      const m = Math.hypot(x, z) || 1, ox = x / m, oz = z / m, ry = Math.atan2(ox, oz);
+      let [ox, oz] = KS.ringOutward(w);
+      if (KS.nearRamp && KS.nearRamp(x + ox * 13.5, z + oz * 13.5, 1)) { ox = -ox; oz = -oz; } // a ramp on the outer side: the board goes on the inner side
+      const ry = Math.atan2(ox, oz);
       const px = x + ox * 13.5, pz = z + oz * 13.5;
       poleB.cyl(px, 0, pz, 0.06, 3.6, 0x55606a, 6);
       const board = new T.Mesh(new T.PlaneGeometry(2.4, 0.6), new T.MeshLambertMaterial({ map: plateTex(['चक्रपथ', name], '#1d3a8a'), side: T.DoubleSide }));
@@ -84,7 +89,10 @@
     // [junction i, j, approach direction dx, dz] : the gantry stands before the junction, facing oncoming traffic
     const spots = [[6, 3, 0, 1], [6, 8, 0, -1], [3, 6, 1, 0], [9, 6, -1, 0], [0, 7, 1, 0], [12, 6, -1, 0], [6, 0, 0, 1], [6, 12, 0, -1], [9, 3, -1, 0], [3, 9, 1, 0], [10, 9, 0, -1], [4, 4, 1, 0]];
     for (const [i, j, dx, dz] of spots) {
-      const nx = G.line(i), nz = G.line(j), x = nx - dx * 38, z = nz - dz * 38;
+      // an approach from outside the grid crosses the Ring Road on its way in: stand the gantry between the loop and the junction
+      const fromOutside = (i === 0 && dx > 0) || (i === G.N && dx < 0) || (j === 0 && dz > 0) || (j === G.N && dz < 0);
+      const setBack = fromOutside ? 14 : 38;
+      const nx = G.line(i), nz = G.line(j), x = nx - dx * setBack, z = nz - dz * setBack;
       const hw = (dx ? G.roadHalf(j) : G.roadHalf(i)) + 1.2;
       const rx = -dz, rz = dx; // right of travel
       const rows = DEST.map(([np, en, lx, lz]) => {
@@ -151,9 +159,9 @@
       for (let i = 0; i < 3; i++) frame.box(x + rx * (i - 1) * w * 0.33 + fx * 0.7, y + 5.1, z + rz * (i - 1) * w * 0.33 + fz * 0.7, 0.4, 0.15, 0.15, 0x888888, t.ry); // lamps
     });
     // tall unipole boards along the Ring Road loop, offset outward from the carriageway
-    [[30, -640], [540, 300], [-560, 120], [560, -40]].forEach(([wx, wz], k) => {
-      const m = Math.hypot(wx, wz) || 1, ox = wx / m, oz = wz / m, ry = Math.atan2(ox, oz);
-      const x = wx + ox * 16, z = wz + oz * 16;
+    ['Dhumbarahi', 'Gwarko', 'Sitapaila', 'Gaushala'].map((n) => KS.RING_LOOP.find((w) => w.name === n)).forEach((w, k) => {
+      const [ox, oz] = KS.ringOutward(w), ry = Math.atan2(ox, oz);
+      const x = w.x + ox * 18, z = w.z + oz * 18;
       frame.cyl(x, 0, z, 0.5, 14, 0x777777, 10); frame.box(x, 14, z, 0.4, 0.4, 13, 0x333333, ry + Math.PI / 2);
       const m1 = new T.Mesh(new T.PlaneGeometry(12, 4.5), mats[(k + 3) % mats.length]); m1.position.set(x - ox * 0.25, 16.4, z - oz * 0.25); m1.rotation.y = ry; scene.add(m1);
       const m2 = new T.Mesh(new T.PlaneGeometry(12, 4.5), mats[(k + 6) % mats.length]); m2.position.set(x + ox * 0.25, 16.4, z + oz * 0.25); m2.rotation.y = ry + Math.PI; scene.add(m2);

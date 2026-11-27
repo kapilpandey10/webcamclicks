@@ -35,37 +35,72 @@
   G.roadHalf = () => G.ROAD / 2;
   G.blockOf = (x, z) => ({ c: Math.floor((x - G.O) / G.B), r: Math.floor((z - G.O) / G.B) });
 
-  /* ---------- the Ring Road: a real loop, not a square ----------
-     The real Chakrapath is an irregular oval around the city, and the big
-     junctions sit on it: Tokha and Samakhusi in the north, Gangabu and
-     Balaju in the west, Kalanki and Balkhu in the south-west, Mahalaxmi and
-     Kupondole across the Bagmati, Koteshwar, Sinamangal and Gaushala in the
-     east, Chabahil and Maharajgunj in the north-east. A closed Catmull-Rom
-     spline through them, sampled once here; the road ribbon, the median,
-     the traffic nodes, the minimap and the signs all read the same samples,
-     so the road the player drives, the road the traffic drives and the road
-     on the map are one road. */
+  /* ---------- the Ring Road, traced from the real map ----------
+     The real Chakrapath (27 km) runs through these junctions, north ->
+     west -> south -> east: Basundhara, Samakhusi, Gongabu (New Bus Park),
+     Machhapokhari, Balaju, Banasthali, Thulo Bharyang, Sitapaila, Kalanki,
+     Balkhu (on the Bagmati), Ekantakuna, Satdobato, Gwarko, Balkumari,
+     Koteshwor, Sinamangal (beside the airport), Gaushala, Chabahil,
+     Dhumbarahi and Narayan Gopal Chowk (Maharajgunj).
+     Their real latitude/longitude was projected to metres and scaled
+     (1 : 6.2) so Kalanki meets the Nagdhunga highway and Sinamangal sits on
+     the airport fence. The shape is the real one: the dome over the north
+     through Basundhara, the long straight west side from Sitapaila to
+     Kalanki, the bulge south through Lalitpur to Satdobato, the straight
+     east side along the airport. Where the real line would have cut into
+     the game's city blocks, Swayambhu hill, the airport or the Thakuri
+     mansion, the curve was eased outward just enough to clear them
+     (scratch fit: a relaxation that pulls every point back to its real
+     position). RING_SHAPE is the traced centre line (control points of a
+     closed Catmull-Rom spline); RING_LOOP holds the named junctions, with
+     the grid junction (gi, gj) each one's connector road leads to (Balkhu
+     is on the bridge and Basundhara is far out in the north: no connector).
+     The road ribbon, the median, the traffic nodes, the minimap, the signs
+     and the expressway above all read the same samples. */
+  KS.RING_SHAPE = [
+    [188, -781], [175, -778], [147, -768], [120, -758], [91, -737], [63, -712], [38, -695], [26, -688], [16, -682], [-4, -674],
+    [-21, -668], [-37, -663], [-53, -660], [-69, -657], [-78, -656], [-86, -655], [-104, -655], [-123, -657], [-141, -658], [-158, -657],
+    [-174, -653], [-181, -649], [-187, -643], [-198, -629], [-207, -611], [-217, -592], [-229, -576], [-249, -572], [-261, -572], [-275, -572],
+    [-306, -572], [-342, -572], [-382, -572], [-424, -572], [-469, -572], [-493, -572], [-516, -572], [-561, -569], [-572, -534], [-572, -490],
+    [-572, -450], [-572, -412], [-572, -394], [-572, -376], [-572, -341], [-572, -307], [-572, -273], [-572, -237], [-572, -199], [-572, -180],
+    [-572, -159], [-573, -114], [-576, -66], [-582, -18], [-580, 28], [-574, 72], [-572, 93], [-572, 114], [-572, 156], [-572, 206],
+    [-572, 268], [-572, 351], [-572, 456], [-572, 516], [-562, 567], [-450, 572], [-354, 572], [-280, 572], [-222, 572], [-173, 573],
+    [-151, 582], [-130, 595], [-86, 627], [-37, 658], [13, 684], [60, 703], [102, 713], [120, 714], [137, 712], [164, 698],
+    [185, 674], [204, 645], [221, 616], [240, 590], [250, 580], [261, 574], [289, 572], [318, 572], [348, 572], [381, 572],
+    [418, 572], [439, 572], [461, 572], [510, 572], [560, 569], [572, 524], [572, 470], [572, 417], [572, 391], [572, 364],
+    [572, 307], [572, 249], [573, 192], [577, 139], [578, 90], [576, 68], [574, 46], [572, 6], [572, -35], [572, -77],
+    [572, -121], [572, -166], [572, -188], [572, -210], [572, -249], [572, -283], [572, -315], [572, -348], [572, -385], [572, -406],
+    [572, -429], [572, -480], [572, -537], [550, -572], [497, -572], [454, -576], [441, -587], [432, -600], [415, -630], [400, -658],
+    [383, -685], [365, -708], [346, -729], [335, -738], [325, -746], [302, -760], [278, -772], [253, -779], [227, -784], [201, -783],
+  ];
   KS.RING_LOOP = [
-    { name: 'Tokha', np: 'टोखा', x: 30, z: -640 },
-    { name: 'Samakhusi', np: 'सामाखुसी', x: -190, z: -600 },
-    { name: 'Gangabu', np: 'गंगबु', x: -430, z: -480 },
-    { name: 'Balaju', np: 'बालाजु', x: -560, z: -260 },
-    { name: 'Kalanki', np: 'कलंकी', x: -560, z: 120 },
-    { name: 'Balkhu', np: 'बल्खु', x: -420, z: 380 },
-    { name: 'Mahalaxmi', np: 'महालक्ष्मी', x: 40, z: 620 },
-    { name: 'Kupondole', np: 'कुपण्डोल', x: 480, z: 560 },
-    { name: 'Koteshwor', np: 'कोटेश्वर', x: 540, z: 300 },
-    { name: 'Sinamangal', np: 'सिनामंगल', x: 560, z: -40 },
-    { name: 'Gaushala', np: 'गौशाला', x: 540, z: -300 },
-    { name: 'Chabahil', np: 'चाबहिल', x: 380, z: -480 },
-    { name: 'Maharajgunj', np: 'महाराजगंज', x: 120, z: -575 }, // south of the Thakuri mansion (its grounds run x 120..240, z -735..-605): the loop must not cut through the walled compound
+    { name: 'Basundhara', np: 'बसुन्धरा', x: 188, z: -781 },
+    { name: 'Samakhusi', np: 'सामाखुसी', x: 26, z: -688, gi: 6, gj: 0 },
+    { name: 'Gongabu', np: 'गोंगबु', x: -78, z: -656, gi: 5, gj: 0 },
+    { name: 'Machhapokhari', np: 'माछापोखरी', x: -181, z: -649, gi: 4, gj: 0 },
+    { name: 'Balaju', np: 'बालाजु', x: -261, z: -572, gi: 3, gj: 0 },
+    { name: 'Banasthali', np: 'वनस्थली', x: -493, z: -572, gi: 1, gj: 0 },
+    { name: 'Thulo Bharyang', np: 'ठूलो भर्याङ', x: -572, z: -394, gi: 0, gj: 2 },
+    { name: 'Sitapaila', np: 'सीतापाइला', x: -572, z: -180, gi: 0, gj: 4 },
+    { name: 'Kalanki', np: 'कलंकी', x: -572, z: 93, gi: 0, gj: 7 },
+    { name: 'Balkhu', np: 'बल्खु', x: -572, z: 516 },
+    { name: 'Ekantakuna', np: 'एकान्तकुना', x: -151, z: 582, gi: 4, gj: 12 },
+    { name: 'Satdobato', np: 'सातदोबाटो', x: 120, z: 714, gi: 7, gj: 12 },
+    { name: 'Gwarko', np: 'ग्वार्को', x: 250, z: 580, gi: 9, gj: 12 },
+    { name: 'Balkumari', np: 'बालकुमारी', x: 439, z: 572, gi: 11, gj: 12 },
+    { name: 'Koteshwor', np: 'कोटेश्वर', x: 572, z: 391, gi: 12, gj: 10 },
+    { name: 'Sinamangal', np: 'सिनामंगल', x: 576, z: 68, gi: 12, gj: 7 },
+    { name: 'Gaushala', np: 'गौशाला', x: 572, z: -188, gi: 12, gj: 4 },
+    { name: 'Chabahil', np: 'चाबहिल', x: 572, z: -406, gi: 12, gj: 1 },
+    { name: 'Dhumbarahi', np: 'धुम्बाराही', x: 441, z: -587, gi: 11, gj: 0 },
+    { name: 'Narayan Gopal Chowk', np: 'नारायण गोपाल चोक', x: 335, z: -738, gi: 10, gj: 0 },
   ];
   KS.ringLoopPts = (() => {
-    const W = KS.RING_LOOP, n = W.length, N = 360, out = [];
+    const W = KS.RING_SHAPE.map(([x, z]) => ({ x, z })), n = W.length, PER = 4, out = [];
     for (let i = 0; i < n; i++) {
       const p0 = W[(i - 1 + n) % n], p1 = W[i], p2 = W[(i + 1) % n], p3 = W[(i + 2) % n];
-      for (let k = 0; k < N / n; k++) {
-        const t = k / (N / n), t2 = t * t, t3 = t2 * t;
+      for (let k = 0; k < PER; k++) {
+        const t = k / PER, t2 = t * t, t3 = t2 * t;
         out.push({
           x: 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
           z: 0.5 * ((2 * p1.z) + (-p0.z + p2.z) * t + (2 * p0.z - 5 * p1.z + 4 * p2.z - p3.z) * t2 + (-p0.z + 3 * p1.z - 3 * p2.z + p3.z) * t3),
@@ -81,14 +116,33 @@
     KS.ringLoopLen = s; // total loop length in metres
     return out;
   })();
-  /** distance from a point to the Ring Road centre line (true segment distance).
-      The loop lives inside x -577..562, z -670..631, so a point well outside
-      that box is far from the road: skip the 364-segment scan. The callers
-      only ever compare the result against 16 or 22, so a large value is safe. */
-  KS.ringLoopDist = (x, z) => {
-    if (x < -610 || x > 590 || z < -700 || z > 660) return 1e9;
-    const P = KS.ringLoopPts; let best = Infinity;
+  /* a coarse grid of the loop segments near each 32 m cell, so a distance
+     query scans a handful of segments instead of all ~560 (the terrain asks
+     once per vertex). Only segments within 48 m of a cell are listed: the
+     callers compare the result against 25 m or less, so "no segment listed"
+     returns a large value, which is safe. */
+  const RC = 32, RPAD = 48, ringCells = new Map();
+  KS.ringBox = { x0: Infinity, x1: -Infinity, z0: Infinity, z1: -Infinity };
+  {
+    const P = KS.ringLoopPts;
     for (let i = 0; i < P.length; i++) {
+      const a = P[i], b = P[(i + 1) % P.length];
+      const x0 = Math.min(a.x, b.x) - RPAD, x1 = Math.max(a.x, b.x) + RPAD, z0 = Math.min(a.z, b.z) - RPAD, z1 = Math.max(a.z, b.z) + RPAD;
+      KS.ringBox.x0 = Math.min(KS.ringBox.x0, x0); KS.ringBox.x1 = Math.max(KS.ringBox.x1, x1);
+      KS.ringBox.z0 = Math.min(KS.ringBox.z0, z0); KS.ringBox.z1 = Math.max(KS.ringBox.z1, z1);
+      for (let cx = Math.floor(x0 / RC); cx <= Math.floor(x1 / RC); cx++) for (let cz = Math.floor(z0 / RC); cz <= Math.floor(z1 / RC); cz++) {
+        const k = cx * 10007 + cz; let arr = ringCells.get(k); if (!arr) ringCells.set(k, (arr = [])); arr.push(i);
+      }
+    }
+  }
+  /** distance from a point to the Ring Road centre line (true segment distance) */
+  KS.ringLoopDist = (x, z) => {
+    const B = KS.ringBox;
+    if (x < B.x0 || x > B.x1 || z < B.z0 || z > B.z1) return 1e9;
+    const segs = ringCells.get(Math.floor(x / RC) * 10007 + Math.floor(z / RC));
+    if (!segs) return 1e9;
+    const P = KS.ringLoopPts; let best = Infinity;
+    for (const i of segs) {
       const a = P[i], b = P[(i + 1) % P.length], dx = b.x - a.x, dz = b.z - a.z, L2 = dx * dx + dz * dz;
       const u = L2 > 0 ? Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / L2)) : 0;
       const ex = a.x + u * dx - x, ez = a.z + u * dz - z, d = ex * ex + ez * ez;
@@ -96,15 +150,16 @@
     }
     return Math.sqrt(best);
   };
-  /** the short connector road from each loop junction to the nearest grid junction */
-  KS.ringConnectors = KS.RING_LOOP.map((w) => {
-    let bi = 0, bj = 0, bd = Infinity;
-    for (let i = 0; i <= G.N; i++) for (let j = 0; j <= G.N; j++) {
-      const d = Math.hypot(G.line(i) - w.x, G.line(j) - w.z);
-      if (d < bd) { bd = d; bi = i; bj = j; }
-    }
-    return { name: w.name, np: w.np, x1: w.x, z1: w.z, x2: G.line(bi), z2: G.line(bj), gi: bi, gj: bj };
-  });
+  /* each junction sits exactly on the traced line: snap it to the nearest sample */
+  for (const w of KS.RING_LOOP) {
+    let best = Infinity, bi = 0;
+    KS.ringLoopPts.forEach((p, i) => { const d = (p.x - w.x) ** 2 + (p.z - w.z) ** 2; if (d < best) { best = d; bi = i; } });
+    w.x = KS.ringLoopPts[bi].x; w.z = KS.ringLoopPts[bi].z; w.i = bi;
+  }
+  /** the connector road from each junction to its grid junction (traced so none crosses the river, the airport, Swayambhu or the mansion) */
+  KS.ringConnectors = KS.RING_LOOP.filter((w) => w.gi !== undefined).map((w) => (
+    { name: w.name, np: w.np, x1: w.x, z1: w.z, x2: G.line(w.gi), z2: G.line(w.gj), gi: w.gi, gj: w.gj }
+  ));
   /** true while a point is on the Ring Road or one of its connectors (for keeping buildings, trees and benches off the road) */
   KS.nearRingRoad = (x, z, r) => {
     if (KS.ringLoopDist(x, z) < r) return true;
@@ -182,7 +237,7 @@
     { name: 'Balaju', np: 'बालाजु', x0: -540, x1: -90, z0: -540, z1: -360 },
     { name: 'Kalimati', np: 'कालीमाटी', x0: -540, x1: -270, z0: -90, z1: 450 },
     { name: 'Chabahil', np: 'चाबहिल', x0: 90, x1: 540, z0: -360, z1: 0 },
-    { name: 'Ring Road', np: 'चक्रपथ', x0: -560, x1: 560, z0: -560, z1: 560 },
+    { name: 'Ring Road', np: 'चक्रपथ', x0: -600, x1: 600, z0: -800, z1: 730 }, // the traced loop reaches Basundhara in the north and Satdobato in the south
     { name: 'Kathmandu Valley', np: 'काठमाडौं उपत्यका', x0: -9999, x1: 9999, z0: -9999, z1: 9999 },
   ];
   KS.districtAt = (x, z) => {
@@ -384,7 +439,12 @@
      is an 80 km/h road. You are on it when you are up at deck height (y > 10)
      and either near the loop or in the flyover corridor along z = 0. The
      streets below stay at their normal (unposted) limit. */
-  KS.onExpressway = (x, z, y) => y > 10 && (KS.ringLoopDist(x, z) < 12 || (Math.abs(z) < 12 && x > -590 && x < 575));
+  KS.onExpressway = (x, z, y) => {
+    if (!(y > 10)) return false;
+    if (KS.ringLoopDist(x, z) < 12) return true;
+    const F = KS.expressway && KS.expressway.flyover;
+    return !!F && Math.abs(z - F.z) < 12 && x > F.x0 && x < F.x1;
+  };
   KS.speedLimit = (x, z, y) => (KS.schoolHours() && KS.schoolZoneAt(x, z) ? 25 : (y !== undefined && KS.onExpressway(x, z, y) ? 80 : null));
 
   /* ---------- solids: boxes / circles with a top height, on a spatial hash ---------- */

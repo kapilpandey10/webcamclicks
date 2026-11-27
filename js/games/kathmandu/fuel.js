@@ -15,9 +15,9 @@ F.SPOTS = [
   { x: -75, z: -350, name: 'Thamel Petrol', np: 'ठमेल पेट्रोल' },
   { x: -160, z: 110, name: 'New Road Petrol', np: 'न्यु रोड पेट्रोल' },
   { x: 405, z: 105, name: 'Airport Road Petrol', np: 'एयरपोर्ट रोड पेट्रोल' },
-  { x: -190, z: -630, name: 'Samakhusi Petrol', np: 'सामाखुसी पेट्रोल' },
-  { x: 480, z: 590, name: 'Kupondole Petrol', np: 'कुपण्डोल पेट्रोल' },
-  { x: -590, z: 120, name: 'Kalanki Petrol', np: 'कलंकी पेट्रोल' },
+  { x: 30, z: -728, name: 'Samakhusi Petrol', np: 'सामाखुसी पेट्रोल' },
+  { x: 602, z: 418, name: 'Koteshwor Petrol', np: 'कोटेश्वर पेट्रोल' },
+  { x: -602, z: 56, name: 'Kalanki Petrol', np: 'कलंकी पेट्रोल' },
 ];
 /* how much a litre-point costs to refill, by vehicle class (a full tank from
    empty: car ~रु 700, bike ~रु 300, truck/bus ~रु 1000) */

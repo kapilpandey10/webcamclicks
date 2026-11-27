@@ -34,10 +34,10 @@ S.CHAPTERS = [
   },
   {
     id: 'ring-road', title: 'Day 4 · The Ring Road Run', np: 'चक्रपथ दौड',
-    intro: 'A shop in Kalanki needs a parcel taken all the way around to Kupondole, on the other side of the Ring Road. It is a long drive — take the loop, not the shortcut through town.',
+    intro: 'A shop in Kalanki needs a parcel taken all the way around to Koteshwor, on the other side of the Ring Road. It is a long drive — take the loop, not the shortcut through town.',
     steps: [
-      { x: -560, z: 120, label: 'Pick up the parcel in Kalanki', say: '“This goes to Kupondole. The Ring Road is quicker — trust me.”' },
-      { x: 480, z: 560, label: 'Deliver to the shop in Kupondole', say: '“Right on time. The Ring Road suits you!”' },
+      { x: -556, z: 91, label: 'Pick up the parcel in Kalanki', say: '“This goes to Koteshwor. The Ring Road is quicker — trust me.”' },
+      { x: 556, z: 375, label: 'Deliver to the shop in Koteshwor', say: '“Right on time. The Ring Road suits you!”' },
     ],
     reward: 800, time: 0,
   },

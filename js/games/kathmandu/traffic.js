@@ -186,6 +186,7 @@
     const vy = v.y || 0;
     for (const o of others) if (o !== v && !o.lot && !o.dormant && Math.abs((o.y || 0) - vy) < 2.5) test(o.x, o.z, o.type.len, o.type.wid, o, o.h);
     if (ctx.player && Math.abs((KS.Player.y || 0) - vy) < 2.5) test(ctx.player.x, ctx.player.z, ctx.player.len, ctx.player.wid, 'player', KS.Player.vehicle ? KS.Player.vehicle.h : null);
+    const TRm = KS.Tram; if (TRm && TRm.x != null && vy < 2.5) test(TRm.x, TRm.z, TRm.LEN || 24, 2.6, 'tram', TRm.h); // the tram shares the left lane: queue behind it
     KS.Peds.forEachNear(v.x, v.z, look + 4, (p) => { if (!p.down) test(p.x, p.z, 0.5, 0.6, 'ped'); });
     KS.Animals.obstacles((x, z) => test(x, z, 1.8, 1.2, 'cow'));
     return { d: best, who };

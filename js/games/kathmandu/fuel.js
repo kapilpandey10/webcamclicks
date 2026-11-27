@@ -12,7 +12,7 @@ F.SPOTS = [
      the middle of a block, where the forecourt would land on top of houses.
      (Thamel was (-70,-200) and Airport Road was (340,20); both overlapped
      buildings, caught by the round-8 harness.) */
-  { x: -75, z: -350, name: 'Thamel Petrol', np: 'ठमेल पेट्रोल' },
+  { x: -72, z: -343, name: 'Thamel Petrol', np: 'ठमेल पेट्रोल' },
   { x: -160, z: 110, name: 'New Road Petrol', np: 'न्यु रोड पेट्रोल' },
   { x: 405, z: 105, name: 'Airport Road Petrol', np: 'एयरपोर्ट रोड पेट्रोल' },
   { x: 30, z: -728, name: 'Samakhusi Petrol', np: 'सामाखुसी पेट्रोल' },

@@ -25,7 +25,7 @@
   const L = (i) => G.line(i);
   const CORNERS = [[L(5), L(4)], [L(7), L(4)], [L(7), L(7)], [L(5), L(7)]]; // street junctions, clockwise
   const R = 9; // corner radius of the street centre line
-  const OFF = 5.6; // the tram runs this far LEFT of the street centre line: in the left (kerb) lane
+  const OFF = G.ROAD / 2 - 3.6; // the tram runs this far LEFT of the street centre line: in the left (kerb) lane
   const CAR_W = 2.6;
   let LEN = 24;
   const STOPS = [['Asan', 'असन'], ['Ratna Park', 'रत्नपार्क'], ['Bhrikutimandap', 'भृकुटीमण्डप'], ['New Road', 'न्युरोड']];

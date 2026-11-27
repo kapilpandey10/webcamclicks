@@ -43,13 +43,14 @@
     for (const s of KS.signals) { const n = nodes[idx(s.i, s.j)]; n.sig = s; }
     TR.nodes = nodes;
   };
-  const margin = (n) => (n.spur || n.hw ? 0 : n.ring ? 12.5 : 9.5);
+  const STREET_M = G.ROAD / 2 + 4; // stop with the front just behind the stop line, behind the zebra
+  const margin = (n) => (n.spur || n.hw ? 0 : n.ring ? 12.5 : STREET_M);
   function laneOf(v, a, b, out) {
     const A = nodes[a], B = nodes[b], long = v.type && v.type.len > 6 ? 3.5 : 0; // buses & trucks swing wide
-    const margin = (n) => (n.spur || n.hw ? 0 : (n.ring ? 12.5 : 9.5) + long);
+    const margin = (n) => (n.spur || n.hw ? 0 : (n.ring ? 12.5 : STREET_M) + long);
     let dx = B.x - A.x, dz = B.z - A.z; const L = Math.hypot(dx, dz); dx /= L; dz /= L;
     const ring = A.ring && B.ring && ((A.loop && B.loop) || A.i === B.i || A.j === B.j) && !A.spur && !B.spur && !A.hw && !B.hw;
-    const off = (ring ? (v.outer ? 7.2 : 3.4) : 3.5) + v.lat;
+    const off = (ring ? (v.outer ? 7.2 : 3.4) : (v.outer ? 2.0 : 5.5)) + v.lat; // streets: the kerb lane (keep left), or the inner lane to overtake
     const lx = dz, lz = -dx; // left of travel (Nepal drives on the left)
     out.sx = A.x + dx * margin(A) + lx * off; out.sz = A.z + dz * margin(A) + lz * off;
     out.ex = B.x - dx * margin(B) + lx * off; out.ez = B.z - dz * margin(B) + lz * off;

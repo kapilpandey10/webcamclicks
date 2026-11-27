@@ -345,10 +345,11 @@
       bb.box(BX - 1.55, DECK, 0, 0.15, 1.2, 22, 0x3a3a3a); bb.box(BX + 1.55, DECK, 0, 0.15, 1.2, 22, 0x3a3a3a);
       KS.addBox(BX - 1.55, 0, 0.15, 22, DECK + 1.2, DECK); KS.addBox(BX + 1.55, 0, 0.15, 22, DECK + 1.2, DECK);
       /* support columns on the sidewalks, clear of the carriageway. */
-      bb.box(BX - 1.4, 0, -9.5, 0.5, DECK, 0.5, 0x6a6a6a); bb.box(BX + 1.4, 0, -9.5, 0.5, DECK, 0.5, 0x6a6a6a);
-      bb.box(BX - 1.4, 0, 9.5, 0.5, DECK, 0.5, 0x6a6a6a); bb.box(BX + 1.4, 0, 9.5, 0.5, DECK, 0.5, 0x6a6a6a);
-      KS.addBox(BX - 1.4, -9.5, 0.5, 0.5, DECK); KS.addBox(BX + 1.4, -9.5, 0.5, 0.5, DECK);
-      KS.addBox(BX - 1.4, 9.5, 0.5, 0.5, DECK); KS.addBox(BX + 1.4, 9.5, 0.5, 0.5, DECK);
+      const PZ = G.ROAD / 2 + 1.5; // the bridge piers stand on the pavements, never in the road
+      bb.box(BX - 1.4, 0, -PZ, 0.5, DECK, 0.5, 0x6a6a6a); bb.box(BX + 1.4, 0, -PZ, 0.5, DECK, 0.5, 0x6a6a6a);
+      bb.box(BX - 1.4, 0, PZ, 0.5, DECK, 0.5, 0x6a6a6a); bb.box(BX + 1.4, 0, PZ, 0.5, DECK, 0.5, 0x6a6a6a);
+      KS.addBox(BX - 1.4, -PZ, 0.5, 0.5, DECK); KS.addBox(BX + 1.4, -PZ, 0.5, 0.5, DECK);
+      KS.addBox(BX - 1.4, PZ, 0.5, 0.5, DECK); KS.addBox(BX + 1.4, PZ, 0.5, 0.5, DECK);
       scene.add(KS.mesh(bb));
       board(scene, 'आकाशे पुल', 'SKY BRIDGE · USE THE STAIRS', BX, DECK + 2.2, -11.6, 0, 8, 1.8, '#1b5e20', '#ffffff');
       KS.landmarks.push({ id: 'skybridge', name: 'Sky Bridge', np: 'आकाशे पुल', x: BX, z: 0, r: 14, fact: 'An akase pul over the road by Bir Hospital — walk up the stairs and cross above the traffic.' });

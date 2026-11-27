@@ -215,12 +215,13 @@
     function kalimatiGates(ex, xx, gz, x0, x1, z0, z1) {
       const gateZ = gz + 6; // inside the lot, not on the road
       // paved driveways from the road to each gate
-      paint.box(ex, 0.11, 101, 6, 0.01, 22, 0x8a8a8a);
-      paint.box(xx, 0.11, 101, 6, 0.01, 22, 0x8a8a8a);
-      paint.box(ex - 3.1, 0.11, 101, 0.15, 0.01, 22, 0xf4f4ee);
-      paint.box(ex + 3.1, 0.11, 101, 0.15, 0.01, 22, 0xf4f4ee);
-      paint.box(xx - 3.1, 0.11, 101, 0.15, 0.01, 22, 0xf4f4ee);
-      paint.box(xx + 3.1, 0.11, 101, 0.15, 0.01, 22, 0xf4f4ee);
+      const dz = gz + 2.5; // from the kerb to the gate
+      paint.box(ex, 0.11, dz, 6, 0.01, 6, 0x8a8a8a);
+      paint.box(xx, 0.11, dz, 6, 0.01, 6, 0x8a8a8a);
+      paint.box(ex - 3.1, 0.11, dz, 0.15, 0.01, 6, 0xf4f4ee);
+      paint.box(ex + 3.1, 0.11, dz, 0.15, 0.01, 6, 0xf4f4ee);
+      paint.box(xx - 3.1, 0.11, dz, 0.15, 0.01, 6, 0xf4f4ee);
+      paint.box(xx + 3.1, 0.11, dz, 0.15, 0.01, 6, 0xf4f4ee);
       barrierGate(ex, gateZ, 'प्रवेश', 'ENTRY', '#1b7a2e', 1);
       barrierGate(xx, gateZ, 'निकास', 'EXIT', '#c81e1e', -1);
       // a big P sign by the entrance, facing the road so drivers see the lot
@@ -276,8 +277,9 @@
         b.box(x - 2.3, 0, gz + 0.4, 0.14, 3.1, 0.14, 0x666666); b.box(x + 2.3, 0, gz + 0.4, 0.14, 3.1, 0.14, 0x666666);
       };
       const isKalimati = name === 'Kalimati Market Parking';
-      if (!isKalimati) gate(gx0 + 3.5, 'प्रवेश', 'ENTRY', '#1b7a2e'), gate(gx1 - 3.5, 'निकास', 'EXIT', '#c81e1e');
-      else kalimatiGates(gx0 + 3.5, gx1 - 3.5, gz, x0, x1, z0, z1);
+      // the gates stand inside the lot, 6 m in from its corners (they used to stand 3.5 m from the cross street's centre line, in the road)
+      if (!isKalimati) gate(x0 + 6, 'प्रवेश', 'ENTRY', '#1b7a2e'), gate(x1 - 6, 'निकास', 'EXIT', '#c81e1e');
+      else kalimatiGates(x0 + 6, x1 - 6, gz, x0, x1, z0, z1);
       // painted arrows on the lot floor: in through the entry gate, out through the exit gate
       const arrow = (x, z, dir) => { // dir +1: into the lot (+z), -1: out of the lot (-z)
         paint.box(x, 0.11, z, 0.5, 0.01, 3, 0xf4f4ee);

@@ -30,7 +30,7 @@
      12 x 12 blocks of 90 m. Road centre lines at x,z = -540 + i*90. Every grid
      line is an ordinary 16 m street now; the Ring Road is the loop below, not
      the square the grid used to draw. Nepal drives on the LEFT. */
-  const G = (KS.G = { N: 12, B: 90, O: -540, ROAD: 16, RING: 22, HALF: 540 });
+  const G = (KS.G = { N: 12, B: 90, O: -540, ROAD: 20, RING: 22, HALF: 540 }); // round 22: 20 m city streets, two lanes each way
   G.line = (i) => G.O + i * G.B;
   G.roadHalf = () => G.ROAD / 2;
   G.blockOf = (x, z) => ({ c: Math.floor((x - G.O) / G.B), r: Math.floor((z - G.O) / G.B) });
@@ -447,8 +447,8 @@
      Pokhari, the stadium). The houses under the deck are kept below it, and
      none stands where a pier goes (world.js asks KS.tollUnder). */
   const TOLL = (KS.TOLL = { H: 22, DW: 14, RAMP: 200, lines: [
-    { id: 'ns', axis: 'z', c: -225, a: -532, b: 442, flatA: -332, flatB: 250, names: [['Balaju', 'बालाजु'], ['Teku', 'टेकु']] },
-    { id: 'ew', axis: 'x', c: 225, a: -532, b: 532, flatA: -332, flatB: 332, names: [['Kalimati', 'कालीमाटी'], ['Baneshwor', 'बानेश्वर']] },
+    { id: 'ns', axis: 'z', c: -225, a: G.line(0) + G.ROAD / 2, b: G.line(11) - G.ROAD / 2, flatA: -332, flatB: 250, names: [['Balaju', 'बालाजु'], ['Teku', 'टेकु']] },
+    { id: 'ew', axis: 'x', c: 225, a: G.line(0) + G.ROAD / 2, b: G.line(12) - G.ROAD / 2, flatA: -332, flatB: 332, names: [['Kalimati', 'कालीमाटी'], ['Baneshwor', 'बानेश्वर']] },
   ] });
   /** deck height of a line at position t along it (ramps fall linearly to the street at both ends) */
   /* ROUND 22: the ramps are one smooth slope, eased at the street and at the deck (half-steepness at both ends),

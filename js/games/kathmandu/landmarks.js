@@ -59,7 +59,10 @@
     b.cyl(x, cy + 0.4, z, Math.max(0.35, wall * 0.18), 2.6, P.gold, 8, 0.12);
     b.sphere(x, cy + 1.2, z, Math.max(0.4, wall * 0.2), P.gold, 1, 8);
     KS.addBox(x, z, w, w, cy + 3);
-    bellAt(b, x + w / 2 + 4, z + 2, y); // a bell you can see and ring, beside the temple
+    { // a bell you can see and ring, beside the temple — on the side away from the street
+      const G2 = KS.G, inStreet = (bx) => { const li = Math.round((bx - G2.O) / G2.B); return Math.abs(bx - G2.line(li)) < G2.ROAD / 2 + 1.5; };
+      bellAt(b, inStreet(x + w / 2 + 4) ? x - w / 2 - 4 : x + w / 2 + 4, z + 2, y);
+    }
     return cy;
   }
   function eyesTexture() {
@@ -244,7 +247,7 @@
     bellAt(b, R.x1 - 7 + 8, R.z1 - 7, 0); // the gompa's bell, beside the monastery door
     // ring of houses on the other corners
     for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1]]) {
-      const hx = cx + sx * 33, hz = cz + sz * 33;
+      const hx = cx + sx * 28, hz = cz + sz * 28; // inside the block, clear of the wider streets
       W.addBuilding(hx, hz, 8, 8, KS.ri(4, 5), KS.ri(0, 1), Math.atan2(sx, sz) + Math.PI, KS.pick(P.walls), 'thamel');
     }
     scene.add(KS.mesh(b));

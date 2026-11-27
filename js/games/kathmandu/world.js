@@ -629,24 +629,37 @@
     let nBoxes = 0, nStops = 0, nRing = 0;
     const box = (...a) => { m.box(...a); nBoxes++; };
     const blocked = (kind, line, from) => (KS.noRoad || []).some((n) => n[0] === kind && n[1] === line && n[2] === from);
+    /* ROUND 22: the city streets are 20 m, two lanes each way, and the paint
+       follows that: a double solid yellow centre line, dashed white lines
+       between the two lanes of each direction, solid white edge lines with a
+       parking strip outside them, and — at every junction with traffic
+       lights — a stop line across the approach behind the zebra and lane
+       arrows (kerb lane: straight or left, inner lane: straight or right). */
+    const hw = G.ROAD / 2, LANE = 3.75, EDGE = hw - 2.3, sigAt = (i, j) => (KS.signals || []).some((q) => q.i === i && q.j === j);
+    const along = (axis, li, d, w, l, col, u = 0) => { if (axis === 0) box(G.line(li) + u, 0.08, d, w, 0.015, l, col); else box(d, 0.08, G.line(li) + u, l, 0.015, w, col); };
+    const arrow = (axis, li, d, u, dirSign, turn) => { // a lane arrow pointing along the travel direction, with a turn branch (-1 left, +1 right)
+      const ry = axis === 0 ? (dirSign > 0 ? 0 : Math.PI) : (dirSign > 0 ? Math.PI / 2 : -Math.PI / 2);
+      const fx = Math.sin(ry), fz = Math.cos(ry), lx = Math.cos(ry), lz = -Math.sin(ry);
+      const cx = axis === 0 ? G.line(li) + u : d, cz = axis === 0 ? d : G.line(li) + u;
+      box(cx, 0.081, cz, 0.3, 0.015, 3.2, WHT, ry); // the shaft
+      for (const s2 of [-1, 1]) box(cx + fx * 1.55 + lx * s2 * 0.32, 0.081, cz + fz * 1.55 + lz * s2 * 0.32, 0.26, 0.015, 1.0, WHT, ry - s2 * 0.6); // the head (converging on the tip)
+      box(cx + fx * 0.2 + lx * -turn * 0.5, 0.081, cz + fz * 0.2 + lz * -turn * 0.5, 0.26, 0.015, 1.2, WHT, ry - turn * 0.9); // the turn branch
+    };
     for (let i = 0; i <= G.N; i++) for (let axis = 0; axis < 2; axis++) for (let s = 0; s < G.N; s++) {
-      if (axis === 0 ? blocked('v', i, s) : blocked('h', s, i)) continue;
-      const a = G.line(s) + 12, b = G.line(s + 1) - 12, mid = (a + b) / 2; // leave the junction mouths clear
-      for (let d = a; d < b - 3; d += 6) { // yellow centre dashes, 3 m on, 3 m off
-        if (axis === 0) box(G.line(i), 0.08, d + 1.5, 0.5, 0.015, 3, YEL);
-        else box(d + 1.5, 0.08, G.line(i), 3, 0.015, 0.5, YEL);
-      }
-      for (const e of [-1, 1]) { // white edge lines, just inside the kerb
-        if (axis === 0) box(G.line(i) + e * 7.2, 0.08, mid, 0.15, 0.015, b - a, WHT);
-        else box(mid, 0.08, G.line(i) + e * 7.2, b - a, 0.015, 0.15, WHT);
-      }
-    }
-    for (const s of KS.signals || []) { // white stop lines, one per approach, in the left lane
-      for (const [dx, dz] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
-        if (dx === 0 && (dz > 0 ? s.j < 1 || blocked('v', s.i, s.j - 1) : s.j >= G.N || blocked('v', s.i, s.j))) continue;
-        if (dz === 0 && (dx > 0 ? s.i < 1 || blocked('h', s.j, s.i - 1) : s.i >= G.N || blocked('h', s.j, s.i))) continue;
-        const cx = s.x - dx * 10 + dz * 3.5, cz = s.z - dz * 10 - dx * 3.5;
-        box(cx, 0.08, cz, dx === 0 ? 3.4 : 0.6, 0.015, dx === 0 ? 0.6 : 3.4, WHT); nStops++;
+      if (axis === 0 ? blocked('v', i, s) : blocked('h', i, s)) continue; // (h: line i, from s — it was swapped, which painted lanes across the Durbar Square plaza)
+      const a = G.line(s) + hw + 5.2, b = G.line(s + 1) - hw - 5.2, mid = (a + b) / 2, L = b - a; // clear of the junction and its zebras
+      for (const u of [-0.18, 0.18]) along(axis, i, mid, 0.12, L, YEL, u); // double solid yellow
+      for (let d = a; d < b - 3; d += 6) for (const u of [-LANE, LANE]) along(axis, i, d + 1.5, 0.14, 3, WHT, u); // lane lines
+      for (const u of [-EDGE, EDGE]) along(axis, i, mid, 0.15, L, WHT, u); // edge lines
+      // stop lines and lane arrows where the approach ends at traffic lights. Nepal drives on the left: travelling
+      // +along, your half of the road is on the left (u > 0 for axis 0 / +z travel, u < 0 for axis 1 / +x travel).
+      for (const [end, dirSign] of [[s + 1, 1], [s, -1]]) {
+        const sig = axis === 0 ? sigAt(i, end) : sigAt(end, i); if (!sig) continue;
+        const stopD = G.line(end) - dirSign * (hw + 5.3), side = (axis === 0 ? 1 : -1) * dirSign;
+        along(axis, i, stopD, EDGE - 0.3, 0.5, WHT, side * (0.3 + (EDGE - 0.3) / 2)); nStops++;
+        const arD = G.line(end) - dirSign * (hw + 13);
+        arrow(axis, i, arD, side * (hw - 4.5), dirSign, -1); // kerb lane: straight or left
+        arrow(axis, i, arD, side * 1.9, dirSign, 1); // inner lane: straight or right
       }
     }
     const P = KS.ringLoopPts || []; // Ring Road: dashed lane lines either side of the median

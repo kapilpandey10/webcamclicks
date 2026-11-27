@@ -451,7 +451,10 @@
     { id: 'ew', axis: 'x', c: 225, a: -532, b: 532, flatA: -332, flatB: 332, names: [['Kalimati', 'कालीमाटी'], ['Baneshwor', 'बानेश्वर']] },
   ] });
   /** deck height of a line at position t along it (ramps fall linearly to the street at both ends) */
-  TOLL.yAt = (L, t) => (t < L.a || t > L.b ? null : t < L.flatA ? TOLL.H * (t - L.a) / (L.flatA - L.a) : t > L.flatB ? TOLL.H * (L.b - t) / (L.b - L.flatB) : TOLL.H);
+  /* ROUND 22: the ramps are one smooth slope, eased at the street and at the deck (half-steepness at both ends),
+     and they are a continuous driving surface (KS.groundAt asks KS.tollY), not a staircase of 2 m steps */
+  const ease = (u) => 0.5 * u + 0.5 * u * u * (3 - 2 * u);
+  TOLL.yAt = (L, t) => (t < L.a || t > L.b ? null : t < L.flatA ? TOLL.H * ease((t - L.a) / (L.flatA - L.a)) : t > L.flatB ? TOLL.H * ease((L.b - t) / (L.b - L.flatB)) : TOLL.H);
   /** the deck surface height over a point, or null when the point is not under the expressway */
   KS.tollY = (x, z, pad = 0) => {
     let best = null;
@@ -540,6 +543,7 @@
     if (KS.meshHeightAt) { const mh = KS.meshHeightAt(x, z); if (mh > g) g = mh; }
     KS.solidsNear(x, z, 0.5, near);
     for (const s of near) if (s.top <= y + step && inside(s, x, z, 0) && s.top > g) g = s.top;
+    if (KS.tollY) { const ty = KS.tollY(x, z, -0.15); if (ty !== null && ty <= y + step && ty > g) g = ty; } // the expressway deck and its smooth ramps
     return g;
   };
   /** move a circle to (x,z): push out of solids too tall to step on. returns {x,z,hit} */

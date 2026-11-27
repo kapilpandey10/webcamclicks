@@ -481,8 +481,7 @@
       /* --- physics: 2 m slabs (steps on the ramps), barriers both sides --- */
       for (let t = L.a; t < L.b; t += 2) {
         const tm = t + 1, y = TL.yAt(L, tm), c = pt(L, tm);
-        const w = L.axis === 'z' ? DW : 2.1, d = L.axis === 'z' ? 2.1 : DW;
-        KS.addBox(c.x, c.z, w, d, y, y - 0.3);
+        // (round 22: no slab or step solids — the deck surface is KS.tollY, smooth all the way)
         if (inCross(L, tm, 0.5)) continue;
         for (const side of [1, -1]) {
           const e = pt(L, tm, side * (DW / 2 - 0.2));
@@ -883,6 +882,7 @@
   function emptyLot(cx, cz, w, d) {
     const b = W.chunk(cx, cz);
     b.box(cx, 0, cz, w, 0.1, d, 0x8a7a5e);
+    { const ty = KS.tollY(cx, cz, Math.max(w, d) / 2 + 1); if (ty !== null && ty < 5) return; } // the lot under a ramp stays bare
     for (let i = 0; i < 3; i++) b.box(cx + KS.r(-w / 3, w / 3), 0, cz + KS.r(-d / 3, d / 3), KS.r(1.5, 3), KS.r(0.5, 1.2), KS.r(1, 2), 0xa4553a); // brick piles
     b.box(cx + KS.r(-2, 2), 0, cz, 2.5, 0.6, 2.5, 0xb7a98c); // sand
     if (KS.chance(0.5)) W.tree(cx + KS.r(-w / 3, w / 3), cz + KS.r(-d / 3, d / 3), KS.r(4, 7));
@@ -1039,6 +1039,7 @@
         for (let s = 6; s < L - 6; s += KS.r(1.1, 5)) {
           const x = sx + ax * s, z = sz + az * s, b = W.chunk(x, z);
           const roll = KS.rng();
+          { const ty = KS.tollY(x, z, 2.5); if (ty !== null && ty < 5) continue; } // nothing under the low end of an expressway ramp
           if (roll < 0.55) W.parkedBike(b, x, z, ax ? Math.PI / 2 : 0);
           else if (roll < 0.6) W.stall(b, x + az * 1.5, z + ax * 1.5, ax ? 0 : Math.PI / 2);
           else if (roll < 0.63) { b.cyl(x + az * 1.4, 0.2, z + ax * 1.4, 0.4, 0.9, 0x2a6b3a, 8); }

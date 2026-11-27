@@ -404,6 +404,12 @@
     g.beginPath(); KS.ringLoopPts.forEach((p, i) => (i ? g.lineTo(mx(p.x), mz(p.z)) : g.moveTo(mx(p.x), mz(p.z)))); g.closePath(); g.stroke();
     g.lineWidth = G.ROAD * MAP.px;
     for (const c of KS.ringConnectors) { g.beginPath(); g.moveTo(mx(c.x1), mz(c.z1)); g.lineTo(mx(c.x2), mz(c.z2)); g.stroke(); }
+    // the City Expressway: a dark band with an orange edge, over the streets (round 22)
+    if (KS.TOLL) for (const L of KS.TOLL.lines) {
+      const p0 = L.axis === 'z' ? [L.c, L.a] : [L.a, L.c], p1 = L.axis === 'z' ? [L.c, L.b] : [L.b, L.c];
+      for (const [col, wdt] of [['#e8752a', KS.TOLL.DW + 4], ['#4a4f57', KS.TOLL.DW]]) { g.strokeStyle = col; g.lineWidth = wdt * MAP.px; g.lineCap = 'butt'; g.beginPath(); g.moveTo(mx(p0[0]), mz(p0[1])); g.lineTo(mx(p1[0]), mz(p1[1])); g.stroke(); }
+      g.lineCap = 'round'; g.strokeStyle = '#f3d27a';
+    }
     g.fillStyle = '#fbfaf4'; g.fillRect(mx(KS.SWAYAMBHU.x + 20), mz(-96), (-540 - KS.SWAYAMBHU.x - 20) * MAP.px, 12 * MAP.px); g.fillRect(mx(540), mz(-7), 80 * MAP.px, 14 * MAP.px);
     // Nagdhunga highway and tunnel
     g.fillStyle = '#f3d27a'; g.fillRect(mx(KS.HW.x1), mz(KS.HW.z - 7), (KS.HW.x0 - KS.HW.x1) * MAP.px, 14 * MAP.px);
@@ -600,6 +606,7 @@
     KS.reseed(4); KS.Peds.init(scene, KS.quality.peds, KS.Player.x, KS.Player.z);
     setLoad(95, 'Starting the traffic lights (and the honking)…');
     KS.reseed(5); KS.Traffic.init(scene, KS.quality.cars, KS.Player.x, KS.Player.z);
+    if (KS.Express) KS.Express.init(scene); // traffic on the City Expressway
     const cyc = KS.Traffic.park('bicycle', -131, -263.2, Math.PI / 2, { owned: true }); if (cyc) cyc.ownedId = 'cycle';
     const sc = KS.Traffic.park('scooter', -124, -263.4, Math.PI / 2, { owned: true }); if (sc) { sc.ownedId = 'sathi'; }
     const sg = D.garage.find((g) => g.id === 'sathi'); KS.Shop.delivered = sc; if (sg && sc) { sc.up = sg.up; sc.horn = sg.horn; }
@@ -862,7 +869,7 @@
       }
       PL.update(dt);
     }
-    KS.Battle.update(dt); KS.Places.update(dt); if (KS.Parking) KS.Parking.update(dt); if (KS.Mountains) KS.Mountains.update(dt); if (KS.Tram) KS.Tram.update(dt); if (KS.Challenges) KS.Challenges.update(dt);
+    KS.Battle.update(dt); KS.Places.update(dt); if (KS.Parking) KS.Parking.update(dt); if (KS.Mountains) KS.Mountains.update(dt); if (KS.Tram) KS.Tram.update(dt); if (KS.Express) KS.Express.update(dt); if (KS.Challenges) KS.Challenges.update(dt);
     if (KS.Damage) KS.Damage.update(dt);
     if (KS.Fuel) KS.Fuel.update(dt); // the fuel-delivery timer
     if (KS.Story) KS.Story.update(dt); // story-mode chapters

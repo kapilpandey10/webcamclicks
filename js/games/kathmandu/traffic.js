@@ -484,6 +484,7 @@
       if (v.lot) { lotUpdate(v, dt, dCam); continue; }
       if (v.dormant) { v.root.visible = false; continue; }
       if (v.chase) { chaseUpdate(v, dt, ctx); continue; }
+      if (v.express) continue; // expressway cars drive themselves (express.js)
       if (!v.ai) {
         if (v.knockX || v.knockZ) { // a parked vehicle that was hit slides a little
           const c = KS.collide(v.x + v.knockX, v.z + v.knockZ, v.type.r, v.y, 0.5); v.x = c.x; v.z = c.z; v.knockX *= 0.6; v.knockZ *= 0.6;
@@ -611,7 +612,7 @@
     v.root.rotation.set(0, 0, 0, 'XYZ'); placeOnRandomEdge(v, px, pz, 0, 1100, true);
   };
   TR.nearCount = (x, z, r) => { let n = 0; for (const v of TR.list) if (v.ai && v.speed > 1 && Math.abs(v.x - x) < r && Math.abs(v.z - z) < r) n++; return n; };
-  TR.nearest = (x, z, r, y) => { let best = null, bd = r; for (const v of TR.list) { if (y != null && Math.abs((v.y || 0) - y) > 2.5) continue; const d = Math.hypot(v.x - x, v.z - z) - v.type.len * 0.35; if (d < bd) { bd = d; best = v; } } return best; };
+  TR.nearest = (x, z, r, y) => { let best = null, bd = r; for (const v of TR.list) { if (v.express) continue; if (y != null && Math.abs((v.y || 0) - y) > 2.5) continue; const d = Math.hypot(v.x - x, v.z - z) - v.type.len * 0.35; if (d < bd) { bd = d; best = v; } } return best; };
 
   /* ---------- GPS: shortest path on the road graph ---------- */
   TR.nearestNode = (x, z) => { let best = 0, bd = 1e12; nodes.forEach((n, i) => { const d = (n.x - x) ** 2 + (n.z - z) ** 2; if (d < bd) { bd = d; best = i; } }); return best; };

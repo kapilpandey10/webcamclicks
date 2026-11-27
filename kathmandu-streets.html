@@ -421,6 +421,51 @@ body.battle #navBox { top: 50px; }
 #bigwrap { grid-template-rows: auto auto 1fr; }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ROUND 20: the game dashboard. A dark glass console over the live city:
+   top bar (logo, rank & XP, wallet, icons), then three columns — your
+   character, the PLAY banner with today's and this week's challenges, and
+   what's new plus your record. One column on phones. */
+#title { align-items: stretch; overflow-y: auto; background: radial-gradient(ellipse at 30% 0%, rgba(44, 30, 20, 0.86), rgba(14, 12, 10, 0.94) 70%); }
+.gd { width: min(1240px, 100%); margin: 0 auto; display: grid; gap: 14px; align-content: start; }
+.gd-top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 10px 14px; border-radius: 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+.gd-logo { display: flex; align-items: baseline; gap: 12px; margin-right: auto; min-width: 0; }
+.gd-logo .np { font-family: var(--display); font-size: clamp(34px, 6vw, 52px); line-height: 1; color: var(--marigold); }
+.gd-logo h1 { margin: 0; font-family: var(--hud); font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; font-size: clamp(13px, 2.2vw, 20px); color: var(--snow); }
+.gd-rank { display: flex; align-items: center; gap: 10px; min-width: 210px; }
+.gd-lvl { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font: 800 20px var(--hud); color: #1b1309; background: radial-gradient(circle at 35% 30%, #ffe27a, var(--marigold)); box-shadow: 0 0 0 3px rgba(242,165,22,0.3); flex: none; }
+.gd-rank-b { display: grid; gap: 3px; min-width: 0; } .gd-rank-b b { font: 700 16px var(--hud); letter-spacing: 0.04em; } .gd-rank-b small { color: var(--muted); font-size: 11px; }
+.gd-xp { height: 7px; border-radius: 99px; background: rgba(255,255,255,0.12); overflow: hidden; } .gd-xp i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--marigold), #ffe27a); border-radius: 99px; }
+.gd-wallet { display: flex; gap: 8px; }
+.gd-wallet .stat { padding: 7px 12px; border-radius: 99px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.14); font: 700 15px var(--hud); }
+.gd-grid { display: grid; grid-template-columns: 250px minmax(0, 1fr) 290px; gap: 14px; align-items: start; }
+.gd-grid .avatar-card { background: rgba(255,255,255,0.05); }
+.gd-main, .gd-side { display: grid; gap: 14px; min-width: 0; }
+.gd-play { display: grid; gap: 14px; padding: 22px; border-radius: 18px; background: linear-gradient(120deg, rgba(200,16,46,0.55), rgba(36,86,200,0.35)), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='160'%3E%3Cpath d='M0 160 L90 70 L150 110 L230 30 L300 95 L360 55 L440 120 L520 60 L600 110 L600 160Z' fill='rgba(255,255,255,0.08)'/%3E%3Cpath d='M210 48 L230 30 L252 50 L240 46 L230 52 L220 46Z' fill='rgba(255,255,255,0.35)'/%3E%3C/svg%3E") bottom / cover no-repeat; border: 1px solid rgba(255,255,255,0.15); }
+.gd-kicker { font: 700 12px var(--hud); letter-spacing: 0.2em; text-transform: uppercase; color: #ffe27a; }
+.gd-play h2 { margin: 2px 0 6px; font-family: var(--display); font-size: clamp(30px, 5vw, 46px); line-height: 1.05; color: #fff; }
+.gd-play p { margin: 0; color: #f1e7d6; font-size: 15px; line-height: 1.5; max-width: 60ch; }
+.gd-btn-play { font-size: 22px; padding: 14px 34px; letter-spacing: 0.08em; box-shadow: 0 8px 24px rgba(0,0,0,0.35); }
+.gd-panel { padding: 14px; border-radius: 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); display: grid; gap: 10px; }
+.gd-ph { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.gd-ph h3 { margin: 0; font: 700 17px var(--hud); letter-spacing: 0.08em; text-transform: uppercase; color: var(--snow); }
+.gd-reset { font-size: 12px; color: var(--muted); }
+.gd-chal { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.gd-ch { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 12px; background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.08); }
+.gd-ch.done { border-color: rgba(31,154,76,0.7); background: rgba(31,154,76,0.16); }
+.gd-ch-ic { font-size: 26px; text-align: center; }
+.gd-ch-b { display: grid; gap: 5px; min-width: 0; }
+.gd-ch-t { font-weight: 700; font-size: 14px; } .gd-ch-t span { color: var(--muted); font-weight: 600; font-size: 12px; margin-left: 4px; }
+.gd-bar { height: 6px; border-radius: 99px; background: rgba(255,255,255,0.12); overflow: hidden; } .gd-bar i { display: block; height: 100%; background: linear-gradient(90deg, #1f9a4c, #6be38f); border-radius: 99px; }
+.gd-ch-p { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.gd-ch-r { text-align: right; font: 700 15px var(--hud); color: #ffe27a; display: grid; } .gd-ch-r small { font-size: 11px; color: var(--muted); font-weight: 600; }
+.gd-news { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.gd-news li { display: grid; grid-template-columns: 30px 1fr; gap: 8px; align-items: start; font-size: 13px; color: #e6dccb; }
+.gd-news li > span { font-size: 22px; } .gd-news b { display: block; color: #fff; font-size: 14px; }
+.gd-stats { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 14px; } .gd-stats dt { color: var(--muted); } .gd-stats dd { margin: 0; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.gd-credits p { margin: 4px 0; font-size: 11px; }
+@media (max-width: 1060px) { .gd-grid { grid-template-columns: 230px minmax(0, 1fr); } .gd-side { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; } }
+@media (max-width: 720px) { .gd-grid { grid-template-columns: 1fr; } .gd-side { grid-template-columns: 1fr; } .gd-rank { order: 3; width: 100%; } .gd-btn-play { width: 100%; } .gd-top { padding: 10px; } }
 </style>
 </head>
 <body>
@@ -436,17 +481,21 @@ body.battle #navBox { top: 50px; }
 </div>
 
 <section id="title" hidden aria-labelledby="ttl">
-  <div class="tcard">
-    <div class="flags" aria-hidden="true"></div>
-    <div class="tbar">
-      <div class="tlogo"><span class="np" lang="ne">काठमाडौं</span><h1 id="ttl">Kathmandu Streets</h1></div>
+  <div class="gd">
+    <header class="gd-top">
+      <div class="gd-logo"><span class="np" lang="ne">काठमाडौं</span><h1 id="ttl">Kathmandu Streets</h1></div>
+      <div class="gd-rank" aria-label="Your rank">
+        <span class="gd-lvl" id="gdLvl">1</span>
+        <div class="gd-rank-b"><b id="gdRankName">Naya Driver</b><div class="gd-xp"><i id="gdXpBar"></i></div><small id="gdXpTxt">0 / 100 XP</small></div>
+      </div>
+      <div class="gd-wallet"><span class="stat" id="titleCash">रु 2,500</span><span class="stat" id="titleTokens">10 🪙</span></div>
       <div class="ticons">
         <button type="button" class="ticon" id="tHow" aria-label="How to play" title="How to play">❓</button>
         <button type="button" class="ticon" id="tSound" aria-label="Sound" title="Sound">🔊</button>
         <button type="button" class="ticon" id="tSettings" aria-label="Settings" title="Settings">⚙️</button>
       </div>
-    </div>
-    <div class="dash">
+    </header>
+    <div class="gd-grid">
       <aside class="avatar-card" aria-label="Your character">
         <div class="avatar-emoji" id="avatarEmoji">👨</div>
         <div class="avatar-name" id="avatarName">Kapil</div>
@@ -467,18 +516,41 @@ body.battle #navBox { top: 50px; }
         <div class="charpick-title">👗 Outfit — tap to wear</div>
         <div class="wardrobe-row" id="wardrobeRow"></div>
       </aside>
-      <div class="dash-main">
-        <p class="dash-desc">An open-world sandbox of the valley. Drive for Uthao, the in-game ride app: students, tourists, hajurama and parcels across town and through the Nagdhunga tunnel to Dhunibesi village. Buy bikes and cars, upgrade them, dress up, tune in to live Nepali radio, and mind the speed cameras.</p>
-        <div class="stats-strip">
-          <span class="stat" id="titleCash">रु 2,500</span>
-          <span class="stat" id="titleTokens">10 🪙</span>
+      <main class="gd-main">
+        <div class="gd-play">
+          <div class="gd-play-txt">
+            <span class="gd-kicker">Open world · Kathmandu Valley</span>
+            <h2>Ride the city</h2>
+            <p>Drive for Uthao, ride the tram, take the expressway over the rooftops, skate New Road, cycle up to the snow — and finish today’s challenges for cash and XP.</p>
+          </div>
+          <div class="cta">
+            <button class="btn gd-btn-play" id="btnPlay" type="button">▶ Play</button>
+            <button class="btn ghost" id="btnBattle" type="button">⚔️ Battle mode</button>
+          </div>
         </div>
-        <div class="cta">
-          <button class="btn" id="btnPlay" type="button">✈️ Jump into Kathmandu</button>
-          <button class="btn ghost" id="btnBattle" type="button">⚔️ Battle mode</button>
-        </div>
-        <span class="small">Headphones on: the city honks.</span>
-      </div>
+        <section class="gd-panel" aria-labelledby="chalT">
+          <div class="gd-ph"><h3 id="chalT">🎯 Today’s challenges</h3><span class="gd-reset" id="chalReset"></span></div>
+          <ol class="gd-chal" id="chalDaily"></ol>
+          <div class="gd-ph"><h3>🏆 This week</h3><span class="gd-reset">new every Monday</span></div>
+          <ol class="gd-chal" id="chalWeekly"></ol>
+        </section>
+      </main>
+      <aside class="gd-side">
+        <section class="gd-panel">
+          <div class="gd-ph"><h3>🆕 New in the city</h3></div>
+          <ul class="gd-news">
+            <li><span aria-hidden="true">🌉</span><div><b>City Expressway</b>Over the rooftops, Balaju to Teku and Kalimati to Baneshwor · रु 15</div></li>
+            <li><span aria-hidden="true">🚋</span><div><b>The tram</b>Asan, Ratna Park, Bhrikutimandap, New Road · रु 20</div></li>
+            <li><span aria-hidden="true">🏠</span><div><b>Walk-in homes</b>Samakhusi and Satdobato — press E to sit</div></li>
+            <li><span aria-hidden="true">🛹</span><div><b>Skateboard</b>Free in your garage — call it with C</div></li>
+            <li><span aria-hidden="true">🏔️</span><div><b>Snow</b>Falls on the peak, heavier as you climb</div></li>
+          </ul>
+        </section>
+        <section class="gd-panel">
+          <div class="gd-ph"><h3>📊 Your record</h3></div>
+          <dl class="gd-stats" id="gdStats"></dl>
+        </section>
+      </aside>
     </div>
     <div class="howto" id="howtoPanel" hidden aria-label="How to play">
       <div class="howto-title">❓ How to play</div>
@@ -505,8 +577,10 @@ body.battle #navBox { top: 50px; }
       <div class="tset-row"><span>🎨 Graphics</span><button type="button" class="chip" id="tQualityToggle">High</button></div>
       <div class="tset-row"><span>🗺️ Minimap</span><button type="button" class="chip" id="tMinimapToggle">On</button></div>
     </div>
-    <p class="small" style="color:#b9c2cc">Tram, skateboard, double bed, dining table and TV by 3D Assets (CC0); “Glam Velvet Sofa” and “Chair Damask Purplegold” by Wayfair, from the Khronos glTF sample assets (CC BY 4.0).</p>
-    <p class="small" style="color:#b9c2cc">Vehicle models by vinish.dev — “Sedan 01”, “Street Motorcycle”, “Bicycle”, “Helicopter”, “Rowboat” and the low-poly car pack — CC BY 4.0. Auto-rickshaw and commuter scooter by 3D Assets (CC0), touring motorcycle by Polyfork (royalty-free), found through the 3D Asset Server (3d.shep.bot). The sky-drop aeroplane is the “Turboprop Commuter” by vinish.dev, CC BY 4.0. Park bench by Polyfork (royalty-free); consultation chair, potted plant, monitor and ward bed by 3D Assets (CC0).</p>
+    <footer class="gd-credits">
+      <p class="small" style="color:#b9c2cc">Tram, skateboard, double bed, dining table and TV by 3D Assets (CC0); “Glam Velvet Sofa” and “Chair Damask Purplegold” by Wayfair, from the Khronos glTF sample assets (CC BY 4.0).</p>
+      <p class="small" style="color:#b9c2cc">Vehicle models by vinish.dev — “Sedan 01”, “Street Motorcycle”, “Bicycle”, “Helicopter”, “Rowboat” and the low-poly car pack — CC BY 4.0. Auto-rickshaw and commuter scooter by 3D Assets (CC0), touring motorcycle by Polyfork (royalty-free), found through the 3D Asset Server (3d.shep.bot). The sky-drop aeroplane is the “Turboprop Commuter” by vinish.dev, CC BY 4.0. Park bench by Polyfork (royalty-free); consultation chair, potted plant, monitor and ward bed by 3D Assets (CC0).</p>
+    </footer>
   </div>
 </section>
 
@@ -722,36 +796,37 @@ body.battle #navBox { top: 50px; }
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="js/games/kathmandu/lib/GLTFLoader.js?v=20261127b"></script>
-<script src="js/games/kathmandu/core.js?v=20261127b"></script>
-<script src="js/games/kathmandu/world.js?v=20261127b"></script>
-<script src="js/games/kathmandu/landmarks.js?v=20261127b"></script>
-<script src="js/games/kathmandu/extras.js?v=20261127b"></script>
-<script src="js/games/kathmandu/nature.js?v=20261127b"></script>
-<script src="js/games/kathmandu/signs.js?v=20261127b"></script>
-<script src="js/games/kathmandu/places.js?v=20261127b"></script>
-<script src="js/games/kathmandu/homes.js?v=20261127b"></script>
-<script src="js/games/kathmandu/tram.js?v=20261127b"></script>
-<script src="js/games/kathmandu/mountains.js?v=20261127b"></script>
-<script src="js/games/kathmandu/people.js?v=20261127b"></script>
-<script src="js/games/kathmandu/damage.js?v=20261127b"></script>
-<script src="js/games/kathmandu/vehicles.js?v=20261127b"></script>
-<script src="js/games/kathmandu/vehicleModels.js?v=20261127b"></script>
-<script src="js/games/kathmandu/props.js?v=20261127b"></script>
-<script src="js/games/kathmandu/traffic.js?v=20261127b"></script>
-<script src="js/games/kathmandu/weather.js?v=20261127b"></script>
-<script src="js/games/kathmandu/audio.js?v=20261127b"></script>
-<script src="js/games/kathmandu/shop.js?v=20261127b"></script>
-<script src="js/games/kathmandu/fuel.js?v=20261127b"></script>
-<script src="js/games/kathmandu/story.js?v=20261127b"></script>
-<script src="js/games/kathmandu/weapons.js?v=20261127b"></script>
-<script src="js/games/kathmandu/player.js?v=20261127b"></script>
-<script src="js/games/kathmandu/uthao.js?v=20261127b"></script>
-<script src="js/games/kathmandu/law.js?v=20261127b"></script>
-<script src="js/games/kathmandu/ui.js?v=20261127b"></script>
-<script src="js/games/kathmandu/net.js?v=20261127b"></script>
-<script src="js/games/kathmandu/battle.js?v=20261127b"></script>
-<script src="js/games/kathmandu/game.js?v=20261127b"></script>
+<script src="js/games/kathmandu/lib/GLTFLoader.js?v=20261127d"></script>
+<script src="js/games/kathmandu/core.js?v=20261127d"></script>
+<script src="js/games/kathmandu/world.js?v=20261127d"></script>
+<script src="js/games/kathmandu/landmarks.js?v=20261127d"></script>
+<script src="js/games/kathmandu/extras.js?v=20261127d"></script>
+<script src="js/games/kathmandu/nature.js?v=20261127d"></script>
+<script src="js/games/kathmandu/signs.js?v=20261127d"></script>
+<script src="js/games/kathmandu/places.js?v=20261127d"></script>
+<script src="js/games/kathmandu/homes.js?v=20261127d"></script>
+<script src="js/games/kathmandu/challenges.js?v=20261127d"></script>
+<script src="js/games/kathmandu/tram.js?v=20261127d"></script>
+<script src="js/games/kathmandu/mountains.js?v=20261127d"></script>
+<script src="js/games/kathmandu/people.js?v=20261127d"></script>
+<script src="js/games/kathmandu/damage.js?v=20261127d"></script>
+<script src="js/games/kathmandu/vehicles.js?v=20261127d"></script>
+<script src="js/games/kathmandu/vehicleModels.js?v=20261127d"></script>
+<script src="js/games/kathmandu/props.js?v=20261127d"></script>
+<script src="js/games/kathmandu/traffic.js?v=20261127d"></script>
+<script src="js/games/kathmandu/weather.js?v=20261127d"></script>
+<script src="js/games/kathmandu/audio.js?v=20261127d"></script>
+<script src="js/games/kathmandu/shop.js?v=20261127d"></script>
+<script src="js/games/kathmandu/fuel.js?v=20261127d"></script>
+<script src="js/games/kathmandu/story.js?v=20261127d"></script>
+<script src="js/games/kathmandu/weapons.js?v=20261127d"></script>
+<script src="js/games/kathmandu/player.js?v=20261127d"></script>
+<script src="js/games/kathmandu/uthao.js?v=20261127d"></script>
+<script src="js/games/kathmandu/law.js?v=20261127d"></script>
+<script src="js/games/kathmandu/ui.js?v=20261127d"></script>
+<script src="js/games/kathmandu/net.js?v=20261127d"></script>
+<script src="js/games/kathmandu/battle.js?v=20261127d"></script>
+<script src="js/games/kathmandu/game.js?v=20261127d"></script>
 <script>if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('is-touch');</script>
 </body>
 </html>

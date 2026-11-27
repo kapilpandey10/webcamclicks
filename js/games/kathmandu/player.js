@@ -475,7 +475,7 @@
     // snowball: B scoops snow into a ball on the mountain, B again throws it
     if (I.hit('KeyB') && !PL.swim && !PL.vehicle) PL.makeSnowball();
     if (PL.punchA != null) { PL.punchA += dt * 3.2; p.busyArm = true; KS.animPunch(p, PL.punchA); if (PL.punchA >= 1) { PL.punchA = null; p.busyArm = false; } }
-    if (PL.speed > 3) KS.Peds.bump(PL.x, PL.z, 0.9, dirx * PL.speed, dirz * PL.speed, PL.speed * 0.5);
+    if (PL.speed > 3) KS.Peds.bump(PL.x, PL.z, 0.9, dirx * PL.speed, dirz * PL.speed, PL.speed * 0.5, PL.y || 0);
     // idle animations: check the phone, look around, stretch; eating fruit
     const still = PL.speed < 0.1 && PL.grounded && !PL.swim && Math.abs(a.x) + Math.abs(a.y) < 0.05;
     PL.idleT = still ? (PL.idleT || 0) + dt : 0;
@@ -603,6 +603,7 @@
     // other vehicles: push by weight (a bus barely notices a scooter)
     for (const o of KS.Traffic.list) {
       if (o === v || !o.root.visible) continue;
+      if (Math.abs((o.y || 0) - (v.y || 0)) > 2.5) continue; // a car on the road under the expressway (or above you) is not in your way
       const dx = o.x - v.x, dz = o.z - v.z, d = Math.hypot(dx, dz), rr = t.r * 0.8 + o.type.r * 0.8;
       if (d < rr && d > 0.01) {
         const nxo = dx / d, nzo = dz / d, m2 = KS.massOf(o.kind) * (o.ai && !o.chase ? 1.5 : 1), sep = rr - d;
@@ -623,9 +624,10 @@
       }
     }
     vf = v.vx * Math.sin(v.h) + v.vz * Math.cos(v.h);
-    const hits = KS.Peds.bump(v.x, v.z, t.r + 0.9, v.vx, v.vz, Math.abs(vf));
+    const hits = KS.Peds.bump(v.x, v.z, t.r + 0.9, v.vx, v.vz, Math.abs(vf), v.y || 0);
     if (hits && KS.Game) { KS.Game.karma(-3 * hits, 'Hit pedestrians'); KS.Game.onCrash(10); if (KS.Law.policeNear(v.x, v.z, 60)) KS.Law.offense('reckless'); }
     for (const cow of KS.Animals.cows) {
+      if ((v.y || 0) > 2.5) break; // cows stay on the ground
       const d = Math.hypot(cow.x - v.x, cow.z - v.z);
       if (d < t.r + 1.3) { const k = (t.r + 1.3 - d) / (d || 1); v.x -= (cow.x - v.x) * k; v.z -= (cow.z - v.z) * k; if (Math.abs(vf) > 3) { v.vx *= 0.3; v.vz *= 0.3; KS.say(cow.g, 'MOOO!', 1.6); KS.audio && KS.audio.moo(1); KS.Game && KS.Game.karma(-4, 'Bumped a sacred cow'); } }
     }
@@ -765,7 +767,7 @@
       else if (PL.mode === 'drive' && PL.vehicle && PL.vehicle.kind === 'helicopter' && (PL.vehicle.alt || 0) > 1) KS.Game && KS.Game.notify('🚁 Land first — hold <b>C</b> to come down, then press <b>E</b>.', 'bad');
       else if (PL.mode === 'drive') PL.exit();
       else if (KS.Tram && KS.Tram.tryBoard()) { /* boarded the tram */ }
-      else if (!(KS.Net && KS.Net.tryBoard && KS.Net.tryBoard())) { const v = KS.Traffic.nearest(PL.x, PL.z, 3.6); if (v) { if (!PL.enter(v)) KS.Game && KS.Game.notify('That one is moving too fast to get in — wait for it to stop.', 'bad'); } else KS.Game && KS.Game.interact(); }
+      else if (!(KS.Net && KS.Net.tryBoard && KS.Net.tryBoard())) { const v = KS.Traffic.nearest(PL.x, PL.z, 3.6, PL.y || 0); if (v) { if (!PL.enter(v)) KS.Game && KS.Game.notify('That one is moving too fast to get in — wait for it to stop.', 'bad'); } else KS.Game && KS.Game.interact(); }
     }
     if (PL.mode === 'ride') return; // just got into a friend's vehicle (net.js moves you from the next frame)
     if (PL.mode === 'foot') footUpdate(dt); else if (PL.mode === 'boat') boatUpdate(dt); else if (PL.vehicle) { if (PL.vehicle.kind === 'helicopter') heliUpdate(dt); else driveUpdate(dt); }

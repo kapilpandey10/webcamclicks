@@ -48,17 +48,37 @@
   /* ---------- shared plates & boards ---------- */
   const NP_DIG = '०१२३४५६७८९';
   const npNum = (n) => String(n).split('').map((d) => NP_DIG[+d]).join('');
-  const plateCache = { red: [], black: [], green: [], white: [] };
-  function plateMat(kind) {
-    const arr = plateCache[kind];
-    if (arr.length < 5) {
-      const bg = { red: '#c41a1a', black: '#111', green: '#1f8a3c', white: '#f4f4f4' }[kind], fg = kind === 'white' ? '#c41a1a' : '#fff';
-      const t = KS.tex(128, 48, (g, w, h) => {
-        g.fillStyle = bg; g.fillRect(0, 0, w, h); g.strokeStyle = fg; g.lineWidth = 2; g.strokeRect(2, 2, w - 4, h - 4);
-        g.fillStyle = fg; g.font = `700 21px ${KS.FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-        g.fillText(`बा ${npNum(KS.ri(1, 99))} ${KS.pick(['च', 'प', 'ख', 'क', 'झ', 'ज'])} ${npNum(KS.ri(1000, 9999))}`, w / 2, h / 2 + 2);
+  const plateCache = {};
+  /* ROUND 20: real Nepali number plates, readable. Two lines in Devanagari:
+     the zone (बा = Bagmati), the zone number and the class letter on top —
+     च private car, प motorcycle, ख heavy, ज jeep/pickup, य tempo, क bus —
+     and the four-digit number below. Red with white letters for private
+     vehicles, black for public ones (taxi, tempo, bus), green for EVs,
+     white with red letters for government. About a third of private cars
+     carry the newer embossed province plate: "बागमती प्रदेश" over
+     "०१-००१ च ५२०७". */
+  const CLASS = { car: 'च', sedan: 'च', suv: 'ज', sportscar: 'च', ev: 'च', taxi: 'च', pickup: 'ज', micro: 'ख', minibus: 'ख', bus: 'क', truck: 'ख', tempo: 'य', ambulance: 'च', police: 'च', bike: 'प', sport: 'प', cruiser: 'प', scooter: 'प', policebike: 'प' };
+  const ZONES = ['बा', 'बा', 'बा', 'बा', 'ना', 'ग', 'ज', 'लु', 'को', 'स'];
+  function plateMat(kind, type, small) {
+    const key = kind + ':' + (CLASS[type] || 'च') + (small ? 's' : '');
+    const arr = (plateCache[key] = plateCache[key] || []);
+    if (arr.length < 6) {
+      const bg = { red: '#c41a1a', black: '#141414', green: '#1f8a3c', white: '#f4f4f4' }[kind], fg = kind === 'white' ? '#c41a1a' : '#ffffff';
+      const cls = CLASS[type] || 'च', embossed = kind === 'red' && !small && KS.chance(0.35);
+      const t = KS.tex(256, 128, (g, w, h) => {
+        g.fillStyle = bg; g.fillRect(0, 0, w, h);
+        g.strokeStyle = fg; g.lineWidth = 5; g.strokeRect(5, 5, w - 10, h - 10);
+        g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+        if (embossed) {
+          g.font = `700 30px ${KS.FONT}`; g.fillText('बागमती प्रदेश', w / 2, 34);
+          g.font = `800 40px ${KS.FONT}`; g.fillText(`${npNum('0' + KS.ri(1, 4))}-${npNum(String(KS.ri(1, 9)).padStart(3, '0'))} ${cls} ${npNum(KS.ri(1000, 9999))}`, w / 2, 88);
+        } else {
+          g.font = `800 44px ${KS.FONT}`; g.fillText(`${KS.pick(ZONES)} ${npNum(KS.ri(1, 99))} ${cls}`, w / 2, 38);
+          g.font = `800 50px ${KS.FONT}`; g.fillText(npNum(KS.ri(1000, 9999)), w / 2, 92);
+        }
       });
-      arr.push(new T.MeshBasicMaterial({ map: t }));
+      t.anisotropy = 8;
+      arr.push(new T.MeshBasicMaterial({ map: t, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -16 })); // drawn over the bodywork it sits on
     }
     return KS.pick(arr);
   }
@@ -187,11 +207,25 @@
     if (!KS.isBike(type) && type !== 'helicopter') {
       /* Nepali plates, front and rear, so the plate is never a mystery:
          red for private cars, black for public ones (taxi, tempo), green for EVs. */
-      const kind = (type === 'taxi' || type === 'tempo') ? 'black' : type === 'ev' ? 'green' : 'red';
-      const rear = new T.Mesh(new T.PlaneGeometry(0.6, 0.23), plateMat(kind));
-      rear.position.set(0, 0.5, -L / 2 - 0.03); rear.rotation.y = Math.PI; r.root.add(rear);
-      const front = new T.Mesh(new T.PlaneGeometry(0.6, 0.23), plateMat(kind));
-      front.position.set(0, 0.5, L / 2 + 0.03); r.root.add(front);
+      const kind = (type === 'taxi' || type === 'tempo' || type === 'bus' || type === 'minibus' || type === 'micro') ? 'black' : type === 'ev' ? 'green' : (type === 'police' || type === 'ambulance') ? 'white' : 'red';
+      /* the plates go on the model's real front and back (the GLBs run a little longer than the game's nominal length, so plates placed at ±L/2 ended up inside the bumpers) */
+      const bb = new T.Box3().setFromObject(r.root), okB = isFinite(bb.min.z) && bb.max.z - bb.min.z < L * 1.6;
+      const py = okB ? KS.clamp((bb.max.y - bb.min.y) * 0.42, 0.42, 1.0) : 0.5;
+      /* find the body's real surface at plate height with a ray from behind and from in front, so the plate sits on the
+         bodywork (over the model's own blank plate) instead of floating at the bounding box or hiding inside the bumper */
+      const meshes = []; r.root.traverse((o) => { if (o.isMesh) meshes.push(o); });
+      r.root.updateMatrixWorld(true);
+      const ray = new T.Raycaster(), hitZ = (from, dir) => { const o = r.root.localToWorld(new T.Vector3(0, py, from)), d = new T.Vector3(0, 0, dir).transformDirection(r.root.matrixWorld); ray.set(o, d); const h = ray.intersectObjects(meshes, false)[0]; return h ? r.root.worldToLocal(h.point.clone()).z : null; };
+      const hr = okB ? hitZ(bb.min.z - 2, 1) : null, hf = okB ? hitZ(bb.max.z + 2, -1) : null;
+      const zr = hr != null ? hr - 0.03 : okB ? bb.min.z - 0.02 : -L / 2 - 0.03, zf = hf != null ? hf + 0.03 : okB ? bb.max.z + 0.02 : L / 2 + 0.03;
+      const rear = new T.Mesh(new T.PlaneGeometry(0.52, 0.26), plateMat(kind, type));
+      rear.position.set(0, py, zr); rear.rotation.y = Math.PI; r.root.add(rear);
+      const front = new T.Mesh(new T.PlaneGeometry(0.52, 0.26), plateMat(kind, type));
+      front.position.set(0, py, zf); r.root.add(front);
+    } else if (KS.isBike(type) && !KS.isPedal(type)) {
+      /* motorbikes and scooters carry a rear plate too (class प), under the tail light */
+      const rear = new T.Mesh(new T.PlaneGeometry(0.24, 0.13), plateMat(type === 'policebike' ? 'white' : 'red', type, true));
+      rear.position.set(0, 0.62, -L / 2 + 0.06); rear.rotation.y = Math.PI; r.root.add(rear);
     }
     if (type === 'bus' || type === 'micro' || type === 'minibus') {
       const rb = new T.Mesh(new T.PlaneGeometry(W * 0.75, 0.3), routeMat());

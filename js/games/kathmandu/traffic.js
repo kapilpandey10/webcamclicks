@@ -128,7 +128,8 @@
   TR.park = (type, x, z, h, opt = {}) => {
     const vt = KS.VTYPES[type], vis = KS.buildVehicle(type, { rider: false, conductor: false, ...opt });
     if (!vis) return null; // model not loaded: nothing to park
-    const v = { id: ++TR._nextId, kind: type, type: vt, ...vis, lane: {}, ai: false, parked: true, speed: 0, x, z, y: KS.groundAt(x, z, 50, 60) + 0.06, h, lat: 0, side: 0, maxSpeed: vt.speed, owned: opt.owned };
+    // opt.refY: park on the surface at that height (your vehicle comes to the street you stand on, not the expressway above it)
+    const v = { id: ++TR._nextId, kind: type, type: vt, ...vis, lane: {}, ai: false, parked: true, speed: 0, x, z, y: (opt.refY != null ? KS.groundAt(x, z, opt.refY + 0.6, 1.2) : KS.groundAt(x, z, 50, 60)) + 0.06, h, lat: 0, side: 0, maxSpeed: vt.speed, owned: opt.owned };
     if (v.rider) v.rider.visible = false;
     v.root.position.set(x, v.y, z); v.root.rotation.y = h; TR.list.push(v); TR.scene.add(v.root); return v;
   };
@@ -182,8 +183,9 @@
     /* a dormant vehicle is parked out of sight by the balance pass (its mesh
        is hidden and it never moves) — it must not block the road for
        everyone behind it, or cars stop at nothing in the middle of nowhere. */
-    for (const o of others) if (o !== v && !o.lot && !o.dormant) test(o.x, o.z, o.type.len, o.type.wid, o, o.h);
-    if (ctx.player) test(ctx.player.x, ctx.player.z, ctx.player.len, ctx.player.wid, 'player', KS.Player.vehicle ? KS.Player.vehicle.h : null);
+    const vy = v.y || 0;
+    for (const o of others) if (o !== v && !o.lot && !o.dormant && Math.abs((o.y || 0) - vy) < 2.5) test(o.x, o.z, o.type.len, o.type.wid, o, o.h);
+    if (ctx.player && Math.abs((KS.Player.y || 0) - vy) < 2.5) test(ctx.player.x, ctx.player.z, ctx.player.len, ctx.player.wid, 'player', KS.Player.vehicle ? KS.Player.vehicle.h : null);
     KS.Peds.forEachNear(v.x, v.z, look + 4, (p) => { if (!p.down) test(p.x, p.z, 0.5, 0.6, 'ped'); });
     KS.Animals.obstacles((x, z) => test(x, z, 1.8, 1.2, 'cow'));
     return { d: best, who };
@@ -293,7 +295,7 @@
     if (c.hit && Math.abs(v.speed) > 1) v.speed *= 0.5;
     v.x = c.x; v.z = c.z;
     if (Math.abs(v.speed) < 0.6 && d > 8 && v.rev <= 0) { v.stuck += dt; if (v.stuck > 1.2) { v.rev = 1.2; v.stuck = 0; } } else v.stuck = 0;
-    for (const o of TR.list) { if (o === v || !o.root.visible) continue; const ex = o.x - v.x, ez = o.z - v.z, e = Math.hypot(ex, ez), rr = t.r + o.type.r * 0.8; if (e < rr && e > 0.01) { const k = (rr - e) / e; v.x -= ex * k * 0.5; v.z -= ez * k * 0.5; if (!o.chase) { o.x += ex * k * 0.3; o.z += ez * k * 0.3; } } }
+    for (const o of TR.list) { if (o === v || !o.root.visible || Math.abs((o.y || 0) - (v.y || 0)) > 2.5) continue; const ex = o.x - v.x, ez = o.z - v.z, e = Math.hypot(ex, ez), rr = t.r + o.type.r * 0.8; if (e < rr && e > 0.01) { const k = (rr - e) / e; v.x -= ex * k * 0.5; v.z -= ez * k * 0.5; if (!o.chase) { o.x += ex * k * 0.3; o.z += ez * k * 0.3; } } }
     v.vy = (v.vy || 0) - 22 * dt; v.y += v.vy * dt; const g = KS.groundAt(v.x, v.z, v.y, 0.5); if (v.y <= g) { v.y = g; v.vy = 0; }
     if (v.y < KS.RIVER.water - 0.9) { v.y = 0.06; v.x = P.x + 60; v.z = P.z; }
     v.dist = d;
@@ -608,7 +610,7 @@
     v.root.rotation.set(0, 0, 0, 'XYZ'); placeOnRandomEdge(v, px, pz, 0, 1100, true);
   };
   TR.nearCount = (x, z, r) => { let n = 0; for (const v of TR.list) if (v.ai && v.speed > 1 && Math.abs(v.x - x) < r && Math.abs(v.z - z) < r) n++; return n; };
-  TR.nearest = (x, z, r) => { let best = null, bd = r; for (const v of TR.list) { const d = Math.hypot(v.x - x, v.z - z) - v.type.len * 0.35; if (d < bd) { bd = d; best = v; } } return best; };
+  TR.nearest = (x, z, r, y) => { let best = null, bd = r; for (const v of TR.list) { if (y != null && Math.abs((v.y || 0) - y) > 2.5) continue; const d = Math.hypot(v.x - x, v.z - z) - v.type.len * 0.35; if (d < bd) { bd = d; best = v; } } return best; };
 
   /* ---------- GPS: shortest path on the road graph ---------- */
   TR.nearestNode = (x, z) => { let best = 0, bd = 1e12; nodes.forEach((n, i) => { const d = (n.x - x) ** 2 + (n.z - z) ** 2; if (d < bd) { bd = d; best = i; } }); return best; };

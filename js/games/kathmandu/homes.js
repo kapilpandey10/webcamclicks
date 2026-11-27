@@ -171,7 +171,7 @@
     for (const q of HM.seats) { const d = Math.hypot(q.x - PL.x, q.z - PL.z); if (d < bd && Math.abs((PL.y || 0) - (q.y - 0.46)) < 1.2) { bd = d; best = q; } }
     if (best) {
       if (KS.Game && KS.Game.prompt) KS.Game.prompt(`🪑 Press <b>E</b> to sit on the ${best.name}`);
-      if (I.hit('KeyE') || I.hit('KeyEnter')) { HM.seat = best; PL.speed = 0; return true; }
+      if (I.hit('KeyE') || I.hit('KeyEnter')) { HM.seat = best; PL.speed = 0; KS.Challenges && KS.Challenges.emit('sit'); return true; }
     }
     return false;
   };

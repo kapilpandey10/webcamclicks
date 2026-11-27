@@ -656,6 +656,7 @@
     KS.Radio.onchange = () => { if (KS.state === 'pause') renderRadio(); };
     setLoad(100, 'Ready!'); clearInterval(loadTick);
     $('loading').hidden = true; $('title').hidden = false;
+    if (KS.Challenges) { KS.Challenges.render(); const chT = setInterval(() => { if ($('title').hidden) clearInterval(chT); else KS.Challenges.render(); }, 30000); }
     buildMenu(); KS.Phone.init(); KS.Uthao.render();
     if (!KS.Settings.data().minimap) $('minimap').parentElement.hidden = true;
     requestAnimationFrame(frame);
@@ -814,6 +815,7 @@
             KS.Game.notify(`🛣️ <b>Tit!</b> Toll tag read at ${g.name} — not enough cash for the रु ${KS.Toll.FEE} toll, ride free this time.`, 'good');
           }
           if (KS.audio && KS.audio.beep) KS.audio.beep(1);
+          KS.Challenges && KS.Challenges.emit('toll');
           break;
         }
       }
@@ -860,7 +862,7 @@
       }
       PL.update(dt);
     }
-    KS.Battle.update(dt); KS.Places.update(dt); if (KS.Parking) KS.Parking.update(dt); if (KS.Mountains) KS.Mountains.update(dt); if (KS.Tram) KS.Tram.update(dt);
+    KS.Battle.update(dt); KS.Places.update(dt); if (KS.Parking) KS.Parking.update(dt); if (KS.Mountains) KS.Mountains.update(dt); if (KS.Tram) KS.Tram.update(dt); if (KS.Challenges) KS.Challenges.update(dt);
     if (KS.Damage) KS.Damage.update(dt);
     if (KS.Fuel) KS.Fuel.update(dt); // the fuel-delivery timer
     if (KS.Story) KS.Story.update(dt); // story-mode chapters

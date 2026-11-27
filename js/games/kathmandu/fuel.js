@@ -66,6 +66,7 @@ F.refuel = (v) => {
   const cost = F.refuelCost(v);
   if (KS.Shop.data.cash < cost) return -2;
   KS.Shop.data.cash -= cost; v.fuel = 100; KS.Shop.save();
+  KS.Challenges && KS.Challenges.emit('fuel');
   return cost;
 };
 /* out of fuel on the road: call a fuel delivery (रु 500, +30% in 10 s) */

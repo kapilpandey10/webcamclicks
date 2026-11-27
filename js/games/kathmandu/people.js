@@ -736,10 +736,12 @@
     }
     return best;
   };
-  Peds.bump = (x, z, r, vx, vz, speed) => {
+  /** y: the bumper's height. Someone on the street is not hit by a car on the expressway 22 m above (round 20 fix) */
+  Peds.bump = (x, z, r, vx, vz, speed, y) => {
     let hits = 0;
     for (const ped of Peds.list) {
       if (ped.mode === 'sit' || (ped.mode === 'police' && !ped.chasing) || !ped.p.root.visible || ped.down > 0) continue;
+      if (y != null && Math.abs((ped.y || 0) - y) > 2.2) continue;
       const dx = ped.x - x, dz = ped.z - z, d2 = dx * dx + dz * dz;
       if (d2 > r * r) continue;
       const d = Math.sqrt(d2) || 1;

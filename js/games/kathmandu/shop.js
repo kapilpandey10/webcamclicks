@@ -115,7 +115,7 @@
     const a = KS.Cam.yaw + Math.PI / 2;
     let x = PL.x + Math.sin(a) * 3, z = PL.z + Math.cos(a) * 3;
     const c = KS.collide(x, z, KS.VTYPES[spec.model].r, PL.y, 0.5); x = c.x; z = c.z;
-    const v = KS.Traffic.park(spec.model, x, z, KS.Cam.yaw, { owned: true, color: g.paint || undefined });
+    const v = KS.Traffic.park(spec.model, x, z, KS.Cam.yaw, { owned: true, color: g.paint || undefined, refY: PL.y || 0 }); // on the surface you stand on
     if (!v) { KS.Game.notify('⚠️ The realistic vehicle models did not load, so your vehicle could not be delivered. Open the game from the website and reload.', 'bad'); return; }
     v.up = g.up; v.horn = g.horn; v.ownedId = id; v.fuel = g.fuel != null ? g.fuel : 100; v.type = Object.assign({}, v.type, { name: spec.name });
     S.delivered = v;

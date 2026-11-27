@@ -163,6 +163,7 @@
         const tokens = stars + (tr.t.village || tr.t.fromVillage ? 3 : 0);
         removeRider();
         if (!tr.parcel) walker(tr.t.person, PL.x + Math.cos(PL.h) * 1.6, PL.z - Math.sin(PL.h) * 1.6, tr.to.x + KS.r(-8, 8), tr.to.z + KS.r(-8, 8), stars >= 4 ? tr.t.lines[1] : KS.pick(['Hmm.', 'Next time drive better.', 'Ali bistarai chalaunus.']));
+        KS.Challenges && KS.Challenges.emit('uthao');
         const s = KS.Shop.data.uthao; s.trips++; s.earned += tr.fare + tip; U.rate(stars);
         KS.Game.pay(tr.fare + tip, `Uthao ${tr.parcel ? 'delivery' : 'ride'} · ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}${tip ? ' incl. tip' : ''}`);
         KS.Game.giveTokens(tokens, 'Trip completed');

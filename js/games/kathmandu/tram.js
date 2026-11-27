@@ -149,6 +149,7 @@
     const D = KS.Shop && KS.Shop.data;
     if (D) { if (D.cash < TR.FARE) { KS.Game && KS.Game.notify(`🚋 The fare is रु ${TR.FARE} — not enough cash.`, 'bad'); return true; } D.cash -= TR.FARE; KS.Shop.save(); }
     PL.mode = 'tram'; TR.riding = true; KS.Cam.want = 14;
+    KS.Challenges && KS.Challenges.emit('tram');
     KS.Game && KS.Game.notify(`🚋 Fare रु ${TR.FARE} paid. Next stop: <b>${TR.nextStopName()}</b>. Press <b>E</b> at any stop to get off.`, 'good');
     return true;
   };

@@ -270,6 +270,8 @@
     return 22;
   };
   KS.inTunnel = (x, z) => x < HW.pE && x > HW.pW && Math.abs(z - HW.z) < 8;
+  /** the tunnel and the last 12 m before each mouth, where the visible hill slopes down onto the road */
+  KS.tunnelZone = (x, z) => x < HW.pE + 12 && x > HW.pW - 12 && Math.abs(z - HW.z) < 8;
   /* Chhahare Jharna, a waterfall in the hills to the north (towards Nuwakot): a glen with a plunge pool, a stream
      running down the hillside, a road up from the Ring Road and stone steps through the jungle */
   const J = (KS.JHARNA = { x: -150, z: -1066, base: 70, pool: { x: -150, z: -1080, r: 11 }, cliffZ: -1094, top: 142, park: { x: -100, z: -996, h: 58, r: 13 } });
@@ -540,7 +542,7 @@
     // analytic heightAt() on the mountain, and anything standing on heightAt()
     // alone sinks under the hillside. Take the higher of the two.
     let g = KS.heightAt(x, z);
-    if (KS.meshHeightAt) { const mh = KS.meshHeightAt(x, z); if (mh > g) g = mh; }
+    if (KS.meshHeightAt && !KS.tunnelZone(x, z)) { const mh = KS.meshHeightAt(x, z); if (mh > g) g = mh; } // inside the Nagdhunga tunnel the visible hill is ABOVE you: the road is the ground
     KS.solidsNear(x, z, 0.5, near);
     for (const s of near) if (s.top <= y + step && inside(s, x, z, 0) && s.top > g) g = s.top;
     if (KS.tollY) { const ty = KS.tollY(x, z, -0.15); if (ty !== null && ty <= y + step && ty > g) g = ty; } // the expressway deck and its smooth ramps

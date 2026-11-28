@@ -847,6 +847,7 @@
     dist = Math.min(dist, cam.cur);
     want.set(tgt.x + dx * dist, tgt.y + dy * dist, tgt.z + dz * dist);
     const gy = KS.heightAt(want.x, want.z) + 0.6; if (want.y < gy) want.y = gy;
+    if (KS.inTunnel(want.x, want.z) && KS.inTunnel(tgt.x, tgt.z)) want.y = Math.min(want.y, KS.roadH(want.x) + 7.4); // under the tunnel roof
     camera.position.lerp(want, Math.min(1, dt * (mode >= 4 ? 4 : v ? 10 : 14)));
     if (cam.shake > 0) { cam.shake -= dt; camera.position.x += KS.r(-0.3, 0.3) * cam.shake; camera.position.y += KS.r(-0.3, 0.3) * cam.shake; }
     camera.lookAt(tgt);

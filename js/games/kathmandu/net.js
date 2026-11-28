@@ -33,7 +33,7 @@
     const peer = (N.peer = new window.Peer(PREFIX + N.room.toLowerCase(), options()));
     N.connT = setTimeout(() => { if (N.state === 'connecting' && N.peer === peer) N.fail('Could not reach the multiplayer server. Check your internet and try again.'); }, WAIT);
     peer.on('open', () => { clearTimers(); N.state = 'host'; N.me = peer.id; setWorldRole(true); sys(`Room ${N.room} created. Share the code with friends.`); N.render2(); });
-    peer.on('connection', (c) => { if (N.conns.size >= MAX - 1) { c.on('open', () => { c.send({ t: 'full' }); setTimeout(() => c.close(), 300); }); return; } wire(c); });
+    peer.on('connection', (c) => { if (peekReply(c)) return; if (N.conns.size >= MAX - 1) { c.on('open', () => { c.send({ t: 'full' }); setTimeout(() => c.close(), 300); }); return; } wire(c); });
     common(peer);
   };
   N.join = async (room) => {
@@ -52,6 +52,7 @@
   function common(peer, onErr) {
     peer.on('error', (e) => {
       const t = e && e.type;
+      if (t === 'peer-unavailable' && N.peekUntil > Date.now()) { if (N.peekFail) N.peekFail(); return; } // a look into another Race Room that is empty: not our problem
       if (onErr && onErr(e)) return;
       N.fail(t === 'unavailable-id' ? 'That room code is taken. Try again.' : t === 'peer-unavailable' ? 'Room not found. Check the code.' : t === 'network' || t === 'server-error' || t === 'socket-error' ? 'Could not reach the multiplayer server.' : 'Multiplayer error: ' + (t || e));
     });
@@ -84,7 +85,28 @@
      a world's host had gone quiet (a hidden tab, a phone asleep, a strict mobile network): now each step has a
      12 s limit. A host that does not answer means the next world is tried; a server that does not answer means a
      retry in 30 s. The Friends app says what is happening and has a Cancel button. */
-  const WAIT = 12000;
+  const WAIT = 12000, WAIT_JOIN = 25000; // a phone on mobile data can need 15-20 s to reach its host through a relay
+  /* ---------- peeking into another room (race.js asks: is anyone waiting in Race Room n?) ----------
+     A short connection marked "peek": the host answers with who is there and closes it. It never becomes a player. */
+  function peekReply(c) {
+    if (!(c.metadata && c.metadata.peek)) return false;
+    c.on('open', () => { try { c.send({ t: 'peekr', players: N.players.size + 1, waiting: KS.Race ? KS.Race.list.length : 0, racing: !!(KS.Race && KS.Race.racing()), names: KS.Race ? KS.Race.list.map((id) => (id === N.me ? N.name() : (N.players.get(id) || {}).name || 'Racer')).slice(0, 8) : [] }); } catch (e) { /* ignore */ } setTimeout(() => { try { c.close(); } catch (e) { /* ignore */ } }, 600); });
+    return true;
+  }
+  N.peekRoom = (n, kind) => new Promise((res) => {
+    if (!N.peer || N.state === 'off' || N.state === 'connecting') return res(null);
+    N.peekUntil = Date.now() + 8000;
+    let done = false; const fin = (v) => { if (done) return; done = true; try { c && c.close(); } catch (e) { /* ignore */ } res(v); };
+    let c = null;
+    try { c = N.peer.connect((kind === 'race' ? RACE : PUB) + n, { reliable: true, metadata: { peek: 1 } }); } catch (e) { return res(null); }
+    if (!c) return res(null);
+    N.peekFail = () => fin(null);
+    c.on('data', (m) => { if (m && m.t === 'peekr') fin({ n, players: m.players | 0, waiting: m.waiting | 0, racing: !!m.racing, names: (m.names || []).map((x) => String(x).replace(/[<>&]/g, '').slice(0, 16)) }); });
+    c.on('error', () => fin(null));
+    setTimeout(() => fin(null), 7000);
+  });
+  /** move to Race Room n, keeping your ticket */
+  N.switchRace = (n) => { clearTimers(); if (N.state !== 'off') N.leave(true); N.publicOff = false; N.pubKind = 'race'; setTimeout(() => N.joinPublic(n, 'race'), 300); };
   function setStatus(t) { N.status = t; N.render2(); }
   function clearTimers() { clearTimeout(N.connT); clearTimeout(N.retryT); N.connT = N.retryT = 0; }
   function retryLater(n, kind) {
@@ -108,7 +130,7 @@
       settled = true; clearTimers(); N.host = true; N.state = 'host'; N.me = peer.id; N.status = ''; setWorldRole(true);
       sys(kind === 'race' ? '🏁 You opened the Race Room. Racers with a ticket will appear here.' : `🌍 You opened public world ${n}. Other players who come online will appear here.`); N.render2(); if (kind !== 'race') publicHello();
     });
-    peer.on('connection', (c) => { if (N.conns.size >= MAX - 1) { c.on('open', () => { c.send({ t: 'full' }); setTimeout(() => c.close(), 300); }); return; } wire(c); });
+    peer.on('connection', (c) => { if (peekReply(c)) return; if (N.conns.size >= MAX - 1) { c.on('open', () => { c.send({ t: 'full' }); setTimeout(() => c.close(), 300); }); return; } wire(c); });
     common(peer, (e) => {
       if (settled) return false;
       if (e.type === 'unavailable-id') { settled = true; clearTimers(); try { peer.destroy(); } catch (x) { /* ignore */ } joinPublicAsGuest(id, n, kind); return true; } // someone hosts it: join them
@@ -122,7 +144,7 @@
     N.connT = setTimeout(() => { // still not in: a host that does not answer, or no server at all
       if (N.state !== 'connecting' || N.peer !== peer) return;
       if (opened) { const nx = n + 1; N.leave(true); N.status = ''; sys(`${kind === 'race' ? 'Race Room' : 'World'} ${n} is not answering — trying ${nx}…`); N.joinPublic(nx, kind); } else retryLater(n, kind);
-    }, WAIT);
+    }, WAIT_JOIN);
     common(peer, (e) => {
       if (e.type === 'peer-unavailable') { // the host has just gone: try to become the host of this world
         clearTimers(); N.leave(true); setTimeout(() => N.joinPublic(n, kind), 300 + Math.random() * 1500); return true;

@@ -274,12 +274,12 @@
 #raceRes{position:absolute;left:50%;top:60%;transform:translate(-50%,-50%);background:rgba(12,14,18,.94);color:#fff;border-radius:16px;padding:18px 24px;min-width:320px;font-family:${FONT};pointer-events:auto;box-shadow:0 12px 40px rgba(0,0,0,.5)}
 #raceRes h2{margin:0 0 10px;font-size:32px;color:#ffd23f}#raceRes table{width:100%;border-collapse:collapse;font-size:20px}#raceRes td{padding:4px 6px}#raceRes td:last-child{text-align:right;color:#7dff9a}
 #raceRes .me{background:rgba(255,210,63,.15)}#raceRes .rbtns{display:flex;gap:10px;margin-top:14px}#raceRes .rbtns button,#racePad button{flex:1;font:700 18px ${FONT};padding:10px 14px;border-radius:10px;border:0;cursor:pointer;background:#ffd23f;color:#111}#raceRes .rbtns button+button{background:#2b3138;color:#fff}
-#racePad{position:absolute;left:50%;top:96px;transform:translateX(-50%);pointer-events:auto}#racePad button{background:rgba(12,14,18,.85);color:#fff;font-size:15px;padding:7px 14px}#raceRes p{margin:10px 0 0;opacity:.75;font-size:15px}
+#racePad{position:absolute;left:50%;top:96px;transform:translateX(-50%);pointer-events:auto;display:flex;gap:8px}#racePad button{background:rgba(12,14,18,.85);color:#fff;font-size:15px;padding:7px 14px}#racePad button.go{background:#3dff7a;color:#0b1a10;font-size:17px;animation:rpulse 1s infinite alternate}@keyframes rpulse{to{transform:scale(1.06)}}#raceRes p{margin:10px 0 0;opacity:.75;font-size:15px}
 body.is-touch #raceSide{top:200px;width:140px}body.is-touch #raceMap{width:140px;height:140px}body.is-touch #raceTop .rc b{font-size:20px}`;
     document.head.appendChild(st);
     const root = document.getElementById('hud') || document.body, el = (id, tag = 'div') => { const e = document.createElement(tag); e.id = id; e.hidden = true; root.appendChild(e); return e; };
     hud = { top: el('raceTop'), side: el('raceSide'), big: el('raceBig'), lights: el('raceLights'), res: el('raceRes'), pad: el('racePad') };
-    hud.pad.innerHTML = `<button type="button">🏙️ Leave the Race Room (refund रु ${TICKET})</button>`; hud.pad.firstChild.onclick = () => RC.leaveRoom();
+    hud.pad.onclick = (e) => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.a === 'switch') RC.switchRoom(); else RC.leaveRoom(); };
     hud.side.innerHTML = '<canvas id="raceMap" width="392" height="392"></canvas><div id="raceBoard"></div>';
     hud.map = hud.side.querySelector('canvas'); hud.board = hud.side.querySelector('#raceBoard');
     hud.lights.innerHTML = '<i></i><i></i><i></i><i></i><i></i>';
@@ -399,6 +399,29 @@ body.is-touch #raceSide{top:200px;width:140px}body.is-touch #raceMap{width:140px
     if (ticket()) { setTimeout(() => { if (kind() === 'race' && ticket()) send({ k: 'join' }); }, 400); notify('🏁 <b>Race Room</b> — you are in the paddock. The race starts 15 s after a second racer arrives. No one within 3 minutes? Your रु ' + TICKET + ' comes back.', 'good'); }
     else notify('🏁 You are in the Race Room without a ticket — buy one at the booth to race.');
   }
+  /** look into Race Rooms 1-6 (not ours) for racers who are waiting. Only a room with more racers waiting, or as many
+      and a lower number, is suggested — so two players alone in rooms 1 and 2 do not both switch and miss again. */
+  async function scanRooms() {
+    RC.scanning = true; RC.scanAt = Date.now();
+    const mine = KS.Net.pubN || 1, myWait = RC.list.length; let best = null;
+    for (let n = 1; n <= 6; n++) {
+      if (n === mine || kind() !== 'race') continue;
+      const r = await KS.Net.peekRoom(n, 'race');
+      if (!r || r.waiting < 1) continue;
+      if (r.waiting > myWait || (r.waiting === myWait && n < mine)) if (!best || r.waiting > best.waiting) best = r;
+    }
+    RC.scanning = false;
+    if (kind() !== 'race' || RC.list.length >= 2 || RC.racing()) return;
+    if (best && (!RC.suggest || RC.suggest.n !== best.n)) notify(`🏁 <b>${best.names.join(', ') || 'A racer'}</b> ${best.waiting === 1 ? 'is' : 'are'} waiting in <b>Race Room ${best.n}</b>${best.racing ? ' (race on now — you join the next one)' : ''}. Tap <b>Switch</b> at the top to race them — your ticket goes with you.`, 'good');
+    RC.suggest = best;
+  }
+  RC.switchRoom = () => {
+    const r = RC.suggest; if (!r || kind() !== 'race') return;
+    if (RC.list.includes(myId())) send({ k: 'leave' });
+    RC.suggest = null; RC.state = 'idle'; RC.list = []; RC.lobbyEnd = 0;
+    notify(`🏁 Switching to <b>Race Room ${r.n}</b>…`);
+    setTimeout(() => KS.Net.switchRace(r.n), 300);
+  };
   /** leave the Race Room for the city; an unused ticket is refunded */
   RC.leaveRoom = (why) => {
     const D = KS.Shop.data;
@@ -594,6 +617,11 @@ body.is-touch #raceSide{top:200px;width:140px}body.is-touch #raceMap{width:140px
     if (rr && !RC.wasRR) enterRoom();
     RC.wasRR = rr;
     if (rr && ticket() && !RC.racing() && RC.list.length < 2 && Date.now() - ticket().t > REFUND_MS) RC.leaveRoom('Nobody else came to race in 3 minutes — ticket refunded');
+    // alone in this Race Room? look into the others, and suggest one where someone is waiting
+    if (rr && !RC.racing() && RC.state !== 'results' && RC.list.length < 2) {
+      RC.aloneT = (RC.aloneT || 0) + dt;
+      if (RC.aloneT > 12 && !RC.scanning && Date.now() - (RC.scanAt || 0) > 20000) scanRooms();
+    } else { RC.aloneT = 0; RC.suggest = null; }
     if (isHost() && RC.state === 'lobby' && RC.lobbyEnd && now() >= RC.lobbyEnd) {
       const list = RC.list.filter((id) => id === myId() || (KS.Net && KS.Net.players.has(id)));
       if (list.length >= 2) hostSend({ k: 'grid', list, ms: GRID_MS }); else { RC.list = list; RC.lobbyEnd = 0; hostLobby(); }
@@ -623,13 +651,17 @@ body.is-touch #raceSide{top:200px;width:140px}body.is-touch #raceMap{width:140px
     const show = RC.state !== 'idle';
     hud.top.hidden = !show; hud.side.hidden = !(RC.racing() || RC.state === 'results');
     hud.pad.hidden = !(kind() === 'race' && !RC.racing() && RC.state !== 'results' && KS.state === 'play');
+    if (!hud.pad.hidden) {
+      const sg = RC.suggest, html = (sg ? `<button type="button" data-a="switch" class="go">🏁 Switch to Race Room ${sg.n} · ${sg.names.join(', ').replace(/[<>&]/g, '') || sg.waiting + ' waiting'}</button>` : '') + `<button type="button" data-a="leave">🏙️ Leave (refund रु ${TICKET})</button>`;
+      if (hud.pad._h !== html) { hud.pad._h = html; hud.pad.innerHTML = html; }
+    }
     if (bigT > 0) { bigT -= dt; if (bigT <= 0) hud.big.hidden = true; }
     if (me && me.wrong && RC.state === 'race') { hud.big.textContent = 'WRONG WAY'; hud.big.className = 'small warn'; hud.big.hidden = false; bigT = 0.2; }
     if (!show) return;
     if (RC.state === 'lobby') {
       const n = RC.list.length, left = RC.lobbyEnd ? Math.max(0, Math.ceil((RC.lobbyEnd - now()) / 1000)) : null, tk = ticket();
       const refund = kind() === 'race' && tk && n < 2 ? Math.max(0, Math.ceil((REFUND_MS - (Date.now() - tk.t)) / 1000)) : null;
-      const html = `<div class="rc lobby">🏁 ${kind() === 'race' ? 'Race Room' : 'Race lobby'} · <b style="display:inline;font-size:20px">${n}</b>/8 racer${n === 1 ? '' : 's'} · ${left != null ? `starts in ${left} s` : 'waiting for at least 2'}<br><small style="text-transform:none;letter-spacing:0">${RC.list.map((id) => nameOf(id).replace(/[<>&]/g, '')).join(' · ')}${refund != null ? ` · refund in ${Math.floor(refund / 60)}:${String(refund % 60).padStart(2, '0')}` : ''}</small></div>`;
+      const html = `<div class="rc lobby">🏁 ${kind() === 'race' ? 'Race Room ' + (KS.Net.pubN || 1) : 'Race lobby'} · <b style="display:inline;font-size:20px">${n}</b>/8 racer${n === 1 ? '' : 's'} · ${left != null ? `starts in ${left} s` : 'waiting for at least 2'}<br><small style="text-transform:none;letter-spacing:0">${RC.list.map((id) => nameOf(id).replace(/[<>&]/g, '')).join(' · ')}${refund != null ? ` · refund in ${Math.floor(refund / 60)}:${String(refund % 60).padStart(2, '0')}` : ''}</small></div>`;
       if (hud.top._h !== html) { hud.top._h = html; hud.top.innerHTML = html; }
       return;
     }

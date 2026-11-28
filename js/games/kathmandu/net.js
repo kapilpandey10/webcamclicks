@@ -305,12 +305,26 @@
       const [, drv] = kind.split(':'); if (drv === N.me) KS.Game.notify(`🙋 ${esc(p.name)} got in with you.`);
       p.person.root.position.set(0, 0, 0); return;
     }
+    if (p.stand) { p.root.remove(p.stand); p.stand = null; }
     if (kind && KS.VTYPES[kind]) { p.veh = KS.buildVehicle(kind, { rider: false, conductor: false }); if (p.veh) p.root.add(p.veh.root); }
     const bike = kind && KS.isBike(kind);
     p.person.root.visible = !kind || bike;
-    if (kind && !bike && !p.veh) p.person.root.visible = false; // their car did not load here: hide them rather than floating them on the road
+    /* ROUND 29: their car's model is not ready on this screen yet (it is still downloading) — they used to vanish,
+       and stayed invisible until they changed vehicle. Now a plain car shape in their colour stands in, and the
+       real model is swapped in as soon as it can be built (N.update retries every second). */
+    if (kind && !p.veh) { p.stand = standIn(kind, p.color); p.root.add(p.stand); if (bike) p.person.root.visible = true; }
     if (bike) { p.person.root.position.set(0, 0.18, -0.32); KS.animSit(p.person); p.person.armL.rotation.x = p.person.armR.rotation.x = -1.2; }
     else { p.person.root.position.set(0, 0, 0); p.person.legL.rotation.x = p.person.legR.rotation.x = 0; }
+  }
+  /** a plain stand-in vehicle (box body, cabin, wheels) in the player's colour, until the real model can be built */
+  function standIn(kind, color) {
+    const t = KS.VTYPES[kind] || KS.VTYPES.car, b = new KS.Builder(), col = new T.Color(color || '#ff4fa3').getHex(), L = t.len, W = t.wid;
+    if (KS.isBike(kind)) { b.box(0, 0.35, 0, 0.25, 0.35, L * 0.8, col); for (const z of [-L * 0.36, L * 0.36]) b.cyl(0, 0, z, 0.3, 0.12, 0x151515, 10, 1, 0, 0, Math.PI / 2); }
+    else {
+      b.box(0, 0.32, 0, W, 0.55, L, col); b.box(0, 0.87, -L * 0.05, W * 0.86, 0.5, L * 0.5, 0x1d2a36);
+      for (const [x, z] of [[-W / 2, L * 0.32], [W / 2, L * 0.32], [-W / 2, -L * 0.32], [W / 2, -L * 0.32]]) b.cyl(x, 0.33, z, 0.33, 0.26, 0x151515, 12, 1, 0, 0, Math.PI / 2);
+    }
+    const m = KS.mesh(b, KS.M.vc, true); m.position.y = 0.02; return m;
   }
   function dropPlayer(id) { const p = N.players.get(id); if (!p) return; for (const v of p.cops || []) { v.netTarget = null; KS.Traffic.endChase(v); } KS.scene.remove(p.root); p.tag && p.tag.remove(); for (const m of [N.calls, N.inCalls]) { const c = m.get(id); if (c) try { c.close(); } catch (e) { /* ignore */ } m.delete(id); } N.players.delete(id); }
   function makeTag(p) { const el = document.createElement('div'); el.className = 'nametag'; ($('nameTags') || document.body).appendChild(el); p.tag = el; }
@@ -480,6 +494,7 @@
       if (N.host) broadcast(m); else { const c = N.conns.get(N.hostId); c && c.open && c.send(m); }
     }
     for (const p of N.players.values()) {
+      if (p.v && !p.v.startsWith('pass:') && !p.veh && p.person && KS.VTYPES[p.v] && KS.clock - (p.vehTry || 0) > 1) { p.vehTry = KS.clock; if (KS.buildVehicle && KS.VehicleModels && KS.VehicleModels.ready && KS.VehicleModels.has(p.v, {})) setVehicle(p, p.v); } // the model has arrived: swap the stand-in for it
       if (p.v && p.v.startsWith('pass:') && p.person) { // sit them in the driver's vehicle
         const [, drv, seat] = p.v.split(':'), D2 = driverOf(drv);
         if (D2) { const w = seatWorld(D2, +seat); p.x = p.tx = w.x; p.y = p.ty = w.y; p.z = p.tz = w.z; p.h = p.th = D2.h; p.root.position.set(w.x, w.y, w.z); p.root.rotation.y = D2.h; const bike = KS.isBike(D2.kind); p.person.root.visible = bike; if (bike) { KS.animSit(p.person); p.person.armL.rotation.x = p.person.armR.rotation.x = -0.9; } }

@@ -172,7 +172,7 @@
       }
       addPlane(hq, checkerTex(), 1.6, 10.2, p0.x, g + 0.085, p0.z, p0.h + Math.PI / 2, true); // the chequered line
       // grid boxes
-      for (let k = 0; k < 8; k++) { const q = gridSlot(k), gg = gy(q.x, q.z), sx = Math.sin(q.h), sz = Math.cos(q.h), lx = Math.cos(q.h), lz = -Math.sin(q.h); hb.box(q.x + sx * 2.6, gg + 0.06, q.z + sz * 2.6, 2.4, 0.02, 0.18, 0xf4f4f4, q.h); for (const sd of [-1.15, 1.15]) hb.box(q.x + sx * 2.1 + lx * sd, gg + 0.06, q.z + sz * 2.1 + lz * sd, 0.14, 0.02, 1.1, 0xf4f4f4, q.h); }
+      for (let k = 0; k < 10; k++) { const q = gridSlot(k), gg = gy(q.x, q.z), sx = Math.sin(q.h), sz = Math.cos(q.h), lx = Math.cos(q.h), lz = -Math.sin(q.h); hb.box(q.x + sx * 2.6, gg + 0.06, q.z + sz * 2.6, 2.4, 0.02, 0.18, 0xf4f4f4, q.h); for (const sd of [-1.15, 1.15]) hb.box(q.x + sx * 2.1 + lx * sd, gg + 0.06, q.z + sz * 2.1 + lz * sd, 0.14, 0.02, 1.1, 0xf4f4f4, q.h); }
       // Race HQ: a tent by the road where you sign up
       const t = at(s0 - 26, 14.5), tg = gy(t.x, t.z);
       for (const [a2, b2] of [[-1.5, -1.5], [1.5, -1.5], [-1.5, 1.5], [1.5, 1.5]]) hb.cyl(t.x + a2, tg, t.z + b2, 0.05, 2.4, 0xcccccc, 6);
@@ -253,7 +253,7 @@
     if (KS.landmarks) KS.landmarks.push({ id: 'race-hq', name: 'Ring Road Race HQ 🏁', np: 'चक्रपथ दौड', x: RC.hq.x, z: RC.hq.z, r: 14, fact: 'Sign up for a 2-lap race round the whole Ring Road: needs at least 2 racers. Alone, take a practice run.' });
   }
   /** grid slot k: two columns, staggered, behind the start line */
-  function gridSlot(k) { const row = Math.floor(k / 2), c = k % 2; const p = at(s0 - 9 - row * 9 - c * 4.5, c ? 7.6 : 3.9); return { x: p.x, z: p.z, h: p.h }; }
+  function gridSlot(k) { const row = Math.floor(k / 2), c = k % 2; /* 10 boxes: five rows of two */ const p = at(s0 - 9 - row * 9 - c * 4.5, c ? 7.6 : 3.9); return { x: p.x, z: p.z, h: p.h }; }
 
   /* ---------- HUD ---------- */
   function buildHud() {
@@ -318,7 +318,7 @@ body.is-touch #raceSide{top:200px;width:140px}body.is-touch #raceMap{width:140px
     }
     if (kind() === 'world' && !RC.practice) return; // no races in the public world itself: they happen in the Race Room
     switch (m.k) {
-      case 'join': if (H && (RC.state === 'idle' || RC.state === 'lobby') && !RC.list.includes(m.id) && RC.list.length < 8) { RC.list.push(m.id); hostLobby(); } break;
+      case 'join': if (H && (RC.state === 'idle' || RC.state === 'lobby') && !RC.list.includes(m.id) && RC.list.length < 10) { RC.list.push(m.id); hostLobby(); } break;
       case 'leave': if (H && RC.state === 'lobby') { RC.list = RC.list.filter((q) => q !== m.id); hostLobby(); } break;
       case 'lobby': if (RC.state === 'idle' || RC.state === 'lobby') { RC.state = m.list.length ? 'lobby' : 'idle'; RC.list = m.list; RC.lobbyEnd = m.ms > 0 ? now() + m.ms : 0; RC.practice = false; } break;
       case 'grid': startGrid(m.list, m.ms, !!m.practice); break;
@@ -596,7 +596,7 @@ body.is-touch #raceSide{top:200px;width:140px}body.is-touch #raceMap{width:140px
     g.fillStyle = '#0b0f14'; g.fillRect(0, 0, W, H); g.strokeStyle = '#ffd23f'; g.lineWidth = 6; g.strokeRect(3, 3, W - 6, H - 6);
     g.fillStyle = '#ffd23f'; g.font = `800 50px ${FONT}`; g.textAlign = 'left'; g.fillText(RC.racing() ? '🏁 RACE ON' : 'NEXT RACE', 22, 58);
     g.fillStyle = '#cfd6de'; g.font = `600 26px ${FONT}`; g.fillText(`Ring Road · 2 laps · prize रु 1,000`, 22, 96);
-    g.fillStyle = '#ffffff'; g.font = `700 32px ${FONT}`; g.fillText(`WAITING ${names.length}/8`, 22, 142);
+    g.fillStyle = '#ffffff'; g.font = `700 32px ${FONT}`; g.fillText(`WAITING ${names.length}/10`, 22, 142);
     g.font = `600 28px ${FONT}`; g.fillStyle = '#7dff9a';
     (names.length ? names.slice(0, 6) : ['— nobody yet: be the first! —']).forEach((nm, i) => { g.fillStyle = names.length ? '#7dff9a' : '#8a939c'; g.fillText(String(nm).slice(0, 18), 22 + (i % 2) * 240, 182 + Math.floor(i / 2) * 36); });
     g.fillStyle = '#ffb000'; g.font = `600 24px ${FONT}`;
@@ -661,7 +661,7 @@ body.is-touch #raceSide{top:200px;width:140px}body.is-touch #raceMap{width:140px
     if (RC.state === 'lobby') {
       const n = RC.list.length, left = RC.lobbyEnd ? Math.max(0, Math.ceil((RC.lobbyEnd - now()) / 1000)) : null, tk = ticket();
       const refund = kind() === 'race' && tk && n < 2 ? Math.max(0, Math.ceil((REFUND_MS - (Date.now() - tk.t)) / 1000)) : null;
-      const html = `<div class="rc lobby">🏁 ${kind() === 'race' ? 'Race Room ' + (KS.Net.pubN || 1) : 'Race lobby'} · <b style="display:inline;font-size:20px">${n}</b>/8 racer${n === 1 ? '' : 's'} · ${left != null ? `starts in ${left} s` : 'waiting for at least 2'}<br><small style="text-transform:none;letter-spacing:0">${RC.list.map((id) => nameOf(id).replace(/[<>&]/g, '')).join(' · ')}${refund != null ? ` · refund in ${Math.floor(refund / 60)}:${String(refund % 60).padStart(2, '0')}` : ''}</small></div>`;
+      const html = `<div class="rc lobby">🏁 ${kind() === 'race' ? 'Race Room ' + (KS.Net.pubN || 1) : 'Race lobby'} · <b style="display:inline;font-size:20px">${n}</b>/10 racer${n === 1 ? '' : 's'} · ${left != null ? `starts in ${left} s` : 'waiting for at least 2'}<br><small style="text-transform:none;letter-spacing:0">${RC.list.map((id) => nameOf(id).replace(/[<>&]/g, '')).join(' · ')}${refund != null ? ` · refund in ${Math.floor(refund / 60)}:${String(refund % 60).padStart(2, '0')}` : ''}</small></div>`;
       if (hud.top._h !== html) { hud.top._h = html; hud.top.innerHTML = html; }
       return;
     }

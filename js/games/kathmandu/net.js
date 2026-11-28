@@ -8,13 +8,42 @@
   const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const PEERJS = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
   const PREFIX = 'kstreets-room-', MAX = 8;
+  const maxPlayers = () => (N.public && N.pubKind === 'race' ? 10 : MAX); // a race holds 10
   const N = (KS.Net = { state: 'off', room: '', players: new Map(), conns: new Map(), calls: new Map(), inCalls: new Map(), chat: [], unread: 0, mic: null, micOn: false, ptt: false, proximity: true, sendT: 0, lastMsg: 0 });
 
+  /* ROUND 27: how two phones reach each other. Direct first (STUN finds each phone's internet address); when a
+     network will not allow that (most mobile data, many offices), the traffic goes through a relay (TURN). PeerJS's
+     own relays only listened on UDP 3478, which those networks often block, so players could not meet at all, even
+     in a private room. Now the same relays are also tried over TCP, plus a community relay over TLS (port 5349).
+     All are free; a relay that is down is skipped by the browser. Your own relay: ?turn=turn:host:port&turnuser=…&turnpass=… */
+  const ICE = (() => {
+    const list = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: ['turn:eu-0.turn.peerjs.com:3478', 'turn:us-0.turn.peerjs.com:3478', 'turn:eu-0.turn.peerjs.com:3478?transport=tcp'], username: 'peerjs', credential: 'peerjsp' },
+      { urls: ['turn:freeturn.net:3478', 'turns:freeturn.net:5349'], username: 'free', credential: 'free' },
+    ];
+    try { const q = new URLSearchParams(location.search); if (q.get('turn')) list.unshift({ urls: q.get('turn'), username: q.get('turnuser') || '', credential: q.get('turnpass') || '' }); } catch (e) { /* ignore */ }
+    return list;
+  })();
   function options() {
-    const q = new URLSearchParams(location.search), o = {};
+    const q = new URLSearchParams(location.search), o = { config: { iceServers: ICE } };
     if (q.get('peerhost')) { o.host = q.get('peerhost'); o.port = +(q.get('peerport') || 443); o.path = q.get('peerpath') || '/'; o.secure = q.get('peersecure') !== '0'; }
     return o;
   }
+  /** the Friends app's connection test: can this device reach the game server, find its internet address, and reach a relay? */
+  N.testNet = async () => {
+    N.testing = 'Testing your connection… (about 10 s)'; N.render2();
+    const out = { server: false, direct: false, relay: false };
+    try {
+      const pc = new RTCPeerConnection({ iceServers: ICE }); pc.createDataChannel('t');
+      pc.onicecandidate = (e) => { const m = e.candidate && / typ (\w+)/.exec(e.candidate.candidate); if (m) { if (m[1] === 'srflx') out.direct = true; if (m[1] === 'relay') out.relay = true; } };
+      await pc.setLocalDescription(await pc.createOffer());
+      try { await loadLib(); const tp = new window.Peer(undefined, options()); out.server = await new Promise((res) => { tp.on('open', () => res(true)); tp.on('error', () => res(false)); setTimeout(() => res(false), 9000); }); try { tp.destroy(); } catch (e) { /* ignore */ } } catch (e) { /* ignore */ }
+      await new Promise((r) => setTimeout(r, 1500)); pc.close();
+    } catch (e) { /* ignore */ }
+    N.testing = `${out.server ? '✅' : '❌'} Game server ${out.server ? 'reachable' : 'NOT reachable — check your internet'}<br>${out.direct ? '✅' : '⚠️'} Direct connection ${out.direct ? 'possible' : 'blocked on this network'}<br>${out.relay ? '✅' : '❌'} Relay ${out.relay ? 'reachable — you can play with anyone' : 'NOT reachable — here you can only meet players whose network allows direct connections. Try Wi-Fi instead of mobile data, or the other way round.'}`;
+    N.render2(); return out;
+  };
   function loadLib() {
     if (window.Peer) return Promise.resolve();
     return new Promise((res, rej) => { const s = document.createElement('script'); s.src = PEERJS; s.onload = res; s.onerror = () => rej(new Error('Could not load PeerJS')); document.head.appendChild(s); });
@@ -33,20 +62,25 @@
     const peer = (N.peer = new window.Peer(PREFIX + N.room.toLowerCase(), options()));
     N.connT = setTimeout(() => { if (N.state === 'connecting' && N.peer === peer) N.fail('Could not reach the multiplayer server. Check your internet and try again.'); }, WAIT);
     peer.on('open', () => { clearTimers(); N.state = 'host'; N.me = peer.id; setWorldRole(true); sys(`Room ${N.room} created. Share the code with friends.`); N.render2(); });
-    peer.on('connection', (c) => { if (peekReply(c)) return; if (N.conns.size >= MAX - 1) { c.on('open', () => { c.send({ t: 'full' }); setTimeout(() => c.close(), 300); }); return; } wire(c); });
+    peer.on('connection', (c) => { if (peekReply(c)) return; if (N.conns.size >= maxPlayers() - 1) { c.on('open', () => { c.send({ t: 'full' }); setTimeout(() => c.close(), 300); }); return; } wire(c); });
     common(peer);
   };
-  N.join = async (room) => {
+  N.join = async (room, tryNo = 1) => {
     room = String(room || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (N.public && N.state !== 'off' && room.length >= 4) { N.publicOff = true; N.leave(true); }
     clearTimers(); N.status = '';
     if (N.state !== 'off' || room.length < 4) { if (room.length < 4) KS.Game.notify('Enter the 5-character room code.', 'bad'); return; }
     N.state = 'connecting'; N.render2();
     try { await loadLib(); } catch (e) { N.fail(e.message); return; }
-    N.room = room; N.host = false; N.public = false;
+    N.room = room; N.host = false; N.public = false; N.pubKind = 'world';
     const peer = (N.peer = new window.Peer(undefined, options()));
     peer.on('open', () => { N.me = peer.id; const c = peer.connect(PREFIX + room.toLowerCase(), { reliable: true }); wire(c); N.hostId = c.peer; });
-    N.connT = setTimeout(() => { if (N.state === 'connecting' && N.peer === peer) N.fail('Could not reach that room. Check the code, and that your friend still has the game open.'); }, WAIT);
+    ticking(); N.status = tryNo > 1 ? `Still trying to reach room ${room} (try 2 of 2)…` : `Connecting to room ${room}… (on mobile data this can take up to 30 s)`;
+    N.connT = setTimeout(() => {
+      if (N.state !== 'connecting' || N.peer !== peer) return;
+      if (tryNo < 2) { N.leave(true); N.join(room, 2); return; }
+      N.status = ''; N.fail('Could not reach that room. Check the code and that your friend still has the game open — then tap “Test my connection” in Friends.');
+    }, WAIT_JOIN);
     common(peer);
   };
   function common(peer, onErr) {
@@ -85,7 +119,7 @@
      a world's host had gone quiet (a hidden tab, a phone asleep, a strict mobile network): now each step has a
      12 s limit. A host that does not answer means the next world is tried; a server that does not answer means a
      retry in 30 s. The Friends app says what is happening and has a Cancel button. */
-  const WAIT = 12000, WAIT_JOIN = 25000; // a phone on mobile data can need 15-20 s to reach its host through a relay
+  const WAIT = 15000, WAIT_JOIN = 30000, TRIES = 3; // a phone on mobile data can need 15-25 s to reach its host through a relay
   /* ---------- peeking into another room (race.js asks: is anyone waiting in Race Room n?) ----------
      A short connection marked "peek": the host answers with who is there and closes it. It never becomes a player. */
   function peekReply(c) {
@@ -108,20 +142,23 @@
   /** move to Race Room n, keeping your ticket */
   N.switchRace = (n) => { clearTimers(); if (N.state !== 'off') N.leave(true); N.publicOff = false; N.pubKind = 'race'; setTimeout(() => N.joinPublic(n, 'race'), 300); };
   function setStatus(t) { N.status = t; N.render2(); }
-  function clearTimers() { clearTimeout(N.connT); clearTimeout(N.retryT); N.connT = N.retryT = 0; }
+  function clearTimers() { clearTimeout(N.connT); clearTimeout(N.retryT); clearInterval(N.tickT); N.connT = N.retryT = N.tickT = 0; }
+  const statusLine = () => N.status + (N.state === 'connecting' && N.connStart ? ` · ${Math.round((Date.now() - N.connStart) / 1000)} s` : '');
+  function ticking() { clearInterval(N.tickT); N.connStart = Date.now(); N.tickT = setInterval(() => { if (N.state !== 'connecting') { clearInterval(N.tickT); N.tickT = 0; return; } const e = $('netStatus'); if (e) e.textContent = statusLine(); }, 1000); } // only the status line: typing in the Friends app is not interrupted
   function retryLater(n, kind) {
     const k = kind || N.pubKind;
     N.leave(true); N.public = true; N.pubKind = k; N.status = '⚠️ The online server is not answering. Trying again in 30 s…'; N.render2();
     N.retryT = setTimeout(() => { if (!N.publicOff && N.state === 'off') N.joinPublic(n, k); }, 30000);
   }
   /** kind 'world': the public world everyone shares · kind 'race': the Race Room for ticket holders (race.js) */
-  N.joinPublic = async (n = 1, kind) => {
+  N.joinPublic = async (n = 1, kind, tryNo = 1) => {
     kind = kind || N.pubKind || 'world';
     if (N.state !== 'off' || N.publicOff) return;
     clearTimers();
     const label = kind === 'race' ? 'Race Room' : 'public world';
     if (n > 8) { N.status = ''; sys(`Every ${label} is busy right now. Trying again in 30 s.`); retryLater(1, kind); return; }
-    N.state = 'connecting'; N.public = true; N.pubKind = kind; N.pubN = n; N.room = (kind === 'race' ? 'RACE ROOM ' : 'WORLD ') + n; setStatus(`Connecting to the ${label}${n > 1 ? ' ' + n : ''}…`);
+    N.state = 'connecting'; N.public = true; N.pubKind = kind; N.pubN = n; N.joinTry = tryNo; N.room = (kind === 'race' ? 'RACE ROOM ' : 'WORLD ') + n; ticking();
+    setStatus(tryNo > 1 ? `Still trying to reach ${kind === 'race' ? 'Race Room' : 'World'} ${n} (try ${tryNo} of ${TRIES}) — on mobile data this can take a while…` : `Connecting to the ${label}${n > 1 ? ' ' + n : ''}…`);
     try { await loadLib(); } catch (e) { N.public = false; N.fail(e.message); return; }
     const id = (kind === 'race' ? RACE : PUB) + n; let settled = false;
     const peer = (N.peer = new window.Peer(id, options()));
@@ -130,20 +167,25 @@
       settled = true; clearTimers(); N.host = true; N.state = 'host'; N.me = peer.id; N.status = ''; setWorldRole(true);
       sys(kind === 'race' ? '🏁 You opened the Race Room. Racers with a ticket will appear here.' : `🌍 You opened public world ${n}. Other players who come online will appear here.`); N.render2(); if (kind !== 'race') publicHello();
     });
-    peer.on('connection', (c) => { if (peekReply(c)) return; if (N.conns.size >= MAX - 1) { c.on('open', () => { c.send({ t: 'full' }); setTimeout(() => c.close(), 300); }); return; } wire(c); });
+    peer.on('connection', (c) => { if (peekReply(c)) return; if (N.conns.size >= maxPlayers() - 1) { c.on('open', () => { c.send({ t: 'full' }); setTimeout(() => c.close(), 300); }); return; } wire(c); });
     common(peer, (e) => {
       if (settled) return false;
-      if (e.type === 'unavailable-id') { settled = true; clearTimers(); try { peer.destroy(); } catch (x) { /* ignore */ } joinPublicAsGuest(id, n, kind); return true; } // someone hosts it: join them
+      if (e.type === 'unavailable-id') { settled = true; clearTimeout(N.connT); try { peer.destroy(); } catch (x) { /* ignore */ } joinPublicAsGuest(id, n, kind, tryNo); return true; } // someone hosts it: join them
       settled = true; retryLater(n, kind); return true;
     });
   };
-  function joinPublicAsGuest(id, n, kind) {
+  function joinPublicAsGuest(id, n, kind, tryNo = 1) {
     N.host = false; N.state = 'connecting';
     const peer = (N.peer = new window.Peer(undefined, options())); let opened = false;
     peer.on('open', () => { opened = true; N.me = peer.id; const c = peer.connect(id, { reliable: true }); wire(c); N.hostId = c.peer; });
     N.connT = setTimeout(() => { // still not in: a host that does not answer, or no server at all
       if (N.state !== 'connecting' || N.peer !== peer) return;
-      if (opened) { const nx = n + 1; N.leave(true); N.status = ''; sys(`${kind === 'race' ? 'Race Room' : 'World'} ${n} is not answering — trying ${nx}…`); N.joinPublic(nx, kind); } else retryLater(n, kind);
+      if (!opened) { retryLater(n, kind); return; }
+      // the host is there but slow to answer: try the same room again — players are only split when a room is full,
+      // or when its host has not answered three times running (a dead tab: the server frees its id within a minute)
+      N.leave(true);
+      if (tryNo < TRIES) N.joinPublic(n, kind, tryNo + 1);
+      else { const nx = n + 1; sys(`${kind === 'race' ? 'Race Room' : 'World'} ${n} did not answer 3 times — opening ${nx}. You will be moved back as soon as ${n} answers.`); N.joinPublic(nx, kind); }
     }, WAIT_JOIN);
     common(peer, (e) => {
       if (e.type === 'peer-unavailable') { // the host has just gone: try to become the host of this world
@@ -185,9 +227,9 @@
     if (!m || typeof m !== 'object') return;
     const from = N.host ? c.peer : m.id || c.peer;
     switch (m.t) {
-      case 'full': if (N.public) { const n = N.pubN || 1; const k = N.pubKind; N.leave(true); N.pubKind = k; setTimeout(() => N.joinPublic(n + 1, k), 200); } else N.fail('That room is full (8 players).'); break;
+      case 'full': if (N.public) { const n = N.pubN || 1; const k = N.pubKind; N.leave(true); N.pubKind = k; setTimeout(() => N.joinPublic(n + 1, k), 200); } else N.fail(`That room is full (${maxPlayers()} players).`); break;
       case 'hello': if (N.host) { upsert(c.peer, { name: clean(m.name, 16), look: m.look }); sys(`${clean(m.name, 16)} joined.`); roster(); if (c.open) c.send(worldMsg()); } break;
-      case 'roster': N.roster = (m.list || []).slice(0, MAX); for (const r of N.roster) if (r.id !== N.me) upsert(r.id, { name: clean(r.name, 16) }); for (const id of [...N.players.keys()]) if (!N.roster.some((r) => r.id === id)) dropPlayer(id); N.render2(); if (N.micOn) callAll(); break;
+      case 'roster': N.roster = (m.list || []).slice(0, maxPlayers()); for (const r of N.roster) if (r.id !== N.me) upsert(r.id, { name: clean(r.name, 16) }); for (const id of [...N.players.keys()]) if (!N.roster.some((r) => r.id === id)) dropPlayer(id); N.render2(); if (N.micOn) callAll(); break;
       case 'world': if (!N.host) syncWorld(m); break;
       case 'npc': if (!N.host) { if (KS.Traffic) KS.Traffic.applySnapshot(m.v); if (KS.Peds) KS.Peds.applySnapshot(m.p); if (N.state === 'guest' && KS.Traffic && !KS.Traffic.remote) setWorldRole(false); } break; // the host's traffic and walkers: the same cars, same people, same chase on every screen
       case 'match': case 'shot': case 'hit': case 'kill': case 'boom': case 'pick': // battle: the host passes everything on, then everyone handles it
@@ -474,8 +516,21 @@
 
   /* ---------- per frame ---------- */
   const v = new T.Vector3();
+  /** alone in World 2 or higher (a slow join put you there)? if a lower world has players and room, go there */
+  async function mergeWorlds() {
+    const mine = N.pubN;
+    for (let k = 1; k < mine; k++) {
+      const r = await N.peekRoom(k, 'world');
+      if (N.pubN !== mine || N.players.size) return;
+      if (r && r.players >= 1 && r.players < MAX) { sys(`🌍 ${r.players} player${r.players === 1 ? ' is' : 's are'} in World ${k} — moving you there so you can play together.`); clearTimers(); N.leave(true); N.joinPublic(k, 'world'); return; }
+    }
+  }
   N.update = (dt, camera) => {
     if (N.state === 'off' || N.state === 'connecting') return;
+    if (N.public && N.pubKind !== 'race' && N.pubN > 1 && N.players.size === 0) {
+      N.aloneT = (N.aloneT || 0) + dt;
+      if (N.aloneT > 15 && Date.now() - (N.mergeAt || 0) > 30000) { N.mergeAt = Date.now(); mergeWorlds(); }
+    } else N.aloneT = 0;
     const P = KS.Player, I = KS.Input;
     if (N.micOn && N.ptt) setTalking(!!I.down('KeyG'));
     if (N.el && N.el.isConnected && KS.clock % 1 < dt) N.el.querySelectorAll('[data-dist]').forEach((e) => { const f = N.players.get(e.dataset.dist); if (f && f.placed) e.textContent = Math.round(Math.hypot(f.x - P.x, f.z - P.z)) + ' m'; });
@@ -543,7 +598,7 @@
       <p class="ph-muted small">${players.length < 2 ? 'Nobody else is online here right now. Real players who open the game join this world automatically.' : `${players.length} real players in this world. Everyone is a coloured dot on your map.`} Be kind and never share personal details.</p>`
       : `<div class="roomcode"><span>Room</span><b>${N.room}</b><button type="button" class="chip" id="netCopy">Copy invite link</button></div>
       ${players.length < 2 ? '<p class="ph-muted small">Waiting for friends… send them the invite link or the code. Keep this tab open.</p>' : ''}
-      <p class="ph-muted">${players.length} / ${MAX} players in the room. Each friend is a coloured dot on your map.</p>`}
+      <p class="ph-muted">${players.length} / ${maxPlayers()} players in the room. Each friend is a coloured dot on your map.</p>`}
       <ul class="netlist">${[...N.players.values()].map((p) => `<li><i style="background:${p.color}"></i><b>${esc(p.name)}</b><small data-dist="${esc(p.id)}">${p.placed ? Math.round(Math.hypot(p.x - KS.Player.x, p.z - KS.Player.z)) + ' m' : 'connecting…'}</small><button type="button" class="chip" data-find="${esc(p.id)}">📍 Find</button><button type="button" class="chip" data-goto="${esc(p.id)}">🚀 Go to</button><button type="button" class="chip" data-video="${esc(p.id)}">📹 Video call</button><button type="button" class="chip" data-block="${esc(p.id)}">${N.blocked.has(p.id) ? '🔈 Unmute' : '🔇 Mute'}</button></li>`).join('')}</ul>
       <div class="req-btns"><button type="button" class="btn small-btn ${N.micOn ? '' : 'ghost'}" id="netMic">${N.micOn ? '🎙 Mic on' : '🎙 Turn mic on'}</button>
       <label class="set tog"><input type="checkbox" id="netPtt" ${N.ptt ? 'checked' : ''}><span>Push to talk (hold G)</span></label></div>
@@ -551,20 +606,23 @@
       ${N.host ? '<button type="button" class="btn small-btn" id="netBattle">⚔️ Start a battle match for everyone</button>' : '<p class="ph-muted small">⚔️ Battle matches are started by the room host.</p>'}
       <div class="chatlog" id="netLog"></div>
       <form id="netForm" class="chatform"><input id="netText" maxlength="200" placeholder="Message… (Enter)" autocomplete="off" aria-label="Chat message"><button type="submit" class="btn small-btn">Send</button></form>
+      <button type="button" class="btn ghost small-btn" id="netTest">🔧 Test my connection</button>${N.testing ? `<p class="ph-muted small">${N.testing}</p>` : ''}
       <button type="button" class="btn ghost small-btn" id="netLeave">${N.public ? (N.pubKind === 'race' ? 'Leave the Race Room (back to the city)' : 'Leave the public world (play alone)') : 'Leave room'}</button>`
       : `<div class="req-btns"><button type="button" class="btn small-btn" id="netPublic" ${N.state === 'connecting' ? 'disabled' : ''}>${N.pubKind === 'race' && N.public ? '🏁' : '🌍'} ${N.state === 'connecting' && N.public ? 'Connecting…' : 'Join the public world (everyone online)'}</button>${(N.state === 'connecting' && N.public) || N.retryT ? '<button type="button" class="btn ghost small-btn" id="netCancel">Cancel</button>' : ''}</div>
-      ${N.status ? `<p class="ph-muted small" id="netStatus">${esc(N.status)}</p>` : ''}
+      ${N.status ? `<p class="ph-muted small" id="netStatus">${esc(statusLine())}</p>` : ''}
       <p class="ph-muted small">Or play with just your friends in a private room:</p>
       <ol class="howto"><li><b>One player</b> taps <b>Create room</b>.</li><li>They tap <b>Copy invite link</b> and send it (WhatsApp, Viber, Messenger…).</li><li><b>Friends</b> open the link, or type the 5-letter code below and tap <b>Join</b>.</li><li>Everyone appears in the same Kathmandu. Chat with <kbd>Enter</kbd>; tap <b>Turn mic on</b> and allow the microphone to talk.</li><li>Tap <b>📹 Video call</b> next to a friend to video-call them on the game phone — they choose to answer, and the camera turns on only then.</li></ol>
       <label class="set"><span>Your name</span><input id="netName" maxlength="16" value="${esc(N.name())}" aria-label="Your name"></label>
       <div class="req-btns"><button type="button" class="btn small-btn" id="netCreate" ${N.state === 'connecting' && !N.public ? 'disabled' : ''}>${N.state === 'connecting' && !N.public ? 'Connecting…' : 'Create room'}</button></div>
       <form id="netJoinForm" class="chatform"><input id="netCode" maxlength="6" placeholder="Room code" autocomplete="off" aria-label="Room code" style="text-transform:uppercase" value="${esc(N.invite || '')}"><button type="submit" class="btn small-btn">Join</button></form>
+      <div class="req-btns"><button type="button" class="btn ghost small-btn" id="netTest">🔧 Test my connection</button></div>${N.testing ? `<p class="ph-muted small">${N.testing}</p>` : ''}
       <p class="ph-muted small">Rooms are private: only people with the code can join. Only share it with people you know. Connections are set up through the free PeerJS server; positions, chat and voice then go directly between players. The microphone is used only after you turn it on.</p>`;
     const b = (id, fn) => { const x = $(id); if (x) x.onclick = fn; };
     b('netCreate', () => { const n = $('netName'); if (n && n.value.trim()) { KS.Shop.data.netName = clean(n.value.trim(), 16); KS.Shop.save(); } N.create(); });
     const jf = $('netJoinForm'); if (jf) jf.onsubmit = (e) => { e.preventDefault(); const n = $('netName'); if (n && n.value.trim()) { KS.Shop.data.netName = clean(n.value.trim(), 16); KS.Shop.save(); } N.join($('netCode').value); };
     b('netLeave', () => { if (N.inRaceRoom()) { if (KS.Race) KS.Race.leaveRoom(); else N.backToCity(); return; } if (N.public) { N.publicOff = true; KS.Settings.data().online = false; KS.Shop.save(); } N.leave(); });
     b('netCancel', () => N.cancelConnect());
+    b('netTest', () => N.testNet());
     b('netPublic', () => { N.publicOff = false; KS.Settings.data().online = true; KS.Shop.save(); N.joinPublic(); });
     el.querySelectorAll('[data-block]').forEach((x) => (x.onclick = () => N.toggleBlock(x.dataset.block)));
     b('netMic', () => N.toggleMic());

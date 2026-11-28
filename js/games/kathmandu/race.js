@@ -23,7 +23,11 @@
   const T = THREE, KS = window.KS;
   const RC = (KS.Race = { state: 'idle', list: [], racers: new Map(), boostT: 0, practice: false });
   const LAPS = 2, U_IN = 1.55, U_OUT = 10.05, U_MID = 5.8, LOBBY_MS = 15000, GRID_MS = 7000, PRIZE = [1000, 500, 250];
-  const CAR = 'sportscar';
+  const CAR = 'sportscar', TICKET = 50, REFUND_MS = 180000;
+  /** where you are playing: 'off' (alone), 'world' (the public world), 'private' (a friends' room), 'race' (the Race Room) */
+  const kind = () => (!(KS.Net && (KS.Net.state === 'host' || KS.Net.state === 'guest')) ? 'off' : KS.Net.public ? (KS.Net.pubKind === 'race' ? 'race' : 'world') : 'private');
+  const ticket = () => KS.Shop && KS.Shop.data.raceTicket;
+  RC.ads = []; // ticket buyers announced in the public world: { name, t }
   let trk = null, s0 = 0, evGroup = null, hq = null, lamps = [], boosterTex = null, flagInst = null, flagBase = [], crowd = [];
   const hazards = [], boosters = [], mouths = [], medGaps = [];
   let hint = null, me = null, car = null, prevVeh = null, hud = null, mapBase = null;
@@ -177,6 +181,18 @@
       const hqTex = bannerTex(['RACE HQ 🏁', 'Press E · दौडमा भाग लिनुहोस्'], '#111418', '#ffd23f');
       addPlane(hq, hqTex, 3.2, 0.5, t.x - Math.cos(p0.h) * 1.75, tg + 2.2, t.z + Math.sin(p0.h) * 1.75, p0.h - Math.PI / 2, false, { double: true, glow: 0.3 });
       RC.hq = { x: t.x - Math.cos(p0.h) * 1.5, z: t.z + Math.sin(p0.h) * 1.5 };
+      // the ticket booth: a kiosk with a counter on the road side, a lit sign, and a live board of who is waiting
+      const bt = at(s0 - 50, 14.9), bg = gy(bt.x, bt.z), lx = Math.cos(p0.h), lz = -Math.sin(p0.h);
+      hb.box(bt.x, bg, bt.z, 1.8, 2.5, 2.6, 0x1f4fb8, p0.h); hb.box(bt.x, bg + 2.5, bt.z, 2.4, 0.22, 3.2, 0xffd23f, p0.h);
+      hb.box(bt.x - lx * 0.92, bg + 0.95, bt.z - lz * 0.92, 0.05, 1.05, 1.9, 0x0d1724, p0.h); // the ticket window
+      hb.box(bt.x - lx * 1.12, bg + 0.92, bt.z - lz * 1.12, 0.45, 0.07, 2.2, 0xd9d9d9, p0.h); // the counter
+      const tkTex = bannerTex(['🎟️ RACE TICKETS', `रु ${TICKET} · दौड टिकट`], '#ffd23f', '#111418');
+      addPlane(hq, tkTex, 3.0, 0.62, bt.x - lx * 0.2, bg + 3.05, bt.z - lz * 0.2, p0.h - Math.PI / 2, false, { double: true, glow: 0.35 });
+      const bd = at(s0 - 45.5, 14.0), bdg = gy(bd.x, bd.z);
+      for (const o of [-0.85, 0.85]) hb.box(bd.x + Math.sin(p0.h) * o, bdg, bd.z + Math.cos(p0.h) * o, 0.08, 1.4, 0.08, 0x444444, p0.h);
+      RC.boardCv = document.createElement('canvas'); RC.boardCv.width = 512; RC.boardCv.height = 320; RC.boardTex = new T.CanvasTexture(RC.boardCv);
+      addPlane(hq, RC.boardTex, 1.9, 1.2, bd.x - lx * 0.05, bdg + 1.95, bd.z - lz * 0.05, p0.h - Math.PI / 2, false, { double: true, glow: 0.45 });
+      RC.booth = { x: bt.x - lx * 2.2, z: bt.z - lz * 2.2 };
       // bunting across the road near the start
       const tri = new T.BufferGeometry(); tri.setAttribute('position', new T.Float32BufferAttribute([-0.22, 0, 0, 0.22, 0, 0, 0, -0.42, 0], 3)); tri.computeVertexNormals();
       const bunt = []; for (const ds of [-45, -22, 30, 55]) { const a = at(s0 + ds, -0.6), c = at(s0 + ds, 12.4), ga = gy(a.x, a.z) + 6.2; for (let k = 0; k <= 26; k++) { const f = k / 26, sag = Math.sin(f * Math.PI) * 0.9; bunt.push({ x: a.x + (c.x - a.x) * f, y: ga - sag, z: a.z + (c.z - a.z) * f, h: a.h }); } }
@@ -257,11 +273,13 @@
 #raceLights i{width:34px;height:34px;border-radius:50%;background:#2a0606;box-shadow:inset 0 0 6px #000}#raceLights i.on{background:#ff1a1a;box-shadow:0 0 18px #ff1a1a}#raceLights.go i{background:#3dff7a;box-shadow:0 0 18px #3dff7a}
 #raceRes{position:absolute;left:50%;top:60%;transform:translate(-50%,-50%);background:rgba(12,14,18,.94);color:#fff;border-radius:16px;padding:18px 24px;min-width:320px;font-family:${FONT};pointer-events:auto;box-shadow:0 12px 40px rgba(0,0,0,.5)}
 #raceRes h2{margin:0 0 10px;font-size:32px;color:#ffd23f}#raceRes table{width:100%;border-collapse:collapse;font-size:20px}#raceRes td{padding:4px 6px}#raceRes td:last-child{text-align:right;color:#7dff9a}
-#raceRes .me{background:rgba(255,210,63,.15)}#raceRes p{margin:10px 0 0;opacity:.75;font-size:15px}
+#raceRes .me{background:rgba(255,210,63,.15)}#raceRes .rbtns{display:flex;gap:10px;margin-top:14px}#raceRes .rbtns button,#racePad button{flex:1;font:700 18px ${FONT};padding:10px 14px;border-radius:10px;border:0;cursor:pointer;background:#ffd23f;color:#111}#raceRes .rbtns button+button{background:#2b3138;color:#fff}
+#racePad{position:absolute;left:50%;top:96px;transform:translateX(-50%);pointer-events:auto}#racePad button{background:rgba(12,14,18,.85);color:#fff;font-size:15px;padding:7px 14px}#raceRes p{margin:10px 0 0;opacity:.75;font-size:15px}
 body.is-touch #raceSide{top:200px;width:140px}body.is-touch #raceMap{width:140px;height:140px}body.is-touch #raceTop .rc b{font-size:20px}`;
     document.head.appendChild(st);
     const root = document.getElementById('hud') || document.body, el = (id, tag = 'div') => { const e = document.createElement(tag); e.id = id; e.hidden = true; root.appendChild(e); return e; };
-    hud = { top: el('raceTop'), side: el('raceSide'), big: el('raceBig'), lights: el('raceLights'), res: el('raceRes') };
+    hud = { top: el('raceTop'), side: el('raceSide'), big: el('raceBig'), lights: el('raceLights'), res: el('raceRes'), pad: el('racePad') };
+    hud.pad.innerHTML = `<button type="button">🏙️ Leave the Race Room (refund रु ${TICKET})</button>`; hud.pad.firstChild.onclick = () => RC.leaveRoom();
     hud.side.innerHTML = '<canvas id="raceMap" width="392" height="392"></canvas><div id="raceBoard"></div>';
     hud.map = hud.side.querySelector('canvas'); hud.board = hud.side.querySelector('#raceBoard');
     hud.lights.innerHTML = '<i></i><i></i><i></i><i></i><i></i>';
@@ -285,14 +303,20 @@ body.is-touch #raceSide{top:200px;width:140px}body.is-touch #raceMap{width:140px
   function big(text, cls = '', t = 1.2) { hud.big.textContent = text; hud.big.className = cls; hud.big.hidden = false; bigT = t; }
 
   /* ---------- messages ---------- */
+  const shared = () => !RC.practice && (kind() === 'private' || kind() === 'race'); // race messages go to the room only here
   function send(m) {
     m.t = 'race'; m.id = myId();
     RC.onNet(m);
-    if (inRoom()) KS.Net.sendAll(m);
+    if (shared()) KS.Net.sendAll(m);
   }
-  function hostSend(m) { m.t = 'race'; m.id = myId(); RC.onNet(m); if (inRoom()) KS.Net.sendAll(m); }
+  function hostSend(m) { m.t = 'race'; m.id = myId(); RC.onNet(m); if (shared()) KS.Net.sendAll(m); }
   RC.onNet = (m) => {
-    const H = isHost();
+    const H = isHost() || RC.practice;
+    if (m.k === 'ad') { // someone in the public world bought a ticket
+      if (m.id !== myId() && kind() === 'world') { const nm = String(m.name || 'A racer').replace(/[<>&]/g, '').slice(0, 16); RC.ads.push({ name: nm, t: Date.now() }); notify(`🏁 <b>${nm}</b> bought a race ticket and is waiting in the <b>Race Room</b> — get yours at the Race HQ booth (रु ${TICKET}) and race them!`, 'good'); }
+      return;
+    }
+    if (kind() === 'world' && !RC.practice) return; // no races in the public world itself: they happen in the Race Room
     switch (m.k) {
       case 'join': if (H && (RC.state === 'idle' || RC.state === 'lobby') && !RC.list.includes(m.id) && RC.list.length < 8) { RC.list.push(m.id); hostLobby(); } break;
       case 'leave': if (H && RC.state === 'lobby') { RC.list = RC.list.filter((q) => q !== m.id); hostLobby(); } break;
@@ -309,11 +333,11 @@ body.is-touch #raceSide{top:200px;width:140px}body.is-touch #raceMap{width:140px
     if (n >= 2 && !RC.lobbyEnd) RC.lobbyEnd = now() + LOBBY_MS;
     if (n < 2) RC.lobbyEnd = 0;
     const room = inRoom() ? KS.Net.players.size + 1 : 1;
-    if (n >= 2 && n >= room) RC.lobbyEnd = Math.min(RC.lobbyEnd, now() + 5000); // everyone in the room is in: start sooner
+    if (n >= 2 && n >= room && kind() !== 'race') RC.lobbyEnd = Math.min(RC.lobbyEnd, now() + 5000); // all your friends are in: start sooner (the Race Room always waits 15 s for late arrivals)
     hostSend({ k: 'lobby', list: RC.list.slice(), ms: RC.lobbyEnd ? RC.lobbyEnd - now() : -1 });
   }
   function hostCheckEnd() {
-    if (!isHost() || RC.state !== 'race') return;
+    if (!(isHost() || RC.practice) || RC.state !== 'race') return;
     const rs = [...RC.racers.entries()], done = rs.every(([, r]) => r.fin != null || r.gone);
     if (done || (RC.firstFin && now() - RC.firstFin > 60000)) {
       const list = rs.map(([id, r]) => ({ id, name: nameOf(id), time: r.fin == null ? null : r.fin })).sort((a, b) => (a.time == null) - (b.time == null) || a.time - b.time);
@@ -326,17 +350,65 @@ body.is-touch #raceSide{top:200px;width:140px}body.is-touch #raceMap{width:140px
   RC.frozen = () => RC.state === 'grid' && car && KS.Player.vehicle === car;
   RC.nearHq = () => RC.hq && Math.hypot(KS.Player.x - RC.hq.x, KS.Player.z - RC.hq.z) < 8 && (KS.Player.y || 0) < KS.heightAt(RC.hq.x, RC.hq.z) + 3;
   /** E at the Race HQ: join or leave the lobby, or (alone) start a practice run */
+  RC.nearBooth = () => RC.booth && Math.hypot(KS.Player.x - RC.booth.x, KS.Player.z - RC.booth.z) < 6 && (KS.Player.y || 0) < KS.heightAt(RC.booth.x, RC.booth.z) + 3;
   RC.tryE = () => {
     const PL = KS.Player;
-    if (!trk || !RC.nearHq() || !(PL.mode === 'foot' || PL.mode === 'drive') || RC.racing() || RC.state === 'results') return false;
-    if (!inRoom()) { // the race needs two: alone, a practice run
-      notify('🏁 A race needs <b>at least 2 racers</b>. Make a room in Phone → Friends and invite a friend. Starting a <b>solo practice run</b> (no prize).');
-      startGrid([myId()], 6000, true); return true;
+    if (!trk || !(PL.mode === 'foot' || PL.mode === 'drive') || RC.racing() || RC.state === 'results') return false;
+    if (RC.nearBooth()) { buyTicket(); return true; }
+    if (!RC.nearHq()) return false;
+    const k = kind();
+    if (k === 'private') { // friends race free in their own room
+      if (RC.list.includes(myId())) { send({ k: 'leave' }); notify('You left the race lobby.'); }
+      else { send({ k: 'join' }); notify('🏁 You joined the <b>Ring Road Race</b>. It starts when at least 2 racers are in.'); }
+      return true;
     }
-    if (RC.list.includes(myId())) { send({ k: 'leave' }); notify('You left the race lobby.'); }
-    else { send({ k: 'join' }); notify('🏁 You joined the <b>Ring Road Race</b>. It starts when at least 2 racers are in.'); }
-    return true;
+    if (k === 'race') {
+      if (RC.list.includes(myId())) notify('🏁 You are on the start list. The race begins 15 s after a second racer joins.');
+      else if (ticket()) send({ k: 'join' });
+      else notify(`🎟️ You need a ticket for the next race — buy one at the booth (रु ${TICKET}).`, 'bad');
+      return true;
+    }
+    notify(`🏁 Racing real players needs a <b>ticket</b> from the booth next to this tent (रु ${TICKET}). Starting a <b>solo practice run</b> (no prize).`);
+    startGrid([myId()], 6000, true); return true;
   };
+  /* ---------- tickets and the Race Room ---------- */
+  function buyTicket() {
+    const D = KS.Shop.data, k = kind();
+    if (!ticket()) {
+      if ((D.cash || 0) < TICKET) { notify(`🎟️ A race ticket costs रु ${TICKET}. You have रु ${D.cash || 0}.`, 'bad'); return; }
+      D.cash -= TICKET; D.raceTicket = { t: Date.now() }; KS.Shop.save(); A().cash && A().cash();
+      notify(`🎟️ <b>Race ticket bought</b> (रु ${TICKET}). ` + (k === 'race' ? 'You are on the list for the next race.' : 'Taking you to the <b>Race Room</b>…'), 'good');
+    } else if (k !== 'race') notify('🎟️ You already have a ticket. Taking you to the <b>Race Room</b>…');
+    if (k === 'race') { if (!RC.list.includes(myId())) send({ k: 'join' }); else notify('🏁 You are already on the start list.'); return; }
+    if (!KS.Net || !KS.Net.goRaceRoom) return;
+    if (k === 'world') KS.Net.sendAll({ t: 'race', k: 'ad', id: myId(), name: nameOf(myId()) }); // tell the city
+    setTimeout(() => KS.Net.goRaceRoom(), k === 'world' ? 700 : 0);
+  }
+  /** the paddock: where ticket holders wait, behind the barrier by the grid */
+  function paddockSpot(k) { const p = at(s0 - 34 - (k % 6) * 1.8, 14.2 + Math.floor(k / 6) * 1.4); return { x: p.x, z: p.z, h: p.h - Math.PI / 2 }; }
+  function toPaddock() {
+    const PL = KS.Player;
+    if (PL.vehicle) { PL.vehicle.speed = 0; PL.vehicle.vx = null; PL.exit(); if (PL.vehicle) { PL.vehicle = null; PL.mode = 'foot'; } }
+    if (PL.mode !== 'foot') return;
+    const q = paddockSpot(Math.floor(Math.random() * 12)); PL.x = q.x; PL.z = q.z; PL.y = gy(q.x, q.z) + 0.3; PL.vy = 0; PL.h = q.h;
+  }
+  function enterRoom() {
+    RC.state = 'idle'; RC.list = []; RC.lobbyEnd = 0;
+    if (KS.Phone && KS.Phone.open) KS.Phone.toggle(false);
+    toPaddock();
+    if (ticket()) { setTimeout(() => { if (kind() === 'race' && ticket()) send({ k: 'join' }); }, 400); notify('🏁 <b>Race Room</b> — you are in the paddock. The race starts 15 s after a second racer arrives. No one within 3 minutes? Your रु ' + TICKET + ' comes back.', 'good'); }
+    else notify('🏁 You are in the Race Room without a ticket — buy one at the booth to race.');
+  }
+  /** leave the Race Room for the city; an unused ticket is refunded */
+  RC.leaveRoom = (why) => {
+    const D = KS.Shop.data;
+    if (ticket() && !RC.racing()) { D.cash += TICKET; D.raceTicket = null; KS.Shop.save(); notify(`🎟️ ${why || 'Ticket refunded'}: रु ${TICKET} is back in your wallet.`, 'good'); }
+    if (RC.list.includes(myId()) && !RC.racing()) send({ k: 'leave' });
+    hud.res.hidden = true; if (RC.state === 'results') endResults();
+    RC.state = 'idle'; RC.list = [];
+    if (KS.Net && KS.Net.backToCity) KS.Net.backToCity();
+  };
+  RC.raceAgain = () => { hud.res.hidden = true; if (RC.state === 'results') endResults(); if (kind() === 'race') buyTicket(); };
   function startGrid(list, ms, practice) {
     const id = myId(), PL = KS.Player;
     RC.list = list; RC.practice = practice; RC.goAt = now() + ms; RC.firstFin = 0; RC.racers = new Map();
@@ -345,6 +417,7 @@ body.is-touch #raceSide{top:200px;width:140px}body.is-touch #raceMap{width:140px
     me = null;
     const slot = list.indexOf(id);
     if (slot < 0) return; // watching: you are not in this one
+    if (!practice && kind() === 'race' && KS.Shop.data.raceTicket) { KS.Shop.data.raceTicket = null; KS.Shop.save(); } // the ticket is used
     if (!(PL.mode === 'foot' || PL.mode === 'drive')) { RC.racers.get(id).gone = true; notify('🏁 The race is starting, but you are busy — you sit this one out.'); return; }
     // a fresh race car on your grid box (your own vehicle stays where you left it)
     if (car) { KS.Traffic.remove(car); car = null; }
@@ -473,27 +546,54 @@ body.is-touch #raceSide{top:200px;width:140px}body.is-touch #raceMap{width:140px
     const best = KS.Shop.data.raceBestLap;
     hud.res.innerHTML = `<h2>🏁 ${RC.practice ? 'Practice run' : 'Ring Road Race — results'}</h2><table>${rows}</table>` +
       (me && me.laps.length ? `<p>Your laps: ${me.laps.map(fmt).join(' · ')}${RC.practice && best ? ` · best ever ${fmt(best)}` : ''} · boosters ${me.boosts}</p>` : '') +
-      (prize ? `<p style="color:#7dff9a;opacity:1;font-size:20px">Prize: रु ${prize.toLocaleString()}</p>` : RC.practice ? '<p>Practice runs pay no prize. Race a friend for रु 1,000.</p>' : '') + '<p>The race car goes back to the pits in a few seconds.</p>';
+      (prize ? `<p style="color:#7dff9a;opacity:1;font-size:20px">Prize: रु ${prize.toLocaleString()}</p>` : RC.practice ? '<p>Practice runs pay no prize. Buy a ticket at the booth to race real players for रु 1,000.</p>' : '') +
+      (kind() === 'race' ? `<div class="rbtns"><button type="button" id="raceAgain">🎟️ Race again (रु ${TICKET})</button><button type="button" id="raceCity">🏙️ Back to the city</button></div>` : '<p>The race car goes back to the pits in a few seconds.</p>');
     hud.res.hidden = false;
+    const ra = document.getElementById('raceAgain'), rc = document.getElementById('raceCity');
+    if (ra) ra.onclick = () => RC.raceAgain(); if (rc) rc.onclick = () => RC.leaveRoom();
   }
   function endResults() {
     const PL = KS.Player;
     hud.res.hidden = true; RC.state = 'idle'; RC.list = []; RC.racers = new Map(); RC.lobbyEnd = 0; me = null; evGroup.visible = false;
     if (car) {
       if (PL.vehicle === car) { car.speed = 0; car.vx = 0; car.vz = 0; PL.exit(); if (PL.vehicle === car) { PL.vehicle = null; PL.mode = 'foot'; PL.person.root.visible = true; } }
-      KS.Traffic.remove(car); car = null; notify('🏁 The race car went back to the pits.' + (prevVeh ? ' Your own ride is where you left it.' : ''));
+      KS.Traffic.remove(car); car = null; notify('🏁 The race car went back to the pits.' + (prevVeh && kind() !== 'race' ? ' Your own ride is where you left it.' : ''));
     }
     prevVeh = null;
+    if (kind() === 'race') { toPaddock(); if (ticket()) setTimeout(() => { if (kind() === 'race' && ticket()) send({ k: 'join' }); }, 300); } // back to the paddock; a ticket holder who watched goes on the next start list
+  }
+
+  /** the live board by the booth: who is waiting for the next race */
+  function drawBoard() {
+    if (!RC.boardCv || !KS.camera) return;
+    const c = KS.camera.position; if (Math.hypot(c.x - RC.booth.x, c.z - RC.booth.z) > 160) return;
+    const k = kind(), names = k === 'race' || k === 'private' ? RC.list.map((id) => nameOf(id)) : RC.ads.filter((a) => Date.now() - a.t < REFUND_MS).map((a) => a.name);
+    const key = [k, RC.state, names.join(','), RC.lobbyEnd ? Math.ceil((RC.lobbyEnd - now()) / 1000) : ''].join('|'); if (key === RC._boardKey) return; RC._boardKey = key;
+    const g = RC.boardCv.getContext('2d'), W = 512, H = 320;
+    g.fillStyle = '#0b0f14'; g.fillRect(0, 0, W, H); g.strokeStyle = '#ffd23f'; g.lineWidth = 6; g.strokeRect(3, 3, W - 6, H - 6);
+    g.fillStyle = '#ffd23f'; g.font = `800 50px ${FONT}`; g.textAlign = 'left'; g.fillText(RC.racing() ? '🏁 RACE ON' : 'NEXT RACE', 22, 58);
+    g.fillStyle = '#cfd6de'; g.font = `600 26px ${FONT}`; g.fillText(`Ring Road · 2 laps · prize रु 1,000`, 22, 96);
+    g.fillStyle = '#ffffff'; g.font = `700 32px ${FONT}`; g.fillText(`WAITING ${names.length}/8`, 22, 142);
+    g.font = `600 28px ${FONT}`; g.fillStyle = '#7dff9a';
+    (names.length ? names.slice(0, 6) : ['— nobody yet: be the first! —']).forEach((nm, i) => { g.fillStyle = names.length ? '#7dff9a' : '#8a939c'; g.fillText(String(nm).slice(0, 18), 22 + (i % 2) * 240, 182 + Math.floor(i / 2) * 36); });
+    g.fillStyle = '#ffb000'; g.font = `600 24px ${FONT}`;
+    g.fillText(RC.lobbyEnd && RC.state === 'lobby' ? `Starts in ${Math.max(0, Math.ceil((RC.lobbyEnd - now()) / 1000))} s` : `Ticket रु ${TICKET} · starts 15 s after 2 racers`, 22, 296);
+    RC.boardTex.needsUpdate = true;
   }
 
   /* ---------- per frame ---------- */
-  let flagT = 0;
+  let flagT = 0, boardT = 0;
   RC.update = (dt) => {
     if (!trk || !hud) return;
     clk += dt * 1000;
     const PL = KS.Player;
     if (RC.racing()) raceTick(dt);
-    if (RC.state === 'results' && now() - RC.resultsT > 9000) endResults();
+    if (RC.state === 'results' && now() - RC.resultsT > (kind() === 'race' ? 30000 : 9000)) endResults();
+    // the Race Room: arriving, waiting, and the refund if nobody comes
+    const rr = kind() === 'race';
+    if (rr && !RC.wasRR) enterRoom();
+    RC.wasRR = rr;
+    if (rr && ticket() && !RC.racing() && RC.list.length < 2 && Date.now() - ticket().t > REFUND_MS) RC.leaveRoom('Nobody else came to race in 3 minutes — ticket refunded');
     if (isHost() && RC.state === 'lobby' && RC.lobbyEnd && now() >= RC.lobbyEnd) {
       const list = RC.list.filter((id) => id === myId() || (KS.Net && KS.Net.players.has(id)));
       if (list.length >= 2) hostSend({ k: 'grid', list, ms: GRID_MS }); else { RC.list = list; RC.lobbyEnd = 0; hostLobby(); }
@@ -501,10 +601,12 @@ body.is-touch #raceSide{top:200px;width:140px}body.is-touch #raceMap{width:140px
     if (RC.state === 'lobby' && !inRoom()) { RC.state = 'idle'; RC.list = []; }
     if (RC.racing() && inRoom() === false && !RC.practice) endResults();
     // the HQ prompt
-    if (KS.state === 'play' && RC.nearHq() && !RC.racing() && RC.state !== 'results' && (PL.mode === 'foot' || PL.mode === 'drive')) {
-      const n = RC.list.length, joined = RC.list.includes(myId());
-      KS.Game && KS.Game.prompt(!inRoom() ? '🏁 <b>Ring Road Race</b> needs 2+ racers · Press <b>E</b> for a solo practice run' : joined ? `🏁 In the lobby (${n} racer${n === 1 ? '' : 's'}) · Press <b>E</b> to leave` : `🏁 Press <b>E</b> to join the <b>Ring Road Race</b> · ${n} waiting · 2 laps · prize रु 1,000`);
+    if (KS.state === 'play' && !RC.racing() && RC.state !== 'results' && (PL.mode === 'foot' || PL.mode === 'drive') && KS.Game) {
+      const n = RC.list.length, joined = RC.list.includes(myId()), k = kind();
+      if (RC.nearBooth()) KS.Game.prompt(k === 'race' ? (ticket() ? (joined ? '🎟️ You have a ticket and are on the start list' : '🎟️ Press <b>E</b> to go on the start list') : `🎟️ Press <b>E</b> to buy a ticket for the next race · रु ${TICKET}`) : ticket() ? '🎟️ You have a ticket · Press <b>E</b> to go to the <b>Race Room</b>' : `🎟️ Press <b>E</b> to buy a <b>Race Ticket</b> · रु ${TICKET} · race real players in the Race Room · prize रु 1,000`);
+      else if (RC.nearHq()) KS.Game.prompt(k === 'private' ? (joined ? `🏁 In the lobby (${n} racer${n === 1 ? '' : 's'}) · Press <b>E</b> to leave` : `🏁 Press <b>E</b> to race your friends · ${n} waiting · 2 laps`) : k === 'race' ? (joined ? `🏁 On the start list · ${n} racer${n === 1 ? '' : 's'}` : '🏁 Buy a ticket at the booth to race') : '🏁 Press <b>E</b> for a solo practice run · race real players with a ticket from the booth 🎟️');
     }
+    boardT -= dt; if (boardT <= 0) { boardT = 1; drawBoard(); }
     // animation: boosters scroll, flags flap, the crowd cheers
     if (boosterTex) boosterTex.offset.y = -((now() / 1000) * 1.6) % 1;
     flagT -= dt;
@@ -520,12 +622,15 @@ body.is-touch #raceSide{top:200px;width:140px}body.is-touch #raceMap{width:140px
   function renderHud(dt) {
     const show = RC.state !== 'idle';
     hud.top.hidden = !show; hud.side.hidden = !(RC.racing() || RC.state === 'results');
+    hud.pad.hidden = !(kind() === 'race' && !RC.racing() && RC.state !== 'results' && KS.state === 'play');
     if (bigT > 0) { bigT -= dt; if (bigT <= 0) hud.big.hidden = true; }
     if (me && me.wrong && RC.state === 'race') { hud.big.textContent = 'WRONG WAY'; hud.big.className = 'small warn'; hud.big.hidden = false; bigT = 0.2; }
     if (!show) return;
     if (RC.state === 'lobby') {
-      const n = RC.list.length, left = RC.lobbyEnd ? Math.max(0, Math.ceil((RC.lobbyEnd - now()) / 1000)) : null;
-      hud.top.innerHTML = `<div class="rc lobby">🏁 Ring Road Race lobby · <b style="display:inline;font-size:20px">${n}</b> racer${n === 1 ? '' : 's'} · ${left != null ? `starts in ${left} s` : 'waiting for at least 2'}</div>`;
+      const n = RC.list.length, left = RC.lobbyEnd ? Math.max(0, Math.ceil((RC.lobbyEnd - now()) / 1000)) : null, tk = ticket();
+      const refund = kind() === 'race' && tk && n < 2 ? Math.max(0, Math.ceil((REFUND_MS - (Date.now() - tk.t)) / 1000)) : null;
+      const html = `<div class="rc lobby">🏁 ${kind() === 'race' ? 'Race Room' : 'Race lobby'} · <b style="display:inline;font-size:20px">${n}</b>/8 racer${n === 1 ? '' : 's'} · ${left != null ? `starts in ${left} s` : 'waiting for at least 2'}<br><small style="text-transform:none;letter-spacing:0">${RC.list.map((id) => nameOf(id).replace(/[<>&]/g, '')).join(' · ')}${refund != null ? ` · refund in ${Math.floor(refund / 60)}:${String(refund % 60).padStart(2, '0')}` : ''}</small></div>`;
+      if (hud.top._h !== html) { hud.top._h = html; hud.top.innerHTML = html; }
       return;
     }
     const st = standings(), my = myId(), k = st.findIndex((q) => q.id === my), t = Math.max(0, (now() - RC.goAt) / 1000);

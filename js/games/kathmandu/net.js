@@ -25,24 +25,28 @@
   /* ---------- connect ---------- */
   N.create = async () => {
     if (N.public && N.state !== 'off') { N.publicOff = true; N.leave(true); }
+    clearTimers(); N.status = '';
     if (N.state !== 'off') return;
     N.state = 'connecting'; N.render2();
     try { await loadLib(); } catch (e) { N.fail(e.message); return; }
     N.room = code(); N.host = true; N.public = false;
     const peer = (N.peer = new window.Peer(PREFIX + N.room.toLowerCase(), options()));
-    peer.on('open', () => { N.state = 'host'; N.me = peer.id; setWorldRole(true); sys(`Room ${N.room} created. Share the code with friends.`); N.render2(); });
+    N.connT = setTimeout(() => { if (N.state === 'connecting' && N.peer === peer) N.fail('Could not reach the multiplayer server. Check your internet and try again.'); }, WAIT);
+    peer.on('open', () => { clearTimers(); N.state = 'host'; N.me = peer.id; setWorldRole(true); sys(`Room ${N.room} created. Share the code with friends.`); N.render2(); });
     peer.on('connection', (c) => { if (N.conns.size >= MAX - 1) { c.on('open', () => { c.send({ t: 'full' }); setTimeout(() => c.close(), 300); }); return; } wire(c); });
     common(peer);
   };
   N.join = async (room) => {
     room = String(room || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (N.public && N.state !== 'off' && room.length >= 4) { N.publicOff = true; N.leave(true); }
+    clearTimers(); N.status = '';
     if (N.state !== 'off' || room.length < 4) { if (room.length < 4) KS.Game.notify('Enter the 5-character room code.', 'bad'); return; }
     N.state = 'connecting'; N.render2();
     try { await loadLib(); } catch (e) { N.fail(e.message); return; }
     N.room = room; N.host = false; N.public = false;
     const peer = (N.peer = new window.Peer(undefined, options()));
     peer.on('open', () => { N.me = peer.id; const c = peer.connect(PREFIX + room.toLowerCase(), { reliable: true }); wire(c); N.hostId = c.peer; });
+    N.connT = setTimeout(() => { if (N.state === 'connecting' && N.peer === peer) N.fail('Could not reach that room. Check the code, and that your friend still has the game open.'); }, WAIT);
     common(peer);
   };
   function common(peer, onErr) {
@@ -74,39 +78,65 @@
   /* ---------- the public world: everyone who is online plays in the same Kathmandu ----------
      Worlds have well-known ids. The first player to arrive hosts world 1 and the next ones join it;
      when it is full (8) the next world opens. If the host leaves, the others elect a new host and carry on. */
-  const PUB = 'kstreets-world-v1-';
-  N.public = false;
-  N.joinPublic = async (n = 1) => {
+  const PUB = 'kstreets-world-v1-', RACE = 'kstreets-race-v1-';
+  N.public = false; N.pubKind = 'world'; N.status = '';
+  /* ROUND 26: nothing waits forever any more. "Connecting…" used to hang when the server never answered, or when
+     a world's host had gone quiet (a hidden tab, a phone asleep, a strict mobile network): now each step has a
+     12 s limit. A host that does not answer means the next world is tried; a server that does not answer means a
+     retry in 30 s. The Friends app says what is happening and has a Cancel button. */
+  const WAIT = 12000;
+  function setStatus(t) { N.status = t; N.render2(); }
+  function clearTimers() { clearTimeout(N.connT); clearTimeout(N.retryT); N.connT = N.retryT = 0; }
+  function retryLater(n, kind) {
+    const k = kind || N.pubKind;
+    N.leave(true); N.public = true; N.pubKind = k; N.status = '⚠️ The online server is not answering. Trying again in 30 s…'; N.render2();
+    N.retryT = setTimeout(() => { if (!N.publicOff && N.state === 'off') N.joinPublic(n, k); }, 30000);
+  }
+  /** kind 'world': the public world everyone shares · kind 'race': the Race Room for ticket holders (race.js) */
+  N.joinPublic = async (n = 1, kind) => {
+    kind = kind || N.pubKind || 'world';
     if (N.state !== 'off' || N.publicOff) return;
-    if (n > 8) { sys('Every public world is full right now. Try again soon.'); return; }
-    N.state = 'connecting'; N.public = true; N.pubN = n; N.room = 'WORLD ' + n; N.render2();
+    clearTimers();
+    const label = kind === 'race' ? 'Race Room' : 'public world';
+    if (n > 8) { N.status = ''; sys(`Every ${label} is busy right now. Trying again in 30 s.`); retryLater(1, kind); return; }
+    N.state = 'connecting'; N.public = true; N.pubKind = kind; N.pubN = n; N.room = (kind === 'race' ? 'RACE ROOM ' : 'WORLD ') + n; setStatus(`Connecting to the ${label}${n > 1 ? ' ' + n : ''}…`);
     try { await loadLib(); } catch (e) { N.public = false; N.fail(e.message); return; }
-    const id = PUB + n; let settled = false;
+    const id = (kind === 'race' ? RACE : PUB) + n; let settled = false;
     const peer = (N.peer = new window.Peer(id, options()));
+    N.connT = setTimeout(() => { if (!settled && N.peer === peer) { settled = true; retryLater(n, kind); } }, WAIT); // the server never answered
     peer.on('open', () => {
-      settled = true; N.host = true; N.state = 'host'; N.me = peer.id; setWorldRole(true);
-      sys(`🌍 You opened public world ${n}. Other players who come online will appear here.`); N.render2(); publicHello();
+      settled = true; clearTimers(); N.host = true; N.state = 'host'; N.me = peer.id; N.status = ''; setWorldRole(true);
+      sys(kind === 'race' ? '🏁 You opened the Race Room. Racers with a ticket will appear here.' : `🌍 You opened public world ${n}. Other players who come online will appear here.`); N.render2(); if (kind !== 'race') publicHello();
     });
     peer.on('connection', (c) => { if (N.conns.size >= MAX - 1) { c.on('open', () => { c.send({ t: 'full' }); setTimeout(() => c.close(), 300); }); return; } wire(c); });
     common(peer, (e) => {
       if (settled) return false;
-      if (e.type === 'unavailable-id') { settled = true; try { peer.destroy(); } catch (x) { /* ignore */ } joinPublicAsGuest(id, n); return true; } // someone hosts it: join them
-      N.public = false; N.fail('Could not reach the online world (offline play continues).'); return true;
+      if (e.type === 'unavailable-id') { settled = true; clearTimers(); try { peer.destroy(); } catch (x) { /* ignore */ } joinPublicAsGuest(id, n, kind); return true; } // someone hosts it: join them
+      settled = true; retryLater(n, kind); return true;
     });
   };
-  function joinPublicAsGuest(id, n) {
+  function joinPublicAsGuest(id, n, kind) {
     N.host = false; N.state = 'connecting';
-    const peer = (N.peer = new window.Peer(undefined, options()));
-    peer.on('open', () => { N.me = peer.id; const c = peer.connect(id, { reliable: true }); wire(c); N.hostId = c.peer; });
+    const peer = (N.peer = new window.Peer(undefined, options())); let opened = false;
+    peer.on('open', () => { opened = true; N.me = peer.id; const c = peer.connect(id, { reliable: true }); wire(c); N.hostId = c.peer; });
+    N.connT = setTimeout(() => { // still not in: a host that does not answer, or no server at all
+      if (N.state !== 'connecting' || N.peer !== peer) return;
+      if (opened) { const nx = n + 1; N.leave(true); N.status = ''; sys(`${kind === 'race' ? 'Race Room' : 'World'} ${n} is not answering — trying ${nx}…`); N.joinPublic(nx, kind); } else retryLater(n, kind);
+    }, WAIT);
     common(peer, (e) => {
       if (e.type === 'peer-unavailable') { // the host has just gone: try to become the host of this world
-        N.leave(true); setTimeout(() => N.joinPublic(n), 300 + Math.random() * 1500); return true;
+        clearTimers(); N.leave(true); setTimeout(() => N.joinPublic(n, kind), 300 + Math.random() * 1500); return true;
       }
       return false;
     });
   }
   /** after leaving or losing a public world, come back automatically */
-  function rejoinPublic(n, wait) { N.leave(true); setTimeout(() => { if (!N.publicOff) N.joinPublic(n); }, wait); }
+  function rejoinPublic(n, wait) { const k = N.pubKind; N.leave(true); N.pubKind = k; setTimeout(() => { if (!N.publicOff) N.joinPublic(n, k); }, wait); }
+  N.cancelConnect = () => { clearTimers(); N.publicOff = true; N.status = ''; N.leave(true); sys('Stopped connecting. You are playing offline.'); };
+  /** the Race Room (race.js): leave the world you are in and go there; and back to the city afterwards */
+  N.goRaceRoom = () => { N.publicOff = false; clearTimers(); if (N.state !== 'off') N.leave(true); N.joinPublic(1, 'race'); };
+  N.backToCity = () => { clearTimers(); if (N.state !== 'off') N.leave(true); N.pubKind = 'world'; N.public = false; if (KS.Settings.data().online !== false) { N.publicOff = false; setTimeout(() => N.joinPublic(1, 'world'), 400); } };
+  N.inRaceRoom = () => (N.state === 'host' || N.state === 'guest') && N.public && N.pubKind === 'race';
   function publicHello() {
     if (N.toldPublic) return; N.toldPublic = true;
     KS.Game.notify('🌍 You are in the <b>public world</b> with real players. Be kind, and never share personal details. Chat with <b>Enter</b>; mute anyone in Phone → Friends.');
@@ -120,7 +150,7 @@
     c.on('open', () => {
       N.conns.set(c.peer, c);
       c.send({ t: 'hello', name: N.name(), look: look() });
-      if (!N.host) { N.state = 'guest'; setWorldRole(false); sys(N.public ? `🌍 Joined public world ${N.pubN} with other players.` : `Joined room ${N.room}.`); if (N.public) publicHello(); }
+      if (!N.host) { clearTimers(); N.status = ''; N.state = 'guest'; setWorldRole(false); sys(N.public ? (N.pubKind === 'race' ? '🏁 You are in the Race Room.' : `🌍 Joined public world ${N.pubN} with other players.`) : `Joined room ${N.room}.`); if (N.public && N.pubKind !== 'race') publicHello(); }
       N.render2(); if (N.micOn) callAll();
     });
     c.on('data', (m) => onData(c, m));
@@ -133,7 +163,7 @@
     if (!m || typeof m !== 'object') return;
     const from = N.host ? c.peer : m.id || c.peer;
     switch (m.t) {
-      case 'full': if (N.public) { const n = N.pubN || 1; rejoinPublic(n + 1, 200); } else N.fail('That room is full (8 players).'); break;
+      case 'full': if (N.public) { const n = N.pubN || 1; const k = N.pubKind; N.leave(true); N.pubKind = k; setTimeout(() => N.joinPublic(n + 1, k), 200); } else N.fail('That room is full (8 players).'); break;
       case 'hello': if (N.host) { upsert(c.peer, { name: clean(m.name, 16), look: m.look }); sys(`${clean(m.name, 16)} joined.`); roster(); if (c.open) c.send(worldMsg()); } break;
       case 'roster': N.roster = (m.list || []).slice(0, MAX); for (const r of N.roster) if (r.id !== N.me) upsert(r.id, { name: clean(r.name, 16) }); for (const id of [...N.players.keys()]) if (!N.roster.some((r) => r.id === id)) dropPlayer(id); N.render2(); if (N.micOn) callAll(); break;
       case 'world': if (!N.host) syncWorld(m); break;
@@ -414,7 +444,7 @@
     if (N.peer) try { N.peer.destroy(); } catch (e) { /* ignore */ }
     if (N.mic) N.mic.getTracks().forEach((t) => t.stop());
     if (KS.Player.mode === 'ride') N.leaveRide();
-    N.peer = null; N.mic = null; N.micOn = false; N.arrived = false; N.follow = null; N.state = 'off'; setWorldRole(true); // back to playing alone: simulate the city yourself again
+    clearTimers(); N.peer = null; N.mic = null; N.micOn = false; N.arrived = false; N.follow = null; N.state = 'off'; setWorldRole(true); // back to playing alone: simulate the city yourself again
     if (N.worldSynced) { N.worldSynced = false; KS.Weather.auto = true; KS.Weather.timer = 60; } N.room = ''; N.roster = null;
     if (!silent) sys('You left the room.');
     N.render2();
@@ -487,7 +517,7 @@
     const on = N.state === 'host' || N.state === 'guest';
     const players = [{ name: N.name() + ' (you)' }].concat([...N.players.values()]);
     el.innerHTML = on ? `
-      ${N.public ? `<div class="roomcode"><span>🌍 Public world</span><b>${N.pubN}</b></div>
+      ${N.public ? `<div class="roomcode"><span>${N.pubKind === 'race' ? '🏁 Race Room' : '🌍 Public world'}</span><b>${N.pubN}</b></div>
       <p class="ph-muted small">${players.length < 2 ? 'Nobody else is online here right now. Real players who open the game join this world automatically.' : `${players.length} real players in this world. Everyone is a coloured dot on your map.`} Be kind and never share personal details.</p>`
       : `<div class="roomcode"><span>Room</span><b>${N.room}</b><button type="button" class="chip" id="netCopy">Copy invite link</button></div>
       ${players.length < 2 ? '<p class="ph-muted small">Waiting for friends… send them the invite link or the code. Keep this tab open.</p>' : ''}
@@ -499,18 +529,20 @@
       ${N.host ? '<button type="button" class="btn small-btn" id="netBattle">⚔️ Start a battle match for everyone</button>' : '<p class="ph-muted small">⚔️ Battle matches are started by the room host.</p>'}
       <div class="chatlog" id="netLog"></div>
       <form id="netForm" class="chatform"><input id="netText" maxlength="200" placeholder="Message… (Enter)" autocomplete="off" aria-label="Chat message"><button type="submit" class="btn small-btn">Send</button></form>
-      <button type="button" class="btn ghost small-btn" id="netLeave">${N.public ? 'Leave the public world (play alone)' : 'Leave room'}</button>`
-      : `<div class="req-btns"><button type="button" class="btn small-btn" id="netPublic" ${N.state === 'connecting' ? 'disabled' : ''}>🌍 ${N.state === 'connecting' && N.public ? 'Connecting…' : 'Join the public world (everyone online)'}</button></div>
+      <button type="button" class="btn ghost small-btn" id="netLeave">${N.public ? (N.pubKind === 'race' ? 'Leave the Race Room (back to the city)' : 'Leave the public world (play alone)') : 'Leave room'}</button>`
+      : `<div class="req-btns"><button type="button" class="btn small-btn" id="netPublic" ${N.state === 'connecting' ? 'disabled' : ''}>${N.pubKind === 'race' && N.public ? '🏁' : '🌍'} ${N.state === 'connecting' && N.public ? 'Connecting…' : 'Join the public world (everyone online)'}</button>${(N.state === 'connecting' && N.public) || N.retryT ? '<button type="button" class="btn ghost small-btn" id="netCancel">Cancel</button>' : ''}</div>
+      ${N.status ? `<p class="ph-muted small" id="netStatus">${esc(N.status)}</p>` : ''}
       <p class="ph-muted small">Or play with just your friends in a private room:</p>
       <ol class="howto"><li><b>One player</b> taps <b>Create room</b>.</li><li>They tap <b>Copy invite link</b> and send it (WhatsApp, Viber, Messenger…).</li><li><b>Friends</b> open the link, or type the 5-letter code below and tap <b>Join</b>.</li><li>Everyone appears in the same Kathmandu. Chat with <kbd>Enter</kbd>; tap <b>Turn mic on</b> and allow the microphone to talk.</li><li>Tap <b>📹 Video call</b> next to a friend to video-call them on the game phone — they choose to answer, and the camera turns on only then.</li></ol>
       <label class="set"><span>Your name</span><input id="netName" maxlength="16" value="${esc(N.name())}" aria-label="Your name"></label>
-      <div class="req-btns"><button type="button" class="btn small-btn" id="netCreate" ${N.state === 'connecting' ? 'disabled' : ''}>${N.state === 'connecting' ? 'Connecting…' : 'Create room'}</button></div>
+      <div class="req-btns"><button type="button" class="btn small-btn" id="netCreate" ${N.state === 'connecting' && !N.public ? 'disabled' : ''}>${N.state === 'connecting' && !N.public ? 'Connecting…' : 'Create room'}</button></div>
       <form id="netJoinForm" class="chatform"><input id="netCode" maxlength="6" placeholder="Room code" autocomplete="off" aria-label="Room code" style="text-transform:uppercase" value="${esc(N.invite || '')}"><button type="submit" class="btn small-btn">Join</button></form>
       <p class="ph-muted small">Rooms are private: only people with the code can join. Only share it with people you know. Connections are set up through the free PeerJS server; positions, chat and voice then go directly between players. The microphone is used only after you turn it on.</p>`;
     const b = (id, fn) => { const x = $(id); if (x) x.onclick = fn; };
     b('netCreate', () => { const n = $('netName'); if (n && n.value.trim()) { KS.Shop.data.netName = clean(n.value.trim(), 16); KS.Shop.save(); } N.create(); });
     const jf = $('netJoinForm'); if (jf) jf.onsubmit = (e) => { e.preventDefault(); const n = $('netName'); if (n && n.value.trim()) { KS.Shop.data.netName = clean(n.value.trim(), 16); KS.Shop.save(); } N.join($('netCode').value); };
-    b('netLeave', () => { if (N.public) { N.publicOff = true; KS.Settings.data().online = false; KS.Shop.save(); } N.leave(); });
+    b('netLeave', () => { if (N.inRaceRoom()) { if (KS.Race) KS.Race.leaveRoom(); else N.backToCity(); return; } if (N.public) { N.publicOff = true; KS.Settings.data().online = false; KS.Shop.save(); } N.leave(); });
+    b('netCancel', () => N.cancelConnect());
     b('netPublic', () => { N.publicOff = false; KS.Settings.data().online = true; KS.Shop.save(); N.joinPublic(); });
     el.querySelectorAll('[data-block]').forEach((x) => (x.onclick = () => N.toggleBlock(x.dataset.block)));
     b('netMic', () => N.toggleMic());
